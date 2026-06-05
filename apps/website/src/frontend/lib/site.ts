@@ -1,0 +1,59 @@
+/**
+ * Site-wide structural config (NOT page content).
+ * Navigation, brand name, and contact placeholders live here so the chrome
+ * (header/footer) renders. Replace the contact placeholders with real values.
+ */
+export const site = {
+  name: "METNMAT",
+  legalName: "METNMAT Research & Innovations",
+  tagline: "India's first private Metallurgy & Materials R&D",
+  // TODO(company): confirm production domain.
+  url: "https://www.metnmat.com",
+  description:
+    "Metallurgy & materials R&D — lab-scale prototype to full industrial scale.",
+
+  // TODO(company): replace with verified contact details.
+  contact: {
+    email: "contact@metnmat.com",
+    phone: "+91 78726 86501",
+    shipping: "Shipping across India & worldwide · ISO-aligned R&D",
+  },
+
+  social: {
+    linkedin: "#",
+    youtube: "#",
+    facebook: "#",
+  },
+} as const;
+
+/** Primary navigation tabs (order matches the header). */
+export const mainNav: { label: string; href: string }[] = [
+  { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
+  { label: "Services", href: "/services" },
+  { label: "Projects", href: "/projects" },
+  { label: "Blog", href: "/blog" },
+  { label: "Shop", href: "/shop" },
+  { label: "Contact", href: "/contact" },
+];
+
+/** Footer link groups (structure only — fill labels/links as content lands). */
+export const footerNav: { title: string; links: { label: string; href: string }[] }[] = [
+  {
+    title: "Company",
+    links: [
+      { label: "About", href: "/about" },
+      { label: "Projects", href: "/projects" },
+      { label: "Blog", href: "/blog" },
+      { label: "Contact", href: "/contact" },
+    ],
+  },
+  {
+    title: "Solutions",
+    links: [
+      { label: "Services", href: "/services" },
+      { label: "Shop", href: "/shop" },
+      { label: "Get a Quote", href: "/quote" },
+    ],
+  },
+];

@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * METNMAT theme tokens. Dark is the default (matches the brand reference).
+ * Add data-theme handling / a toggle later; the .light class is ready to use.
+ * Values are HSL channels so Tailwind opacity modifiers (e.g. bg-brand/20) work.
+ */
+@layer base {
+  :root {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+
+    --surface: 240 6% 8%;
+    --surface-foreground: 0 0% 98%;
+
+    --card: 0 0% 98%;
+    --card-foreground: 240 10% 8%;
+
+    --muted: 240 5% 14%;
+    --muted-foreground: 240 5% 65%;
+
+    --border: 240 5% 16%;
+    --input: 240 5% 16%;
+    --ring: 357 74% 49%;
+
+    /* Brand red #d81f26 */
+    --brand: 357 74% 49%;
+    --brand-foreground: 0 0% 100%;
+    --brand-soft: 357 74% 60%;
+
+    --radius: 0.9rem;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 8%;
+
+    --surface: 240 5% 97%;
+    --surface-foreground: 240 10% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 8%;
+
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 40%;
+
+    --border: 240 6% 88%;
+    --input: 240 6% 88%;
+    --ring: 357 74% 49%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  ::selection {
+    @apply bg-brand/30 text-foreground;
+  }
+
+  /* Accessibility: visible focus ring for keyboard users */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Accessibility: respect reduced-motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Section vertical rhythm */
+  .section {
+    @apply py-16 sm:py-20 lg:py-24;
+  }
+
+  /* Subtle grid texture used behind the hero */
+  .bg-grid {
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--border) / 0.5) 1px,
+        transparent 1px
+      ),
+      linear-gradient(to bottom, hsl(var(--border) / 0.5) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+}
