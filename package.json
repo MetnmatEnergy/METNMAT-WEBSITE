@@ -2,7 +2,7 @@
   "name": "metnmat",
   "version": "0.1.0",
   "private": true,
-  "description": "METNMAT Research & Innovations — platform monorepo (Website + Operations Dashboard).",
+  "description": "METNMAT Research & Innovations — public marketing website.",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",

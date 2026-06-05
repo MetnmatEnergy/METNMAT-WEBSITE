@@ -1,32 +1,32 @@
-# METNMAT Platform
+# METNMAT-WEBSITE
 
-Monorepo for **METNMAT Research & Innovations** — India's first private metallurgy & materials R&D company.
+Public marketing and shop site for **METNMAT Research & Innovations** — India's first private metallurgy & materials R&D company.
 
-Stack (locked): **Next.js + NestJS + MongoDB**, four codebases sharing one MongoDB Atlas as the sync layer. See `METNMAT_Tech_Stack.pdf` for the full specification.
+Built with **Next.js 15** (App Router), **React 19**, and **Tailwind CSS**.
 
 ## Structure
 
 ```
-metnmat/
+metnmat-website/
 ├── apps/
-│   ├── website/        ✅ public marketing + shop site (Next.js, App Router) — built
-│   ├── website-api/    ⬜ Website API (NestJS)            — to come
-│   ├── dashboard/      ⬜ Operations Dashboard (Next.js)   — to come
-│   └── dashboard-api/  ⬜ Dashboard API (NestJS)           — to come
+│   └── website/        Public site (Next.js, App Router)
 └── packages/
-    └── (shared types / ui — to come)
+    └── types/          Shared TypeScript types
 ```
 
 ## Getting started
 
 ```bash
 pnpm install          # install all workspaces
-pnpm dev              # run the website (apps/website) on http://localhost:3000
-pnpm build            # production build of the website
+pnpm dev              # run the website on http://localhost:3000
+pnpm build            # production build
+pnpm start            # start production server
 ```
 
-## apps/website
+## Routes
 
-A **styled skeleton** of the public site. Every tab/route and the full design system are in place; **content is intentionally placeholder** and centralized in `apps/website/src/lib/placeholder.ts` — replace it tab-by-tab with real company data (or wire it to Payload CMS / the Website API later).
+`/` `·` `/about` `·` `/services` `·` `/projects` `·` `/blog` (+ `/blog/[slug]`) `·` `/shop` (+ `/shop/[slug]`) `·` `/contact` `·` `/quote`
 
-Routes: `/` `·` `/about` `·` `/services` `·` `/projects` `·` `/blog` (+ `/blog/[slug]`) `·` `/shop` (+ `/shop/[slug]`) `·` `/contact` `·` `/quote`.
+## Project layout
+
+See `apps/website/STRUCTURE.md` for where frontend, backend, and API code live.
