@@ -6,6 +6,7 @@
  * the next request (no redeploy). Optimize to ISR + on-demand revalidation later.
  */
 import type { Product, Category } from "@/frontend/lib/catalog";
+import { services, projects, blogPosts } from "@/frontend/lib/placeholder";
 
 const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
 
@@ -55,6 +56,7 @@ type CmsProduct = {
   badges?: string[];
   priceTiers?: { minQty: number; price: number }[];
   specs?: { label: string; value: string }[];
+  sizes?: { label?: string }[];
   shortDesc?: string;
   images?: { image?: Media }[];
 };
@@ -77,6 +79,7 @@ function mapProduct(d: CmsProduct): Product {
     leadTime: d.leadTime ?? "Ships in 1–2 weeks",
     priceTiers: d.priceTiers ?? [],
     shortDesc: d.shortDesc ?? "",
+    sizes: (d.sizes ?? []).map((s) => s.label?.trim()).filter(Boolean) as string[],
     specs: d.specs ?? [],
     datasheets: [],
     badges: d.badges ?? [],
@@ -124,6 +127,66 @@ export async function searchProducts(q: string): Promise<Product[]> {
   return (await getAllProducts()).filter((p) =>
     [p.name, p.brand, p.sku, p.shortDesc].join(" ").toLowerCase().includes(term)
   );
+}
+
+// ── Global site search ──────────────────────────────────────────────────────
+// Searches the whole site: products + research/services + projects + blog +
+// categories + static pages. Products are surfaced first; everything else
+// (research, blog, projects, …) follows.
+export type SiteLinkType = "Service" | "Blog" | "Project" | "Category" | "Page";
+export type SiteLink = { type: SiteLinkType; title: string; href: string; desc?: string };
+
+/** Static pages indexed for global search (keywords broaden matching). */
+const SITE_PAGES: (SiteLink & { keywords: string })[] = [
+  { type: "Page", title: "Home", href: "/", desc: "METNMAT — materials & electrochemistry R&D and lab equipment", keywords: "home metnmat start" },
+  { type: "Page", title: "About", href: "/about", desc: "Who we are and what we do", keywords: "about company team story mission" },
+  { type: "Page", title: "Services", href: "/services", desc: "Turnkey materials R&D services", keywords: "services r&d research consulting development" },
+  { type: "Page", title: "Projects", href: "/projects", desc: "Case studies and delivered work", keywords: "projects case studies portfolio work" },
+  { type: "Page", title: "Blog", href: "/blog", desc: "Articles and updates", keywords: "blog articles news posts insights" },
+  { type: "Page", title: "Shop", href: "/shop", desc: "Buy electrodes, cells & accessories", keywords: "shop store buy catalog products ecommerce" },
+  { type: "Page", title: "Request for Customization", href: "/quote", desc: "Tell us your requirement and get a quote", keywords: "quote rfq customization custom enquiry contact sales bulk pricing" },
+  { type: "Page", title: "Contact", href: "/contact", desc: "Get in touch with METNMAT", keywords: "contact email phone address support reach" },
+  { type: "Page", title: "Cart", href: "/cart", desc: "Your shopping cart", keywords: "cart basket bag checkout" },
+  { type: "Page", title: "Account", href: "/account", desc: "Your account, orders & RFQs", keywords: "account profile orders login" },
+];
+
+export async function searchSite(
+  q: string
+): Promise<{ products: Product[]; links: SiteLink[] }> {
+  const term = q.trim().toLowerCase();
+  if (!term) return { products: [], links: [] };
+  const has = (s: string) => s.toLowerCase().includes(term);
+
+  const [products, cats] = await Promise.all([searchProducts(term), getAllCategories()]);
+
+  // Research / services — highest-priority non-product content.
+  const serviceLinks: SiteLink[] = services
+    .filter((s) => has(`${s.title} ${s.summary}`))
+    .map((s) => ({ type: "Service", title: s.title, href: `/services#${s.slug}`, desc: s.summary }));
+
+  // Blog / insights — real detail pages at /blog/[slug].
+  const blogLinks: SiteLink[] = blogPosts
+    .filter((b) => has(`${b.title} ${b.excerpt} ${b.category}`))
+    .map((b) => ({ type: "Blog", title: b.title, href: `/blog/${b.slug}`, desc: b.excerpt }));
+
+  // Projects / case studies.
+  const projectLinks: SiteLink[] = projects
+    .filter((p) => has(`${p.title} ${p.category} ${p.summary}`))
+    .map((p) => ({ type: "Project", title: p.title, href: `/projects#${p.slug}`, desc: p.summary }));
+
+  const categoryLinks: SiteLink[] = cats
+    .filter((c) => has(`${c.name} ${c.blurb ?? ""}`))
+    .map((c) => ({ type: "Category", title: c.name, href: `/shop/c/${c.slug}`, desc: c.blurb }));
+
+  const pageLinks: SiteLink[] = SITE_PAGES.filter((p) =>
+    has(`${p.title} ${p.desc ?? ""} ${p.keywords}`)
+  ).map((p) => ({ type: "Page", title: p.title, href: p.href, desc: p.desc }));
+
+  // Order: research → blog → projects → categories → pages.
+  return {
+    products,
+    links: [...serviceLinks, ...blogLinks, ...projectLinks, ...categoryLinks, ...pageLinks],
+  };
 }
 
 // ── Categories ────────────────────────────────────────────────────────────────

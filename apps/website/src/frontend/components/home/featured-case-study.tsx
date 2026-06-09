@@ -10,16 +10,21 @@ export function FeaturedCaseStudy() {
         <MediaPlaceholder className="aspect-[4/3]" label="Featured case study" />
         <div>
           <Badge variant="brand">Featured case study</Badge>
-          {/* TODO(content): headline metric + story for the flagship project. */}
           <h2 className="mt-5 font-display text-3xl font-bold tracking-tight sm:text-4xl">
-            Headline outcome of your flagship project
+            Oxygen-free high-strength electrical copper alloy
           </h2>
           <p className="mt-4 text-muted-foreground">
-            Two to three lines summarizing the challenge, the approach and the
-            measurable result. Replace with the approved case study narrative.
+            By combining alloying elements in copper with rapid quenching,
+            de-oxidation, 60–90% cold reduction and an aging treatment, METNMAT
+            developed a copper alloy that is both high-strength and highly
+            conductive — reaching 91–93% IACS.
           </p>
           <ul className="mt-6 space-y-3 text-sm">
-            {["Key result one", "Key result two", "Key result three"].map((r) => (
+            {[
+              "91–93% IACS electrical conductivity",
+              "High strength via controlled cold reduction & aging",
+              "Oxygen-free, scalable lab-to-industrial process",
+            ].map((r) => (
               <li key={r} className="flex items-center gap-3 text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                 {r}

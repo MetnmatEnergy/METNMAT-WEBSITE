@@ -12,12 +12,28 @@ export const site = {
   description:
     "Metallurgy & materials R&D — lab-scale prototype to full industrial scale.",
 
-  // TODO(company): replace with verified contact details.
   contact: {
     email: "contact@metnmat.com",
     phone: "+91 78726 86501",
-    shipping: "Shipping across India & worldwide · ISO-aligned R&D",
+    phone2: "+91 80018 38711",
+    shipping: "Shipping across India & worldwide · R&D since 2012",
   },
+
+  // Office addresses (METNMAT Research & Innovations).
+  addresses: [
+    {
+      label: "West Bengal",
+      lines: [
+        "Jalan Industrial Complex, Gate No. 1, Lane No. 6,",
+        "Bipranna Para, Via Begri, Domjur,",
+        "Howrah, West Bengal – 711411",
+      ],
+    },
+    {
+      label: "Odisha",
+      lines: ["Banka House, Marwaripada, Golbazar,", "Sambalpur, Odisha – 768001"],
+    },
+  ],
 
   social: {
     linkedin: "#",
@@ -29,11 +45,11 @@ export const site = {
 /** Primary navigation tabs (order matches the header). */
 export const mainNav: { label: string; href: string }[] = [
   { label: "Home", href: "/" },
-  { label: "About", href: "/about" },
+  { label: "Shop", href: "/shop" },
   { label: "Services", href: "/services" },
   { label: "Projects", href: "/projects" },
   { label: "Blog", href: "/blog" },
-  { label: "Shop", href: "/shop" },
+  { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
 ];
 

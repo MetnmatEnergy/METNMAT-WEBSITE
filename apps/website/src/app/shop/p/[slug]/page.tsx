@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import { Container } from "@/frontend/components/ui/container";
 import { Truck, BadgeCheck, FileText, ShieldCheck } from "lucide-react";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
-import { RatingStars } from "@/frontend/components/commerce/rating-stars";
 import { PriceTiers } from "@/frontend/components/commerce/price-block";
 import { ProductBuyBox } from "@/frontend/components/commerce/product-buy-box";
+import { ProductSizes } from "@/frontend/components/commerce/product-sizes";
 import { ProductGallery } from "@/frontend/components/commerce/product-gallery";
 import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { JsonLd } from "@/frontend/components/seo/json-ld";
+import { site } from "@/frontend/lib/site";
 import {
   getProductBySlug,
   getCategoryBySlug,
@@ -50,12 +51,21 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           "@type": "Product",
           name: product.name,
           sku: product.sku,
+          mpn: product.sku,
+          category: category?.name,
           brand: { "@type": "Brand", name: product.brand },
           description: product.shortDesc,
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: product.rating,
-            reviewCount: product.reviewCount,
+          ...(product.imageUrl ? { image: product.imageUrl } : {}),
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "INR",
+            ...(product.price ? { price: product.price } : {}),
+            availability: product.inStock
+              ? "https://schema.org/InStock"
+              : "https://schema.org/PreOrder",
+            itemCondition: "https://schema.org/NewCondition",
+            url: `${site.url}/shop/p/${product.slug}`,
+            seller: { "@type": "Organization", name: site.legalName },
           },
         }}
       />
@@ -70,11 +80,12 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         ]}
       />
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-[1fr_1fr_320px]">
-        {/* Gallery (CMS images, click-to-zoom) */}
+      {/* Two-frame layout: gallery (left) + all details & actions (right). */}
+      <div className="mt-6 grid gap-10 lg:grid-cols-2">
+        {/* Left frame: gallery (CMS images, click-to-zoom) */}
         <ProductGallery images={product.images ?? []} name={product.name} />
 
-        {/* Summary */}
+        {/* Right frame: brand, title, price, buy actions, description, specs */}
         <div>
           <span className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
             {product.brand}
@@ -83,11 +94,8 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             {product.name}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <RatingStars rating={product.rating} count={product.reviewCount} />
             <span className="text-sm text-muted-foreground">SKU: {product.sku}</span>
           </div>
-
-          <p className="mt-4 text-muted-foreground">{product.shortDesc}</p>
 
           {product.badges && product.badges.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
@@ -98,6 +106,25 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               ))}
             </div>
           )}
+
+          {/* Price + quantity + Add to cart / Request for Customization + wishlist */}
+          <div className="mt-5">
+            <ProductBuyBox product={product} />
+          </div>
+
+          {/* Available sizes (one SKU offered in several sizes) */}
+          {product.sizes && product.sizes.length > 0 && (
+            <ProductSizes
+              product={{ name: product.name, slug: product.slug, sku: product.sku }}
+              sizes={product.sizes}
+            />
+          )}
+
+          {/* Description */}
+          <div className="mt-6">
+            <h2 className="text-sm font-semibold">Description</h2>
+            <p className="mt-2 text-muted-foreground">{product.shortDesc}</p>
+          </div>
 
           {/* Key specs */}
           <div className="mt-6">
@@ -116,11 +143,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           <div className="mt-6">
             <PriceTiers product={product} />
           </div>
-        </div>
-
-        {/* Buy box */}
-        <div className="lg:sticky lg:top-24 lg:self-start">
-          <ProductBuyBox product={product} />
         </div>
       </div>
 

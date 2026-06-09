@@ -1,4 +1,4 @@
-// Production server launcher (serves the .next build) with correct cwd.
+// Website production server launcher (serves the .next build) with correct cwd.
 const path = require("path");
 const appDir = path.join(__dirname, "apps", "website");
 process.chdir(appDir);

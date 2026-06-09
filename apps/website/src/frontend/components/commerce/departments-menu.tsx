@@ -3,11 +3,15 @@
 import * as React from "react";
 import Link from "next/link";
 import { LayoutGrid, ChevronDown } from "lucide-react";
-import { topCategories, subCategories } from "@/frontend/lib/catalog";
+import type { Category } from "@/frontend/lib/catalog";
 
-/** "All Departments" mega-menu (Amazon/Flipkart style). */
-export function DepartmentsMenu() {
+/** "All Categories" mega-menu (Amazon/Flipkart style). Categories come live
+ *  from the CMS (passed by the server-rendered header). */
+export function DepartmentsMenu({ categories = [] }: { categories?: Category[] }) {
   const [open, setOpen] = React.useState(false);
+
+  const topCategories = categories.filter((c) => !c.parent);
+  const subCategories = (parent: string) => categories.filter((c) => c.parent === parent);
 
   return (
     <div className="relative">
@@ -18,7 +22,7 @@ export function DepartmentsMenu() {
         className="flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-foreground/80 hover:text-foreground"
       >
         <LayoutGrid className="h-4 w-4" />
-        Departments
+        Categories
         <ChevronDown className="h-3.5 w-3.5" />
       </button>
 
@@ -27,7 +31,7 @@ export function DepartmentsMenu() {
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden />
           <div className="absolute left-0 top-full z-40 mt-2 w-[560px] max-w-[90vw] rounded-2xl border border-border bg-background p-4 shadow-xl">
             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-              {topCategories().map((c) => (
+              {topCategories.map((c) => (
                 <div key={c.slug}>
                   <Link
                     href={`/shop/c/${c.slug}`}

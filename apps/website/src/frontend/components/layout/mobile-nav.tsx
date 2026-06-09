@@ -5,11 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { mainNav } from "@/frontend/lib/site";
-import { Button } from "@/frontend/components/ui/button";
+import { useQuote } from "@/frontend/components/commerce/quote-provider";
 import { cn } from "@/frontend/lib/utils";
 
 export function MobileNav() {
   const [open, setOpen] = React.useState(false);
+  const { openModal } = useQuote();
   const pathname = usePathname();
 
   React.useEffect(() => {
@@ -65,9 +66,16 @@ export function MobileNav() {
                 </Link>
               ))}
             </div>
-            <Button href="/quote" className="mt-3 w-full">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                openModal();
+              }}
+              className="mt-3 w-full rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-brand-foreground hover:bg-brand/90"
+            >
               Get a Quote
-            </Button>
+            </button>
           </nav>
         </div>
       )}

@@ -71,19 +71,29 @@ export default function ContactPage() {
                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
                   <Phone className="h-5 w-5" />
                 </span>
-                {site.contact.phone}
-              </a>
-              <div className="flex items-start gap-3 text-sm">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
-                  <MapPin className="h-5 w-5" />
-                </span>
-                {/* TODO(content): office addresses. */}
-                <span className="text-muted-foreground">
-                  Office address line one.
+                <span>
+                  {site.contact.phone}
                   <br />
-                  Office address line two.
+                  {site.contact.phone2}
                 </span>
-              </div>
+              </a>
+              {site.addresses.map((addr) => (
+                <div key={addr.label} className="flex items-start gap-3 text-sm">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
+                    <MapPin className="h-5 w-5" />
+                  </span>
+                  <span className="text-muted-foreground">
+                    <span className="font-medium text-foreground">{addr.label}</span>
+                    <br />
+                    {addr.lines.map((l, i) => (
+                      <span key={i}>
+                        {l}
+                        <br />
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              ))}
             </div>
             <MediaPlaceholder className="aspect-[4/3]" label="Map" />
           </div>

@@ -1,6 +1,6 @@
-import { ArrowRight } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
+import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 
 export function CtaBand() {
   return (
@@ -18,9 +18,7 @@ export function CtaBand() {
               from prototype to production.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Button href="/quote" size="lg">
-                Get a Quote <ArrowRight className="h-4 w-4" />
-              </Button>
+              <GetQuoteButton label="Get a Quote" size="lg" withArrow />
               <Button href="/contact" variant="outline" size="lg">
                 Contact us
               </Button>

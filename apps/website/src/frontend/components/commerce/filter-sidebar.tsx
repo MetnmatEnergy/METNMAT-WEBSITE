@@ -54,14 +54,6 @@ export function FilterSidebar({
         </ul>
       </Group>
 
-      <Group title="Price (₹)">
-        <div className="flex items-center gap-2">
-          <input placeholder="Min" className="h-9 w-full rounded-lg border border-input bg-surface px-3 text-sm outline-none focus:border-brand" />
-          <span className="text-muted-foreground">–</span>
-          <input placeholder="Max" className="h-9 w-full rounded-lg border border-input bg-surface px-3 text-sm outline-none focus:border-brand" />
-        </div>
-      </Group>
-
       <Group title="Availability">
         <Check label="In stock" />
         <Check label="GST invoice" />

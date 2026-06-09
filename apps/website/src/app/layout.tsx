@@ -6,6 +6,9 @@ import { SiteHeader } from "@/frontend/components/layout/site-header";
 import { SiteFooter } from "@/frontend/components/layout/site-footer";
 import { TopBar } from "@/frontend/components/layout/top-bar";
 import { StoreProvider } from "@/frontend/components/commerce/store-provider";
+import { QuoteProvider } from "@/frontend/components/commerce/quote-provider";
+import { QuoteDrawer } from "@/frontend/components/commerce/quote-drawer";
+import { QuoteModal } from "@/frontend/components/commerce/quote-modal";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,6 +41,11 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: site.name },
+  icons: {
+    icon: "/logo-metnmat-transparent.png",
+    shortcut: "/logo-metnmat-transparent.png",
+    apple: "/logo-metnmat-transparent.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -65,6 +73,7 @@ export default function RootLayout({
           Skip to content
         </a>
         <StoreProvider>
+        <QuoteProvider>
         <div className="flex min-h-dvh flex-col">
           <TopBar />
           <SiteHeader />
@@ -73,6 +82,9 @@ export default function RootLayout({
           </main>
           <SiteFooter />
         </div>
+        <QuoteDrawer />
+        <QuoteModal />
+        </QuoteProvider>
         </StoreProvider>
       </body>
     </html>

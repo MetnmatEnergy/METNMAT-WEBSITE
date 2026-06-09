@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { ShoppingCart, Check, FileText } from "lucide-react";
+import { ShoppingCart, Check } from "lucide-react";
 import { useStore } from "@/frontend/components/commerce/store-provider";
 import { QuantityStepper } from "@/frontend/components/commerce/quantity-stepper";
 import { WishlistButton } from "@/frontend/components/commerce/wishlist-button";
+import { RequestQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { Button } from "@/frontend/components/ui/button";
 import { formatINR, unitPriceForQty, type Product } from "@/frontend/lib/catalog";
 
@@ -50,9 +51,12 @@ export function ProductBuyBox({ product }: { product: Product }) {
           {added ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
           {added ? "Added to cart" : "Add to cart"}
         </Button>
-        <Button href="/quote" variant="outline" className="w-full">
-          <FileText className="h-4 w-4" /> Request a quote
-        </Button>
+        <RequestQuoteButton
+          product={{ name: product.name, slug: product.slug, sku: product.sku }}
+          variant="outline"
+          withIcon
+          className="w-full"
+        />
         <WishlistButton product={product} withLabel className="w-full justify-center" />
       </div>
 

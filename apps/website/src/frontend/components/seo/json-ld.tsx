@@ -14,10 +14,46 @@ export const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: site.legalName,
+  alternateName: site.name,
   url: site.url,
+  logo: `${site.url}/icon.svg`,
+  image: `${site.url}/opengraph-image`,
   description: site.description,
   email: site.contact.email,
   telephone: site.contact.phone,
+  foundingDate: "2018",
+  areaServed: ["IN", "Worldwide"],
+  knowsAbout: [
+    "Metallurgy",
+    "Materials science",
+    "Electrochemistry",
+    "Heat treatment",
+    "Copper alloys",
+    "R&D",
+  ],
+  address: site.addresses.map((a) => ({
+    "@type": "PostalAddress",
+    addressLocality: a.label,
+    addressCountry: "IN",
+    streetAddress: a.lines.join(", "),
+  })),
+  contactPoint: [
+    {
+      "@type": "ContactPoint",
+      contactType: "sales",
+      telephone: site.contact.phone,
+      email: site.contact.email,
+      areaServed: "IN",
+      availableLanguage: ["en", "hi"],
+    },
+    {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      telephone: site.contact.phone2,
+      email: site.contact.email,
+      areaServed: "IN",
+    },
+  ],
   sameAs: [site.social.linkedin, site.social.youtube, site.social.facebook].filter(
     (u) => u && u !== "#"
   ),
@@ -35,6 +71,19 @@ export const websiteJsonLd = {
     "query-input": "required name=search_term_string",
   },
 };
+
+/** FAQPage schema — strong signal for AI answer engines (GEO) + rich results. */
+export function faqJsonLd(faqs: { q: string; a: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  };
+}
 
 /** Build a BreadcrumbList for a page (rich results + AI grounding). */
 export function breadcrumbJsonLd(items: { name: string; path: string }[]) {

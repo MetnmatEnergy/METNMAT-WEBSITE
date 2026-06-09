@@ -46,6 +46,7 @@ export type Product = {
   leadTime: string; // e.g. "Ships in 1–2 weeks"
   priceTiers: PriceTier[]; // bulk pricing (B2B)
   shortDesc: string;
+  sizes?: string[]; // selectable size options for this SKU
   specs: Spec[];
   datasheets: Datasheet[];
   badges?: string[]; // "Bestseller", "New", "GST invoice"
@@ -109,8 +110,8 @@ export const products: Product[] = [
 
 // ── Deals strip (homepage of the shop) ─────────────────────────────────────────
 export const deals: Deal[] = [
-  { title: "Bulk pricing on crucibles", subtitle: "Save more above MOQ", href: "/shop/c/crucibles" },
-  { title: "New: 1400°C tubular furnace", subtitle: "Now in catalog", href: "/shop/p/tubular-furnace-1400" },
+  { title: "Electrodes for every setup", subtitle: "Reference · counter · working", href: "/shop/c/electrodes" },
+  { title: "New: ion-exchange membranes", subtitle: "PEM · AEM · BPM · CEM", href: "/shop/c/membranes" },
   { title: "Request a bulk quote", subtitle: "GST invoice · pan-India shipping", href: "/quote" },
 ];
 

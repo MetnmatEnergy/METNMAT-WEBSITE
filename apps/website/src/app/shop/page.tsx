@@ -6,13 +6,14 @@ import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { SearchBar } from "@/frontend/components/commerce/search-bar";
 import { CategoryCard } from "@/frontend/components/commerce/category-card";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
+import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { deals } from "@/frontend/lib/catalog";
 import { getTopCategories, getFeaturedProducts } from "@/frontend/lib/cms";
 
 export const metadata: Metadata = {
-  title: "Shop — Lab Equipment, Materials & Consumables",
+  title: "Shop — Electrodes, Membranes, Cells & Lab Equipment",
   description:
-    "Buy lab-grade equipment, crucibles, instruments, consumables and materials. Bulk B2B pricing, GST invoice, pan-India + worldwide shipping.",
+    "Buy lab-grade electrochemistry equipment — reference/counter/working electrodes, ion-exchange membranes (PEM/AEM/BPM/CEM), electrochemical cells & reactors, peristaltic pumps, MEA fabrication presses and accessories. Bulk B2B pricing, GST invoice, pan-India + worldwide shipping.",
 };
 
 export default async function ShopHomePage() {
@@ -25,15 +26,19 @@ export default async function ShopHomePage() {
       {/* Catalog hero + search */}
       <section className="border-b border-border bg-surface/40">
         <Container className="py-10">
-          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-            METNMAT Store
-          </h1>
-          <p className="mt-2 max-w-2xl text-muted-foreground">
-            Lab equipment, crucibles, instruments, consumables &amp; materials —
-            with bulk B2B pricing and GST invoicing.
-          </p>
-          <div className="mt-6 max-w-2xl">
-            <SearchBar />
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="lg:max-w-xl">
+              <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                METNMAT Store
+              </h1>
+              <p className="mt-2 text-muted-foreground">
+                Electrodes, membranes, electrochemical cells, reactors, lab equipment &amp;
+                accessories for research labs — with bulk B2B pricing and GST invoicing.
+              </p>
+            </div>
+            <div className="w-full lg:w-[28rem] lg:flex-shrink-0">
+              <SearchBar scope="products" placeholder="Search products…" />
+            </div>
           </div>
           <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2"><BadgeCheck className="h-4 w-4 text-brand" /> GST invoice</span>
@@ -102,12 +107,9 @@ export default async function ShopHomePage() {
               Get tiered B2B pricing with a GST invoice. Share your requirement
               and we&apos;ll send a quote.
             </p>
-            <Link
-              href="/quote"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-brand-foreground hover:bg-brand/90"
-            >
-              Request a bulk quote <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="mt-6 flex justify-center">
+              <GetQuoteButton label="Request a bulk quote" size="lg" withArrow />
+            </div>
           </div>
         </Container>
       </section>

@@ -8,8 +8,17 @@ export function SiteFooter() {
     <footer className="border-t border-border bg-surface/40">
       <Container className="grid gap-12 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div className="max-w-xs">
-          <span className="font-display text-lg font-bold">{site.name}</span>
-          <p className="mt-3 text-sm text-muted-foreground">{site.tagline}.</p>
+          <span className="inline-flex items-center rounded-lg bg-white px-3 py-2 shadow-sm">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-metnmat.png"
+              alt={`${site.legalName} logo`}
+              className="h-9 w-auto"
+              width={183}
+              height={54}
+            />
+          </span>
+          <p className="mt-4 text-sm text-muted-foreground">{site.tagline}.</p>
           <div className="mt-5 space-y-2 text-sm text-muted-foreground">
             <a href={`mailto:${site.contact.email}`} className="flex items-center gap-2 hover:text-foreground">
               <Mail className="h-4 w-4" /> {site.contact.email}

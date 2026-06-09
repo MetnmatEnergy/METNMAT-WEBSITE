@@ -68,14 +68,25 @@ const config: Config = {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(-50%)" },
         },
+        "scroll-y": {
+          from: { transform: "translateY(0)" },
+          to: { transform: "translateY(-50%)" },
+        },
         "fade-up": {
           from: { opacity: "0", transform: "translateY(12px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // Whole background logo-wall breathes in and out together.
+        "logo-wall": {
+          "0%, 100%": { opacity: "0" },
+          "45%, 55%": { opacity: "1" },
+        },
       },
       animation: {
         marquee: "marquee 30s linear infinite",
+        "scroll-y": "scroll-y 26s linear infinite",
         "fade-up": "fade-up 0.6s ease-out both",
+        "logo-wall": "logo-wall 7s ease-in-out infinite",
       },
     },
   },

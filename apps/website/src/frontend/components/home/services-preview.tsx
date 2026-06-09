@@ -12,7 +12,7 @@ export function ServicesPreview() {
           <SectionHeading
             eyebrow="What we do"
             title="End-to-end materials R&D"
-            description="A short intro line describing the breadth of services. Replace with approved copy."
+            description="From lab-scale prototypes to industrial-scale solutions — development, applied research, benchmarking, heat treatment and simulation."
           />
           <Button href="/services" variant="outline" size="sm">
             All services

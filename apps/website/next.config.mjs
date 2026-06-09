@@ -1,12 +1,17 @@
+// The CMS/dashboard host (serves uploaded media/documents) + Supabase storage,
+// so browser <img> tags and fetches to them aren't blocked by CSP.
+const CMS_ORIGIN = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
+const STORAGE_ORIGINS = "https://*.supabase.co https://*.storage.supabase.co";
+
 // Content Security Policy. 'unsafe-inline' is required by the pre-paint theme
 // script and Next's inline runtime; harden to nonce-based CSP later.
 const ContentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  `img-src 'self' data: blob: ${CMS_ORIGIN} ${STORAGE_ORIGINS}`,
   "font-src 'self' data:",
-  "connect-src 'self'",
+  `connect-src 'self' ${CMS_ORIGIN} ${STORAGE_ORIGINS}`,
   "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -35,9 +40,11 @@ const nextConfig = {
   // Transpile the shared TS workspace package.
   transpilePackages: ["@metnmat/types"],
   images: {
-    // Add remote image hosts here as content sources are wired in
-    // (e.g. Cloudflare R2 / S3 bucket domain, CMS media domain).
-    remotePatterns: [],
+    // CMS/dashboard media host + Supabase storage, for any next/image usage.
+    remotePatterns: [
+      { protocol: "http", hostname: "localhost", port: "3001" },
+      { protocol: "https", hostname: "**.supabase.co" },
+    ],
   },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];

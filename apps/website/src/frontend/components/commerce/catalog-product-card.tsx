@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
-import { RatingStars } from "@/frontend/components/commerce/rating-stars";
 import { PriceBlock } from "@/frontend/components/commerce/price-block";
 import { AddToCartButton } from "@/frontend/components/commerce/add-to-cart-button";
+import { RequestQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { WishlistButton } from "@/frontend/components/commerce/wishlist-button";
 import type { Product } from "@/frontend/lib/catalog";
 import { cn } from "@/frontend/lib/utils";
@@ -76,10 +76,6 @@ export function CatalogProductCard({
           {product.name}
         </Link>
 
-        <div className="mt-1.5 flex items-center gap-2">
-          <RatingStars rating={product.rating} count={product.reviewCount} />
-        </div>
-
         {layout === "list" && (
           <p className="mt-2 text-sm text-muted-foreground">{product.shortDesc}</p>
         )}
@@ -99,12 +95,7 @@ export function CatalogProductCard({
 
         <div className="mt-4 flex flex-wrap gap-2">
           <AddToCartButton product={product} size="sm" />
-          <Link
-            href="/quote"
-            className="inline-flex items-center rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
-          >
-            Request quote
-          </Link>
+          <RequestQuoteButton product={{ name: product.name, slug: product.slug, sku: product.sku }} />
         </div>
       </div>
     </div>
