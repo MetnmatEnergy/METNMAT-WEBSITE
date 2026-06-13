@@ -2,9 +2,9 @@ import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { ServiceCard } from "@/frontend/components/cards/service-card";
-import { services } from "@/frontend/lib/placeholder";
+import { services as phServices, type Service } from "@/frontend/lib/placeholder";
 
-export function ServicesPreview() {
+export function ServicesPreview({ services = phServices }: { services?: Service[] } = {}) {
   return (
     <section className="section">
       <Container>

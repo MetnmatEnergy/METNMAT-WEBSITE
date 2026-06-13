@@ -2,9 +2,10 @@ import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { BlogCard } from "@/frontend/components/cards/blog-card";
-import { blogPosts } from "@/frontend/lib/placeholder";
+import { blogPosts as phBlogPosts, type BlogPost } from "@/frontend/lib/placeholder";
 
-export function BlogTeaser() {
+export function BlogTeaser({ posts = phBlogPosts }: { posts?: BlogPost[] } = {}) {
+  const blogPosts = posts;
   return (
     <section className="section border-t border-border bg-surface/40">
       <Container>
@@ -12,7 +13,7 @@ export function BlogTeaser() {
           <SectionHeading
             eyebrow="Insights"
             title="From the lab"
-            description="Latest articles and research notes. Replace with real posts or the CMS feed."
+            description="Research notes, technical deep-dives and updates from the METNMAT lab."
           />
           <Button href="/blog" variant="outline" size="sm">
             All articles

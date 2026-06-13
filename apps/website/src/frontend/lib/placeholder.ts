@@ -68,7 +68,6 @@ export const eduLogos: EduLogo[] = [
   { src: "/clients/edu/edu-01.png", name: "IIT Bombay" },
   { src: "/clients/edu/edu-05.png", name: "IIT Hyderabad" },
   { src: "/clients/edu/edu-08.png", name: "IIT Patna" },
-  { src: "/clients/edu/edu-24.png", name: "IIT Roorkee" },
   { src: "/clients/edu/edu-25.png", name: "IIT Madras" },
   { src: "/clients/edu/edu-26.png", name: "IIT Kanpur" },
   { src: "/clients/edu/edu-27.png", name: "IIT (BHU) Varanasi" },
@@ -76,7 +75,6 @@ export const eduLogos: EduLogo[] = [
   { src: "/clients/edu/edu-19.png", name: "Indian Institute of Science" },
   { src: "/clients/edu/edu-11.png", name: "IISER Mohali" },
   { src: "/clients/edu/edu-16.png", name: "Manipal Academy of Higher Education" },
-  { src: "/clients/edu/edu-04.png", name: "SRM University" },
   { src: "/clients/edu/edu-10.png", name: "MNIT Jaipur" },
   { src: "/clients/edu/edu-14.png", name: "Birla Institute of Technology & Science" },
   { src: "/clients/edu/edu-07.png", name: "CSIR" },
@@ -102,36 +100,42 @@ export const services: Service[] = [
     title: "Product & Process Development",
     summary:
       "We develop lab-scale prototypes and scale them up to full industrial-scale implementation.",
+    icon: "rocket",
   },
   {
     slug: "applied-research-consultancy",
     title: "Applied Research & Consultancy",
     summary:
       "Turnkey industrial solutions that improve your processes in cost, quality and efficiency.",
+    icon: "lightbulb",
   },
   {
     slug: "process-quality-improvement",
     title: "Process & Quality Improvement",
     summary:
       "Ongoing effort to identify and eliminate defects and errors across your production process.",
+    icon: "gauge",
   },
   {
     slug: "product-benchmarking",
     title: "Product Benchmarking",
     summary:
       "Compare your products and services against market competitors to find the edge.",
+    icon: "target",
   },
   {
     slug: "microstructure-heat-treatment",
     title: "Microstructure Control & Heat Treatment",
     summary:
       "Optimize multi-phase microstructure — volume fraction, morphology and phase distribution — through heat treatment.",
+    icon: "flame",
   },
   {
     slug: "modeling-simulations",
     title: "Modeling & Simulations",
     summary:
       "Design and develop your process and product using advanced modeling and simulations.",
+    icon: "cpu",
   },
 ];
 

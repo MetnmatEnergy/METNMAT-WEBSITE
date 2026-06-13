@@ -1,0 +1,35 @@
+import { NextResponse } from "next/server";
+import { patchCurrentCustomer, type Address } from "@/backend/lib/customer";
+
+export const dynamic = "force-dynamic";
+
+const clean = (a: Address): Address => ({
+  label: String(a?.label ?? "").trim(),
+  line1: String(a?.line1 ?? "").trim(),
+  line2: String(a?.line2 ?? "").trim(),
+  city: String(a?.city ?? "").trim(),
+  state: String(a?.state ?? "").trim(),
+  pincode: String(a?.pincode ?? "").trim(),
+  country: String(a?.country ?? "India").trim() || "India",
+  isDefault: !!a?.isDefault,
+});
+
+export async function POST(req: Request): Promise<Response> {
+  let body: { addresses?: Address[] };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+  }
+  if (!Array.isArray(body?.addresses)) {
+    return NextResponse.json({ error: "Invalid addresses." }, { status: 400 });
+  }
+  // Keep only addresses with at least a line1; enforce a single default.
+  let addresses = body.addresses.map(clean).filter((a) => a.line1);
+  const firstDefault = addresses.findIndex((a) => a.isDefault);
+  addresses = addresses.map((a, i) => ({ ...a, isDefault: i === firstDefault }));
+
+  const updated = await patchCurrentCustomer({ addresses });
+  if (!updated) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
+  return NextResponse.json({ success: true, addresses: updated.addresses ?? [] });
+}

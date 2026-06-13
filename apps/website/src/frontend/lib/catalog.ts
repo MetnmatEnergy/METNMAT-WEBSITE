@@ -37,6 +37,7 @@ export type Product = {
   categorySlug: string;
   sku: string;
   price: number; // base unit price (INR)
+  usdPrice?: number; // optional manual USD price (override); blank ⇒ auto-convert from INR
   mrp?: number; // list price for showing a discount
   rating: number; // 0–5
   reviewCount: number;
@@ -164,6 +165,19 @@ export function formatINR(value: number): string {
   }).format(value);
 }
 
+/**
+ * GST display. Catalog prices are stored EXCLUDING GST; the site shows
+ * GST-inclusive prices everywhere (B2C-friendly, like Amazon).
+ */
+export const GST_RATE = 0.18;
+
+/** GST-inclusive price, rounded to the rupee. 0 stays 0 (quote-only). */
+export const inclGST = (value: number): number => Math.round(value * (1 + GST_RATE));
+
+/** The GST amount contained inside a GST-inclusive value (for invoices/summaries). */
+export const gstPortionOf = (inclValue: number): number =>
+  Math.round(inclValue - inclValue / (1 + GST_RATE));
+
 /** Effective unit price for a given quantity using tier breaks. */
 export function unitPriceForQty(product: Product, qty: number): number {
   let price = product.price;
@@ -171,4 +185,33 @@ export function unitPriceForQty(product: Product, qty: number): number {
     if (qty >= tier.minQty && tier.price) price = tier.price;
   }
   return price;
+}
+
+// ── Manual USD price (staff override) ─────────────────────────────────────────
+// `usdPrice` is the fixed USD a staff member sets for the BASE unit (GST-inclusive,
+// as international visitors see it). When set, every USD figure for that product —
+// headline, MRP, bulk tiers, cart, checkout — scales PROPORTIONALLY from it, so the
+// whole flow stays internally consistent. When unset, USD auto-converts at the live
+// rate (handled by the currency provider). All charges remain in INR regardless.
+
+/**
+ * USD figure for a GST-inclusive INR amount, scaled from the product's manual
+ * USD price. Returns undefined when no manual price is set (⇒ auto-convert).
+ */
+export function usdFor(product: Product, inclGstInr: number): number | undefined {
+  if (!product.usdPrice || product.usdPrice <= 0 || product.price <= 0) return undefined;
+  const base = inclGST(product.price);
+  if (base <= 0) return undefined;
+  return Math.round(((inclGstInr * product.usdPrice) / base) * 100) / 100;
+}
+
+/** USD value of a cart line for a USD visitor: manual (proportional) else auto-convert. */
+export function lineUsdValue(
+  product: Product,
+  effectiveUnitInr: number,
+  qty: number,
+  usdRate: number
+): number {
+  const inclTotal = inclGST(effectiveUnitInr) * qty;
+  return usdFor(product, inclTotal) ?? inclTotal / usdRate;
 }

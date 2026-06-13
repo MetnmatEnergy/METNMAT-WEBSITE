@@ -45,9 +45,22 @@ export function MediaPlaceholder({
       {src ? (
         <Image src={src} alt={alt ?? label} fill sizes={sizes} className="object-cover" />
       ) : (
-        <span className="text-xs uppercase tracking-widest text-muted-foreground">
-          {label}
-        </span>
+        <>
+          {/* Branded placeholder: soft brand wash + watermark, instead of a flat gray box. */}
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-br from-brand/[0.07] via-transparent to-brand/[0.12]"
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -right-4 -top-6 select-none font-display text-[7rem] font-bold leading-none text-foreground/[0.04]"
+          >
+            M
+          </span>
+          <span className="relative text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            {label}
+          </span>
+        </>
       )}
     </div>
   );

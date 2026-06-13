@@ -97,7 +97,14 @@ export function ProductTabs({ product }: { product: Product }) {
               <li>Shipping across India &amp; worldwide.</li>
               <li>GST invoice provided on every order.</li>
               <li>Dispatch lead times vary by item; bulk orders may take longer.</li>
-              <li>Returns accepted for damaged/defective items — contact support within 7 days.</li>
+              <li>
+                No refunds. Damaged, defective, or incorrect items are eligible for a free
+                replacement within 7 days of delivery —{" "}
+                <a href="/replacement-policy" className="text-brand hover:underline">
+                  see our Replacement Policy
+                </a>
+                .
+              </li>
             </ul>
           </div>
         )}

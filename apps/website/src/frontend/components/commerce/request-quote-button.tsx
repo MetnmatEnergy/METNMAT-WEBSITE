@@ -10,11 +10,14 @@ export function RequestQuoteButton({
   className,
   variant = "outline",
   withIcon = false,
+  label = "Request for Customization",
 }: {
   product: QuoteProductRef;
   className?: string;
   variant?: "outline" | "brand";
   withIcon?: boolean;
+  /** Override the label — e.g. a short "Get a quote" inside compact cards. */
+  label?: string;
 }) {
   const { openQuote } = useQuote();
   return (
@@ -22,15 +25,15 @@ export function RequestQuoteButton({
       type="button"
       onClick={() => openQuote(product)}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+        "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors active:scale-[0.98]",
         variant === "brand"
           ? "bg-brand text-brand-foreground hover:bg-brand/90"
-          : "border border-border hover:bg-muted",
+          : "border border-border hover:border-foreground/25 hover:bg-muted",
         className
       )}
     >
       {withIcon && <FileText className="h-4 w-4" />}
-      Request for Customization
+      {label}
     </button>
   );
 }

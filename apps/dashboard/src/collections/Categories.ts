@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 import { canManageCatalog, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
+import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 
 export const Categories: CollectionConfig = {
   slug: "categories",
@@ -32,7 +33,7 @@ export const Categories: CollectionConfig = {
     { name: "order", type: "number", defaultValue: 0, admin: { description: "Sort order." } },
   ],
   hooks: {
-    afterChange: [auditAfterChange],
-    afterDelete: [auditAfterDelete],
+    afterChange: [auditAfterChange, revalidateWebsiteAfterChange],
+    afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete],
   },
 };

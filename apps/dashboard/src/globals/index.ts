@@ -1,9 +1,14 @@
 import type { GlobalConfig } from "payload";
 import { canManageContent, publicRead } from "../access";
+import { revalidateWebsiteGlobal } from "../hooks/revalidate";
 
-const settings = (extra: Partial<GlobalConfig> = {}): Pick<GlobalConfig, "access" | "admin"> => ({
+const settings = (
+  extra: Partial<GlobalConfig> = {}
+): Pick<GlobalConfig, "access" | "admin" | "hooks"> => ({
   access: { read: publicRead, update: canManageContent },
   admin: { group: "Website Settings", ...(extra.admin ?? {}) },
+  // Saving any setting pings the website so the change goes live immediately.
+  hooks: { afterChange: [revalidateWebsiteGlobal] },
 });
 
 /** Logo, favicon, hero/marketing banners. */
@@ -101,4 +106,132 @@ export const SEO: GlobalConfig = {
   ],
 };
 
-export const globals = [Branding, Company, Contact, Social, SEO];
+/** Commerce settings — currency display for international customers. */
+export const Commerce: GlobalConfig = {
+  slug: "commerce",
+  label: "Commerce & Pricing",
+  ...settings(),
+  fields: [
+    {
+      name: "usdExchangeRate",
+      type: "number",
+      required: true,
+      defaultValue: 84,
+      min: 1,
+      admin: {
+        description:
+          "₹ per 1 USD — used to SHOW prices in dollars to international visitors. Payments are still charged in INR. Update this periodically (e.g. weekly) to match the market rate.",
+      },
+    },
+  ],
+};
+
+/** Homepage hero, stats & section toggles. */
+export const Homepage: GlobalConfig = {
+  slug: "homepage",
+  ...settings(),
+  fields: [
+    {
+      type: "collapsible",
+      label: "Hero",
+      fields: [
+        { name: "eyebrow", type: "text", admin: { description: "Small label above the headline." } },
+        { name: "titleLead", type: "text", admin: { description: "First part of the headline." } },
+        { name: "titleAccent", type: "text", admin: { description: "Last part of the headline (shown in the brand gradient)." } },
+        { name: "subtitle", type: "textarea" },
+        {
+          type: "row",
+          fields: [
+            { name: "primaryCtaLabel", type: "text", admin: { width: "50%" } },
+            { name: "primaryCtaHref", type: "text", admin: { width: "50%" } },
+          ],
+        },
+        {
+          type: "row",
+          fields: [
+            { name: "secondaryCtaLabel", type: "text", admin: { width: "50%" } },
+            { name: "secondaryCtaHref", type: "text", admin: { width: "50%" } },
+          ],
+        },
+      ],
+    },
+    {
+      name: "stats",
+      type: "array",
+      labels: { singular: "Stat", plural: "Stats" },
+      admin: { description: "The headline numbers (e.g. '100+ R&D projects delivered')." },
+      fields: [
+        {
+          type: "row",
+          fields: [
+            { name: "value", type: "text", required: true, admin: { width: "40%" } },
+            { name: "label", type: "text", required: true, admin: { width: "60%" } },
+          ],
+        },
+      ],
+    },
+    {
+      type: "collapsible",
+      label: "Section visibility",
+      admin: { description: "Toggle which homepage sections are shown." },
+      fields: [
+        {
+          type: "row",
+          fields: [
+            { name: "showClients", type: "checkbox", defaultValue: true, admin: { width: "25%", description: "Trusted by" } },
+            { name: "showServices", type: "checkbox", defaultValue: true, admin: { width: "25%", description: "Services" } },
+            { name: "showProjects", type: "checkbox", defaultValue: true, admin: { width: "25%", description: "Case study" } },
+            { name: "showBlog", type: "checkbox", defaultValue: true, admin: { width: "25%", description: "Blog" } },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+/** Header & footer navigation links. */
+export const Navigation: GlobalConfig = {
+  slug: "navigation",
+  ...settings(),
+  fields: [
+    {
+      name: "headerLinks",
+      type: "array",
+      labels: { singular: "Header link", plural: "Header links" },
+      admin: { description: "Main navigation tabs (order matters)." },
+      fields: [
+        {
+          type: "row",
+          fields: [
+            { name: "label", type: "text", required: true, admin: { width: "50%" } },
+            { name: "href", type: "text", required: true, admin: { width: "50%" } },
+          ],
+        },
+      ],
+    },
+    {
+      name: "footerGroups",
+      type: "array",
+      labels: { singular: "Footer column", plural: "Footer columns" },
+      fields: [
+        { name: "title", type: "text", required: true },
+        {
+          name: "links",
+          type: "array",
+          labels: { singular: "Link", plural: "Links" },
+          fields: [
+            {
+              type: "row",
+              fields: [
+                { name: "label", type: "text", required: true, admin: { width: "50%" } },
+                { name: "href", type: "text", required: true, admin: { width: "50%" } },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+export const globals = [Branding, Company, Contact, Social, SEO, Commerce, Homepage, Navigation];

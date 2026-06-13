@@ -8,7 +8,9 @@ import { mainNav } from "@/frontend/lib/site";
 import { useQuote } from "@/frontend/components/commerce/quote-provider";
 import { cn } from "@/frontend/lib/utils";
 
-export function MobileNav() {
+type NavItem = { label: string; href: string };
+
+export function MobileNav({ items = mainNav }: { items?: NavItem[] }) {
   const [open, setOpen] = React.useState(false);
   const { openModal } = useQuote();
   const pathname = usePathname();
@@ -32,7 +34,7 @@ export function MobileNav() {
       {open && (
         <div className="absolute inset-x-0 top-full z-50 border-b border-border bg-background p-4 shadow-xl">
           <nav className="flex flex-col gap-1">
-            {mainNav.map((item) => {
+            {items.map((item) => {
               const active =
                 item.href === "/"
                   ? pathname === "/"

@@ -13,7 +13,8 @@ import {
   FileText,
   CornerDownLeft,
 } from "lucide-react";
-import { formatINR } from "@/frontend/lib/catalog";
+import { inclGST } from "@/frontend/lib/catalog";
+import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { cn } from "@/frontend/lib/utils";
 
 type SlimProduct = {
@@ -66,6 +67,7 @@ export function SearchBar({
   scope?: "all" | "products";
 }) {
   const router = useRouter();
+  const { money } = useCurrency();
   const listId = React.useId();
   const scopeQS = scope === "products" ? "&scope=products" : "";
   const [q, setQ] = React.useState("");
@@ -270,7 +272,7 @@ export function SearchBar({
                       </span>
                     </span>
                     <span className="shrink-0 text-xs font-semibold">
-                      {p.price ? formatINR(p.price) : "On request"}
+                      {p.price ? money(inclGST(p.price)) : "On request"}
                     </span>
                   </button>
                 ))}

@@ -13,15 +13,21 @@ const card: React.CSSProperties = {
 
 async function getStats() {
   const payload = await getPayload({ config });
-  const [products, categories, media, documents, users, enquiries, recent] = await Promise.all([
-    payload.count({ collection: "products" }),
-    payload.count({ collection: "categories" }),
-    payload.count({ collection: "media" }),
-    payload.count({ collection: "documents" }),
-    payload.count({ collection: "users" }),
-    payload.count({ collection: "enquiries" }),
-    payload.find({ collection: "enquiries", limit: 6, sort: "-createdAt", depth: 0 }),
-  ]);
+  const [products, categories, media, documents, users, enquiries, services, projects, posts, faqs, team, recent] =
+    await Promise.all([
+      payload.count({ collection: "products" }),
+      payload.count({ collection: "categories" }),
+      payload.count({ collection: "media" }),
+      payload.count({ collection: "documents" }),
+      payload.count({ collection: "users" }),
+      payload.count({ collection: "enquiries" }),
+      payload.count({ collection: "services" }),
+      payload.count({ collection: "projects" }),
+      payload.count({ collection: "posts" }),
+      payload.count({ collection: "faqs" }),
+      payload.count({ collection: "team" }),
+      payload.find({ collection: "enquiries", limit: 6, sort: "-createdAt", depth: 0 }),
+    ]);
   return {
     products: products.totalDocs,
     categories: categories.totalDocs,
@@ -29,6 +35,11 @@ async function getStats() {
     documents: documents.totalDocs,
     users: users.totalDocs,
     enquiries: enquiries.totalDocs,
+    services: services.totalDocs,
+    projects: projects.totalDocs,
+    posts: posts.totalDocs,
+    faqs: faqs.totalDocs,
+    team: team.totalDocs,
     requests: recent.docs as Array<{
       name?: string;
       productName?: string;
@@ -52,9 +63,14 @@ export default async function OverviewPage() {
         { label: "Enquiries (RFQ)", value: stats.enquiries, href: "/admin/collections/enquiries", accent: true },
         { label: "Products", value: stats.products, href: "/admin/collections/products" },
         { label: "Categories", value: stats.categories, href: "/admin/collections/categories" },
+        { label: "Services", value: stats.services, href: "/admin/collections/services" },
+        { label: "Projects", value: stats.projects, href: "/admin/collections/projects" },
+        { label: "Blog posts", value: stats.posts, href: "/admin/collections/posts" },
+        { label: "FAQs", value: stats.faqs, href: "/admin/collections/faqs" },
+        { label: "Team", value: stats.team, href: "/admin/collections/team" },
         { label: "Media assets", value: stats.media, href: "/admin/collections/media" },
         { label: "Documents", value: stats.documents, href: "/admin/collections/documents" },
-        { label: "Team members", value: stats.users, href: "/admin/collections/users" },
+        { label: "Staff accounts", value: stats.users, href: "/admin/collections/users" },
       ]
     : [];
 
@@ -64,17 +80,18 @@ export default async function OverviewPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span
             style={{
-              width: 44, height: 44, borderRadius: 10, background: "#d81f26",
+              width: 44, height: 44, borderRadius: 10, background: "#fff", padding: 6,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 800, fontSize: 22,
+              boxShadow: "0 1px 3px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.06)",
             }}
           >
-            M
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/metnmat-mark.png" alt="METNMAT" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
           </span>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: 0.3 }}>METNMAT Dashboard</div>
+            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: 0.3 }}>METNMAT Operations Dashboard</div>
             <div style={{ fontSize: 12, color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 2 }}>
-              Operations Overview
+              Control center
             </div>
           </div>
         </div>

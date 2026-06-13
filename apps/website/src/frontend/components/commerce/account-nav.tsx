@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, FileText, MapPin, User, Heart } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { LayoutDashboard, Package, FileText, MapPin, User, Heart, LogOut } from "lucide-react";
 import { cn } from "@/frontend/lib/utils";
 
 const links = [
@@ -16,6 +16,18 @@ const links = [
 
 export function AccountNav() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function logout() {
+    try {
+      await fetch("/api/account/logout", { method: "POST" });
+    } catch {
+      /* ignore */
+    }
+    router.push("/");
+    router.refresh();
+  }
+
   return (
     <nav className="space-y-1">
       {links.map((l) => {
@@ -34,6 +46,14 @@ export function AccountNav() {
           </Link>
         );
       })}
+      <button
+        type="button"
+        onClick={logout}
+        className="mt-2 flex w-full items-center gap-3 rounded-lg border-t border-border px-3 py-2.5 pt-4 text-sm text-muted-foreground hover:text-brand"
+      >
+        <LogOut className="h-4 w-4" />
+        Sign out
+      </button>
     </nav>
   );
 }

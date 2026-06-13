@@ -3,9 +3,16 @@ import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { Badge } from "@/frontend/components/ui/badge";
 import { ProductMosaic } from "@/frontend/components/home/product-mosaic";
-import { hero, stats } from "@/frontend/lib/placeholder";
+import { hero as phHero, stats as phStats, type Stat } from "@/frontend/lib/placeholder";
+import type { Homepage } from "@/frontend/lib/cms";
 
-export function Hero() {
+export function Hero({
+  hero = phHero,
+  stats = phStats,
+}: {
+  hero?: Homepage["hero"];
+  stats?: Stat[];
+} = {}) {
   return (
     <section className="relative overflow-hidden border-b border-border">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-40" />

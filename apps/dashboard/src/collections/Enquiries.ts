@@ -8,6 +8,7 @@ import { canManageCatalog, isAdmin } from "../access";
  */
 export const Enquiries: CollectionConfig = {
   slug: "enquiries",
+  labels: { singular: "Enquiry (RFQ)", plural: "Enquiries (RFQ)" },
   admin: {
     group: "Sales",
     useAsTitle: "name",

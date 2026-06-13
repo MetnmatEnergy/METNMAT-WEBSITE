@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 import { canManageContent, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
+import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 
 /**
  * Media library — all IMAGE assets (product, catalog, hero/marketing banners,
@@ -55,7 +56,7 @@ export const Media: CollectionConfig = {
     { name: "caption", type: "text" },
   ],
   hooks: {
-    afterChange: [auditAfterChange],
-    afterDelete: [auditAfterDelete],
+    afterChange: [auditAfterChange, revalidateWebsiteAfterChange],
+    afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete],
   },
 };

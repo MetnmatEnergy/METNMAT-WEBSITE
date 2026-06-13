@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, FileText, BadgeCheck, Truck } from "lucide-react";
+import { FileText, BadgeCheck, Truck } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { SearchBar } from "@/frontend/components/commerce/search-bar";
 import { CategoryCard } from "@/frontend/components/commerce/category-card";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-button";
-import { deals } from "@/frontend/lib/catalog";
+import { ShopShowcase } from "@/frontend/components/commerce/shop-showcase";
 import { getTopCategories, getFeaturedProducts } from "@/frontend/lib/cms";
 
 export const metadata: Metadata = {
@@ -23,24 +23,35 @@ export default async function ShopHomePage() {
   ]);
   return (
     <>
-      {/* Catalog hero + search */}
+      {/* Store title — stays at the top */}
+      <section className="bg-surface/40">
+        <Container className="pb-2 pt-4">
+          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+            METNMAT Store
+          </h1>
+        </Container>
+      </section>
+
+      {/* Brand poster / banners — moved to the top, right under the title */}
       <section className="border-b border-border bg-surface/40">
-        <Container className="py-10">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="lg:max-w-xl">
-              <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-                METNMAT Store
-              </h1>
-              <p className="mt-2 text-muted-foreground">
-                Electrodes, membranes, electrochemical cells, reactors, lab equipment &amp;
-                accessories for research labs — with bulk B2B pricing and GST invoicing.
-              </p>
-            </div>
+        <Container className="pb-8 pt-3">
+          <ShopShowcase />
+        </Container>
+      </section>
+
+      {/* Intro + search + badges — moved below the banner */}
+      <section className="border-b border-border">
+        <Container className="py-5">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <p className="text-muted-foreground lg:max-w-xl">
+              Electrodes, membranes, electrochemical cells, reactors, lab equipment &amp;
+              accessories for research labs — with bulk B2B pricing and GST invoicing.
+            </p>
             <div className="w-full lg:w-[28rem] lg:flex-shrink-0">
               <SearchBar scope="products" placeholder="Search products…" />
             </div>
           </div>
-          <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2"><BadgeCheck className="h-4 w-4 text-brand" /> GST invoice</span>
             <span className="inline-flex items-center gap-2"><Truck className="h-4 w-4 text-brand" /> India &amp; worldwide shipping</span>
             <span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-brand" /> Datasheets &amp; SDS</span>
@@ -48,30 +59,11 @@ export default async function ShopHomePage() {
         </Container>
       </section>
 
-      {/* Deals strip */}
-      <section className="border-b border-border">
-        <Container className="grid gap-4 py-6 md:grid-cols-3">
-          {deals.map((d) => (
-            <Link
-              key={d.title}
-              href={d.href}
-              className="bg-hero-glow group flex items-center justify-between rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-brand/40"
-            >
-              <span>
-                <span className="block font-display font-semibold">{d.title}</span>
-                <span className="text-sm text-muted-foreground">{d.subtitle}</span>
-              </span>
-              <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-brand" />
-            </Link>
-          ))}
-        </Container>
-      </section>
-
       {/* Departments */}
       <section className="section">
         <Container>
           <SectionHeading eyebrow="Browse" title="Shop by Categories" />
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:mt-10 lg:grid-cols-5">
             {categories.map((c) => (
               <CategoryCard key={c.slug} category={c} />
             ))}
@@ -88,7 +80,7 @@ export default async function ShopHomePage() {
               View all →
             </Link>
           </div>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-5 lg:mt-10 lg:grid-cols-4">
             {featured.map((p) => (
               <CatalogProductCard key={p.slug} product={p} />
             ))}
@@ -99,7 +91,7 @@ export default async function ShopHomePage() {
       {/* B2B RFQ banner */}
       <section className="section">
         <Container>
-          <div className="bg-hero-glow relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-12 text-center">
+          <div className="bg-hero-glow relative overflow-hidden rounded-3xl border border-border bg-surface px-6 py-10 text-center sm:px-8 sm:py-12">
             <h2 className="font-display text-2xl font-bold sm:text-3xl">
               Need bulk quantities or a custom spec?
             </h2>

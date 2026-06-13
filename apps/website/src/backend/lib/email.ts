@@ -157,3 +157,227 @@ export async function sendQuoteEmails(
     return false;
   }
 }
+
+// ── Order confirmation (Razorpay checkout) ───────────────────────────────────
+
+type OrderEmailInput = {
+  orderNumber: string;
+  name: string;
+  email: string;
+  phone?: string;
+  items: { productName: string; qty: number; lineTotal: number }[];
+  subtotal: number;
+  gstAmount: number;
+  total: number;
+  razorpayPaymentId: string;
+  address?: string;
+  /** International customers browsed in USD — show both currencies. */
+  displayCurrency?: "INR" | "USD";
+  usdRateAtPurchase?: number;
+  totalUsdApprox?: number;
+};
+
+const inr = (v: number) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
+
+function orderTable(input: OrderEmailInput): string {
+  const itemRows = input.items
+    .map(
+      (it, i) =>
+        `<tr style="background:${i % 2 ? "#ffffff" : "#fafafa"}">
+           <td style="padding:10px 14px;border-bottom:1px solid #eee;color:#111827;font-size:14px">${esc(it.productName)}</td>
+           <td style="padding:10px 14px;border-bottom:1px solid #eee;color:#6b7280;font-size:13px;text-align:center">× ${it.qty}</td>
+           <td style="padding:10px 14px;border-bottom:1px solid #eee;color:#111827;font-size:14px;text-align:right">${inr(it.lineTotal)}</td>
+         </tr>`
+    )
+    .join("");
+  return `
+  <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;border-radius:10px;overflow:hidden">
+    ${itemRows}
+    <tr><td colspan="2" style="padding:10px 14px;color:#6b7280;font-size:13px">Includes GST (18%)</td>
+        <td style="padding:10px 14px;color:#6b7280;font-size:13px;text-align:right">${inr(input.gstAmount)}</td></tr>
+    <tr style="background:#fafafa"><td colspan="2" style="padding:12px 14px;color:#111827;font-weight:700;font-size:14px;border-top:1px solid #eee">Total paid (incl. GST)</td>
+        <td style="padding:12px 14px;color:#111827;font-weight:700;font-size:15px;text-align:right;border-top:1px solid #eee">${inr(input.total)}${
+          input.displayCurrency === "USD" && input.totalUsdApprox
+            ? `<br/><span style="font-weight:600;color:#6b7280;font-size:13px">≈ $${input.totalUsdApprox.toFixed(2)} USD</span>`
+            : ""
+        }</td></tr>
+  </table>
+  ${
+    input.displayCurrency === "USD"
+      ? `<p style="margin:12px 0 0;font-size:12px;color:#6b7280">International order — charged in INR; the USD amount is indicative at ₹${input.usdRateAtPurchase ?? "—"}/$. Your bank statement will show the INR charge converted at your bank's rate.</p>`
+      : ""
+  }
+  <p style="margin:14px 0 0;font-size:13px;color:#6b7280">
+    Order <strong>${esc(input.orderNumber)}</strong> · Payment ID ${esc(input.razorpayPaymentId)}
+    ${input.address ? `<br/>Ships to: ${esc(input.address)}` : ""}
+  </p>`;
+}
+
+/** Confirmation to the customer + internal copy to the team. */
+export async function sendOrderEmails(input: OrderEmailInput): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return false;
+  const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
+  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+  const table = orderTable(input);
+  const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const supportUrl = `${site}/support?order=${encodeURIComponent(input.orderNumber)}`;
+  const supportBlock = `
+    <p style="margin:18px 0 0;font-size:13px;color:#6b7280">
+      Need help with this order?
+      <a href="${supportUrl}" style="color:#d81f26;font-weight:600;text-decoration:none">Raise a support ticket</a>
+      and we&rsquo;ll get on it.
+    </p>`;
+
+  const customerHtml = shell({
+    heading: `Order confirmed — thank you, ${esc(input.name)}!`,
+    intro:
+      "Your payment was received and your order is confirmed. We&rsquo;ll share dispatch details soon. A GST invoice will accompany your shipment.",
+    body: table + supportBlock,
+  });
+  const notifyHtml = shell({
+    heading: `New PAID order ${esc(input.orderNumber)}`,
+    intro: `${esc(input.name)} (${esc(input.email)}${input.phone ? ", " + esc(input.phone) : ""}) placed a paid order on the website.`,
+    body: table,
+  });
+
+  const send = async (to: string, subject: string, html: string, replyTo: string) => {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to, subject, html, reply_to: replyTo }),
+    });
+    if (!res.ok) console.warn(`[email] Resend ${res.status} sending order email to ${to}`);
+    return res.ok;
+  };
+
+  try {
+    const toCustomer = await send(
+      input.email,
+      `Order confirmed ${input.orderNumber} — METNMAT`,
+      customerHtml,
+      notify
+    );
+    await send(notify, `💰 New paid order ${input.orderNumber} (${inr(input.total)})`, notifyHtml, input.email);
+    return toCustomer;
+  } catch {
+    return false;
+  }
+}
+
+// ── Support tickets ──────────────────────────────────────────────────────────
+
+const CATEGORY_LABELS: Record<string, string> = {
+  "order-issue": "Order issue",
+  "product-quality": "Product quality / damage",
+  "shipping-delivery": "Shipping & delivery",
+  "payment-billing": "Payment & billing",
+  "technical-support": "Technical support",
+  other: "Other",
+};
+
+type TicketEmailInput = {
+  ticketNumber: string;
+  name: string;
+  email: string;
+  subject: string;
+  description: string;
+  category: string;
+  orderNumber?: string;
+  statusUrl: string;
+};
+
+/** Ticket raised → confirmation to the customer + alert to the support inbox. */
+export async function sendTicketEmails(input: TicketEmailInput): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return false;
+  const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
+  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+
+  const detail = `
+    <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;border-radius:10px;overflow:hidden">
+      <tr style="background:#fafafa"><td style="padding:10px 14px;color:#6b7280;width:38%;font-size:13px">Ticket</td><td style="padding:10px 14px;color:#111827;font-weight:700;font-size:14px">${esc(input.ticketNumber)}</td></tr>
+      <tr><td style="padding:10px 14px;color:#6b7280;font-size:13px">Subject</td><td style="padding:10px 14px;color:#111827;font-size:14px">${esc(input.subject)}</td></tr>
+      <tr style="background:#fafafa"><td style="padding:10px 14px;color:#6b7280;font-size:13px">Category</td><td style="padding:10px 14px;color:#111827;font-size:14px">${esc(CATEGORY_LABELS[input.category] ?? input.category)}</td></tr>
+      ${input.orderNumber ? `<tr><td style="padding:10px 14px;color:#6b7280;font-size:13px">Order</td><td style="padding:10px 14px;color:#111827;font-size:14px">${esc(input.orderNumber)}</td></tr>` : ""}
+      <tr style="background:#fafafa"><td style="padding:10px 14px;color:#6b7280;font-size:13px;vertical-align:top">Details</td><td style="padding:10px 14px;color:#111827;font-size:14px;white-space:pre-wrap">${esc(input.description)}</td></tr>
+    </table>`;
+
+  const customerHtml = shell({
+    heading: `We&rsquo;ve got your request, ${esc(input.name)}`,
+    intro:
+      "Thanks for reaching out. Your support ticket has been created and our team will get back to you shortly. You can track its progress any time using the button below.",
+    body: `${detail}
+      <div style="margin-top:18px"><a href="${esc(input.statusUrl)}" style="display:inline-block;background:#d81f26;color:#fff;text-decoration:none;padding:11px 22px;border-radius:999px;font-weight:600;font-size:14px">Track your ticket</a></div>`,
+  });
+  const notifyHtml = shell({
+    heading: `New support ticket ${esc(input.ticketNumber)}`,
+    intro: `${esc(input.name)} (${esc(input.email)}) raised a support ticket.`,
+    body: detail,
+  });
+
+  const send = async (to: string, subject: string, html: string, replyTo: string) => {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to, subject, html, reply_to: replyTo }),
+    });
+    if (!res.ok) console.warn(`[email] Resend ${res.status} sending ticket email to ${to}`);
+    return res.ok;
+  };
+
+  try {
+    const toCustomer = await send(
+      input.email,
+      `Support ticket ${input.ticketNumber} received — METNMAT`,
+      customerHtml,
+      notify
+    );
+    await send(notify, `🎫 New ticket ${input.ticketNumber}: ${input.subject}`, notifyHtml, input.email);
+    return toCustomer;
+  } catch {
+    return false;
+  }
+}
+
+/** Staff replied on a ticket → email that reply to the customer. */
+export async function sendTicketReplyEmail(input: {
+  ticketNumber: string;
+  name: string;
+  email: string;
+  subject: string;
+  body: string;
+  authorName?: string;
+  statusUrl: string;
+}): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return false;
+  const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
+  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+
+  const html = shell({
+    heading: `Reply to your ticket ${esc(input.ticketNumber)}`,
+    intro: `Our team${input.authorName ? ` (${esc(input.authorName)})` : ""} replied to your ticket "${esc(input.subject)}":`,
+    body: `
+      <div style="border-left:3px solid #d81f26;background:#fafafa;padding:14px 16px;border-radius:6px;color:#111827;font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(input.body)}</div>
+      <div style="margin-top:18px"><a href="${esc(input.statusUrl)}" style="display:inline-block;background:#d81f26;color:#fff;text-decoration:none;padding:11px 22px;border-radius:999px;font-weight:600;font-size:14px">View &amp; reply</a></div>`,
+  });
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from,
+        to: input.email,
+        subject: `Re: [${input.ticketNumber}] ${input.subject} — METNMAT`,
+        html,
+        reply_to: notify,
+      }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

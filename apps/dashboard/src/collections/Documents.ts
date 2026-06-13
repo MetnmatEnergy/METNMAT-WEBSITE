@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 import { canManageContent, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
+import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 
 /** Document assets: brochures, technical datasheets, certificates, SDS. */
 export const Documents: CollectionConfig = {
@@ -33,7 +34,7 @@ export const Documents: CollectionConfig = {
     },
   ],
   hooks: {
-    afterChange: [auditAfterChange],
-    afterDelete: [auditAfterDelete],
+    afterChange: [auditAfterChange, revalidateWebsiteAfterChange],
+    afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete],
   },
 };

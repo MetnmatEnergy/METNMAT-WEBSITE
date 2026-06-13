@@ -3,20 +3,21 @@ import { Container } from "@/frontend/components/ui/container";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { ServiceCard } from "@/frontend/components/cards/service-card";
 import { CtaBand } from "@/frontend/components/home/cta";
-import { services } from "@/frontend/lib/placeholder";
+import { getServices } from "@/frontend/lib/cms";
 
 export const metadata: Metadata = {
   title: "Services",
   description: "Materials & metallurgy R&D services from METNMAT.",
 };
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  const services = await getServices();
   return (
     <>
       <PageHero
         eyebrow="Services"
         title="What we do"
-        description="Intro paragraph describing the full range of services. Replace with approved copy."
+        description="Customized turnkey R&D for metallurgy & materials — from lab-scale prototype to full industrial scale. Development, applied research, benchmarking, heat treatment and simulation under one roof."
       />
 
       <section className="section">

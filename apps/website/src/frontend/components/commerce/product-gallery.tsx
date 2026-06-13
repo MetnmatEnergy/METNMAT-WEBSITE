@@ -1,39 +1,125 @@
 "use client";
 
 import * as React from "react";
-import { X, ZoomIn } from "lucide-react";
+import { X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { cn } from "@/frontend/lib/utils";
 
-/** Product gallery: main image + thumbnails + click-to-zoom lightbox. */
+const SLIDE_MS = 4500;
+
+/**
+ * Product gallery: auto-sliding main image (crossfade every ~4.5s, paused on
+ * hover/zoom), prev/next arrows, thumbnails + click-to-zoom lightbox.
+ */
 export function ProductGallery({ images, name }: { images: string[]; name: string }) {
   const [active, setActive] = React.useState(0);
   const [zoom, setZoom] = React.useState(false);
+  const [hovered, setHovered] = React.useState(false);
   const hasImages = images.length > 0;
+  const many = images.length > 1;
   const current = hasImages ? images[active] : null;
 
+  const go = React.useCallback(
+    (dir: 1 | -1) => setActive((a) => (a + dir + images.length) % images.length),
+    [images.length]
+  );
+
+  // Auto-slide; pauses while the customer is interacting (hover or zoom).
+  React.useEffect(() => {
+    if (!many || zoom || hovered) return;
+    const t = setInterval(() => go(1), SLIDE_MS);
+    return () => clearInterval(t);
+  }, [many, zoom, hovered, go]);
+
+  // Arrow-key navigation while the lightbox is open.
+  React.useEffect(() => {
+    if (!zoom) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setZoom(false);
+      if (e.key === "ArrowRight") go(1);
+      if (e.key === "ArrowLeft") go(-1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoom, go]);
+
   return (
-    <div className="grid gap-3">
-      {/* Main image */}
+    // self-start + content-start: don't stretch to the (taller) details column —
+    // otherwise the grid distributes the extra height as a huge gap between the
+    // main image and the thumbnails.
+    <div className="grid content-start gap-2 self-start">
+      {/* Main image — 4:3, crossfading slides */}
       {current ? (
-        <button
-          type="button"
-          onClick={() => setZoom(true)}
-          className="group relative block aspect-square overflow-hidden rounded-xl border border-border bg-white"
-          aria-label="Zoom image"
+        <div
+          className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-border bg-white"
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={current} alt={name} className="h-full w-full object-contain" />
-          <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
+          {images.map((src, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={src + i}
+              src={src}
+              alt={`${name} — image ${i + 1}`}
+              className={cn(
+                "absolute inset-0 h-full w-full object-contain transition-opacity duration-700",
+                i === active ? "opacity-100" : "opacity-0"
+              )}
+            />
+          ))}
+
+          {/* Click-to-zoom layer */}
+          <button
+            type="button"
+            onClick={() => setZoom(true)}
+            className="absolute inset-0 cursor-zoom-in"
+            aria-label="Zoom image"
+          />
+          <span className="pointer-events-none absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100">
             <ZoomIn className="h-4 w-4" />
           </span>
-        </button>
+
+          {/* Prev / next arrows */}
+          {many && (
+            <>
+              <button
+                type="button"
+                aria-label="Previous image"
+                onClick={() => go(-1)}
+                className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white/90 text-neutral-700 opacity-0 shadow-md transition-all hover:bg-white hover:text-brand group-hover:opacity-100"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Next image"
+                onClick={() => go(1)}
+                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-white/90 text-neutral-700 opacity-0 shadow-md transition-all hover:bg-white hover:text-brand group-hover:opacity-100"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+
+              {/* Slide indicator dots */}
+              <div className="pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
+                {images.map((_, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "h-1.5 rounded-full transition-all",
+                      i === active ? "w-5 bg-brand" : "w-1.5 bg-neutral-300"
+                    )}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       ) : (
-        <MediaPlaceholder className="aspect-square" label="Product image" />
+        <MediaPlaceholder className="aspect-[4/3]" label="Product image" />
       )}
 
       {/* Thumbnails */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-5 gap-2">
         {(hasImages ? images : [null, null, null, null, null]).slice(0, 5).map((src, i) =>
           src ? (
             <button
@@ -41,7 +127,7 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
               type="button"
               onClick={() => setActive(i)}
               className={cn(
-                "aspect-square overflow-hidden rounded-lg border bg-white",
+                "aspect-square overflow-hidden rounded-lg border bg-white transition-colors",
                 i === active ? "border-brand" : "border-border hover:border-brand/40"
               )}
             >
@@ -69,6 +155,26 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
           >
             <X className="h-5 w-5" />
           </button>
+          {many && (
+            <>
+              <button
+                type="button"
+                aria-label="Previous image"
+                onClick={(e) => { e.stopPropagation(); go(-1); }}
+                className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                type="button"
+                aria-label="Next image"
+                onClick={(e) => { e.stopPropagation(); go(1); }}
+                className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={current}

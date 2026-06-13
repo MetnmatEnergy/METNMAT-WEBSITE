@@ -3,14 +3,22 @@
 import Link from "next/link";
 import { Trash2, ArrowRight, FileText, ShoppingCart } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
-import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
 import { QuantityStepper } from "@/frontend/components/commerce/quantity-stepper";
 import { useStore } from "@/frontend/components/commerce/store-provider";
-import { formatINR } from "@/frontend/lib/catalog";
+import { inclGST, usdFor, lineUsdValue } from "@/frontend/lib/catalog";
+import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 
 export default function CartPage() {
-  const { cartLines, cartSubtotal, setQty, removeFromCart, clearCart, cartCount } = useStore();
+  const { cartLines, setQty, removeFromCart, clearCart, cartCount } = useStore();
+  const { money, currency, usdRate } = useCurrency();
+  // Display GST-inclusive totals (catalog stores base prices excl. GST).
+  const subtotalIncl = cartLines.reduce((n, l) => n + inclGST(l.unitPrice) * l.qty, 0);
+  // For USD visitors, honor any staff-set USD price (base unit) so totals match the PDP.
+  const usdSubtotal =
+    currency === "USD"
+      ? cartLines.reduce((n, l) => n + lineUsdValue(l.product, l.unitPrice, l.qty, usdRate), 0)
+      : undefined;
 
   if (cartCount === 0) {
     return (
@@ -43,8 +51,23 @@ export default function CartPage() {
         <div className="divide-y divide-border rounded-2xl border border-border">
           {cartLines.map((line) => (
             <div key={line.slug} className="flex gap-4 p-4">
-              <Link href={`/shop/p/${line.slug}`} className="shrink-0">
-                <MediaPlaceholder className="h-24 w-24" label="" />
+              <Link
+                href={`/shop/p/${line.slug}`}
+                className="block h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-border bg-white"
+              >
+                {line.product.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={line.product.imageUrl}
+                    alt={line.product.name}
+                    loading="lazy"
+                    className="h-full w-full object-contain p-1.5"
+                  />
+                ) : (
+                  <span className="flex h-full items-center justify-center font-display text-3xl font-bold text-zinc-300">
+                    M
+                  </span>
+                )}
               </Link>
               <div className="flex flex-1 flex-col">
                 <div className="flex justify-between gap-4">
@@ -65,7 +88,7 @@ export default function CartPage() {
                   </button>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {formatINR(line.unitPrice)} / {line.product.unit}
+                  {money(inclGST(line.unitPrice), usdFor(line.product, inclGST(line.unitPrice)))} / {line.product.unit} · incl. GST
                 </p>
                 <div className="mt-auto flex items-center justify-between pt-3">
                   <QuantityStepper
@@ -74,7 +97,9 @@ export default function CartPage() {
                     onChange={(v) => setQty(line.slug, v)}
                   />
                   <span className="font-semibold">
-                    {line.product.price ? formatINR(line.lineTotal) : "On request"}
+                    {line.product.price
+                      ? money(inclGST(line.unitPrice) * line.qty, usdFor(line.product, inclGST(line.unitPrice) * line.qty))
+                      : "On request"}
                   </span>
                 </div>
               </div>
@@ -96,11 +121,12 @@ export default function CartPage() {
             <h2 className="font-display text-lg font-semibold">Order summary</h2>
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Subtotal (excl. GST)</dt>
-                <dd className="font-medium">{formatINR(cartSubtotal)}</dd>
+                <dt className="text-muted-foreground">Subtotal (incl. GST)</dt>
+                <dd className="font-semibold">{money(subtotalIncl, usdSubtotal)}</dd>
               </div>
+              <p className="text-xs text-muted-foreground">Includes GST</p>
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">GST &amp; shipping</dt>
+                <dt className="text-muted-foreground">Shipping</dt>
                 <dd className="text-muted-foreground">Calculated at checkout</dd>
               </div>
             </dl>

@@ -3,8 +3,9 @@ import { Container } from "@/frontend/components/ui/container";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { JsonLd, faqJsonLd } from "@/frontend/components/seo/json-ld";
 
-/** Concise, factual Q&A — good for users and for AI answer engines (GEO). */
-const faqs = [
+/** Concise, factual Q&A — good for users and for AI answer engines (GEO).
+ *  Used as the fallback when the CMS has no FAQ entries. */
+const DEFAULT_FAQS = [
   {
     q: "What does METNMAT Research & Innovations do?",
     a: "METNMAT is India's first private metallurgy & materials R&D company. We deliver customized turnkey solutions — from lab-scale prototype to full industrial scale — across product and process development, applied research, benchmarking, heat treatment and simulation.",
@@ -27,18 +28,19 @@ const faqs = [
   },
 ];
 
-export function Faq() {
+export function Faq({ faqs }: { faqs?: { q: string; a: string }[] } = {}) {
+  const items = faqs && faqs.length ? faqs : DEFAULT_FAQS;
   return (
     <section className="section border-t border-border">
       <Container>
-        <JsonLd data={faqJsonLd(faqs)} />
+        <JsonLd data={faqJsonLd(items)} />
         <SectionHeading
           eyebrow="FAQ"
           title="Frequently asked questions"
           description="Quick answers about METNMAT, our products and how we work."
         />
         <div className="mx-auto mt-8 max-w-3xl divide-y divide-border rounded-2xl border border-border bg-surface/40">
-          {faqs.map((f) => (
+          {items.map((f) => (
             <details key={f.q} className="group p-5">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-display text-base font-semibold">
                 {f.q}

@@ -7,7 +7,7 @@ export function FeaturedCaseStudy() {
   return (
     <section className="section border-y border-border bg-surface/40">
       <Container className="grid items-center gap-12 lg:grid-cols-2">
-        <MediaPlaceholder className="aspect-[4/3]" label="Featured case study" />
+        <MediaPlaceholder className="aspect-[4/3]" src="/site/melted.png" alt="Molten copper alloy during high-strength conductive alloy processing" label="Featured case study" />
         <div>
           <Badge variant="brand">Featured case study</Badge>
           <h2 className="mt-5 font-display text-3xl font-bold tracking-tight sm:text-4xl">

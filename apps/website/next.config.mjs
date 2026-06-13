@@ -2,16 +2,25 @@
 // so browser <img> tags and fetches to them aren't blocked by CSP.
 const CMS_ORIGIN = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
 const STORAGE_ORIGINS = "https://*.supabase.co https://*.storage.supabase.co";
+// The chatbot host (separate service). It serves widget.js (a <script>), the chat
+// UI in an <iframe>, and product images — so script-src / frame-src / img-src /
+// connect-src must allow it, or the CSP blocks the chat bubble entirely.
+const CHATBOT_ORIGIN = process.env.NEXT_PUBLIC_CHATBOT_URL || "http://localhost:3002";
+// Razorpay checkout: checkout.js (script), the payment modal (iframe) and its
+// API/telemetry endpoints (connect). Required for online payments.
+const RAZORPAY_SCRIPT = "https://checkout.razorpay.com";
+const RAZORPAY_CONNECT = "https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com";
 
 // Content Security Policy. 'unsafe-inline' is required by the pre-paint theme
 // script and Next's inline runtime; harden to nonce-based CSP later.
 const ContentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline' ${CHATBOT_ORIGIN} ${RAZORPAY_SCRIPT}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${CMS_ORIGIN} ${STORAGE_ORIGINS}`,
+  `img-src 'self' data: blob: ${CMS_ORIGIN} ${STORAGE_ORIGINS} ${CHATBOT_ORIGIN}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${CMS_ORIGIN} ${STORAGE_ORIGINS}`,
+  `connect-src 'self' ${CMS_ORIGIN} ${STORAGE_ORIGINS} ${CHATBOT_ORIGIN} ${RAZORPAY_CONNECT}`,
+  `frame-src 'self' ${CHATBOT_ORIGIN} https://www.google.com https://maps.google.com https://api.razorpay.com ${RAZORPAY_SCRIPT}`,
   "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",

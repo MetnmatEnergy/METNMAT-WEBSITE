@@ -2,17 +2,16 @@ import type { Metadata } from "next";
 import { Container } from "@/frontend/components/ui/container";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { BlogCard } from "@/frontend/components/cards/blog-card";
-import { blogPosts } from "@/frontend/lib/placeholder";
+import { getBlogPosts } from "@/frontend/lib/cms";
 
 export const metadata: Metadata = {
   title: "Blog",
   description: "Research notes, insights and company news.",
 };
 
-// TODO(content): real categories (or derive from posts / CMS).
-const categories = ["All", "Research", "Manufacturing", "Company"];
-
-export default function BlogPage() {
+export default async function BlogPage() {
+  const blogPosts = await getBlogPosts();
+  const categories = ["All", ...Array.from(new Set(blogPosts.map((p) => p.category).filter(Boolean)))];
   return (
     <>
       <PageHero

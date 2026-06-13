@@ -21,6 +21,10 @@ type Store = {
   toggleWishlist: (product: Product) => void;
   inWishlist: (slug: string) => boolean;
   wishlistCount: number;
+  /** Last removed item, for the "Undo" toast. */
+  lastRemoved: CartItem | null;
+  undoRemove: () => void;
+  dismissRemoved: () => void;
 };
 
 const StoreContext = React.createContext<Store | null>(null);
@@ -31,6 +35,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [wishlist, setWishlist] = React.useState<Product[]>([]);
   const [ready, setReady] = React.useState(false);
+  const [lastRemoved, setLastRemoved] = React.useState<CartItem | null>(null);
 
   React.useEffect(() => {
     try {
@@ -76,11 +81,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const removeFromCart = React.useCallback(
-    (slug: string) => setCart((prev) => prev.filter((i) => i.product.slug !== slug)),
-    []
-  );
+  const removeFromCart = React.useCallback((slug: string) => {
+    setCart((prev) => {
+      const removed = prev.find((i) => i.product.slug === slug);
+      if (removed) setLastRemoved(removed);
+      return prev.filter((i) => i.product.slug !== slug);
+    });
+  }, []);
   const clearCart = React.useCallback(() => setCart([]), []);
+
+  const undoRemove = React.useCallback(() => {
+    setLastRemoved((removed) => {
+      if (removed) {
+        setCart((prev) =>
+          prev.some((i) => i.product.slug === removed.product.slug) ? prev : [...prev, removed]
+        );
+      }
+      return null;
+    });
+  }, []);
+  const dismissRemoved = React.useCallback(() => setLastRemoved(null), []);
 
   const toggleWishlist = React.useCallback((product: Product) => {
     setWishlist((prev) =>
@@ -116,6 +136,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     toggleWishlist,
     inWishlist: (slug) => wishlist.some((p) => p.slug === slug),
     wishlistCount: wishlist.length,
+    lastRemoved,
+    undoRemove,
+    dismissRemoved,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

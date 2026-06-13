@@ -1,15 +1,16 @@
-import { Plus } from "lucide-react";
-import { Card } from "@/frontend/components/ui/card";
-import { Button } from "@/frontend/components/ui/button";
+import { AddressBook } from "@/frontend/components/commerce/address-book";
+import { getCurrentCustomer } from "@/backend/lib/customer";
 
-export default function AddressesPage() {
-  // TODO(feature): real saved addresses (CRUD) from the API.
+export const dynamic = "force-dynamic";
+
+export default async function AddressesPage() {
+  const customer = await getCurrentCustomer();
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
-      <Card className="flex min-h-[160px] flex-col items-center justify-center border-dashed text-center">
-        <Plus className="h-6 w-6 text-muted-foreground" />
-        <Button type="button" variant="ghost" className="mt-2">Add a new address</Button>
-      </Card>
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Saved addresses speed up checkout. The default is used first.
+      </p>
+      <AddressBook initial={customer?.addresses ?? []} />
     </div>
   );
 }

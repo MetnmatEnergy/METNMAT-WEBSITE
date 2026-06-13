@@ -9,17 +9,19 @@ import { CartButton, WishlistBadgeButton } from "@/frontend/components/commerce/
 import { DepartmentsMenu } from "@/frontend/components/commerce/departments-menu";
 import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { SearchBar } from "@/frontend/components/commerce/search-bar";
-import { getAllCategories } from "@/frontend/lib/cms";
+import { getAllCategories, getNavigation } from "@/frontend/lib/cms";
+import { mainNav } from "@/frontend/lib/site";
 
 const iconLink =
   "flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-muted";
 
 export async function SiteHeader() {
-  const categories = await getAllCategories();
+  const [categories, nav] = await Promise.all([getAllCategories(), getNavigation()]);
+  const navItems = nav?.headerLinks ?? mainNav;
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 border-b border-border bg-surface/85 shadow-[0_1px_0_0_rgba(0,0,0,0.03)] backdrop-blur supports-[backdrop-filter]:bg-surface/70">
       {/* Row 1: brand + global search + actions */}
-      <Container className="flex h-[68px] items-center gap-4">
+      <Container className="flex h-14 items-center gap-4">
         <Logo />
 
         {/* Global site search — products, categories & pages */}
@@ -42,7 +44,7 @@ export async function SiteHeader() {
 
           <GetQuoteButton className="hidden sm:inline-flex" />
 
-          <MobileNav />
+          <MobileNav items={navItems} />
         </div>
       </Container>
 
@@ -51,7 +53,7 @@ export async function SiteHeader() {
         <Container className="flex h-11 items-center gap-2">
           <DepartmentsMenu categories={categories} />
           <span className="mx-1 h-5 w-px bg-border" />
-          <NavLinks />
+          <NavLinks items={navItems} />
         </Container>
       </div>
     </header>

@@ -16,7 +16,7 @@ export const site = {
     email: "contact@metnmat.com",
     phone: "+91 78726 86501",
     phone2: "+91 80018 38711",
-    shipping: "Shipping across India & worldwide · R&D since 2012",
+    shipping: "Shipping across India & worldwide",
   },
 
   // Office addresses (METNMAT Research & Innovations).

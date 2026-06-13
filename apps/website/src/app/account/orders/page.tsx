@@ -1,36 +1,79 @@
-import { Package } from "lucide-react";
+import Link from "next/link";
+import { Package, ChevronRight } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
+import { formatINR } from "@/frontend/lib/catalog";
+import { getCurrentCustomer, getCustomerOrders } from "@/backend/lib/customer";
 
-export default function OrdersPage() {
-  // TODO(feature): list real orders from the API once orders exist.
-  const orders: { id: string; date: string; total: string; status: string }[] = [];
+export const dynamic = "force-dynamic";
+
+const STATUS_STYLE: Record<string, string> = {
+  paid: "text-emerald-600 bg-emerald-500/10",
+  shipped: "text-indigo-600 bg-indigo-500/10",
+  delivered: "text-emerald-600 bg-emerald-500/10",
+  pending: "text-amber-600 bg-amber-500/10",
+  failed: "text-brand bg-brand/10",
+  cancelled: "text-muted-foreground bg-muted",
+  refunded: "text-purple-600 bg-purple-500/10",
+};
+
+export default async function OrdersPage() {
+  const customer = await getCurrentCustomer();
+  const orders = await getCustomerOrders(customer?.email);
 
   if (orders.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-surface p-12 text-center">
         <Package className="mx-auto h-8 w-8 text-muted-foreground" />
         <h2 className="mt-4 font-display text-lg font-semibold">No orders yet</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your orders and tracking will show up here.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Your orders and tracking will show up here.</p>
         <Button href="/shop" className="mt-5">Start shopping</Button>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border">
-      <table className="w-full text-sm">
-        <thead className="bg-surface text-left text-muted-foreground">
-          <tr>
-            <th className="px-4 py-3 font-medium">Order</th>
-            <th className="px-4 py-3 font-medium">Date</th>
-            <th className="px-4 py-3 font-medium">Total</th>
-            <th className="px-4 py-3 font-medium">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border" />
-      </table>
+    <div className="space-y-3">
+      {orders.map((o, i) => {
+        const date = o.createdAt
+          ? new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+          : "—";
+        const itemCount = (o.items ?? []).reduce((n, it) => n + (it.qty || 0), 0);
+        const status = (o.status || "pending").toLowerCase();
+        const href = o.orderNumber ? `/account/orders/${encodeURIComponent(o.orderNumber)}` : "#";
+        return (
+          <Link
+            key={i}
+            href={href}
+            className="block rounded-2xl border border-border bg-surface p-4 transition-colors hover:border-brand/40 sm:p-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-display font-semibold">{o.orderNumber || "Order"}</span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLE[status] || "bg-muted text-muted-foreground"}`}>
+                    {status}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {date} · {itemCount} item{itemCount === 1 ? "" : "s"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <div className="font-semibold tabular-nums">{formatINR(o.total || 0)}</div>
+                  <p className="text-xs text-muted-foreground">incl. GST</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </div>
+            {(o.items ?? []).length > 0 && (
+              <p className="mt-3 truncate border-t border-border pt-3 text-sm text-muted-foreground">
+                {(o.items ?? []).map((it) => `${it.productName}${it.qty ? ` ×${it.qty}` : ""}`).join(", ")}
+              </p>
+            )}
+          </Link>
+        );
+      })}
     </div>
   );
 }

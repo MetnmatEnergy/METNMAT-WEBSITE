@@ -82,8 +82,29 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
       {/* Two-frame layout: gallery (left) + all details & actions (right). */}
       <div className="mt-6 grid gap-10 lg:grid-cols-2">
-        {/* Left frame: gallery (CMS images, click-to-zoom) */}
-        <ProductGallery images={product.images ?? []} name={product.name} />
+        {/* Left frame: gallery (CMS images, click-to-zoom) + key specs at a glance */}
+        <div className="self-start">
+          <ProductGallery images={product.images ?? []} name={product.name} />
+
+          {product.specs.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-sm font-semibold">Key specifications</h2>
+              <dl className="mt-3 divide-y divide-border border-y border-border text-sm">
+                {product.specs.slice(0, 6).map((s, i) => (
+                  <div key={i} className="flex justify-between gap-6 py-2.5">
+                    <dt className="text-muted-foreground">{s.label}</dt>
+                    <dd className="text-right font-medium">{s.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {product.specs.length > 6 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Full details in the <span className="font-semibold text-foreground/80">Specifications</span> tab below.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Right frame: brand, title, price, buy actions, description, specs */}
         <div>
@@ -124,19 +145,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           <div className="mt-6">
             <h2 className="text-sm font-semibold">Description</h2>
             <p className="mt-2 text-muted-foreground">{product.shortDesc}</p>
-          </div>
-
-          {/* Key specs */}
-          <div className="mt-6">
-            <h2 className="text-sm font-semibold">Key specifications</h2>
-            <dl className="mt-3 divide-y divide-border border-y border-border text-sm">
-              {product.specs.map((s, i) => (
-                <div key={i} className="flex justify-between py-2.5">
-                  <dt className="text-muted-foreground">{s.label}</dt>
-                  <dd className="font-medium">{s.value}</dd>
-                </div>
-              ))}
-            </dl>
           </div>
 
           {/* Bulk pricing */}

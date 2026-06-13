@@ -1,0 +1,243 @@
+/*
+ * METNMAT Operations Dashboard — premium dark theme for Payload v3 admin.
+ * Near-black surfaces (#09090b) + brand red (#d81f26), one consistent token
+ * system, refined navigation / tables / forms / login, and full responsive
+ * behavior. Imported once from app/(payload)/layout.tsx → applies admin-wide.
+ *
+ * Principles: hairline borders not heavy shadows; restraint over flash; brand
+ * red reserved for primary actions + genuine attention (never "normal" state);
+ * every space/radius/colour resolves to a token below.
+ */
+
+/* ── Tokens ──────────────────────────────────────────────────────────────── */
+:root {
+  --metnmat-brand: #d81f26;
+  --metnmat-brand-hover: #e8434a;
+  --mn-brand-tint: color-mix(in srgb, #d81f26 12%, transparent);
+  --mn-brand-ring: color-mix(in srgb, #d81f26 22%, transparent);
+
+  --mn-success: #4ade80;
+  --mn-warning: #fbbf24;
+  --mn-danger: #f87171;
+
+  --mn-space-1: 4px;  --mn-space-2: 8px;  --mn-space-3: 12px; --mn-space-4: 16px;
+  --mn-space-5: 20px; --mn-space-6: 24px; --mn-space-8: 32px;
+  --mn-radius-sm: 8px; --mn-radius-md: 12px; --mn-radius-lg: 14px; --mn-radius-xl: 16px;
+  --metnmat-radius: var(--mn-radius-md);
+
+  --mn-font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mn-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+}
+
+/* Premium dark palette — applied to every theme state so it's consistently dark.
+   Elevation ramp: 0 = darkest surface → 1000 = near-white text/icons. */
+html,
+html[data-theme="dark"],
+html[data-theme="light"] {
+  color-scheme: dark;
+
+  --theme-bg: #09090b;
+  --theme-input-bg: #141417;
+  --theme-text: #ededf0;
+
+  --theme-elevation-0: #09090b;
+  --theme-elevation-25: #0e0e11;
+  --theme-elevation-50: #141417;
+  --theme-elevation-100: #1c1c20;
+  --theme-elevation-150: #26262b;
+  --theme-elevation-200: #303036;
+  --theme-elevation-250: #3a3a41;
+  --theme-elevation-300: #45454d;
+  --theme-elevation-400: #5a5a63;
+  --theme-elevation-450: #646470;
+  --theme-elevation-500: #71717a;
+  --theme-elevation-600: #8a8a93;
+  --theme-elevation-700: #a3a3ab;
+  --theme-elevation-800: #c4c4ca;
+  --theme-elevation-900: #e4e4e7;
+  --theme-elevation-1000: #fafafa;
+
+  --theme-success-500: var(--mn-success);
+  --theme-error-500: var(--mn-danger);
+  --theme-warning-500: var(--mn-warning);
+}
+
+/* ── Base typography ─────────────────────────────────────────────────────── */
+html { font-size: 14px; }
+body {
+  font-family: var(--mn-font);
+  background-color: var(--theme-bg);
+  background-image:
+    radial-gradient(1100px 520px at 82% -8%, rgba(216, 31, 38, 0.09), transparent 60%),
+    radial-gradient(900px 500px at -5% 4%, rgba(120, 80, 220, 0.05), transparent 55%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.table td, .cell-type--number, [class*="value"] { font-variant-numeric: tabular-nums; }
+
+/* ── Primary actions, links, focus ───────────────────────────────────────── */
+.btn--style-primary {
+  background-color: var(--metnmat-brand) !important;
+  border-color: var(--metnmat-brand) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px -8px rgba(216, 31, 38, 0.6);
+}
+.btn--style-primary:hover { background-color: var(--metnmat-brand-hover) !important; border-color: var(--metnmat-brand-hover) !important; }
+.btn { border-radius: var(--mn-radius-sm); transition: background .14s ease, border-color .14s ease, filter .14s ease; }
+
+a, .nav__link:hover { color: var(--metnmat-brand); }
+
+:focus-visible { outline: 2px solid color-mix(in srgb, #d81f26 70%, transparent) !important; outline-offset: 1px; }
+
+/* ── Sidebar navigation ──────────────────────────────────────────────────── */
+.nav, .template-default__nav {
+  background-color: #0c0c0f;
+  backdrop-filter: blur(8px);
+  border-right: 1px solid var(--theme-elevation-100);
+}
+.nav__link {
+  border-radius: var(--mn-radius-sm);
+  padding: 8px 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--theme-elevation-700);
+  transition: background .12s ease, color .12s ease;
+}
+.nav__link:hover { background: var(--theme-elevation-100); color: var(--theme-elevation-1000); }
+.nav__link svg { opacity: .85; }
+
+/* Group labels: quiet, uppercase chunking of collections */
+.nav-group__label, .nav-group__toggle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-elevation-450, var(--theme-elevation-500));
+}
+.nav-group + .nav-group { border-top: 1px solid var(--theme-elevation-50); margin-top: 6px; padding-top: 6px; }
+
+/* Active item: tinted surface + brand rail + bright text (not a full red fill) */
+.nav .nav__link.active,
+.nav .nav__link--active,
+.nav a[aria-current="page"],
+.nav .nav-group__toggle.active {
+  color: #fff;
+  background: var(--mn-brand-tint);
+  box-shadow: inset 3px 0 0 0 var(--metnmat-brand);
+  border-radius: var(--mn-radius-sm);
+  transition: background .2s ease, box-shadow .2s ease;
+}
+.nav .nav__link.active svg, .nav a[aria-current="page"] svg { opacity: 1; }
+
+/* ── Cards / surfaces ────────────────────────────────────────────────────── */
+.card,
+.collection-list__wrap,
+.tabs-field,
+.collapsible__content,
+.dashboard__group,
+.mn-card {
+  border-radius: var(--metnmat-radius);
+  border: 1px solid var(--theme-elevation-100);
+}
+.mn-card { transition: border-color .15s ease, transform .15s ease; }
+.mn-card:hover { border-color: var(--theme-elevation-200); transform: translateY(-1px); }
+
+/* ── List / table views ──────────────────────────────────────────────────── */
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #0e0e12;
+  border-bottom: 1px solid var(--theme-elevation-150);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--theme-elevation-600);
+  padding: 11px 16px;
+}
+.table td { padding: 12px 16px; height: 48px; border-bottom: 1px solid var(--theme-elevation-100); color: var(--theme-elevation-800); }
+.table tbody tr { transition: background .1s ease; }
+.table tbody tr:hover { background: var(--theme-elevation-100); cursor: pointer; }
+.table tbody tr:last-child td { border-bottom: none; }
+.table .row-1 a, .table td:first-child a { font-weight: 550; }
+
+/* Status pills */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; line-height: 1;
+  border: 1px solid transparent;
+}
+
+/* ── Forms / edit view ───────────────────────────────────────────────────── */
+.field-type { margin-bottom: var(--mn-space-5); }
+.field-label { font-size: 12.5px; font-weight: 550; letter-spacing: 0.01em; color: var(--theme-elevation-600); margin-bottom: 6px; }
+.field-description { font-size: 12px; color: var(--theme-elevation-450, var(--theme-elevation-500)); }
+
+.field-type input,
+.field-type textarea,
+.field-type .rs__control {
+  background: var(--theme-input-bg);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--mn-radius-sm);
+  min-height: 40px;
+  color: var(--theme-elevation-1000);
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+.field-type input:focus,
+.field-type textarea:focus,
+.field-type .rs__control--is-focused {
+  border-color: var(--metnmat-brand) !important;
+  box-shadow: 0 0 0 3px var(--mn-brand-ring) !important;
+  outline: none;
+}
+.field-type--has-error input, .field-type--has-error textarea { border-color: var(--mn-danger) !important; }
+
+/* Grouped fields read as intentional panels */
+.collapsible, .group-field {
+  background: var(--theme-elevation-50);
+  border: 1px solid var(--theme-elevation-100);
+  border-radius: var(--metnmat-radius);
+}
+.tabs-field__tab--active { box-shadow: inset 0 -2px 0 var(--metnmat-brand); color: #fff; }
+/* (Payload's .doc-controls is already sticky at top:0 — no override needed.) */
+
+/* ── Login screen (PIN-first) ────────────────────────────────────────────── */
+/* Hide Payload's email/password form by default; the PIN pad (beforeLogin) is
+   the primary sign-in. "Admin recovery" link sets data-recovery to reveal it. */
+.login form, .login__form { display: none !important; }
+html[data-recovery="true"] .login form,
+html[data-recovery="true"] .login__form { display: block !important; }
+.login { max-width: 460px; }
+.login__brand, .login .graphic-logo { margin-bottom: 8px; }
+.login input[inputmode="numeric"] { transition: box-shadow .2s ease, border-color .15s ease; }
+
+/* ── Scrollbars ──────────────────────────────────────────────────────────── */
+* { scrollbar-width: thin; scrollbar-color: var(--theme-elevation-200) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--theme-elevation-200); border-radius: 999px; border: 2px solid var(--theme-bg); }
+*::-webkit-scrollbar-thumb:hover { background: var(--theme-elevation-300); }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .doc-controls { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 767px) {
+  /* Tables: keep natural width, scroll the card; pin the first column. */
+  .collection-list__wrap, .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table { min-width: 640px; }
+  .table td:first-child, .table th:first-child {
+    position: sticky; left: 0; z-index: 1; background: var(--theme-elevation-50);
+    box-shadow: 1px 0 0 var(--theme-elevation-100);
+  }
+  /* Comfortable touch targets + no iOS zoom-on-focus */
+  .btn { min-height: 44px; }
+  .nav__link { padding: 11px 12px; }
+  .field-type input, .field-type textarea { font-size: 16px; }
+}
+
+/* ── Motion preferences ──────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

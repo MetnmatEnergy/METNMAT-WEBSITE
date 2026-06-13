@@ -7,7 +7,11 @@ import { useStore } from "@/frontend/components/commerce/store-provider";
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-brand-foreground">
+    // Re-keyed by count so the pop animation replays on every change (+1 feedback).
+    <span
+      key={count}
+      className="animate-badge-pop absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-brand-foreground"
+    >
       {count > 99 ? "99+" : count}
     </span>
   );

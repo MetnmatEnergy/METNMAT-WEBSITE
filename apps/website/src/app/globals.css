@@ -55,13 +55,70 @@
     @apply border-border;
   }
 
+  html {
+    /* Smooth in-page navigation; anchored sections clear the sticky header.
+       (Reduced-motion users get instant jumps via the media query below.) */
+    scroll-behavior: smooth;
+    scroll-padding-top: 7rem;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Faster, more deliberate taps on touch devices (removes 300ms delay). */
+  a,
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  /* Premium typography: balanced multi-line headings, no orphan words. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   ::selection {
     @apply bg-brand/30 text-foreground;
+  }
+
+  /* Slim, theme-aware scrollbar (WebKit + Firefox). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
 
   /* Accessibility: visible focus ring for keyboard users */
@@ -88,6 +145,41 @@
   /* Section vertical rhythm (compact, so more fits per screen) */
   .section {
     @apply py-10 sm:py-12 lg:py-16;
+  }
+
+  /* "+1" chip that floats up from the Add-to-cart button (marketplace feedback). */
+  @keyframes float-plus {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 0) scale(0.8);
+    }
+    15% {
+      opacity: 1;
+      transform: translate(-50%, -10px) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -40px) scale(1);
+    }
+  }
+  .animate-float-plus {
+    animation: float-plus 0.9s ease-out forwards;
+  }
+
+  /* Cart badge pop when the count changes. */
+  @keyframes badge-pop {
+    0% {
+      transform: scale(1);
+    }
+    40% {
+      transform: scale(1.45);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  .animate-badge-pop {
+    animation: badge-pop 0.35s ease-out;
   }
 
   /* Subtle grid texture used behind the hero */

@@ -1,5 +1,13 @@
 import type { Payload } from "payload";
 import { seedCategories, seedProducts } from "./catalog-data";
+import {
+  seedServices,
+  seedProjects,
+  seedPosts,
+  seedFaqs,
+  seedHomepage,
+  seedNavigation,
+} from "./content-data";
 
 // Real METNMAT electrochemistry catalog (phase 1), generated from
 // Product_data_sheet.xlsx into ./catalog-data.ts. Seeded on boot; idempotent.
@@ -22,12 +30,12 @@ async function cleanupMalformed(payload: Payload): Promise<void> {
 async function ensureCategory(
   payload: Payload,
   c: { slug: string; name: string; blurb?: string; parentSlug?: string; order?: number },
-  ids: Record<string, string | number>
+  ids: Record<string, string>
 ): Promise<void> {
   const parent = c.parentSlug ? ids[c.parentSlug] : undefined;
   const found = await payload.find({ collection: "categories", where: { slug: { equals: c.slug } }, limit: 1 });
   if (found.docs[0]) {
-    ids[c.slug] = found.docs[0].id;
+    ids[c.slug] = String(found.docs[0].id);
     await payload.update({
       collection: "categories",
       id: found.docs[0].id,
@@ -39,7 +47,7 @@ async function ensureCategory(
     collection: "categories",
     data: { name: c.name, slug: c.slug, blurb: c.blurb, order: c.order ?? 0, parent },
   });
-  ids[c.slug] = doc.id;
+  ids[c.slug] = String(doc.id);
 }
 
 /** Delete docs in a collection whose slug is NOT in the keep-set. */
@@ -60,6 +68,72 @@ async function pruneStale(
   }
 }
 
+/**
+ * Seed website CONTENT (services, projects, posts, faqs) + homepage/navigation
+ * globals. Collections seed only when empty; globals seed only when unset — so
+ * staff edits in the admin are never overwritten on reboot.
+ */
+async function seedContent(payload: Payload): Promise<void> {
+  const seedIfEmpty = async (
+    collection: "services" | "projects" | "posts" | "faqs",
+    rows: Record<string, unknown>[]
+  ): Promise<void> => {
+    try {
+      const { totalDocs } = await payload.count({ collection });
+      if (totalDocs > 0) return;
+      let i = 0;
+      for (const row of rows) {
+        await payload.create({
+          collection,
+          data: { ...row, order: i, active: true, _status: "published" },
+        });
+        i++;
+      }
+      payload.logger.info(`[seed] ${collection}: ${rows.length} created.`);
+    } catch (e) {
+      payload.logger.warn(`[seed] ${collection} failed: ${(e as Error).message}`);
+    }
+  };
+
+  await seedIfEmpty("services", seedServices);
+  await seedIfEmpty("projects", seedProjects);
+  await seedIfEmpty("posts", seedPosts);
+  await seedIfEmpty("faqs", seedFaqs);
+
+  // Homepage global — seed only if the hero hasn't been filled in yet.
+  try {
+    const hp = (await payload.findGlobal({ slug: "homepage" })) as { titleLead?: string };
+    if (!hp?.titleLead) {
+      await payload.updateGlobal({ slug: "homepage", data: seedHomepage });
+      payload.logger.info("[seed] homepage global seeded.");
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] homepage global failed: ${(e as Error).message}`);
+  }
+
+  // Navigation global — seed only if no header links exist yet.
+  try {
+    const nav = (await payload.findGlobal({ slug: "navigation" })) as { headerLinks?: unknown[] };
+    if (!nav?.headerLinks?.length) {
+      await payload.updateGlobal({ slug: "navigation", data: seedNavigation });
+      payload.logger.info("[seed] navigation global seeded.");
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] navigation global failed: ${(e as Error).message}`);
+  }
+
+  // Commerce global — seed the USD display rate only if unset (staff maintain it).
+  try {
+    const commerce = (await payload.findGlobal({ slug: "commerce" })) as { usdExchangeRate?: number };
+    if (!commerce?.usdExchangeRate) {
+      await payload.updateGlobal({ slug: "commerce", data: { usdExchangeRate: 84 } });
+      payload.logger.info("[seed] commerce global seeded (usdExchangeRate 84).");
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] commerce global failed: ${(e as Error).message}`);
+  }
+}
+
 export async function seed(payload: Payload): Promise<void> {
   await cleanupMalformed(payload);
 
@@ -70,7 +144,7 @@ export async function seed(payload: Payload): Promise<void> {
   await pruneStale(payload, "products", prodSlugs);
 
   // 2) Upsert categories (parents before children so parent ids resolve).
-  const ids: Record<string, string | number> = {};
+  const ids: Record<string, string> = {};
   for (const c of seedCategories.filter((c) => !c.parentSlug)) await ensureCategory(payload, c, ids);
   for (const c of seedCategories.filter((c) => c.parentSlug)) await ensureCategory(payload, c, ids);
 
@@ -110,6 +184,9 @@ export async function seed(payload: Payload): Promise<void> {
   await payload.updateGlobal({ slug: "contact", data: { email: "contact@metnmat.com", phone: "+91 78726 86501", whatsapp: "+91 78726 86501", shippingNote: "Shipping across India & worldwide · ISO-aligned R&D", addresses: [{ label: "West Bengal", line: "Howrah, West Bengal, India" }, { label: "Odisha", line: "Sambalpur, Odisha, India" }] } });
   await payload.updateGlobal({ slug: "social", data: { linkedin: "#", youtube: "#", facebook: "#" } });
   await payload.updateGlobal({ slug: "seo", data: { defaultTitle: "METNMAT Research & Innovations", titleTemplate: "%s · METNMAT", description: "Electrodes, membranes, electrochemical cells, reactors & lab equipment for research — plus turnkey materials R&D." } });
+
+  // 5) Seed website content (services / projects / posts / faqs + homepage/nav).
+  await seedContent(payload);
 
   payload.logger.info(`[seed] Done. ${prodSlugs.size} catalog products, ${catSlugs.size} categories.`);
 }

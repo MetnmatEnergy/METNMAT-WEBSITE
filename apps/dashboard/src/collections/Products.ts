@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 import { canManageCatalog, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
+import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 
 export const Products: CollectionConfig = {
   slug: "products",
@@ -43,16 +44,32 @@ export const Products: CollectionConfig = {
     {
       type: "row",
       fields: [
-        { name: "price", type: "number", admin: { width: "33%", description: "Base unit price (₹). 0 = quote-only." } },
-        { name: "mrp", type: "number", admin: { width: "33%", description: "List price for discount display." } },
-        { name: "unit", type: "text", defaultValue: "unit", admin: { width: "33%" } },
+        { name: "price", type: "number", min: 0, admin: { width: "33%", description: "Base unit price in ₹ (excl. GST). 0 = quote-only." } },
+        {
+          name: "usdPrice",
+          type: "number",
+          min: 0,
+          label: "USD price ($)",
+          admin: {
+            width: "33%",
+            placeholder: "Auto",
+            description: "Optional. The final, tax-inclusive price international customers see, in USD (shown exactly as entered). Leave blank to auto-convert from ₹ at the latest exchange rate.",
+          },
+        },
+        { name: "unit", type: "text", defaultValue: "unit", admin: { width: "34%" } },
       ],
+    },
+    {
+      name: "usdPriceHint",
+      type: "ui",
+      admin: { components: { Field: "/admin/UsdPriceHint" } },
     },
     {
       type: "row",
       fields: [
-        { name: "moq", type: "number", defaultValue: 1, admin: { width: "50%", description: "Minimum order quantity." } },
-        { name: "leadTime", type: "text", admin: { width: "50%", description: "e.g. 'Ships in 1–2 weeks'." } },
+        { name: "mrp", type: "number", min: 0, admin: { width: "33%", description: "List price (₹) for discount display." } },
+        { name: "moq", type: "number", defaultValue: 1, admin: { width: "33%", description: "Minimum order quantity." } },
+        { name: "leadTime", type: "text", admin: { width: "34%", description: "e.g. 'Ships in 1–2 weeks'." } },
       ],
     },
     {
@@ -92,7 +109,7 @@ export const Products: CollectionConfig = {
     { name: "badges", type: "select", hasMany: true, options: ["Bestseller", "New", "GST invoice", "Made by METNMAT"] },
   ],
   hooks: {
-    afterChange: [auditAfterChange],
-    afterDelete: [auditAfterDelete],
+    afterChange: [auditAfterChange, revalidateWebsiteAfterChange],
+    afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete],
   },
 };

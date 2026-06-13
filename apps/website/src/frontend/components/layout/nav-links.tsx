@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import { mainNav } from "@/frontend/lib/site";
 import { cn } from "@/frontend/lib/utils";
 
-export function NavLinks({ className }: { className?: string }) {
+type NavItem = { label: string; href: string };
+
+export function NavLinks({ className, items = mainNav }: { className?: string; items?: NavItem[] }) {
   const pathname = usePathname();
 
   return (
     <nav className={cn("flex items-center gap-1", className)}>
-      {mainNav.map((item) => {
+      {items.map((item) => {
         const active =
           item.href === "/"
             ? pathname === "/"
