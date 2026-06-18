@@ -8,7 +8,7 @@ import { PlusOne } from "@/frontend/components/commerce/add-to-cart-button";
 import { WishlistButton } from "@/frontend/components/commerce/wishlist-button";
 import { RequestQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { Button } from "@/frontend/components/ui/button";
-import { inclGST, unitPriceForQty, usdFor, type Product } from "@/frontend/lib/catalog";
+import { inclGST, unitPriceForQty, usdFor, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 
 export function ProductBuyBox({ product }: { product: Product }) {
@@ -18,9 +18,48 @@ export function ProductBuyBox({ product }: { product: Product }) {
   const [added, setAdded] = React.useState(false);
   const [plusTrigger, setPlusTrigger] = React.useState(0);
 
+  const stock = (
+    <p className={`mt-1 text-sm ${product.inStock ? "text-emerald-500" : "text-amber-500"}`}>
+      {product.inStock ? "In stock" : "Made to order"} · {product.leadTime}
+    </p>
+  );
+
+  // ── Quote-only (no online price): no cart, promote the RFQ flow. ──────────────
+  if (isQuoteOnly(product)) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface p-5">
+        <div className="flex items-baseline justify-between">
+          <span className="font-display text-2xl font-bold">Price on request</span>
+          <span className="text-xs text-muted-foreground">/ {product.unit}</span>
+        </div>
+        {stock}
+        <p className="mt-3 text-sm text-muted-foreground">
+          This is a made-to-order / bulk item. Share your quantity and specs and we&apos;ll
+          send a GST quote.
+        </p>
+        <div className="mt-4 grid gap-2">
+          <RequestQuoteButton
+            product={{ name: product.name, slug: product.slug, sku: product.sku }}
+            label="Request a quote"
+            variant="brand"
+            withIcon
+            className="w-full py-2.5"
+          />
+          <WishlistButton product={product} withLabel className="w-full justify-center" />
+        </div>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          GST invoice · Pan-India &amp; worldwide shipping · Datasheet on request
+        </p>
+      </div>
+    );
+  }
+
   // Display GST-inclusive prices (catalog stores base prices excl. GST).
   const unit = inclGST(unitPriceForQty(product, qty));
   const total = unit * qty;
+  const hasDiscount = !!product.mrp && product.mrp > product.price;
+  const mrpIncl = hasDiscount ? inclGST(product.mrp!) : 0;
+  const off = hasDiscount ? Math.round((1 - product.price / product.mrp!) * 100) : 0;
 
   function handleAdd() {
     addToCart(product, qty);
@@ -35,10 +74,16 @@ export function ProductBuyBox({ product }: { product: Product }) {
         <span className="font-display text-2xl font-bold">{money(unit, usdFor(product, unit))}</span>
         <span className="text-xs text-muted-foreground">/ {product.unit} · incl. GST</span>
       </div>
+      {hasDiscount && (
+        <p className="mt-0.5 text-sm">
+          <span className="text-muted-foreground line-through">
+            {money(mrpIncl, usdFor(product, mrpIncl))}
+          </span>{" "}
+          <span className="font-semibold text-emerald-500">{off}% off</span>
+        </p>
+      )}
 
-      <p className="mt-1 text-sm text-emerald-500">
-        {product.inStock ? "In stock" : "Made to order"} · {product.leadTime}
-      </p>
+      {stock}
 
       <div className="mt-4 flex items-center justify-between gap-3">
         <span className="text-sm text-muted-foreground">
@@ -49,7 +94,7 @@ export function ProductBuyBox({ product }: { product: Product }) {
 
       <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
         <span className="text-muted-foreground">Subtotal</span>
-        <span className="font-semibold">{product.price ? money(total, usdFor(product, total)) : "On request"}</span>
+        <span className="font-semibold">{money(total, usdFor(product, total))}</span>
       </div>
 
       <div className="mt-4 grid gap-2">

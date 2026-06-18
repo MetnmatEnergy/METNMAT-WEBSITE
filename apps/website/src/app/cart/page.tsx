@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Trash2, ArrowRight, FileText, ShoppingCart } from "lucide-react";
+import { Trash2, ArrowRight, FileText, ShoppingCart, Loader2 } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { QuantityStepper } from "@/frontend/components/commerce/quantity-stepper";
@@ -10,7 +10,7 @@ import { inclGST, usdFor, lineUsdValue } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 
 export default function CartPage() {
-  const { cartLines, setQty, removeFromCart, clearCart, cartCount } = useStore();
+  const { cartLines, setQty, removeFromCart, clearCart, cartCount, ready } = useStore();
   const { money, currency, usdRate } = useCurrency();
   // Display GST-inclusive totals (catalog stores base prices excl. GST).
   const subtotalIncl = cartLines.reduce((n, l) => n + inclGST(l.unitPrice) * l.qty, 0);
@@ -19,6 +19,15 @@ export default function CartPage() {
     currency === "USD"
       ? cartLines.reduce((n, l) => n + lineUsdValue(l.product, l.unitPrice, l.qty, usdRate), 0)
       : undefined;
+
+  // Avoid a false "empty cart" flash before localStorage hydrates.
+  if (!ready) {
+    return (
+      <Container className="py-16 text-center">
+        <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+      </Container>
+    );
+  }
 
   if (cartCount === 0) {
     return (
@@ -139,7 +148,7 @@ export default function CartPage() {
               </Button>
             </div>
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              GST invoice · Razorpay / Stripe · India &amp; worldwide shipping
+              GST invoice · Secured by Razorpay · India &amp; worldwide shipping
             </p>
           </div>
         </div>

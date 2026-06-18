@@ -85,7 +85,7 @@ const EMPTY: Form = {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartLines, cartCount, clearCart } = useStore();
+  const { cartLines, cartCount, clearCart, ready } = useStore();
   const { money, currency, usdRate } = useCurrency();
   const [form, setForm] = React.useState<Form>(EMPTY);
   const [errors, setErrors] = React.useState<Partial<Record<keyof Form, string>>>({});
@@ -152,10 +152,25 @@ export default function CheckoutPage() {
       });
       const data = (await res.json()) as {
         ok: boolean; error?: string; keyId?: string; razorpayOrderId?: string;
-        amount?: number; currency?: string; orderNumber?: string; totalUsdApprox?: number;
+        amount?: number; currency?: string; orderNumber?: string; total?: number; totalUsdApprox?: number;
       };
       if (!res.ok || !data.ok) {
         setPayError(data.error || "Could not start the payment. Please try again.");
+        setPaying(false);
+        return;
+      }
+
+      // Safety net: the server recomputes the total from LIVE CMS prices. If it
+      // differs from what the customer just saw (a price changed since these
+      // items were added), never silently charge the new amount — stop and ask
+      // them to review. With MOQ/qty clamped identically client+server, the only
+      // cause of a mismatch is a genuine price change.
+      if (typeof data.total === "number" && data.total !== Math.round(subtotalIncl)) {
+        setPayError(
+          `Prices changed since you added these items — the order total is now ${formatINR(
+            data.total
+          )} (charged in INR). Please review your cart and try again.`
+        );
         setPaying(false);
         return;
       }
@@ -219,6 +234,16 @@ export default function CheckoutPage() {
       setPaying(false);
       setPayError("Something went wrong. Please try again.");
     }
+  }
+
+  // Wait for the cart to hydrate from localStorage before deciding it's empty —
+  // otherwise a returning customer briefly sees a false "empty cart" on refresh.
+  if (!ready) {
+    return (
+      <Container className="py-16 text-center">
+        <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+      </Container>
+    );
   }
 
   if (cartCount === 0) {

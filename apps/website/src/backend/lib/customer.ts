@@ -134,6 +134,26 @@ export async function getCustomerOrder(email: string | undefined, orderNumber: s
   }
 }
 
+/**
+ * An order by its number (server-side, internal key). Used by the post-payment
+ * success page to CONFIRM the order is real and paid before showing success —
+ * the page must never claim "payment successful" purely from a URL parameter.
+ */
+export async function getOrderByNumber(orderNumber: string): Promise<FullOrder | null> {
+  if (!orderNumber) return null;
+  try {
+    const res = await fetch(
+      `${CMS}/api/orders?where[orderNumber][equals]=${encodeURIComponent(orderNumber)}&limit=1&depth=0`,
+      { headers: { "x-internal-key": INTERNAL }, cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { docs?: FullOrder[] };
+    return data?.docs?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Orders for this email (server-side, internal key). Catches guest orders too. */
 export async function getCustomerOrders(email?: string): Promise<OrderDoc[]> {
   if (!email) return [];

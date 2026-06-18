@@ -187,6 +187,28 @@ export function unitPriceForQty(product: Product, qty: number): number {
   return price;
 }
 
+/**
+ * Hard ceiling on the quantity of any single line. Shared by the cart store,
+ * the quantity stepper and the server checkout route so the quantity a customer
+ * SEES can never differ from the quantity that is CHARGED.
+ */
+export const MAX_ORDER_QTY = 10_000;
+
+/**
+ * Clamp a quantity to the product's valid purchase range: never below its MOQ
+ * (minimum order quantity), never above MAX_ORDER_QTY, always a whole number.
+ * Used identically on the client (cart) and server (create-order) so the
+ * displayed line/qty always matches what Razorpay charges.
+ */
+export function clampQty(product: Pick<Product, "moq">, qty: number): number {
+  const moq = Math.max(1, Math.round(product.moq) || 1);
+  const q = Math.round(Number(qty)) || moq;
+  return Math.min(Math.max(q, moq), MAX_ORDER_QTY);
+}
+
+/** A product is "quote-only" (cannot be bought online) when it has no price. */
+export const isQuoteOnly = (product: Pick<Product, "price">): boolean => !product.price;
+
 // ── Manual USD price (staff override) ─────────────────────────────────────────
 // `usdPrice` is the fixed USD a staff member sets for the BASE unit (GST-inclusive,
 // as international visitors see it). When set, every USD figure for that product —

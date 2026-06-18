@@ -6,6 +6,7 @@ import {
   markOrderFailed,
 } from "@/backend/services/orders.service";
 import { sendOrderEmails } from "@/backend/lib/email";
+import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
 
 /**
  * POST /api/checkout/verify
@@ -21,6 +22,14 @@ type Body = {
 };
 
 export async function POST(req: Request) {
+  const rl = rateLimit(`verify:${clientIp(req)}`, 20, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many attempts. Please wait a moment." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } }
+    );
+  }
+
   if (!razorpayConfigured()) {
     return NextResponse.json({ ok: false, error: "Payments not configured." }, { status: 503 });
   }

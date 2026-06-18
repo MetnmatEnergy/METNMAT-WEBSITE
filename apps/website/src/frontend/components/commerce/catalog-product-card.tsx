@@ -5,7 +5,7 @@ import { RatingStars } from "@/frontend/components/commerce/rating-stars";
 import { AddToCartButton } from "@/frontend/components/commerce/add-to-cart-button";
 import { RequestQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { WishlistButton } from "@/frontend/components/commerce/wishlist-button";
-import type { Product } from "@/frontend/lib/catalog";
+import { isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { cn } from "@/frontend/lib/utils";
 
 /** Commerce product card — Amazon/Flipkart style. Supports grid + list layout. */
@@ -125,12 +125,25 @@ export function CatalogProductCard({
             up across all cards in a row. Stacked & full-width in grid (tidy at
             2-up mobile), inline on the wider list layout. All ≥44px for taps. */}
         <div className={cn("mt-auto gap-2 pt-4", isGrid ? "grid" : "flex flex-col sm:flex-row sm:items-center")}>
-          <AddToCartButton product={product} size="md" fullWidth={isGrid} />
-          <RequestQuoteButton
-            product={{ name: product.name, slug: product.slug, sku: product.sku }}
-            label="Request a quote"
-            className={cn("h-11", isGrid && "w-full")}
-          />
+          {isQuoteOnly(product) ? (
+            // Quote-only items can't be bought online — promote the RFQ flow.
+            <RequestQuoteButton
+              product={{ name: product.name, slug: product.slug, sku: product.sku }}
+              label="Request a quote"
+              variant="brand"
+              withIcon
+              className={cn("h-11 justify-center", isGrid ? "w-full" : "sm:flex-1")}
+            />
+          ) : (
+            <>
+              <AddToCartButton product={product} size="md" fullWidth={isGrid} />
+              <RequestQuoteButton
+                product={{ name: product.name, slug: product.slug, sku: product.sku }}
+                label="Request a quote"
+                className={cn("h-11", isGrid && "w-full")}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>

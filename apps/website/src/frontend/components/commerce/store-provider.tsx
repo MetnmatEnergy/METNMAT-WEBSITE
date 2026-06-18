@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { unitPriceForQty, type Product } from "@/frontend/lib/catalog";
+import { unitPriceForQty, clampQty, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 
 // Cart/wishlist store a product SNAPSHOT taken at add-time (denormalized) so the
 // website no longer depends on static catalog data — products come from the CMS.
@@ -10,6 +10,8 @@ type CartLine = { slug: string; qty: number; product: Product; unitPrice: number
 
 type Store = {
   cart: CartItem[];
+  /** True once localStorage has been read — guards against a "false empty" flash. */
+  ready: boolean;
   addToCart: (product: Product, qty?: number) => void;
   setQty: (slug: string, qty: number) => void;
   removeFromCart: (slug: string) => void;
@@ -39,10 +41,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     try {
-      // Sanitize: drop any legacy/invalid entries (old {slug,qty} shape, strings).
+      // Sanitize: drop any legacy/invalid entries (old {slug,qty} shape, strings)
+      // and self-heal each line's qty to its MOQ/cap so a stale cart can never
+      // show a quantity the server would silently change at checkout.
       const c = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
       setCart(
-        Array.isArray(c) ? c.filter((i) => i && i.product && i.product.slug) : []
+        Array.isArray(c)
+          ? c
+              .filter((i) => i && i.product && i.product.slug)
+              .map((i) => ({ ...i, qty: clampQty(i.product, i.qty) }))
+          : []
       );
       const w = JSON.parse(localStorage.getItem(WISH_KEY) || "[]");
       setWishlist(
@@ -62,22 +70,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [wishlist, ready]);
 
   const addToCart = React.useCallback((product: Product, qty = 1) => {
+    // Quote-only items (no price) can't be bought online — they go through RFQ.
+    if (isQuoteOnly(product)) return;
     setCart((prev) => {
       const existing = prev.find((i) => i.product.slug === product.slug);
       if (existing) {
+        // clampQty floors to MOQ and caps at MAX_ORDER_QTY, so the cart qty can
+        // never be a value the server will silently change at checkout.
         return prev.map((i) =>
-          i.product.slug === product.slug ? { ...i, qty: i.qty + qty, product } : i
+          i.product.slug === product.slug
+            ? { ...i, qty: clampQty(product, i.qty + qty), product }
+            : i
         );
       }
-      return [...prev, { product, qty }];
+      return [...prev, { product, qty: clampQty(product, qty) }];
     });
   }, []);
 
   const setQty = React.useCallback((slug: string, qty: number) => {
+    // Floor to the product's MOQ (never below) and cap at MAX_ORDER_QTY, so the
+    // displayed quantity always matches what gets charged. Removal goes through
+    // removeFromCart (e.g. the cart-rail trash action at MOQ).
     setCart((prev) =>
-      prev
-        .map((i) => (i.product.slug === slug ? { ...i, qty: Math.max(1, qty) } : i))
-        .filter((i) => i.qty > 0)
+      prev.map((i) => (i.product.slug === slug ? { ...i, qty: clampQty(i.product, qty) } : i))
     );
   }, []);
 
@@ -125,6 +140,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const value: Store = {
     cart,
+    ready,
     addToCart,
     setQty,
     removeFromCart,

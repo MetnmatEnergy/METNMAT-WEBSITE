@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { getProductBySlug, getUsdRate } from "@/frontend/lib/cms";
-import { unitPriceForQty, inclGST, gstPortionOf } from "@/frontend/lib/catalog";
+import { unitPriceForQty, inclGST, gstPortionOf, clampQty, usdFor } from "@/frontend/lib/catalog";
 import { createRazorpayOrder, razorpayConfigured, razorpayKeyId } from "@/backend/lib/razorpay";
 import { createOrder, type OrderItemInput } from "@/backend/services/orders.service";
 import { getCurrentCustomer } from "@/backend/lib/customer";
+import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
 
 /**
  * POST /api/checkout/create-order
@@ -34,6 +35,15 @@ type Body = {
 const bad = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status });
 
 export async function POST(req: Request) {
+  // Throttle: this endpoint hits the Razorpay API and writes a CMS order per call.
+  const rl = rateLimit(`checkout:${clientIp(req)}`, 12, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many checkout attempts. Please wait a moment and try again." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } }
+    );
+  }
+
   if (!razorpayConfigured()) {
     return bad(
       "Online payment is not configured yet. Please use 'Request a quote' or contact us to order.",
@@ -53,22 +63,50 @@ export async function POST(req: Request) {
   if (!name || !email || !/^\S+@\S+\.\S+$/.test(email)) {
     return bad("Please provide your name and a valid email.");
   }
+
+  // Phone + shipping address are required server-side too (not just in the UI),
+  // so a direct API call can never create a payable order we can't fulfil.
+  const phone = body.customer?.phone?.trim() || "";
+  if (phone.replace(/\D/g, "").length < 8) {
+    return bad("Please provide a valid phone number.");
+  }
+  const addr = body.address ?? {};
+  const country = (addr.country || "India").trim();
+  const isIndia = /^india$/i.test(country);
+  if (!addr.line1?.trim()) return bad("A shipping address (line 1) is required.");
+  if (!addr.city?.trim()) return bad("Please provide a shipping city.");
+  if (isIndia) {
+    if (!addr.state?.trim()) return bad("Please provide the state for shipping within India.");
+    if (!/^\d{6}$/.test((addr.pincode || "").trim())) {
+      return bad("Please provide a valid 6-digit PIN code.");
+    }
+  } else if (!addr.pincode?.trim()) {
+    return bad("Please provide a postal / ZIP code.");
+  }
+
   const items = (body.items ?? []).filter(
     (i) => typeof i.slug === "string" && i.slug && Number.isFinite(i.qty) && (i.qty as number) > 0
   );
   if (!items.length) return bad("Your cart is empty.");
   if (items.length > 50) return bad("Too many items in one order.");
 
-  // Recompute every price from the CMS (GST-inclusive, tier-aware).
+  // Recompute every price from the CMS (GST-inclusive, tier-aware). usdApprox is
+  // summed PER LINE with the same logic the storefront uses (manual usdPrice
+  // override, else live-rate convert) so the USD shown inside the Razorpay modal
+  // matches the USD shown on the checkout page.
+  const usdRate = await getUsdRate();
   const orderItems: OrderItemInput[] = [];
+  let usdApprox = 0;
   for (const i of items) {
     const product = await getProductBySlug(i.slug as string);
     if (!product) return bad(`Product not found: ${i.slug}`);
     if (!product.price) {
       return bad(`"${product.name}" is quote-only — please request a quote for it.`);
     }
-    const qty = Math.min(Math.max(Math.round(i.qty as number), product.moq || 1), 10_000);
+    // Same clamp the cart uses client-side → the charged qty equals the shown qty.
+    const qty = clampQty(product, i.qty as number);
     const unitIncl = inclGST(unitPriceForQty(product, qty));
+    usdApprox += usdFor(product, unitIncl * qty) ?? (unitIncl * qty) / usdRate;
     orderItems.push({
       productName: product.name,
       slug: product.slug,
@@ -84,14 +122,13 @@ export async function POST(req: Request) {
 
   // Capture what the customer saw (display context — the charge stays INR).
   const displayCurrency: "INR" | "USD" = body.displayCurrency === "USD" ? "USD" : "INR";
-  const usdRate = await getUsdRate();
   const totalUsdApprox =
-    displayCurrency === "USD" ? Math.round((total / usdRate) * 100) / 100 : undefined;
+    displayCurrency === "USD" ? Math.round(usdApprox * 100) / 100 : undefined;
 
   // Human-friendly order number: MM-YYYYMMDD-XXXX
   const now = new Date();
   const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-  const orderNumber = `MM-${ymd}-${crypto.randomUUID().slice(0, 4).toUpperCase()}`;
+  const orderNumber = `MM-${ymd}-${crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()}`;
 
   // 1) Razorpay order (source of truth for the charge).
   let rzp;
@@ -122,7 +159,7 @@ export async function POST(req: Request) {
     city: body.address?.city,
     state: body.address?.state,
     pincode: body.address?.pincode,
-    country: body.address?.country || "India",
+    country,
     gstin: body.gstin,
     businessName: body.businessName,
     items: orderItems,
