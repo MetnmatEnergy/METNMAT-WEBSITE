@@ -79,6 +79,7 @@ type CmsProduct = {
   sizes?: { label?: string }[];
   shortDesc?: string;
   images?: { image?: Media }[];
+  createdAt?: string;
 };
 
 function mapProduct(d: CmsProduct): Product {
@@ -106,6 +107,7 @@ function mapProduct(d: CmsProduct): Product {
     badges: d.badges ?? [],
     imageUrl: imgs[0],
     images: imgs,
+    createdAt: d.createdAt,
   };
 }
 
@@ -121,7 +123,9 @@ function mapCategory(d: CmsCategory): Category {
 
 // ── Products ──────────────────────────────────────────────────────────────────
 export async function getAllProducts(): Promise<Product[]> {
-  const data = await api<{ docs: CmsProduct[] }>("/api/products?depth=1&limit=200");
+  // High cap: the storefront filters/sorts/paginates in-memory (the catalog is
+  // small). If it ever grows past this, move paging server-side into the query.
+  const data = await api<{ docs: CmsProduct[] }>("/api/products?depth=1&limit=500&sort=-createdAt");
   return (data?.docs ?? []).map(mapProduct);
 }
 

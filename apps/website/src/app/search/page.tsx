@@ -7,6 +7,7 @@ import { SearchBar } from "@/frontend/components/commerce/search-bar";
 import { SortSelect } from "@/frontend/components/commerce/sort-select";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { searchSite, searchProducts, getFeaturedProducts } from "@/frontend/lib/cms";
+import { sortProducts } from "@/frontend/lib/shop-query";
 
 export const metadata: Metadata = {
   title: "Search",
@@ -16,17 +17,18 @@ export const metadata: Metadata = {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; scope?: string }>;
+  searchParams: Promise<{ q?: string; scope?: string; sort?: string }>;
 }) {
-  const { q = "", scope } = await searchParams;
+  const { q = "", scope, sort = "relevance" } = await searchParams;
   const query = q.trim();
   const productsOnly = scope === "products";
 
-  const { products, links } = query
+  const { products: rawProducts, links } = query
     ? productsOnly
       ? { products: await searchProducts(query), links: [] }
       : await searchSite(query)
     : { products: await getFeaturedProducts(8), links: [] };
+  const products = sortProducts(rawProducts, sort);
   const total = products.length + links.length;
 
   const LINK_ICON: Record<SiteLinkType, typeof FileText> = {

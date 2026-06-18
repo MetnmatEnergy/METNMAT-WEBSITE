@@ -54,6 +54,7 @@ export type Product = {
   reviews?: Review[];
   imageUrl?: string; // CMS-managed primary image
   images?: string[]; // CMS-managed gallery
+  createdAt?: string; // CMS document creation date (ISO) — used for "Newest" sort
 };
 
 export type Deal = { title: string; subtitle: string; href: string };
