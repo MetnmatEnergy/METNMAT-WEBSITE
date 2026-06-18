@@ -12,6 +12,9 @@ dist/
 .env
 .env*.local
 
+# backups (may contain secrets — e.g. .env.supabase.bak)
+*.bak
+
 # logs
 *.log
 npm-debug.log*
