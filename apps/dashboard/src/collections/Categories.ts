@@ -2,6 +2,9 @@ import type { CollectionConfig } from "payload";
 import { canManageCatalog, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
+// A category rename changes products' subcategory label (and can shift the bot's
+// 5-value enum bucket), so a category edit must also resync the chatbot catalog.
+import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
 
 export const Categories: CollectionConfig = {
   slug: "categories",
@@ -33,7 +36,7 @@ export const Categories: CollectionConfig = {
     { name: "order", type: "number", defaultValue: 0, admin: { description: "Sort order." } },
   ],
   hooks: {
-    afterChange: [auditAfterChange, revalidateWebsiteAfterChange],
-    afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete],
+    afterChange: [auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
+    afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete, syncChatbotAfterDelete],
   },
 };

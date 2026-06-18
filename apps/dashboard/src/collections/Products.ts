@@ -2,6 +2,7 @@ import type { CollectionConfig } from "payload";
 import { canManageCatalog, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
+import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
 
 export const Products: CollectionConfig = {
   slug: "products",
@@ -109,7 +110,7 @@ export const Products: CollectionConfig = {
     { name: "badges", type: "select", hasMany: true, options: ["Bestseller", "New", "GST invoice", "Made by METNMAT"] },
   ],
   hooks: {
-    afterChange: [auditAfterChange, revalidateWebsiteAfterChange],
-    afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete],
+    afterChange: [auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
+    afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete, syncChatbotAfterDelete],
   },
 };

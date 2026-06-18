@@ -4,11 +4,14 @@ import { PageHero } from "@/frontend/components/layout/page-hero";
 import { ServiceCard } from "@/frontend/components/cards/service-card";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { getServices } from "@/frontend/lib/cms";
+import { pageMetadata } from "@/frontend/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Services",
-  description: "Materials & metallurgy R&D services from METNMAT.",
-};
+  description:
+    "Materials & metallurgy R&D services from METNMAT — product & process development, applied research, benchmarking, microstructure & heat treatment, and modeling & simulation.",
+  path: "/services",
+});
 
 export default async function ServicesPage() {
   const services = await getServices();

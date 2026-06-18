@@ -4,7 +4,6 @@ import { buildConfig } from "payload";
 import { mongooseAdapter } from "@payloadcms/db-mongodb";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { gcsStorage } from "@payloadcms/storage-gcs";
-import { s3Storage } from "@payloadcms/storage-s3";
 import sharp from "sharp";
 
 import { Users } from "./collections/Users";
@@ -30,56 +29,32 @@ import { resendAdapter } from "./lib/email-adapter";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Object storage is provider-agnostic and auto-detected from env:
-//   1. Supabase Storage (S3-compatible) — if SUPABASE_S3_* vars are set (primary)
-//   2. Google Cloud Storage             — else if GCS_* vars are set (deployment shift)
-//   3. Local disk (staticDir)           — otherwise (default for dev)
-const useSupabase = Boolean(
-  process.env.SUPABASE_S3_ENDPOINT &&
-    process.env.SUPABASE_S3_ACCESS_KEY_ID &&
-    process.env.SUPABASE_BUCKET
-);
-const useGCS = !useSupabase && Boolean(process.env.GCS_BUCKET && process.env.GCS_PROJECT_ID);
+// Object storage: Google Cloud Storage (private bucket; media served via Payload).
+// Enabled when GCS_BUCKET + GCS_PROJECT_ID are set. On Cloud Run the attached
+// service account supplies credentials automatically (no key file); locally use
+// GCS_KEY_FILENAME or `gcloud auth application-default login` (ADC).
+// Falls back to local disk only when unset (dev convenience).
+const useGCS = Boolean(process.env.GCS_BUCKET && process.env.GCS_PROJECT_ID);
 
-// Same collections get cloud storage regardless of provider.
 const storageCollections = {
   media: true,
   documents: true,
   "enquiry-uploads": true,
 } as const;
 
-const storagePlugins = useSupabase
+const storagePlugins = useGCS
   ? [
-      s3Storage({
+      gcsStorage({
         enabled: true,
         collections: storageCollections,
-        bucket: process.env.SUPABASE_BUCKET || "",
-        config: {
-          // Supabase Storage S3-compatible endpoint:
-          //   https://<project-ref>.supabase.co/storage/v1/s3
-          endpoint: process.env.SUPABASE_S3_ENDPOINT || "",
-          region: process.env.SUPABASE_S3_REGION || "us-east-1",
-          credentials: {
-            accessKeyId: process.env.SUPABASE_S3_ACCESS_KEY_ID || "",
-            secretAccessKey: process.env.SUPABASE_S3_SECRET_ACCESS_KEY || "",
-          },
-          forcePathStyle: true, // Supabase requires path-style addressing
+        bucket: process.env.GCS_BUCKET || "",
+        options: {
+          projectId: process.env.GCS_PROJECT_ID,
+          keyFilename: process.env.GCS_KEY_FILENAME, // undefined → ADC
         },
       }),
     ]
-  : useGCS
-    ? [
-        gcsStorage({
-          enabled: true,
-          collections: storageCollections,
-          bucket: process.env.GCS_BUCKET || "",
-          options: {
-            projectId: process.env.GCS_PROJECT_ID,
-            keyFilename: process.env.GCS_KEY_FILENAME,
-          },
-        }),
-      ]
-    : [];
+  : [];
 
 export default buildConfig({
   admin: {

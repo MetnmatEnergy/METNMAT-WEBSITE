@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Hero } from "@/frontend/components/home/hero";
 import { TrustedBy } from "@/frontend/components/home/trusted-by";
 import { ServicesPreview } from "@/frontend/components/home/services-preview";
@@ -8,6 +9,10 @@ import { Faq } from "@/frontend/components/home/faq";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/frontend/components/seo/json-ld";
 import { getHomepage, getServices, getBlogPosts, getClients, getFaqs } from "@/frontend/lib/cms";
+
+// Self-canonical for the homepage. The root layout no longer forces canonical
+// "/" on every route (Next merges metadata down the tree), so each page sets its own.
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
   const [home, services, posts, logos, faqs] = await Promise.all([

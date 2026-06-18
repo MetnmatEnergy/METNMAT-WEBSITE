@@ -13,7 +13,7 @@ import { getAllCategories, getNavigation } from "@/frontend/lib/cms";
 import { mainNav } from "@/frontend/lib/site";
 
 const iconLink =
-  "flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-muted";
+  "flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-all hover:bg-muted hover:border-foreground/20 active:scale-95";
 
 export async function SiteHeader() {
   const [categories, nav] = await Promise.all([getAllCategories(), getNavigation()]);
@@ -29,8 +29,9 @@ export async function SiteHeader() {
           <SearchBar compact className="w-full max-w-xl" />
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="hidden items-center gap-2 sm:flex">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Primary actions: profile · wishlist · cart — grouped as one cluster */}
+          <span className="hidden items-center gap-1 sm:flex">
             <Link href="/search" aria-label="Search the site" className={`${iconLink} md:hidden`}>
               <Search className="h-[18px] w-[18px]" />
             </Link>
@@ -38,9 +39,12 @@ export async function SiteHeader() {
               <User className="h-[18px] w-[18px]" />
             </Link>
             <WishlistBadgeButton />
-            <ThemeToggle />
             <CartButton />
           </span>
+
+          {/* Divider keeps the theme toggle visually separate from the actions */}
+          <span className="hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
+          <ThemeToggle className="hidden sm:inline-flex" />
 
           <GetQuoteButton className="hidden sm:inline-flex" />
 

@@ -1,0 +1,36 @@
+# Build + DEPLOY the METNMAT dashboard (Payload CMS) — push-to-main Cloud Build trigger.
+# Image-only deploy: env vars, secrets and the runtime service account are inherited
+# from the existing metnmat-dashboard service. Build SA needs run.admin +
+# iam.serviceAccountUser (on payload-storage-sa) + artifactregistry.writer + logging.logWriter.
+substitutions:
+  _REGION: asia-south1
+  _REPO: metnmat
+steps:
+  - name: gcr.io/cloud-builders/docker
+    id: build
+    args:
+      - build
+      - -f
+      - Dockerfile.dashboard
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:latest
+      - .
+  - name: gcr.io/cloud-builders/docker
+    id: push
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:latest
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    id: deploy
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - metnmat-dashboard
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:latest
+      - --region=${_REGION}
+      - --quiet
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1800s

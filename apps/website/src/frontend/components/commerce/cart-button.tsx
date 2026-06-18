@@ -23,7 +23,7 @@ export function CartButton() {
     <Link
       href="/cart"
       aria-label={`Cart, ${cartCount} item${cartCount === 1 ? "" : "s"}`}
-      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-muted"
+      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-all hover:bg-muted hover:border-foreground/20 active:scale-95"
     >
       <ShoppingCart className="h-[18px] w-[18px]" />
       <Badge count={cartCount} />
@@ -37,7 +37,7 @@ export function WishlistBadgeButton() {
     <Link
       href="/wishlist"
       aria-label={`Wishlist, ${wishlistCount} item${wishlistCount === 1 ? "" : "s"}`}
-      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-muted"
+      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-all hover:bg-muted hover:border-foreground/20 active:scale-95"
     >
       <Heart className="h-[18px] w-[18px]" />
       <Badge count={wishlistCount} />

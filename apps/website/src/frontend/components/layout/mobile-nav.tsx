@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { mainNav } from "@/frontend/lib/site";
 import { useQuote } from "@/frontend/components/commerce/quote-provider";
 import { cn } from "@/frontend/lib/utils";
+import { ThemeToggle } from "@/frontend/components/theme-toggle";
 
 type NavItem = { label: string; href: string };
 
@@ -67,6 +68,10 @@ export function MobileNav({ items = mainNav }: { items?: NavItem[] }) {
                   {l.label}
                 </Link>
               ))}
+            </div>
+            <div className="mt-2 flex items-center justify-between rounded-lg bg-surface px-3 py-2.5">
+              <span className="text-sm font-medium text-foreground/80">Theme</span>
+              <ThemeToggle />
             </div>
             <button
               type="button"

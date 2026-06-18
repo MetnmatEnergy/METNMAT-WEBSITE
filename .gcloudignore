@@ -1,0 +1,15 @@
+# What NOT to upload to Cloud Build (keeps the upload small + secrets out).
+.git/
+*.log
+**/node_modules/
+**/.next/
+**/.turbo/
+**/dist/
+**/build/
+.claude/
+**/.env
+**/.env.local
+**/.env.*.local
+**/*.supabase.bak
+start-*.cjs
+README.md

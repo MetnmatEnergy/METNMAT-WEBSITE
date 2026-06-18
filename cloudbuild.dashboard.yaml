@@ -1,0 +1,20 @@
+# Build + push the METNMAT dashboard (Payload CMS) image to Artifact Registry.
+# Run from the monorepo root:
+#   gcloud builds submit --config cloudbuild.dashboard.yaml .
+substitutions:
+  _REGION: asia-south1
+  _REPO: metnmat
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Dockerfile.dashboard
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:latest
+      - .
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:latest
+options:
+  machineType: E2_HIGHCPU_8
+timeout: 1800s

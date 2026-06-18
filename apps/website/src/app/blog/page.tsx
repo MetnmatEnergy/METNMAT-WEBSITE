@@ -3,11 +3,14 @@ import { Container } from "@/frontend/components/ui/container";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { BlogCard } from "@/frontend/components/cards/blog-card";
 import { getBlogPosts } from "@/frontend/lib/cms";
+import { pageMetadata } from "@/frontend/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Blog",
-  description: "Research notes, insights and company news.",
-};
+  description:
+    "Research notes, technical deep-dives and company news from METNMAT's metallurgy & materials R&D lab.",
+  path: "/blog",
+});
 
 export default async function BlogPage() {
   const blogPosts = await getBlogPosts();

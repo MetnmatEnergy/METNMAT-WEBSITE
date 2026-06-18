@@ -1,7 +1,16 @@
-// The CMS/dashboard host (serves uploaded media/documents) + Supabase storage,
+// The CMS/dashboard host (serves uploaded media/documents) + Google Cloud Storage,
 // so browser <img> tags and fetches to them aren't blocked by CSP.
 const CMS_ORIGIN = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
-const STORAGE_ORIGINS = "https://*.supabase.co https://*.storage.supabase.co";
+const STORAGE_ORIGINS = "https://storage.googleapis.com";
+// Parse the CMS origin into next/image remotePattern parts (protocol w/o ":").
+const cmsImageHost = (() => {
+  try {
+    const u = new URL(CMS_ORIGIN);
+    return { protocol: u.protocol.replace(":", ""), hostname: u.hostname, port: u.port };
+  } catch {
+    return { protocol: "http", hostname: "localhost", port: "3001" };
+  }
+})();
 // The chatbot host (separate service). It serves widget.js (a <script>), the chat
 // UI in an <iframe>, and product images — so script-src / frame-src / img-src /
 // connect-src must allow it, or the CSP blocks the chat bubble entirely.
@@ -50,9 +59,16 @@ const nextConfig = {
   transpilePackages: ["@metnmat/types"],
   images: {
     // CMS/dashboard media host + Supabase storage, for any next/image usage.
+    // The CMS host is derived from NEXT_PUBLIC_CMS_URL so production media
+    // (e.g. https://admin.metnmat.com) isn't blocked — falls back to localhost.
     remotePatterns: [
+      {
+        protocol: cmsImageHost.protocol,
+        hostname: cmsImageHost.hostname,
+        ...(cmsImageHost.port ? { port: cmsImageHost.port } : {}),
+      },
       { protocol: "http", hostname: "localhost", port: "3001" },
-      { protocol: "https", hostname: "**.supabase.co" },
+      { protocol: "https", hostname: "storage.googleapis.com" },
     ],
   },
   async headers() {

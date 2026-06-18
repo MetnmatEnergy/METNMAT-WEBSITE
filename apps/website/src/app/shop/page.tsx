@@ -9,12 +9,14 @@ import { CatalogProductCard } from "@/frontend/components/commerce/catalog-produ
 import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { ShopShowcase } from "@/frontend/components/commerce/shop-showcase";
 import { getTopCategories, getFeaturedProducts } from "@/frontend/lib/cms";
+import { pageMetadata } from "@/frontend/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Shop — Electrodes, Membranes, Cells & Lab Equipment",
   description:
     "Buy lab-grade electrochemistry equipment — reference/counter/working electrodes, ion-exchange membranes (PEM/AEM/BPM/CEM), electrochemical cells & reactors, peristaltic pumps, MEA fabrication presses and accessories. Bulk B2B pricing, GST invoice, pan-India + worldwide shipping.",
-};
+  path: "/shop",
+});
 
 export default async function ShopHomePage() {
   const [categories, featured] = await Promise.all([

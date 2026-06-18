@@ -4,11 +4,14 @@ import { PageHero } from "@/frontend/components/layout/page-hero";
 import { ProjectCard } from "@/frontend/components/cards/project-card";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { getProjects } from "@/frontend/lib/cms";
+import { pageMetadata } from "@/frontend/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Projects",
-  description: "Case studies and delivered R&D projects.",
-};
+  description:
+    "METNMAT case studies and delivered R&D projects — high-conductivity oxygen-free copper alloys, microstructure & heat-treatment optimization, and lab-to-industrial scale-ups.",
+  path: "/projects",
+});
 
 export default async function ProjectsPage() {
   const projects = await getProjects();

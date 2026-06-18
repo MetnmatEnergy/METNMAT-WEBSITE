@@ -29,6 +29,7 @@ export async function generateMetadata({
   return {
     title: product ? `${product.name} — ${product.brand}` : "Product",
     description: product?.shortDesc,
+    alternates: { canonical: `/shop/p/${slug}` },
   };
 }
 

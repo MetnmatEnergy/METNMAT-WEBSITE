@@ -5,12 +5,14 @@ import { PageHero } from "@/frontend/components/layout/page-hero";
 import { Card } from "@/frontend/components/ui/card";
 import { ContactForm } from "@/frontend/components/commerce/contact-form";
 import { site } from "@/frontend/lib/site";
+import { pageMetadata } from "@/frontend/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Contact",
   description:
-    "Get in touch with METNMAT Research & Innovations — discuss a materials R&D project, request a quote, or visit our offices in West Bengal and Odisha.",
-};
+    "Get in touch with METNMAT Research & Innovations — discuss a materials R&D project, request a quote, or visit our offices in West Bengal (Howrah) and Odisha (Sambalpur).",
+  path: "/contact",
+});
 
 // Address used for the embedded map (West Bengal HQ).
 const MAP_QUERY = "Jalan Industrial Complex, Domjur, Howrah, West Bengal 711411";
