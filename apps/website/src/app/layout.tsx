@@ -53,7 +53,6 @@ export async function generateMetadata(): Promise<Metadata> {
       "oxygen-free copper",
       "turnkey R&D solutions",
       "Howrah West Bengal",
-      "Sambalpur Odisha",
     ],
     openGraph: {
       type: "website",

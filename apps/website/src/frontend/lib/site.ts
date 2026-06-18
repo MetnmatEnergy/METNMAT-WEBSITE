@@ -19,7 +19,7 @@ export const site = {
     shipping: "Shipping across India & worldwide",
   },
 
-  // Office addresses (METNMAT Research & Innovations).
+  // Office address (METNMAT Research & Innovations).
   addresses: [
     {
       label: "West Bengal",
@@ -28,10 +28,6 @@ export const site = {
         "Bipranna Para, Via Begri, Domjur,",
         "Howrah, West Bengal – 711411",
       ],
-    },
-    {
-      label: "Odisha",
-      lines: ["Banka House, Marwaripada, Golbazar,", "Sambalpur, Odisha – 768001"],
     },
   ],
 

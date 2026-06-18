@@ -10,9 +10,6 @@ import {
   FlaskConical,
   Factory,
   Wrench,
-  Lightbulb,
-  DraftingCompass,
-  TrendingUp,
   GraduationCap,
   SlidersHorizontal,
   Gauge,
@@ -26,6 +23,7 @@ import { Card, MediaPlaceholder } from "@/frontend/components/ui/card";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { Reveal } from "@/frontend/components/ui/reveal";
 import { HandWrittenTitle } from "@/frontend/components/ui/hand-writing-text";
+import { ProcessOrbit } from "@/frontend/components/about/process-orbit";
 import { AnimatedShaderBackground } from "@/frontend/components/ui/animated-shader-background";
 import { getHomepage, getTeam } from "@/frontend/lib/cms";
 import { pageMetadata } from "@/frontend/lib/seo";
@@ -47,13 +45,6 @@ const capabilities = [
   { icon: FlaskConical, label: "Lab-scale prototype development" },
   { icon: Factory, label: "Industrial process scale-up" },
   { icon: Wrench, label: "Research equipment & custom systems" },
-];
-
-const approach = [
-  { icon: Lightbulb, step: "01", title: "Concept", body: "We map your technical requirement and the real process challenge behind it." },
-  { icon: DraftingCompass, step: "02", title: "Design", body: "We design the experiment, material or system — grounded in science and engineering." },
-  { icon: FlaskConical, step: "03", title: "Validation", body: "We build and test at lab and pilot scale until the result is proven and repeatable." },
-  { icon: TrendingUp, step: "04", title: "Scale-up", body: "We take the validated solution to cost-effective, reliable industrial implementation." },
 ];
 
 const why = [
@@ -92,7 +83,7 @@ export default async function AboutPage() {
           />
 
           <Reveal delay={0.1}>
-            <p className="mx-auto -mt-4 max-w-2xl text-base leading-relaxed text-foreground/75 sm:text-lg">
+            <p className="mx-auto mt-2 max-w-2xl text-base leading-relaxed text-foreground/75 sm:text-lg">
               METNMAT Innovations develops advanced materials, electrochemical systems, reactors,
               catalysts, membranes, and research equipment for industry, academia, and R&amp;D laboratories.
             </p>
@@ -245,31 +236,12 @@ export default async function AboutPage() {
               title="Concept → Design → Validation → Scale-up"
               align="center"
               className="mx-auto"
-              description="Practical, collaborative and result-oriented — technically sound, cost-effective and scalable at every step."
+              description="A continuous orbit, not a checklist — explore each stage of how we turn a hard materials problem into a working, scalable result."
             />
           </Reveal>
-          <div className="relative mt-14">
-            <div
-              className="absolute inset-x-0 top-7 hidden h-px bg-gradient-to-r from-transparent via-brand/40 to-transparent lg:block"
-              aria-hidden="true"
-            />
-            <div className="grid gap-8 lg:grid-cols-4">
-              {approach.map((a, i) => (
-                <Reveal key={a.title} delay={i * 0.1}>
-                  <div className="relative flex flex-col items-start">
-                    <span className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-background text-brand shadow-sm">
-                      <a.icon className="h-6 w-6" />
-                    </span>
-                    <span className="mt-4 font-display text-xs font-bold uppercase tracking-[0.2em] text-brand-soft">
-                      {a.step}
-                    </span>
-                    <h3 className="mt-1 font-display text-lg font-semibold">{a.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{a.body}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
+          <Reveal delay={0.1} className="mt-12">
+            <ProcessOrbit />
+          </Reveal>
         </Container>
       </section>
 
