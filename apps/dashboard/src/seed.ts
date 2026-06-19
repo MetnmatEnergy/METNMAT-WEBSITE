@@ -152,16 +152,13 @@ export async function ensureSuperAdmin(payload: Payload): Promise<void> {
       sort: "createdAt",
       overrideAccess: true,
     });
-    const roleState = users.docs
-      .map((u) => `${(u as { name?: string }).name || u.id}=[${((u as { roles?: string[] }).roles || []).join(",")}]`)
-      .join("; ");
-    payload.logger.info(`[seed] ${users.docs.length} user(s); roles: ${roleState || "(none)"}`);
+    const docs = users.docs as unknown as Array<{ id: string | number; name?: string; roles?: string[] }>;
+    const roleState = docs.map((u) => `${u.name || u.id}=[${(u.roles || []).join(",")}]`).join("; ");
+    payload.logger.info(`[seed] ${docs.length} user(s); roles: ${roleState || "(none)"}`);
 
-    const hasSuper = users.docs.some(
-      (u) => Array.isArray((u as { roles?: string[] }).roles) && (u as { roles: string[] }).roles.includes("super-admin"),
-    );
-    if (!hasSuper && users.docs[0]) {
-      const target = users.docs[0] as { id: string | number; name?: string; roles?: string[] };
+    const hasSuper = docs.some((u) => Array.isArray(u.roles) && u.roles.includes("super-admin"));
+    if (!hasSuper && docs[0]) {
+      const target = docs[0];
       const roles = Array.from(new Set([...(target.roles || []), "super-admin"]));
       await payload.update({
         collection: "users",
