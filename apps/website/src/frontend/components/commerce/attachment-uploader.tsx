@@ -11,6 +11,14 @@ import {
   Loader2,
   RotateCw,
 } from "lucide-react";
+import { ProgressiveFluxLoader } from "@/frontend/components/ui/progressive-flux-loader";
+
+/** Phase labels for the overall upload progress bar. */
+const UPLOAD_PHASES = [
+  { at: 0, label: "uploading" },
+  { at: 85, label: "processing" },
+  { at: 100, label: "complete" },
+];
 
 export type UploadItem = {
   key: string;
@@ -191,6 +199,16 @@ export function AttachmentUploader({
     startUpload(key, f);
   }
 
+  // Overall upload progress across all attachments (done counts as 100%), used
+  // to drive the flux progress bar while any file is still uploading.
+  const uploadingCount = items.filter((i) => i.status === "uploading").length;
+  const overallProgress = items.length
+    ? Math.round(
+        items.reduce((sum, i) => sum + (i.status === "done" ? 100 : i.progress), 0) /
+          items.length,
+      )
+    : 0;
+
   return (
     <div className="rounded-xl border border-dashed border-input bg-surface/60 p-4">
       <div className="flex flex-wrap gap-2">
@@ -239,6 +257,22 @@ export function AttachmentUploader({
           e.target.value = "";
         }}
       />
+
+      {/* Overall upload progress — animated flux bar while any file is uploading. */}
+      {uploadingCount > 0 && (
+        <div className="mt-3">
+          <ProgressiveFluxLoader
+            value={overallProgress}
+            phases={UPLOAD_PHASES}
+            showLabel={false}
+            className="max-w-none gap-0"
+            barClassName="h-2.5"
+          />
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Uploading {uploadingCount} file{uploadingCount === 1 ? "" : "s"}… {overallProgress}%
+          </p>
+        </div>
+      )}
 
       {items.length > 0 && (
         <ul className="mt-3 space-y-2">
