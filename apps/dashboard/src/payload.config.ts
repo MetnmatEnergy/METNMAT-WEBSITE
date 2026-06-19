@@ -29,6 +29,22 @@ import { resendAdapter } from "./lib/email-adapter";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Browser origins trusted for the auth cookie (CSRF) and cross-origin API (CORS).
+// MUST include the dashboard's OWN public origin — otherwise Payload ignores the
+// admin's auth cookie on writes (it only honours the cookie for origins in this
+// list), so every save fails with "You are not allowed to perform this action"
+// even for a super-admin. Prod resolves to admin.metnmat.com via CMS_URL; dev to
+// http://localhost:3001 via NEXT_PUBLIC_SERVER_URL. The public website is added
+// so it can read the API cross-origin.
+const SELF_URL = (
+  process.env.CMS_URL ||
+  process.env.NEXT_PUBLIC_SERVER_URL ||
+  "http://localhost:3001"
+).replace(/\/+$/, "");
+const trustedOrigins = Array.from(
+  new Set([SELF_URL, (process.env.WEBSITE_URL || "").replace(/\/+$/, "")].filter(Boolean)),
+);
+
 // Object storage: Google Cloud Storage (private bucket; media served via Payload).
 // Enabled when GCS_BUCKET + GCS_PROJECT_ID are set. On Cloud Run the attached
 // service account supplies credentials automatically (no key file); locally use
@@ -97,6 +113,7 @@ export default buildConfig({
   ],
   globals,
   onInit: async (payload) => {
+    payload.logger.info(`[config] trusted origins (cors/csrf): ${trustedOrigins.join(", ") || "(none)"}`);
     await seed(payload);
   },
   editor: lexicalEditor(),
@@ -106,7 +123,7 @@ export default buildConfig({
   sharp,
   upload: { limits: { fileSize: 25_000_000 } },
   typescript: { outputFile: path.resolve(dirname, "payload-types.ts") },
-  cors: [process.env.WEBSITE_URL || ""].filter(Boolean),
-  csrf: [process.env.WEBSITE_URL || ""].filter(Boolean),
+  cors: trustedOrigins,
+  csrf: trustedOrigins,
   plugins: storagePlugins,
 });

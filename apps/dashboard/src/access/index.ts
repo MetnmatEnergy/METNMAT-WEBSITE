@@ -48,3 +48,13 @@ export const internalOrCanManageCatalog: Access = (args) => {
 // ── Field-level access ────────────────────────────────────────────────────────
 export const fieldSuperAdmin: FieldAccess = ({ req: { user } }) =>
   hasRole(user as UserLike, "super-admin");
+
+/**
+ * The `roles` field is writable by a super-admin — PLUS, only during first-user
+ * bootstrap (no user exists yet), by the unauthenticated create. Without that
+ * bootstrap allowance the very first account is saved with its role STRIPPED
+ * (there is no super-admin yet to satisfy the check), so nobody can do anything
+ * and the admin shows "You are not allowed to perform this action."
+ */
+export const fieldRolesCreate: FieldAccess = ({ req: { user } }) =>
+  !user || hasRole(user as UserLike, "super-admin");

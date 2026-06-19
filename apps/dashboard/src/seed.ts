@@ -134,7 +134,52 @@ async function seedContent(payload: Payload): Promise<void> {
   }
 }
 
+/**
+ * Self-healing RBAC bootstrap. A first user created before the roles-field
+ * access was bootstrap-safe could be saved with NO roles — locking everyone out
+ * ("You are not allowed to perform this action"). On every boot, if no account
+ * has the `super-admin` role, promote the earliest-created user to super-admin
+ * so the dashboard always has a working administrator. Idempotent: once a
+ * super-admin exists it does nothing. Uses overrideAccess so the write can't be
+ * blocked by the very field-access rule we're recovering from.
+ */
+export async function ensureSuperAdmin(payload: Payload): Promise<void> {
+  try {
+    const users = await payload.find({
+      collection: "users",
+      limit: 200,
+      depth: 0,
+      sort: "createdAt",
+      overrideAccess: true,
+    });
+    const roleState = users.docs
+      .map((u) => `${(u as { name?: string }).name || u.id}=[${((u as { roles?: string[] }).roles || []).join(",")}]`)
+      .join("; ");
+    payload.logger.info(`[seed] ${users.docs.length} user(s); roles: ${roleState || "(none)"}`);
+
+    const hasSuper = users.docs.some(
+      (u) => Array.isArray((u as { roles?: string[] }).roles) && (u as { roles: string[] }).roles.includes("super-admin"),
+    );
+    if (!hasSuper && users.docs[0]) {
+      const target = users.docs[0] as { id: string | number; name?: string; roles?: string[] };
+      const roles = Array.from(new Set([...(target.roles || []), "super-admin"]));
+      await payload.update({
+        collection: "users",
+        id: target.id,
+        data: { roles },
+        overrideAccess: true,
+      });
+      payload.logger.warn(
+        `[seed] No super-admin found — promoted earliest user '${target.name || target.id}' to super-admin.`,
+      );
+    }
+  } catch (e) {
+    payload.logger.error(`[seed] ensureSuperAdmin failed: ${(e as Error).message}`);
+  }
+}
+
 export async function seed(payload: Payload): Promise<void> {
+  await ensureSuperAdmin(payload);
   await cleanupMalformed(payload);
 
   const catSlugs = new Set(seedCategories.map((c) => c.slug));

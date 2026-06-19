@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { isAdmin, isSuperAdmin, fieldSuperAdmin } from "../access";
+import { isAdmin, isSuperAdmin, fieldSuperAdmin, fieldRolesCreate } from "../access";
 import { derivePassword, PIN_REGEX } from "../lib/pin";
 
 export const Users: CollectionConfig = {
@@ -40,7 +40,7 @@ export const Users: CollectionConfig = {
       hasMany: true,
       required: true,
       defaultValue: ["sales"],
-      access: { create: fieldSuperAdmin, update: fieldSuperAdmin },
+      access: { create: fieldRolesCreate, update: fieldSuperAdmin },
       options: [
         { label: "Super Admin", value: "super-admin" },
         { label: "Admin", value: "admin" },
