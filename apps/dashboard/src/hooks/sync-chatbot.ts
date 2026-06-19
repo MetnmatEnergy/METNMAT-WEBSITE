@@ -19,14 +19,21 @@ import type { MongooseAdapter } from "@payloadcms/db-mongodb";
  * retrieves via regex on title/sku/subcategory/category/description and filters
  * by a 5-value `category` enum, so the CMS fields are flattened into that shape.
  *
- * Design:
- *  - Full re-sync (not per-doc): publish / unpublish / delete / category-rename
- *    all converge to a consistent catalog from one code path. The catalog is
- *    tiny (~68 products) so a full pass is cheap.
+ * Design (production-grade):
+ *  - Full refresh inside a TRANSACTION (clear + insert atomically): a bot query
+ *    always sees the complete old catalog or the complete new one — never empty,
+ *    never half-synced — and there are no per-row unique-key collisions against
+ *    stale rows, because the collection is cleared first within the same txn.
+ *    Falls back to a non-atomic clear+insert only if transactions are unsupported
+ *    (standalone Mongo); Atlas — prod and local dev — always supports them.
+ *  - SKU-safe: the chatbot's `products.sku` carries a UNIQUE (sparse) index.
+ *    Empty SKUs are omitted (sparse ignores missing fields) and genuine duplicate
+ *    SKUs are de-duplicated (first wins, the rest sync without a SKU) with a
+ *    warning — so a single catalog typo can never fail the whole sync.
  *  - Debounced + coalesced (like revalidate.ts) so the boot-time seed's burst of
  *    writes collapses into a single resync instead of dozens.
  *  - Fire-and-forget and fully guarded: a chatbot-DB hiccup never blocks or
- *    fails a CMS save.
+ *    fails a CMS save, and a failed read never wipes the live catalog.
  *  - Reuses the adapter's pooled MongoClient — no new dependency, no extra Atlas
  *    connection. Targets the `metnmat` DB on the shared cluster.
  */
@@ -59,11 +66,41 @@ type CmsProduct = {
   images?: { image?: CmsMedia | string | number | null }[] | null;
 };
 
+// A single chatbot-shaped product document (the bot's `products` collection).
+type ChatbotProduct = {
+  id: string;
+  title: string;
+  brand: string;
+  tagline?: string;
+  subcategory?: string;
+  marketing_description: string;
+  variants: string[];
+  category: string;
+  key_features: string[];
+  description: string;
+  common_uses: string[];
+  specifications?: string;
+  sku?: string;
+  price: string;
+  product_purchase_link: { platform: string; link: string }[];
+  product_image_link?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 // Minimal native-driver surface we use — avoids importing `mongodb` types (not a
 // direct dependency of this app) while still typing the calls we make.
+type RawSession = {
+  withTransaction(fn: () => Promise<unknown>): Promise<unknown>;
+  endSession(): Promise<void>;
+};
 type RawCollection = {
-  bulkWrite(ops: unknown[], opts?: { ordered?: boolean }): Promise<unknown>;
-  deleteMany(filter: Record<string, unknown>): Promise<{ deletedCount?: number }>;
+  deleteMany(filter: Record<string, unknown>, opts?: Record<string, unknown>): Promise<{ deletedCount?: number }>;
+  insertMany(docs: unknown[], opts?: Record<string, unknown>): Promise<{ insertedCount?: number }>;
+};
+type RawClient = {
+  startSession(): RawSession;
+  db(name?: string): { collection(name: string): RawCollection };
 };
 
 // Map a granular CMS category name → the chatbot's 5-value top-level enum.
@@ -93,41 +130,55 @@ function imageUrl(p: CmsProduct): string | undefined {
   return undefined;
 }
 
-function mapProduct(p: CmsProduct, now: Date) {
+/** Drop keys whose value is undefined so optional fields (e.g. an empty SKU) are
+ *  OMITTED, not written as null — which keeps the sparse unique SKU index happy. */
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  for (const k of Object.keys(obj)) if (obj[k] === undefined) delete obj[k];
+  return obj;
+}
+
+function mapProduct(p: CmsProduct, now: Date): ChatbotProduct {
   const catName = (p.category && typeof p.category === "object" ? p.category.name : "") || "";
   const slug = p.slug || String(p.id);
-  return {
+  const doc: ChatbotProduct = {
     id: slug,
     title: p.name,
     brand: p.brand || "METNMAT",
     tagline: p.shortDesc ? p.shortDesc.split(".")[0].slice(0, 140) : undefined,
-    subcategory: catName,
+    subcategory: catName || undefined,
     marketing_description: p.shortDesc || "",
-    variants: (p.sizes || []).map((s) => s.label).filter(Boolean),
+    variants: (p.sizes || []).map((s) => s.label).filter((l): l is string => Boolean(l)),
     category: mapCategory(catName),
     key_features: (p.specs || []).slice(0, 6).map((s) => `${s.label}: ${s.value}`),
     description: p.shortDesc || p.name,
-    common_uses: [] as string[],
-    specifications: specsStr(p.specs),
-    sku: p.sku || undefined,
+    common_uses: [],
+    specifications: specsStr(p.specs) || undefined,
+    sku: (p.sku && String(p.sku).trim()) || undefined,
     price: priceStr(p.price, p.unit),
-    body_material: undefined as string | undefined,
-    product_includes: undefined as string | undefined,
     product_purchase_link: [{ platform: "Metnmat", link: `${SITE}/shop/p/${slug}` }],
     product_image_link: imageUrl(p),
     createdAt: now,
     updatedAt: now,
   };
+  return stripUndefined(doc as unknown as Record<string, unknown>) as unknown as ChatbotProduct;
 }
 
-function chatbotProducts(payload: Payload): RawCollection {
+function chatbotClient(payload: Payload): RawClient {
   // Reuse the live mongoose connection's pooled MongoClient to reach the chatbot
   // DB on the same Atlas cluster.
   const adapter = payload.db as unknown as MongooseAdapter;
-  return adapter.connection
-    .getClient()
-    .db(CHATBOT_DB)
-    .collection("products") as unknown as RawCollection;
+  return adapter.connection.getClient() as unknown as RawClient;
+}
+
+/** Transactions need a replica set / mongos. Atlas always qualifies; a bare local
+ *  mongod does not — detect that one case so we can fall back gracefully. */
+function isTxnUnsupported(err: unknown): boolean {
+  const e = err as { code?: number; codeName?: string; message?: string };
+  return (
+    e?.code === 20 ||
+    e?.codeName === "IllegalOperation" ||
+    /replica set|Transaction numbers are only allowed|Transactions are not supported/i.test(e?.message || "")
+  );
 }
 
 async function resyncOnce(payload: Payload): Promise<void> {
@@ -149,22 +200,61 @@ async function resyncOnce(payload: Payload): Promise<void> {
   }
 
   const now = new Date();
-  const mapped = docs.map((p) => mapProduct(p, now));
-  const ids = mapped.map((m) => m.id);
-  const col = chatbotProducts(payload);
 
-  // Upsert every current product, then drop any chatbot doc no longer in the CMS.
-  // (Upsert-then-prune, not deleteMany-then-insert, so the collection is never
-  // momentarily empty for a bot query mid-sync.)
-  await col.bulkWrite(
-    mapped.map((m) => ({ replaceOne: { filter: { id: m.id }, replacement: m, upsert: true } })),
-    { ordered: false },
-  );
-  const del = await col.deleteMany({ id: { $nin: ids } });
+  // Map, de-duplicating by id (slug) — last write wins if a slug somehow repeats.
+  const byId = new Map<string, ChatbotProduct>();
+  for (const p of docs) {
+    const m = mapProduct(p, now);
+    byId.set(m.id, m);
+  }
+  const mapped = [...byId.values()];
 
-  payload.logger.info(
-    `[chatbot-sync] synced ${mapped.length} products → '${CHATBOT_DB}.products' (removed ${del.deletedCount ?? 0} stale)`,
-  );
+  // Guarantee SKUs are unique before writing (the chatbot's products.sku has a
+  // UNIQUE sparse index). Keep the first occurrence; drop the SKU on later
+  // duplicates so the product still syncs, and warn so staff can fix the catalog.
+  const seenSku = new Set<string>();
+  const dupes: string[] = [];
+  for (const m of mapped) {
+    if (!m.sku) continue;
+    if (seenSku.has(m.sku)) {
+      dupes.push(`${m.id} (sku ${m.sku})`);
+      delete m.sku;
+    } else {
+      seenSku.add(m.sku);
+    }
+  }
+  if (dupes.length) {
+    payload.logger.warn(
+      `[chatbot-sync] ${dupes.length} duplicate SKU(s) in catalog — kept first, dropped SKU on: ` +
+        `${dupes.slice(0, 10).join(", ")}${dupes.length > 10 ? " …" : ""}`,
+    );
+  }
+
+  const client = chatbotClient(payload);
+  const col = client.db(CHATBOT_DB).collection("products");
+
+  // Atomic full refresh: clear + insert in one transaction. External readers
+  // (the bot) only ever see the complete old or complete new catalog, and there
+  // are no unique-key collisions against stale rows (collection cleared first).
+  const session = client.startSession();
+  try {
+    await session.withTransaction(async () => {
+      await col.deleteMany({}, { session });
+      await col.insertMany(mapped, { session, ordered: false });
+    });
+  } catch (err) {
+    if (isTxnUnsupported(err)) {
+      // Standalone Mongo (no replica set): best-effort non-atomic refresh.
+      await col.deleteMany({});
+      await col.insertMany(mapped, { ordered: false });
+    } else {
+      throw err;
+    }
+  } finally {
+    await session.endSession();
+  }
+
+  payload.logger.info(`[chatbot-sync] synced ${mapped.length} products → '${CHATBOT_DB}.products'`);
 }
 
 // Debounce/coalesce so a burst of saves (e.g. the boot-time seed) triggers one
@@ -185,7 +275,10 @@ async function runResync(payload: Payload): Promise<void> {
       await resyncOnce(payload);
     } while (queued);
   } catch (err) {
-    payload.logger.error({ err }, "[chatbot-sync] catalog resync failed");
+    // Concise: never dump the whole bulk payload (the old behaviour flooded logs
+    // with thousands of lines). One line with the cause is enough to diagnose.
+    const e = err as { message?: string };
+    payload.logger.error(`[chatbot-sync] catalog resync failed: ${e?.message || String(err)}`);
   } finally {
     running = false;
   }
