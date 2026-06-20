@@ -23,6 +23,16 @@ import { EnquiryUploads } from "./collections/EnquiryUploads";
 import { Orders } from "./collections/Orders";
 import { Tickets } from "./collections/Tickets";
 import { Customers } from "./collections/Customers";
+import { Quotations } from "./collections/Quotations";
+import { PaymentEvents } from "./collections/PaymentEvents";
+import { StockLedger } from "./collections/StockLedger";
+import { Tasks } from "./collections/Tasks";
+import { Shipments } from "./collections/Shipments";
+import { Invoices } from "./collections/Invoices";
+import { ReturnRequests } from "./collections/ReturnRequests";
+import { Leads } from "./collections/Leads";
+import { Notifications } from "./collections/Notifications";
+import { IntegrationLogs } from "./collections/IntegrationLogs";
 import { globals } from "./globals";
 import { seed } from "./seed";
 import { resendAdapter } from "./lib/email-adapter";
@@ -51,6 +61,34 @@ const trustedOrigins = Array.from(
 // GCS_KEY_FILENAME or `gcloud auth application-default login` (ADC).
 // Falls back to local disk only when unset (dev convenience).
 const useGCS = Boolean(process.env.GCS_BUCKET && process.env.GCS_PROJECT_ID);
+
+/**
+ * Fail-fast on missing required secrets — but only at real server runtime, never
+ * during `next build` (Cloud Run injects secrets at container start, not at build
+ * time, so a build-time throw would break the image). onInit runs at boot.
+ */
+function assertProductionConfig(logger: { warn: (m: string) => void }): void {
+  if (process.env.NODE_ENV !== "production") return;
+  if (process.env.NEXT_PHASE === "phase-production-build") return;
+  const required = {
+    PAYLOAD_SECRET: process.env.PAYLOAD_SECRET,
+    MONGODB_URI: process.env.MONGODB_URI,
+    PAYLOAD_PIN_PEPPER: process.env.PAYLOAD_PIN_PEPPER,
+  };
+  const missing = Object.entries(required)
+    .filter(([, v]) => !v || !v.trim())
+    .map(([k]) => k);
+  if (missing.length) {
+    throw new Error(
+      `[config] Missing required production env var(s): ${missing.join(", ")}. Refusing to start insecure.`,
+    );
+  }
+  if ((process.env.PAYLOAD_PIN_PEPPER || "").length < 16) {
+    logger.warn(
+      "[config] PAYLOAD_PIN_PEPPER is short/low-entropy — set a long random value (openssl rand -hex 32).",
+    );
+  }
+}
 
 const storageCollections = {
   media: true,
@@ -94,11 +132,20 @@ export default buildConfig({
   // then site content, assets, and admin plumbing last.
   collections: [
     Orders,
-    Tickets,
+    PaymentEvents,
+    Invoices,
+    Shipments,
+    Quotations,
+    Leads,
     Enquiries,
     EnquiryUploads,
+    Tickets,
+    ReturnRequests,
     Customers,
+    Tasks,
+    Notifications,
     Products,
+    StockLedger,
     Categories,
     Services,
     Projects,
@@ -110,9 +157,11 @@ export default buildConfig({
     Documents,
     Users,
     AuditLogs,
+    IntegrationLogs,
   ],
   globals,
   onInit: async (payload) => {
+    assertProductionConfig(payload.logger);
     payload.logger.info(`[config] trusted origins (cors/csrf): ${trustedOrigins.join(", ") || "(none)"}`);
     await seed(payload);
   },

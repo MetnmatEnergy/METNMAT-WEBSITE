@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { CUSTOMER_COOKIE, cookieOptions } from "@/backend/lib/customer";
-import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
-  const rl = rateLimit(`register:${clientIp(req)}`, 5, 60_000);
+  const rl = await limitRate(`register:${clientIp(req)}`, 5, 60_000);
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Too many sign-up attempts. Please try again shortly." },

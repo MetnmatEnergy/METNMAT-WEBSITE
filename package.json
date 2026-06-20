@@ -8,13 +8,15 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "test": "vitest run",
     "start": "pnpm --filter website start",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,css}\""
   },
   "devDependencies": {
     "prettier": "^3.4.2",
-    "turbo": "^2.3.3"
+    "turbo": "^2.3.3",
+    "vitest": "^4.1.9"
   },
   "packageManager": "pnpm@11.5.1",
   "engines": {

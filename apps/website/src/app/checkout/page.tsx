@@ -9,6 +9,7 @@ import { Button } from "@/frontend/components/ui/button";
 import { useStore } from "@/frontend/components/commerce/store-provider";
 import { formatINR, inclGST, usdFor, lineUsdValue } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
+import { site } from "@/frontend/lib/site";
 
 const field =
   "w-full rounded-lg border border-input bg-surface px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-2 focus:ring-ring/30";
@@ -187,7 +188,7 @@ export default function CheckoutPage() {
         order_id: data.razorpayOrderId,
         amount: data.amount,
         currency: data.currency,
-        name: "METNMAT Research & Innovations",
+        name: site.legalName,
         description: `Order ${data.orderNumber}`,
         prefill: { name: form.name, email: form.email, contact: form.phone },
         notes: { orderNumber: data.orderNumber ?? "" },

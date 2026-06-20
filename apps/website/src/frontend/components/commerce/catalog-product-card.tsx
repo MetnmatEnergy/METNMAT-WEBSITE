@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { PriceBlock } from "@/frontend/components/commerce/price-block";
 import { RatingStars } from "@/frontend/components/commerce/rating-stars";
@@ -40,16 +41,20 @@ export function CatalogProductCard({
         )}
       >
         {product.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            loading="lazy"
+          <div
             className={cn(
-              "w-full bg-white object-contain p-2 transition-transform duration-500 group-hover:scale-105 sm:p-3",
+              "relative w-full bg-white",
               isGrid ? "aspect-square" : "aspect-square sm:h-full"
             )}
-          />
+          >
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
+              className="object-contain p-2 transition-transform duration-500 group-hover:scale-105 sm:p-3"
+            />
+          </div>
         ) : (
           <MediaPlaceholder
             className={cn(

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendTicketReplyEmail } from "@/backend/lib/email";
+import { verifyKey } from "@/backend/lib/internal-key";
 
 /**
  * POST /api/support/notify — internal only (x-internal-key). Called by the
@@ -11,8 +12,7 @@ export const dynamic = "force-dynamic";
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export async function POST(req: Request) {
-  const secret = process.env.INTERNAL_API_KEY;
-  if (!secret || req.headers.get("x-internal-key") !== secret) {
+  if (!verifyKey(req, "CMS_TICKET_WRITE_KEY")) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 

@@ -81,7 +81,7 @@ function shell(opts: { heading: string; intro: string; body: string }): string {
         ${opts.body}
       </div>
       <div style="padding:18px 28px;background:#fafafa;border-top:1px solid #eee;color:#6b7280;font-size:12px;line-height:1.6">
-        METNMAT Research &amp; Innovations · Howrah, West Bengal, India<br/>
+        METNMAT INNOVATIONS PRIVATE LIMITED · Howrah, West Bengal, India<br/>
         contact@metnmat.com · +91 78726 86501<br/>
         This is an automated confirmation — you can simply reply to this email to reach our team.
       </div>

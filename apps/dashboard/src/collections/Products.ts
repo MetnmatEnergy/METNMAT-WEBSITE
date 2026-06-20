@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageCatalog, publicRead } from "../access";
+import { canManageCatalog, publicRead, fieldAccountsOrInternal } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
@@ -108,6 +108,60 @@ export const Products: CollectionConfig = {
       ],
     },
     { name: "badges", type: "select", hasMany: true, options: ["Bestseller", "New", "GST invoice", "Made by METNMAT"] },
+
+    // ── Tax & compliance (invoicing) ─────────────────────────────────────────
+    {
+      type: "collapsible",
+      label: "Tax, stock & fulfilment",
+      admin: { initCollapsed: true },
+      fields: [
+        {
+          type: "row",
+          fields: [
+            { name: "gstRate", type: "number", defaultValue: 18, min: 0, max: 28, admin: { width: "33%", description: "GST %." } },
+            { name: "hsnSac", type: "text", label: "HSN / SAC code", admin: { width: "33%" } },
+            { name: "countryOfOrigin", type: "text", defaultValue: "India", admin: { width: "34%" } },
+          ],
+        },
+        {
+          name: "productType",
+          type: "select",
+          defaultValue: "in-stock",
+          options: [
+            { label: "In stock", value: "in-stock" },
+            { label: "Made to order", value: "made-to-order" },
+            { label: "Quote only", value: "quote-only" },
+            { label: "Discontinued", value: "discontinued" },
+          ],
+        },
+        {
+          type: "row",
+          fields: [
+            { name: "stockQty", type: "number", min: 0, admin: { width: "33%", description: "On-hand quantity." } },
+            { name: "reservedStock", type: "number", min: 0, defaultValue: 0, admin: { width: "33%" } },
+            { name: "lowStockThreshold", type: "number", min: 0, defaultValue: 5, admin: { width: "34%" } },
+          ],
+        },
+        {
+          type: "row",
+          fields: [
+            { name: "packageWeightKg", type: "number", min: 0, admin: { width: "50%", description: "Package weight (kg)." } },
+            {
+              name: "priceApprovalStatus",
+              type: "select",
+              defaultValue: "approved",
+              access: { update: fieldAccountsOrInternal },
+              admin: { width: "50%", description: "Commercial sign-off on the price." },
+              options: [
+                { label: "Approved", value: "approved" },
+                { label: "Pending review", value: "pending" },
+              ],
+            },
+          ],
+        },
+        { name: "lastReviewedAt", type: "date", admin: { description: "When the listing/price was last reviewed." } },
+      ],
+    },
   ],
   hooks: {
     afterChange: [auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],

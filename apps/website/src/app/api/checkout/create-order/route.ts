@@ -4,7 +4,7 @@ import { unitPriceForQty, inclGST, gstPortionOf, clampQty, usdFor } from "@/fron
 import { createRazorpayOrder, razorpayConfigured, razorpayKeyId } from "@/backend/lib/razorpay";
 import { createOrder, type OrderItemInput } from "@/backend/services/orders.service";
 import { getCurrentCustomer } from "@/backend/lib/customer";
-import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 /**
  * POST /api/checkout/create-order
@@ -36,7 +36,7 @@ const bad = (error: string, status = 400) => NextResponse.json({ ok: false, erro
 
 export async function POST(req: Request) {
   // Throttle: this endpoint hits the Razorpay API and writes a CMS order per call.
-  const rl = rateLimit(`checkout:${clientIp(req)}`, 12, 60_000);
+  const rl = await limitRate(`checkout:${clientIp(req)}`, 12, 60_000);
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "Too many checkout attempts. Please wait a moment and try again." },
@@ -102,6 +102,11 @@ export async function POST(req: Request) {
     if (!product) return bad(`Product not found: ${i.slug}`);
     if (!product.price) {
       return bad(`"${product.name}" is quote-only — please request a quote for it.`);
+    }
+    // Never charge for an item the catalog has flagged out of stock — that would
+    // create a paid order we cannot fulfil and would have to refund.
+    if (product.inStock === false) {
+      return bad(`"${product.name}" is currently out of stock. Please remove it to continue, or request a quote.`);
     }
     // Same clamp the cart uses client-side → the charged qty equals the shown qty.
     const qty = clampQty(product, i.qty as number);

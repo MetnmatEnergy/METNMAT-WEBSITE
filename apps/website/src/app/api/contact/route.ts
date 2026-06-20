@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { validateEnquiry } from "@/backend/validation";
 import { createEnquiry } from "@/backend/services/enquiries.service";
-import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 // POST /api/contact — submit a contact enquiry.
 export async function POST(request: Request) {
-  const rl = rateLimit(`contact:${clientIp(request)}`);
+  const rl = await limitRate(`contact:${clientIp(request)}`);
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "Too many requests. Please try again shortly." },

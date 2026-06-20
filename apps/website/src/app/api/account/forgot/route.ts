@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
 export const dynamic = "force-dynamic";
 
 /** Request a password-reset email. Always returns success (no email enumeration). */
 export async function POST(req: Request): Promise<Response> {
-  const rl = rateLimit(`forgot:${clientIp(req)}`, 5, 60_000);
+  const rl = await limitRate(`forgot:${clientIp(req)}`, 5, 60_000);
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Too many requests. Please try again shortly." },
@@ -24,7 +24,7 @@ export async function POST(req: Request): Promise<Response> {
 
   // Per-email throttle to prevent reset-email bombing of a specific address.
   // Return success regardless (never reveal whether the account exists).
-  const er = rateLimit(`forgot:email:${email}`, 3, 60 * 60_000);
+  const er = await limitRate(`forgot:email:${email}`, 3, 60 * 60_000);
   if (!er.ok) return NextResponse.json({ success: true });
 
   try {

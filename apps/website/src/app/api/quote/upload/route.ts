@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { uploadEnquiryFiles, type ParsedFile } from "@/backend/services/enquiries.service";
-import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
+import { isAllowedUploadSignature, safeFilename } from "@/backend/lib/file-signature";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ const ALLOWED = /^(application\/pdf|image\/)/;
  * database right away. Returns the stored doc id used later to link the enquiry.
  */
 export async function POST(request: Request) {
-  const rl = rateLimit(`upload:${clientIp(request)}`);
+  const rl = await limitRate(`upload:${clientIp(request)}`);
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "Too many uploads. Please slow down." },
@@ -40,10 +41,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Only PDF or image files are allowed." }, { status: 415 });
   }
 
+  // Don't trust the declared MIME — verify the REAL bytes. A renamed
+  // HTML/EXE/ZIP with a spoofed `application/pdf` type is rejected here.
+  const buffer = Buffer.from(await file.arrayBuffer());
+  if (!isAllowedUploadSignature(buffer)) {
+    return NextResponse.json(
+      { ok: false, error: "This file's contents don't look like a valid PDF or image." },
+      { status: 415 }
+    );
+  }
+
   const parsed: ParsedFile = {
-    filename: file.name,
+    filename: safeFilename(file.name),
     contentType: file.type || "application/octet-stream",
-    buffer: Buffer.from(await file.arrayBuffer()),
+    buffer,
   };
 
   const [stored] = await uploadEnquiryFiles([parsed], source);
@@ -51,8 +62,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Storage failed. Please retry." }, { status: 502 });
   }
 
+  // Note: we intentionally do NOT return the raw storage URL — these attachments
+  // are private and the client never needs the GCS path (it previews locally).
   return NextResponse.json(
-    { ok: true, id: stored.id, filename: stored.filename, url: stored.url, size: file.size, type: parsed.contentType },
+    { ok: true, id: stored.id, filename: stored.filename, size: file.size, type: parsed.contentType },
     { status: 201 }
   );
 }

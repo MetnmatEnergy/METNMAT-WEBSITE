@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { isAdmin, isSuperAdmin, fieldSuperAdmin, fieldRolesCreate } from "../access";
+import { isAdmin, isSuperAdmin, fieldSuperAdmin, fieldRolesCreate, bootstrapAllowed, ROLE_OPTIONS } from "../access";
 import { derivePassword, PIN_REGEX } from "../lib/pin";
 
 export const Users: CollectionConfig = {
@@ -41,12 +41,7 @@ export const Users: CollectionConfig = {
       required: true,
       defaultValue: ["sales"],
       access: { create: fieldRolesCreate, update: fieldSuperAdmin },
-      options: [
-        { label: "Super Admin", value: "super-admin" },
-        { label: "Admin", value: "admin" },
-        { label: "Marketing", value: "marketing" },
-        { label: "Sales", value: "sales" },
-      ],
+      options: ROLE_OPTIONS,
     },
   ],
   hooks: {
@@ -99,8 +94,12 @@ export const Users: CollectionConfig = {
         if (data?.pin != null && data.pin !== "") {
           data.password = derivePassword(String(data.pin));
         }
-        // The very first user to register becomes the Super Admin.
-        if (operation === "create") {
+        // The very first user to register becomes the Super Admin — but ONLY when
+        // bootstrap is allowed (dev, or ALLOW_FIRST_USER_BOOTSTRAP=true in prod).
+        // Otherwise an empty users collection must not mint a super-admin to an
+        // anonymous visitor. (ensureSuperAdmin in seed.ts still recovers a
+        // lost-role lockout because it promotes an existing user, never creates one.)
+        if (operation === "create" && bootstrapAllowed()) {
           const { totalDocs } = await req.payload.count({ collection: "users" });
           if (totalDocs === 0) data.roles = ["super-admin"];
         }

@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
-import { canManageCatalog, internalOrCanManageCatalog, isAdmin } from "../access";
+import { internalOrderOrManage, isSuperAdmin, fieldAccountsOrInternal } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
+import { orderBeforeChange, orderBeforeDelete } from "../hooks/order-workflow";
 
 /**
  * Customer orders (Razorpay checkout). Created by the WEBSITE SERVER only
@@ -17,10 +18,10 @@ export const Orders: CollectionConfig = {
     description: "Paid & pending orders from the website checkout.",
   },
   access: {
-    create: internalOrCanManageCatalog, // website server (x-internal-key) or staff
-    read: internalOrCanManageCatalog, // website server needs read-back for verification
-    update: internalOrCanManageCatalog, // website server marks paid; staff manage fulfilment
-    delete: isAdmin,
+    create: internalOrderOrManage, // website server (order-write key) or staff
+    read: internalOrderOrManage, // website server needs read-back for verification
+    update: internalOrderOrManage, // website server marks paid; staff manage fulfilment
+    delete: isSuperAdmin, // paid/fulfilled orders are also blocked by orderBeforeDelete
   },
   fields: [
     {
@@ -130,9 +131,9 @@ export const Orders: CollectionConfig = {
       type: "collapsible",
       label: "Payment (Razorpay)",
       fields: [
-        { name: "razorpayOrderId", type: "text", index: true, admin: { readOnly: true } },
-        { name: "razorpayPaymentId", type: "text", admin: { readOnly: true } },
-        { name: "paidAt", type: "date", admin: { readOnly: true } },
+        { name: "razorpayOrderId", type: "text", index: true, access: { update: fieldAccountsOrInternal }, admin: { readOnly: true } },
+        { name: "razorpayPaymentId", type: "text", access: { update: fieldAccountsOrInternal }, admin: { readOnly: true } },
+        { name: "paidAt", type: "date", access: { update: fieldAccountsOrInternal }, admin: { readOnly: true } },
       ],
     },
 
@@ -166,6 +167,8 @@ export const Orders: CollectionConfig = {
     { name: "notes", type: "textarea", admin: { description: "Internal notes (not shown to the customer)." } },
   ],
   hooks: {
+    beforeChange: [orderBeforeChange],
+    beforeDelete: [orderBeforeDelete],
     afterChange: [auditAfterChange],
     afterDelete: [auditAfterDelete],
   },

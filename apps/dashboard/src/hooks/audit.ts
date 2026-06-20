@@ -17,13 +17,20 @@ export const auditAfterChange: CollectionAfterChangeHook = async ({
         action: operation, // "create" | "update"
         collectionSlug: collection.slug,
         documentId: String(doc.id),
-        documentLabel: doc?.title || doc?.name || doc?.filename || String(doc.id),
+        documentLabel:
+          doc?.title || doc?.name || doc?.orderNumber || doc?.quotationNumber ||
+          doc?.ticketNumber || doc?.filename || String(doc.id),
         user: req.user?.id,
         userEmail: req.user?.email,
       },
     });
-  } catch {
-    /* never block the main write on an audit failure */
+  } catch (err) {
+    // Never block the main write on an audit failure — but DO surface it, so a
+    // persistently failing audit trail can't go silently dark.
+    req.payload.logger.error(
+      { err, collection: collection.slug, operation, documentId: String(doc?.id) },
+      "[audit] failed to write audit-log entry",
+    );
   }
   return doc;
 };
@@ -40,13 +47,18 @@ export const auditAfterDelete: CollectionAfterDeleteHook = async ({
         action: "delete",
         collectionSlug: collection.slug,
         documentId: String(doc?.id),
-        documentLabel: doc?.title || doc?.name || doc?.filename || String(doc?.id),
+        documentLabel:
+          doc?.title || doc?.name || doc?.orderNumber || doc?.quotationNumber ||
+          doc?.ticketNumber || doc?.filename || String(doc?.id),
         user: req.user?.id,
         userEmail: req.user?.email,
       },
     });
-  } catch {
-    /* ignore */
+  } catch (err) {
+    req.payload.logger.error(
+      { err, collection: collection.slug, documentId: String(doc?.id) },
+      "[audit] failed to write audit-log delete entry",
+    );
   }
   return doc;
 };

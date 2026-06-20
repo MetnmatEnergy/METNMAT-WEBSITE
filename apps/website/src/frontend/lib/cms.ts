@@ -488,7 +488,7 @@ export async function getSettings(): Promise<SiteSettings> {
   return {
     company: {
       name: (company?.name as string) || "METNMAT",
-      legalName: (company?.legalName as string) || "METNMAT Research & Innovations",
+      legalName: (company?.legalName as string) || "METNMAT INNOVATIONS PRIVATE LIMITED",
       tagline: (company?.tagline as string) || "India's first private Metallurgy & Materials R&D",
       description: (company?.description as string) || "",
     },

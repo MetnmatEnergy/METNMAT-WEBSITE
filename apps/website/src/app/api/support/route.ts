@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createTicket } from "@/backend/services/tickets.service";
 import { sendTicketEmails } from "@/backend/lib/email";
-import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 /**
  * POST /api/support — raise a support ticket.
@@ -34,7 +34,7 @@ type Body = {
 const bad = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status });
 
 export async function POST(req: Request) {
-  const rl = rateLimit(`support:${clientIp(req)}`);
+  const rl = await limitRate(`support:${clientIp(req)}`);
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "Too many requests. Please try again shortly." },

@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { internalOrCanManageCatalog, isAdmin } from "../access";
+import { internalTicketOrManage, isAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { notifyTicketReply } from "../hooks/ticket-notify";
 
@@ -19,10 +19,10 @@ export const Tickets: CollectionConfig = {
     description: "Customer support tickets from the website.",
   },
   access: {
-    // Website server (x-internal-key) creates/reads/updates; staff manage.
-    create: internalOrCanManageCatalog,
-    read: internalOrCanManageCatalog,
-    update: internalOrCanManageCatalog,
+    // Website server (ticket-write key) creates/reads/updates; staff manage.
+    create: internalTicketOrManage,
+    read: internalTicketOrManage,
+    update: internalTicketOrManage,
     delete: isAdmin,
   },
   fields: [

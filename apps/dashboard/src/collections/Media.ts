@@ -18,7 +18,9 @@ export const Media: CollectionConfig = {
   },
   upload: {
     staticDir: "media",
-    mimeTypes: ["image/png", "image/jpeg", "image/webp", "image/avif", "image/svg+xml"],
+    // No SVG: this collection is publicRead + public-served, and an SVG can carry
+    // <script>/onload (stored XSS). Raster formats only; they're re-encoded by sharp.
+    mimeTypes: ["image/png", "image/jpeg", "image/webp", "image/avif"],
     adminThumbnail: "thumbnail",
     focalPoint: true,
     imageSizes: [

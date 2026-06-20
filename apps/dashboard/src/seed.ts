@@ -222,7 +222,7 @@ export async function seed(payload: Payload): Promise<void> {
   }
   payload.logger.info(`[seed] Products: ${created} created, ${updated} updated.`);
 
-  await payload.updateGlobal({ slug: "company", data: { name: "METNMAT", legalName: "METNMAT Research & Innovations", tagline: "India's first private Metallurgy & Materials R&D", description: "METNMAT supplies electrochemistry lab equipment — electrodes, membranes, cells, reactors, equipment and accessories — and turnkey materials R&D from prototype to industrial scale.", foundedYear: 2018 } });
+  await payload.updateGlobal({ slug: "company", data: { name: "METNMAT", legalName: "METNMAT INNOVATIONS PRIVATE LIMITED", tagline: "India's first private Metallurgy & Materials R&D", description: "METNMAT supplies electrochemistry lab equipment — electrodes, membranes, cells, reactors, equipment and accessories — and turnkey materials R&D from prototype to industrial scale.", foundedYear: 2018 } });
   await payload.updateGlobal({ slug: "contact", data: { email: "contact@metnmat.com", phone: "+91 78726 86501", whatsapp: "+91 78726 86501", shippingNote: "Shipping across India & worldwide · ISO-aligned R&D", addresses: [{ label: "West Bengal", line: "Howrah, West Bengal, India" }] } });
   await payload.updateGlobal({ slug: "social", data: { linkedin: "#", youtube: "#", facebook: "#" } });
   await payload.updateGlobal({ slug: "seo", data: { defaultTitle: "METNMAT Research & Innovations", titleTemplate: "%s · METNMAT", description: "Electrodes, membranes, electrochemical cells, reactors & lab equipment for research — plus turnkey materials R&D." } });

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "METNMAT Dashboard — Overview",
   description: "Operations overview for METNMAT Research & Innovations.",
+  robots: { index: false, follow: false, nocache: true },
 };
 
 // Root layout for the (overview) route group — separate from Payload's /admin.

@@ -4,8 +4,10 @@
  * only the website SERVER can create/update orders (never the public).
  * Staff see and manage them in the admin under Sales → Orders.
  */
+import { outboundKey } from "@/backend/lib/internal-key";
+
 const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
-const INTERNAL_KEY = process.env.INTERNAL_API_KEY || "";
+const INTERNAL_KEY = outboundKey("CMS_ORDER_WRITE_KEY");
 
 export type OrderItemInput = {
   productName: string;
@@ -121,5 +123,27 @@ export async function markOrderFailed(id: string): Promise<void> {
     });
   } catch {
     /* best effort */
+  }
+}
+
+/** Append a payment gateway event to the immutable PaymentEvents log (best-effort). */
+export async function recordPaymentEvent(input: {
+  eventType: string;
+  providerOrderId?: string;
+  providerPaymentId?: string;
+  amount?: number;
+  signatureVerified?: boolean;
+  order?: string;
+  idempotencyKey?: string;
+  rawPayload?: unknown;
+}): Promise<void> {
+  try {
+    await fetch(`${CMS}/api/payment-events`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ provider: "razorpay", currency: "INR", ...input }),
+    });
+  } catch (e) {
+    console.error("[payment-events] record error:", e);
   }
 }

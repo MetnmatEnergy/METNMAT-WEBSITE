@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { cn } from "@/frontend/lib/utils";
@@ -15,6 +16,10 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
   const [active, setActive] = React.useState(0);
   const [zoom, setZoom] = React.useState(false);
   const [hovered, setHovered] = React.useState(false);
+  const closeBtnRef = React.useRef<HTMLButtonElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+  const wasOpen = React.useRef(false);
   const hasImages = images.length > 0;
   const many = images.length > 1;
   const current = hasImages ? images[active] : null;
@@ -31,17 +36,45 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
     return () => clearInterval(t);
   }, [many, zoom, hovered, go]);
 
-  // Arrow-key navigation while the lightbox is open.
+  // Arrow-key navigation + focus trap while the lightbox is open.
   React.useEffect(() => {
     if (!zoom) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setZoom(false);
-      if (e.key === "ArrowRight") go(1);
-      if (e.key === "ArrowLeft") go(-1);
+      else if (e.key === "ArrowRight") go(1);
+      else if (e.key === "ArrowLeft") go(-1);
+      else if (e.key === "Tab") {
+        const f = dialogRef.current?.querySelectorAll<HTMLElement>("button");
+        if (!f || f.length === 0) return;
+        const first = f[0]!;
+        const last = f[f.length - 1]!;
+        const a = document.activeElement;
+        if (!dialogRef.current?.contains(a)) {
+          e.preventDefault();
+          first.focus();
+        } else if (e.shiftKey && a === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && a === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [zoom, go]);
+
+  // Move focus into the dialog on open; restore it to the trigger on close.
+  React.useEffect(() => {
+    if (zoom) {
+      wasOpen.current = true;
+      closeBtnRef.current?.focus();
+    } else if (wasOpen.current) {
+      wasOpen.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [zoom]);
 
   return (
     // self-start + content-start: don't stretch to the (taller) details column —
@@ -56,13 +89,15 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
           onMouseLeave={() => setHovered(false)}
         >
           {images.map((src, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               key={src + i}
               src={src}
               alt={`${name} — image ${i + 1}`}
+              fill
+              sizes="(max-width: 1024px) 100vw, 45vw"
+              priority={i === 0}
               className={cn(
-                "absolute inset-0 h-full w-full object-contain transition-opacity duration-700",
+                "object-contain transition-opacity duration-700",
                 i === active ? "opacity-100" : "opacity-0"
               )}
             />
@@ -70,6 +105,7 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
 
           {/* Click-to-zoom layer */}
           <button
+            ref={triggerRef}
             type="button"
             onClick={() => setZoom(true)}
             className="absolute inset-0 cursor-zoom-in"
@@ -127,12 +163,11 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
               type="button"
               onClick={() => setActive(i)}
               className={cn(
-                "aspect-square overflow-hidden rounded-lg border bg-white transition-colors",
+                "relative aspect-square overflow-hidden rounded-lg border bg-white transition-colors",
                 i === active ? "border-brand" : "border-border hover:border-brand/40"
               )}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt={`${name} ${i + 1}`} className="h-full w-full object-contain" />
+              <Image src={src} alt={`${name} ${i + 1}`} fill sizes="80px" className="object-contain" />
             </button>
           ) : (
             <MediaPlaceholder key={i} className="aspect-square" label={`${i + 1}`} />
@@ -143,14 +178,18 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
       {/* Lightbox */}
       {zoom && current && (
         <div
+          ref={dialogRef}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-6"
           onClick={() => setZoom(false)}
           role="dialog"
           aria-modal="true"
+          aria-label={`${name} — image viewer`}
         >
           <button
+            ref={closeBtnRef}
             type="button"
             aria-label="Close"
+            onClick={(e) => { e.stopPropagation(); setZoom(false); }}
             className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
           >
             <X className="h-5 w-5" />

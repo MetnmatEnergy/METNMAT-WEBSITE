@@ -3,8 +3,10 @@
  * (Payload `tickets` collection). All calls use the shared x-internal-key, so
  * only the website SERVER touches tickets — the public never does.
  */
+import { outboundKey } from "@/backend/lib/internal-key";
+
 const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
-const KEY = process.env.INTERNAL_API_KEY || "";
+const KEY = outboundKey("CMS_TICKET_WRITE_KEY");
 
 const headers = { "Content-Type": "application/json", "x-internal-key": KEY };
 

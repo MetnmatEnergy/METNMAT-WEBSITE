@@ -1,5 +1,6 @@
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
+import { verifyKey } from "@/backend/lib/internal-key";
 
 /**
  * On-demand revalidation, called by the dashboard (Payload afterChange hooks)
@@ -8,9 +9,7 @@ import { NextResponse } from "next/server";
  * Protected by the shared INTERNAL_API_KEY (same trust model as enquiry reads).
  */
 export async function POST(req: Request) {
-  const secret = process.env.INTERNAL_API_KEY;
-  const provided = req.headers.get("x-internal-key");
-  if (!secret || provided !== secret) {
+  if (!verifyKey(req, "CMS_REVALIDATE_KEY")) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   revalidateTag("cms");

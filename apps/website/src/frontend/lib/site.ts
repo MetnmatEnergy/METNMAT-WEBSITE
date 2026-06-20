@@ -5,9 +5,11 @@
  */
 export const site = {
   name: "METNMAT",
-  legalName: "METNMAT Research & Innovations",
+  // Registered legal entity — used in Organization JSON-LD, OG siteName, footer,
+  // Product "seller" and the Razorpay payment modal. The CMS `company.legalName`
+  // global overrides this at runtime (see seed.ts) — keep both in sync.
+  legalName: "METNMAT INNOVATIONS PRIVATE LIMITED",
   tagline: "India's first private Metallurgy & Materials R&D",
-  // TODO(company): confirm production domain.
   url: "https://www.metnmat.com",
   description:
     "Metallurgy & materials R&D — lab-scale prototype to full industrial scale.",

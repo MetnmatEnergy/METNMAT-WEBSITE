@@ -3,6 +3,7 @@ import type {
   CollectionAfterDeleteHook,
   GlobalAfterChangeHook,
 } from "payload";
+import { outboundKey } from "../lib/internal-key";
 
 /**
  * On-demand website revalidation — pings the website's /api/revalidate after
@@ -13,7 +14,7 @@ import type {
  * boot-time seed (dozens of writes) collapses into a couple of pings.
  */
 const WEBSITE = process.env.WEBSITE_URL || "http://localhost:3000";
-const KEY = process.env.INTERNAL_API_KEY || "";
+const KEY = outboundKey("CMS_REVALIDATE_KEY");
 
 let lastPing = 0;
 let trailing: NodeJS.Timeout | null = null;

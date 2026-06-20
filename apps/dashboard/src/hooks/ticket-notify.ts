@@ -1,4 +1,5 @@
 import type { CollectionAfterChangeHook } from "payload";
+import { outboundKey } from "../lib/internal-key";
 
 /**
  * When staff add a new reply to a ticket's conversation, ping the website to
@@ -7,7 +8,7 @@ import type { CollectionAfterChangeHook } from "payload";
  * keeps the trust model identical to the revalidation hook.
  */
 const WEBSITE = process.env.WEBSITE_URL || "http://localhost:3000";
-const KEY = process.env.INTERNAL_API_KEY || "";
+const KEY = outboundKey("CMS_TICKET_WRITE_KEY");
 
 type Msg = { from?: string; body?: string; authorName?: string };
 

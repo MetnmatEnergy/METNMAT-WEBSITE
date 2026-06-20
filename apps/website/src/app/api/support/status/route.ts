@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { findTicketByNumberAndEmail } from "@/backend/services/tickets.service";
-import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 /**
  * GET /api/support/status?ticket=TKT-…&email=…
@@ -11,7 +11,7 @@ import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const rl = rateLimit(`support-status:${clientIp(req)}`);
+  const rl = await limitRate(`support-status:${clientIp(req)}`);
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "Too many attempts. Please wait a moment." },

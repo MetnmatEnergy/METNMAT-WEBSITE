@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { findTicketByNumberAndEmail, addTicketMessage } from "@/backend/services/tickets.service";
-import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 /**
  * POST /api/support/reply — the customer adds a message to their own ticket.
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 type Body = { ticket?: string; email?: string; body?: string };
 
 export async function POST(req: Request) {
-  const rl = rateLimit(`support-reply:${clientIp(req)}`);
+  const rl = await limitRate(`support-reply:${clientIp(req)}`);
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "Too many messages. Please slow down." },

@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getPayload } from "payload";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getPayload, type Payload } from "payload";
 import config from "@payload-config";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +13,7 @@ const card: React.CSSProperties = {
   padding: "20px 22px",
 };
 
-async function getStats() {
-  const payload = await getPayload({ config });
+async function getStats(payload: Payload) {
   const [products, categories, media, documents, users, enquiries, services, projects, posts, faqs, team, recent] =
     await Promise.all([
       payload.count({ collection: "products" }),
@@ -50,10 +51,19 @@ async function getStats() {
 }
 
 export default async function OverviewPage() {
+  const payload = await getPayload({ config });
+
+  // SECURITY: this overview renders live counts + recent enquiry PII. It is NOT
+  // part of Payload's authenticated /admin shell, so without this gate it leaks
+  // to any anonymous visitor. Require a logged-in staff user (payload-token
+  // cookie) and bounce everyone else to the PIN/login screen.
+  const { user } = await payload.auth({ headers: new Headers(await headers()) });
+  if (!user) redirect("/admin/login");
+
   let stats: Awaited<ReturnType<typeof getStats>> | null = null;
   let error: string | null = null;
   try {
-    stats = await getStats();
+    stats = await getStats(payload);
   } catch (e) {
     error = e instanceof Error ? e.message : "Could not reach the database.";
   }
@@ -153,8 +163,7 @@ export default async function OverviewPage() {
 
       <p style={{ marginTop: 28, color: "#71717a", fontSize: 13 }}>
         Content management lives in{" "}
-        <Link href="/admin" style={{ color: "#d81f26" }}>/admin</Link>. First time? Create your Super Admin at{" "}
-        <Link href="/admin/create-first-user" style={{ color: "#d81f26" }}>/admin/create-first-user</Link>.
+        <Link href="/admin" style={{ color: "#d81f26" }}>/admin</Link>.
       </p>
     </main>
   );

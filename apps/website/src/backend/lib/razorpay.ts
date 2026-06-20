@@ -14,8 +14,26 @@ import crypto from "crypto";
 
 const KEY_ID = process.env.RAZORPAY_KEY_ID || "";
 const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
+const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "";
 
 export const razorpayConfigured = (): boolean => Boolean(KEY_ID && KEY_SECRET);
+
+/** True when the server-to-server webhook is configured (separate secret). */
+export const razorpayWebhookConfigured = (): boolean => Boolean(WEBHOOK_SECRET);
+
+/**
+ * Verify a Razorpay webhook. The signature is an HMAC-SHA256 of the EXACT raw
+ * request body using the webhook secret (NOT the API key secret). Constant-time.
+ */
+export function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
+  if (!WEBHOOK_SECRET || !signature) return false;
+  const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(rawBody).digest("hex");
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"));
+  } catch {
+    return false; // malformed hex / length mismatch
+  }
+}
 
 /** Public key id — safe to send to the browser (needed by checkout.js). */
 export const razorpayKeyId = (): string => KEY_ID;

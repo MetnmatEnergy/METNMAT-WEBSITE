@@ -6,7 +6,7 @@ import {
   fetchEnquiryFileBase64,
   type ParsedFile,
 } from "@/backend/services/enquiries.service";
-import { rateLimit, clientIp } from "@/backend/lib/rate-limit";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 import { sendQuoteEmails, type EmailAttachment } from "@/backend/lib/email";
 
 const MAX_FILES = 5;
@@ -65,7 +65,7 @@ async function parseBody(request: Request): Promise<{
 
 // POST /api/quote — submit a quote request (with optional file attachments).
 export async function POST(request: Request) {
-  const rl = rateLimit(`quote:${clientIp(request)}`);
+  const rl = await limitRate(`quote:${clientIp(request)}`);
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "Too many requests. Please try again shortly." },
