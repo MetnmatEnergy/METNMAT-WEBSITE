@@ -8,6 +8,7 @@ import {
 } from "@/backend/services/enquiries.service";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 import { sendQuoteEmails, type EmailAttachment } from "@/backend/lib/email";
+import { isAllowedUploadSignature, safeFilename } from "@/backend/lib/file-signature";
 
 const MAX_FILES = 5;
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB each
@@ -50,10 +51,14 @@ async function parseBody(request: Request): Promise<{
       if (!ALLOWED.test(file.type || "")) continue;
       total += file.size;
       if (total > MAX_TOTAL_BYTES) break;
+      // Same content-based hardening as /api/quote/upload: verify the REAL bytes
+      // (reject spoofed MIME) and sanitize the filename — don't trust file.type/name.
+      const buffer = Buffer.from(await file.arrayBuffer());
+      if (!isAllowedUploadSignature(buffer)) continue;
       files.push({
-        filename: file.name,
+        filename: safeFilename(file.name),
         contentType: file.type || "application/octet-stream",
-        buffer: Buffer.from(await file.arrayBuffer()),
+        buffer,
       });
     }
     return { body, files };

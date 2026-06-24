@@ -88,8 +88,11 @@ export const enquiryBeforeChange: CollectionBeforeChangeHook = async ({ data, or
     if (to === "not-feasible" && !has("technicalNote")) {
       throw new Error("Add a technical note before marking 'Not feasible'.");
     }
-    if ((to === "closed" || to === "lost") && !has("closeReason") && !has("lossReason")) {
-      throw new Error("Add a reason before marking this RFQ Closed/Lost.");
+    if (to === "closed" && !has("closeReason")) {
+      throw new Error("Add a close reason before marking this RFQ Closed.");
+    }
+    if (to === "lost" && !has("lossReason")) {
+      throw new Error("Add a loss reason before marking this RFQ Lost.");
     }
   }
   return data;

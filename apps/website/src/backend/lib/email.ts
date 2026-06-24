@@ -71,7 +71,7 @@ function shell(opts: { heading: string; intro: string; body: string }): string {
           </td>
           <td style="vertical-align:middle;padding-left:12px">
             <span style="color:#fff;font-weight:700;font-size:16px;letter-spacing:.5px">METNMAT</span>
-            <span style="color:#9ca3af;font-size:11px;display:block;letter-spacing:2px;text-transform:uppercase">Research &amp; Innovations</span>
+            <span style="color:#9ca3af;font-size:11px;display:block;letter-spacing:2px;text-transform:uppercase">Innovations Private Limited</span>
           </td>
         </tr></table>
       </div>

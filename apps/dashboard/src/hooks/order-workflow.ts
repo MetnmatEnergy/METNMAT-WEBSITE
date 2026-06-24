@@ -42,12 +42,23 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
   data,
   originalDoc,
 }) => {
-  if (operation !== "update" || !originalDoc) return data;
-
-  // The website server (already-verified Razorpay payment) may transition freely.
+  // The website server (already-verified Razorpay payment) may create/transition freely.
   if (isInternalKey(req.headers as Headers | undefined)) return data;
 
   const user = req.user as { roles?: Role[] } | null | undefined;
+
+  // CREATE: a non-finance staffer must not forge an order already in a payment
+  // state (the transition gate below only runs on update).
+  if (operation === "create") {
+    const to = (data?.status ?? "pending") as OrderStatus;
+    if (PAYMENT_STATES.has(to) && !hasRole(user, "super-admin", "admin", "accounts")) {
+      throw new Error(`Only Accounts/Admin can create an order in the "${to}" state.`);
+    }
+    return data;
+  }
+
+  if (operation !== "update" || !originalDoc) return data;
+
   const from = originalDoc.status as OrderStatus;
   const to = (data?.status ?? from) as OrderStatus;
 

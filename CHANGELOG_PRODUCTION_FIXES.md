@@ -276,6 +276,26 @@ Infra: Vitest at the workspace root (`vitest.config.ts` — tests import source 
 
 ---
 
-## Not applied (intentionally staged — see PRODUCTION_AUDIT_REPORT.md §10)
+---
+
+# Wave 12 — Re-audit + fixes (2026-06-20)
+
+An independent 9-dimension re-audit verified the hardening against the **deployed** code: **49 fixes confirmed, 6 partial, 0 not-working, 0 regressions** (scores avg 52→78). It caught new gaps; the high-value ones were fixed and verified (website+dashboard `tsc`+lint clean, 39/39 tests, chatbot `tsc` baseline, frozen-lockfile valid):
+
+| Finding | File(s) | Change |
+|---|---|---|
+| **UPLOAD-09** (P1) | `apps/website/.../api/quote/route.ts` | The `/api/quote` multipart fallback now sniffs magic bytes (`isAllowedUploadSignature`) + `safeFilename`s names — closes the bypass of the UPLOAD-01/04 hardening (the JS upload route was protected, this path wasn't). |
+| **Chatbot sendMessage** (P1) | `customer-agent/.../widget/widget-controller.ts` | Session token is now **mandatory** in `sendMessage` (was `if (sessionToken)` → bypassable by omission). Mirrors `getMessages`. |
+| **Order-create gate** (P2) | `apps/dashboard/src/hooks/order-workflow.ts` | `beforeChange` now also gates **create** — non-finance staff can't hand-create an order already in a payment state (the gate previously ran only on update). |
+| **SEC-04** (P2) | `apps/website/src/instrumentation.ts` *(new)* | Website fail-fast: `register()` throws at startup if `INTERNAL_API_KEY`/`NEXT_PUBLIC_CMS_URL` are missing in prod. Triple-guarded (nodejs runtime + not build phase + prod) so `next build` is unaffected. |
+| **SEO-01 (rest)** (P2) | `email.ts`, `dashboard globals/index.ts`, `seed.ts` | Legal entity unified in the last 3 surfaces — transactional-email header, the CMS `company.legalName` field default, and the seeded SEO default title. |
+| **DEVOPS-lint** (P1) | `apps/dashboard/.eslintrc.json` *(new)* + `package.json` | Added ESLint config + `eslint`/`eslint-config-next` deps so the dashboard lints deterministically — the CI Lint step no longer hangs/fails on the whole pipeline. `no-html-link-for-pages` disabled (Payload admin `<a>` links are correct). |
+| **CMS-N1** (P3) | `apps/dashboard/src/hooks/workflow-gates.ts` | RFQ close/lost gate split so `closed` requires `closeReason` and `lost` requires `lossReason` (was interchangeable). |
+
+Full re-audit results, remaining-open items, and the prioritized roadmap are in `PRODUCTION_AUDIT_REPORT.md` (rewritten).
+
+---
+
+## Not applied (intentionally staged — see PRODUCTION_AUDIT_REPORT.md §6)
 
 Secret rotation/move to Secret Manager · super-admin bootstrap env-gate · chatbot webhook signatures & widget auth · Razorpay webhook · Redis rate limiting · 9-role RBAC + field-level payment access · order/RFQ state machines · new collections (Quotations/PaymentEvents/StockLedger/Tasks/etc.) · PIN-login replacement · legal-name reconciliation · `/quote` wiring · GCS ACL verification · chatbot `git init`.

@@ -82,6 +82,33 @@ export const Orders: CollectionConfig = {
       ],
     },
 
+    // Billing address (defaults to same as shipping; captured for the invoice).
+    {
+      type: "collapsible",
+      label: "Billing address",
+      admin: { initCollapsed: true },
+      fields: [
+        {
+          name: "billingSameAsShipping",
+          type: "checkbox",
+          label: "Same as shipping address",
+          defaultValue: true,
+        },
+        { name: "billingName", type: "text" },
+        { name: "billingLine1", type: "text" },
+        { name: "billingLine2", type: "text" },
+        {
+          type: "row",
+          fields: [
+            { name: "billingCity", type: "text", admin: { width: "33%" } },
+            { name: "billingState", type: "text", admin: { width: "33%" } },
+            { name: "billingPincode", type: "text", admin: { width: "34%" } },
+          ],
+        },
+        { name: "billingCountry", type: "text", defaultValue: "India" },
+      ],
+    },
+
     // GST (optional, B2B)
     {
       type: "row",
@@ -89,6 +116,14 @@ export const Orders: CollectionConfig = {
         { name: "gstin", type: "text", label: "GSTIN", admin: { width: "50%" } },
         { name: "businessName", type: "text", admin: { width: "50%" } },
       ],
+    },
+
+    // Customer-provided delivery instructions (shown to fulfilment staff).
+    {
+      name: "deliveryNotes",
+      type: "textarea",
+      label: "Delivery instructions (from customer)",
+      admin: { description: "Landmark / access / timing notes the customer gave at checkout." },
     },
 
     // Items (price snapshot at purchase time, GST-inclusive)
@@ -161,6 +196,17 @@ export const Orders: CollectionConfig = {
       admin: {
         position: "sidebar",
         description: "Linked storefront account, if the buyer was logged in. Guest orders have none.",
+      },
+    },
+
+    {
+      name: "marketingOptIn",
+      type: "checkbox",
+      label: "Marketing opt-in",
+      defaultValue: false,
+      admin: {
+        position: "sidebar",
+        description: "Customer agreed to marketing emails at checkout.",
       },
     },
 

@@ -32,6 +32,19 @@ export type OrderInput = {
   country?: string;
   gstin?: string;
   businessName?: string;
+  /** Billing address. When billingSameAsShipping is true these mirror shipping. */
+  billingSameAsShipping?: boolean;
+  billingName?: string;
+  billingLine1?: string;
+  billingLine2?: string;
+  billingCity?: string;
+  billingState?: string;
+  billingPincode?: string;
+  billingCountry?: string;
+  /** Customer-provided delivery instructions (distinct from internal notes). */
+  deliveryNotes?: string;
+  /** Customer opted in to marketing emails at checkout. */
+  marketingOptIn?: boolean;
   items: OrderItemInput[];
   subtotal: number;
   gstAmount: number;

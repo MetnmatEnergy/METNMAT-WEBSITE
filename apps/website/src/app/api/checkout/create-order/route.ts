@@ -27,6 +27,18 @@ type Body = {
   };
   gstin?: string;
   businessName?: string;
+  billingSameAsShipping?: boolean;
+  billing?: {
+    name?: string;
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    country?: string;
+  };
+  deliveryNotes?: string;
+  marketingOptIn?: boolean;
   items?: { slug?: string; qty?: number }[];
   /** Display context only — never used for amounts. */
   displayCurrency?: string;
@@ -148,6 +160,30 @@ export async function POST(req: Request) {
     return bad("Could not start the payment. Please try again in a moment.", 502);
   }
 
+  // Resolve the billing address. Default (and most common) is "same as
+  // shipping", in which case we mirror the shipping fields so staff always have
+  // an explicit Bill-To for the GST invoice. Otherwise use what was supplied.
+  const billingSame = body.billingSameAsShipping !== false;
+  const billing = billingSame
+    ? {
+        name,
+        line1: addr.line1?.trim(),
+        line2: addr.line2?.trim(),
+        city: addr.city?.trim(),
+        state: addr.state?.trim(),
+        pincode: addr.pincode?.trim(),
+        country,
+      }
+    : {
+        name: body.billing?.name?.trim() || name,
+        line1: body.billing?.line1?.trim(),
+        line2: body.billing?.line2?.trim(),
+        city: body.billing?.city?.trim(),
+        state: body.billing?.state?.trim(),
+        pincode: body.billing?.pincode?.trim(),
+        country: body.billing?.country?.trim() || country,
+      };
+
   // Link to the storefront account if the buyer is signed in (guest = none).
   const signedInCustomer = await getCurrentCustomer();
 
@@ -167,6 +203,16 @@ export async function POST(req: Request) {
     country,
     gstin: body.gstin,
     businessName: body.businessName,
+    billingSameAsShipping: billingSame,
+    billingName: billing.name,
+    billingLine1: billing.line1,
+    billingLine2: billing.line2,
+    billingCity: billing.city,
+    billingState: billing.state,
+    billingPincode: billing.pincode,
+    billingCountry: billing.country,
+    deliveryNotes: body.deliveryNotes?.trim() || undefined,
+    marketingOptIn: body.marketingOptIn === true,
     items: orderItems,
     subtotal,
     gstAmount,

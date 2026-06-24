@@ -51,7 +51,7 @@ export const Company: GlobalConfig = {
   ...settings(),
   fields: [
     { name: "name", type: "text", defaultValue: "METNMAT" },
-    { name: "legalName", type: "text", defaultValue: "METNMAT Research & Innovations" },
+    { name: "legalName", type: "text", defaultValue: "METNMAT INNOVATIONS PRIVATE LIMITED" },
     { name: "tagline", type: "text" },
     { name: "description", type: "textarea" },
     { name: "about", type: "richText" },
