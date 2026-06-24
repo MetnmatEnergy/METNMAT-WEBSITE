@@ -79,6 +79,7 @@ type CmsProduct = {
   sizes?: { label?: string }[];
   shortDesc?: string;
   images?: { image?: Media }[];
+  videoUrl?: string;
   createdAt?: string;
 };
 
@@ -107,6 +108,7 @@ function mapProduct(d: CmsProduct): Product {
     badges: d.badges ?? [],
     imageUrl: imgs[0],
     images: imgs,
+    videoUrl: d.videoUrl?.trim() || undefined,
     createdAt: d.createdAt,
   };
 }

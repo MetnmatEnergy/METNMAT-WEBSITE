@@ -43,6 +43,24 @@ export const Products: CollectionConfig = {
       fields: [{ name: "image", type: "upload", relationTo: "media", required: true }],
     },
     {
+      name: "videoUrl",
+      type: "text",
+      label: "YouTube video URL",
+      admin: {
+        placeholder: "https://youtu.be/B3EID6WKMNU",
+        description:
+          "Optional. Paste a YouTube link (youtu.be/… or youtube.com/watch?v=…). It appears as a playable video in the product image gallery on the website.",
+      },
+      validate: (val: string | string[] | null | undefined) => {
+        if (!val || typeof val !== "string" || !val.trim()) return true; // optional
+        const ok =
+          /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)[\w-]{6,}/.test(
+            val.trim()
+          );
+        return ok || "Enter a valid YouTube link (e.g. https://youtu.be/… or https://www.youtube.com/watch?v=…).";
+      },
+    },
+    {
       type: "row",
       fields: [
         { name: "price", type: "number", min: 0, admin: { width: "33%", description: "Base unit price in ₹ (excl. GST). 0 = quote-only." } },
