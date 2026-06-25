@@ -21,7 +21,7 @@ export function Hero({
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.18] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
       <div className="bg-hero-glow pointer-events-none absolute inset-0" />
 
-      <Container className="relative grid items-center gap-10 pb-12 pt-8 sm:pt-10 lg:grid-cols-2 lg:gap-12 lg:pb-20 lg:pt-14">
+      <Container className="relative grid items-start gap-8 pb-10 pt-8 sm:gap-10 sm:pt-10 lg:grid-cols-2 lg:gap-12 lg:pb-16 lg:pt-12">
         {/* Left: copy */}
         <div className="animate-fade-up">
           <Badge variant="dot">{hero.eyebrow}</Badge>
@@ -77,7 +77,7 @@ export function Hero({
         </div>
 
         {/* Right: auto-scrolling product mosaic (live featured products) */}
-        <div className="relative hidden lg:block lg:-mt-6">
+        <div className="relative hidden lg:block">
           <ProductMosaic />
 
           <div className="absolute -left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground shadow-lg">
