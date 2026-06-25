@@ -6,8 +6,9 @@ import { Container } from "@/frontend/components/ui/container";
 import { SearchBar } from "@/frontend/components/commerce/search-bar";
 import { SortSelect } from "@/frontend/components/commerce/sort-select";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
+import { Pagination } from "@/frontend/components/commerce/pagination";
 import { searchSite, searchProducts, getFeaturedProducts } from "@/frontend/lib/cms";
-import { sortProducts } from "@/frontend/lib/shop-query";
+import { sortProducts, PAGE_SIZE } from "@/frontend/lib/shop-query";
 
 export const metadata: Metadata = {
   title: "Search",
@@ -17,9 +18,9 @@ export const metadata: Metadata = {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; scope?: string; sort?: string }>;
+  searchParams: Promise<{ q?: string; scope?: string; sort?: string; page?: string }>;
 }) {
-  const { q = "", scope, sort = "relevance" } = await searchParams;
+  const { q = "", scope, sort = "relevance", page } = await searchParams;
   const query = q.trim();
   const productsOnly = scope === "products";
 
@@ -30,6 +31,11 @@ export default async function SearchPage({
     : { products: await getFeaturedProducts(8), links: [] };
   const products = sortProducts(rawProducts, sort);
   const total = products.length + links.length;
+
+  // Paginate the product results (the site links show on page 1 only).
+  const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
+  const current = Math.min(Math.max(1, parseInt(page || "1", 10) || 1), totalPages);
+  const pageProducts = products.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
   const LINK_ICON: Record<SiteLinkType, typeof FileText> = {
     Service: FlaskConical,
@@ -63,7 +69,7 @@ export default async function SearchPage({
       </div>
 
       {/* Pages & categories */}
-      {links.length > 0 && (
+      {links.length > 0 && current === 1 && (
         <div className="mt-6">
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
             Across the site
@@ -105,14 +111,19 @@ export default async function SearchPage({
       {/* Products */}
       {products.length > 0 && (
         <div className="mt-8">
-          {links.length > 0 && (
+          {links.length > 0 && current === 1 && (
             <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Products</h2>
           )}
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((p) => (
+            {pageProducts.map((p) => (
               <CatalogProductCard key={p.slug} product={p} />
             ))}
           </div>
+          {totalPages > 1 && (
+            <div className="mt-10">
+              <Pagination current={current} total={totalPages} />
+            </div>
+          )}
         </div>
       )}
 

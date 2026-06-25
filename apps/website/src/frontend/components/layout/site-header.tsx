@@ -36,14 +36,16 @@ export async function SiteHeader() {
             <Search className="h-[18px] w-[18px]" />
           </Link>
 
-          {/* Primary actions: profile · wishlist · cart — grouped as one cluster */}
+          {/* Account + wishlist — sm and up */}
           <span className="hidden items-center gap-1 sm:flex">
             <Link href="/account" aria-label="Your account" className={iconLink}>
               <User className="h-[18px] w-[18px]" />
             </Link>
             <WishlistBadgeButton />
-            <CartButton />
           </span>
+
+          {/* Cart — visible on every screen; opens the quick-cart drawer */}
+          <CartButton />
 
           {/* Divider keeps the theme toggle visually separate from the actions */}
           <span className="hidden h-6 w-px bg-border sm:block" aria-hidden="true" />

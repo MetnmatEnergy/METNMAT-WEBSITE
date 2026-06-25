@@ -78,8 +78,8 @@ export default async function ShopHomePage() {
         <Container>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <SectionHeading eyebrow="Popular" title="Featured products" />
-            <Link href="/search" className="text-sm font-medium text-foreground/90 hover:text-brand">
-              View all →
+            <Link href="/shop/all" className="text-sm font-medium text-foreground/90 hover:text-brand">
+              View all products →
             </Link>
           </div>
           <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-5 lg:mt-10 lg:grid-cols-4">
