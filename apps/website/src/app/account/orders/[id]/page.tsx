@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Circle, Package, XCircle } from "lucide-react";
 import { Card } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
+import { ReorderButton } from "@/frontend/components/commerce/reorder-button";
 import { formatINR } from "@/frontend/lib/catalog";
 import { getCurrentCustomer, getCustomerOrder } from "@/backend/lib/customer";
 
@@ -67,9 +68,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <h2 className="font-display text-xl font-bold">{order.orderNumber}</h2>
           <p className="text-sm text-muted-foreground">Placed {fmtDate(order.createdAt)}</p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${STATUS_STYLE[status] || "bg-muted text-muted-foreground"}`}>
-          {status}
-        </span>
+        <div className="flex items-center gap-3">
+          {(order.items ?? []).some((it) => it.slug) && (
+            <ReorderButton items={(order.items ?? []).map((it) => ({ slug: it.slug, qty: it.qty }))} />
+          )}
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${STATUS_STYLE[status] || "bg-muted text-muted-foreground"}`}>
+            {status}
+          </span>
+        </div>
       </div>
 
       {/* Tracking */}

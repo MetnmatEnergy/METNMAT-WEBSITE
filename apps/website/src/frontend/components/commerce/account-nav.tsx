@@ -29,15 +29,18 @@ export function AccountNav() {
   }
 
   return (
-    <nav className="space-y-1">
+    // Horizontal, scrollable chip row on mobile (so it doesn't push the page
+    // content down); a vertical sidebar on lg+.
+    <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
       {links.map((l) => {
         const active = l.href === "/account" ? pathname === "/account" : pathname.startsWith(l.href);
         return (
           <Link
             key={l.href}
             href={l.href}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
+              "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm lg:gap-3",
               active ? "bg-surface font-medium text-brand" : "text-muted-foreground hover:bg-surface hover:text-foreground"
             )}
           >
@@ -49,7 +52,7 @@ export function AccountNav() {
       <button
         type="button"
         onClick={logout}
-        className="mt-2 flex w-full items-center gap-3 rounded-lg border-t border-border px-3 py-2.5 pt-4 text-sm text-muted-foreground hover:text-brand"
+        className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border-border px-3 py-2.5 text-sm text-muted-foreground hover:text-brand lg:mt-2 lg:w-full lg:gap-3 lg:border-t lg:pt-4"
       >
         <LogOut className="h-4 w-4" />
         Sign out
