@@ -130,7 +130,8 @@ function AuthCard() {
         </p>
       </div>
       <p className="mt-4 text-center text-xs text-muted-foreground">
-        You can also check out as a guest — an account just makes reordering and tracking easier.
+        An account keeps your orders, GST invoices &amp; saved addresses in one place — and makes
+        checkout a few taps next time.
       </p>
     </div>
   );

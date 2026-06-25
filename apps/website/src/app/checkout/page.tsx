@@ -315,6 +315,61 @@ export default function CheckoutPage() {
   const isIndia = isIndiaName(form.country);
   const dialCode = dialFor(form.country) || "+91";
 
+  // Prefill from the signed-in customer's saved profile + default address
+  // (checkout is gated, so one always exists). Runs once on mount, before the
+  // customer types — and never overwrites a field they've already filled.
+  const prefilled = React.useRef(false);
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/account/me", { cache: "no-store" });
+        if (!res.ok) return;
+        const { customer } = (await res.json()) as {
+          customer: null | {
+            name?: string; email?: string; phone?: string; company?: string; gstin?: string;
+            addresses?: Array<{
+              line1?: string; line2?: string; city?: string; state?: string;
+              pincode?: string; country?: string; isDefault?: boolean;
+            }>;
+          };
+        };
+        if (!customer || cancelled || prefilled.current) return;
+        prefilled.current = true;
+        setForm((f) => {
+          const n = { ...f };
+          const parts = String(customer.name ?? "").trim().split(/\s+/).filter(Boolean);
+          if (!n.firstName && parts[0]) n.firstName = parts[0];
+          if (!n.lastName && parts.length > 1) n.lastName = parts.slice(1).join(" ");
+          if (!n.email && customer.email) n.email = customer.email;
+          if (!n.company && customer.company) n.company = customer.company;
+          if (!n.businessName && customer.company) n.businessName = customer.company;
+          if (!n.gstin && customer.gstin) n.gstin = String(customer.gstin).toUpperCase();
+          const addrs = customer.addresses ?? [];
+          const def = addrs.find((a) => a.isDefault) ?? addrs[0];
+          if (def) {
+            if (def.country && COUNTRIES.some((c) => c.name === def.country)) n.country = def.country;
+            if (!n.line1 && def.line1) n.line1 = def.line1;
+            if (!n.line2 && def.line2) n.line2 = def.line2;
+            if (!n.city && def.city) n.city = def.city;
+            if (!n.state && def.state) n.state = def.state;
+            if (!n.pincode && def.pincode) n.pincode = def.pincode;
+          }
+          if (!n.phone && customer.phone) {
+            const dial = dialFor(n.country).replace(/\D/g, "");
+            let digits = String(customer.phone).replace(/\D/g, "");
+            if (dial && digits.startsWith(dial)) digits = digits.slice(dial.length);
+            n.phone = digits;
+          }
+          return n;
+        });
+      } catch {
+        /* ignore — the form just stays blank */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   /** Update a string field; live-clear its error once it becomes valid. */
   const upd = (k: keyof Form) => (v: string) => {
     setForm((f) => ({ ...f, [k]: v }));
