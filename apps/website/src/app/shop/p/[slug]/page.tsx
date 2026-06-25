@@ -5,7 +5,6 @@ import { Truck, BadgeCheck, FileText, ShieldCheck } from "lucide-react";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
 import { PriceTiers } from "@/frontend/components/commerce/price-block";
 import { ProductBuyBox } from "@/frontend/components/commerce/product-buy-box";
-import { ProductSizes } from "@/frontend/components/commerce/product-sizes";
 import { ProductGallery } from "@/frontend/components/commerce/product-gallery";
 import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
@@ -167,14 +166,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           <div className="mt-5">
             <ProductBuyBox product={product} />
           </div>
-
-          {/* Available sizes (one SKU offered in several sizes) */}
-          {product.sizes && product.sizes.length > 0 && (
-            <ProductSizes
-              product={{ name: product.name, slug: product.slug, sku: product.sku }}
-              sizes={product.sizes}
-            />
-          )}
 
           {/* Description */}
           <div className="mt-6">

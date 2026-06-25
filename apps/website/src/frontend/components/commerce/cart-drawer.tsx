@@ -106,7 +106,7 @@ export function CartDrawer() {
                 const min = Math.max(1, line.product.moq || 1);
                 const atMin = line.qty <= min;
                 return (
-                  <div key={line.slug} className="flex gap-3 p-4">
+                  <div key={line.key} className="flex gap-3 p-4">
                     <Link
                       href={`/shop/p/${line.slug}`}
                       onClick={closeCartDrawer}
@@ -127,6 +127,7 @@ export function CartDrawer() {
                       >
                         {line.product.name}
                       </Link>
+                      {line.size && <p className="text-xs text-muted-foreground">Size: {line.size}</p>}
                       <p className="mt-0.5 text-sm font-semibold tabular-nums">
                         {line.product.price
                           ? money(inclGST(line.unitPrice) * line.qty, usdFor(line.product, inclGST(line.unitPrice) * line.qty))
@@ -137,7 +138,7 @@ export function CartDrawer() {
                           <button
                             type="button"
                             aria-label={atMin ? `Remove ${line.product.name}` : "Decrease quantity"}
-                            onClick={() => (atMin ? removeFromCart(line.slug) : setQty(line.slug, line.qty - 1))}
+                            onClick={() => (atMin ? removeFromCart(line.key) : setQty(line.key, line.qty - 1))}
                             className="flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:text-brand"
                           >
                             {atMin ? <Trash2 className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
@@ -146,7 +147,7 @@ export function CartDrawer() {
                           <button
                             type="button"
                             aria-label="Increase quantity"
-                            onClick={() => setQty(line.slug, line.qty + 1)}
+                            onClick={() => setQty(line.key, line.qty + 1)}
                             className="flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:text-brand"
                           >
                             <Plus className="h-3.5 w-3.5" />
@@ -154,7 +155,7 @@ export function CartDrawer() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => removeFromCart(line.slug)}
+                          onClick={() => removeFromCart(line.key)}
                           aria-label={`Remove ${line.product.name} from cart`}
                           className="ml-auto text-muted-foreground transition-colors hover:text-brand"
                         >

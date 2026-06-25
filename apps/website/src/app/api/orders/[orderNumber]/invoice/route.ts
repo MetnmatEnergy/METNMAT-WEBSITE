@@ -49,7 +49,7 @@ function invoiceHtml(order: FullOrder): string {
       <tr>
         <td style="padding:9px 12px;border-bottom:1px solid #eee;color:#6b7280;font-size:12px">${i + 1}</td>
         <td style="padding:9px 12px;border-bottom:1px solid #eee;color:#111827;font-size:13px">
-          ${esc(it.productName)}${it.sku ? `<br/><span style="color:#9ca3af;font-size:11px">${esc(it.sku)}</span>` : ""}
+          ${esc(it.productName)}${it.size ? ` · ${esc(it.size)}` : ""}${it.sku ? `<br/><span style="color:#9ca3af;font-size:11px">${esc(it.sku)}</span>` : ""}
         </td>
         <td style="padding:9px 12px;border-bottom:1px solid #eee;color:#374151;font-size:13px;text-align:center">${esc(it.qty ?? 0)}</td>
         <td style="padding:9px 12px;border-bottom:1px solid #eee;color:#111827;font-size:13px;text-align:right">${inr(it.lineTotal || 0)}</td>

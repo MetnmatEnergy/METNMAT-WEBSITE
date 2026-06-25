@@ -119,7 +119,7 @@ export function CartRail() {
           const min = Math.max(1, line.product.moq || 1);
           const atMin = line.qty <= min;
           return (
-            <div key={line.slug} className="animate-fade-up text-center">
+            <div key={line.key} className="animate-fade-up text-center">
               <Link
                 href={`/shop/p/${line.slug}`}
                 title={line.product.name}
@@ -144,6 +144,7 @@ export function CartRail() {
                   ? money(inclGST(line.unitPrice) * line.qty, usdFor(line.product, inclGST(line.unitPrice) * line.qty))
                   : "On request"}
               </p>
+              {line.size && <p className="truncate text-[10px] text-muted-foreground">{line.size}</p>}
 
               {/* Quantity stepper (Amazon-style pill) */}
               <div className="mt-1.5 flex items-center justify-between rounded-full border border-border bg-background px-1.5 py-1">
@@ -151,7 +152,7 @@ export function CartRail() {
                   type="button"
                   aria-label={atMin ? `Remove ${line.product.name} from cart` : "Decrease quantity"}
                   onClick={() =>
-                    atMin ? removeFromCart(line.slug) : setQty(line.slug, line.qty - 1)
+                    atMin ? removeFromCart(line.key) : setQty(line.key, line.qty - 1)
                   }
                   className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand"
                 >
@@ -163,7 +164,7 @@ export function CartRail() {
                 <button
                   type="button"
                   aria-label="Increase quantity"
-                  onClick={() => setQty(line.slug, line.qty + 1)}
+                  onClick={() => setQty(line.key, line.qty + 1)}
                   className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-brand"
                 >
                   <Plus className="h-3.5 w-3.5" />

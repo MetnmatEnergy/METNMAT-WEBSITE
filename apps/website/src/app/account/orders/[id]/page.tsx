@@ -80,7 +80,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </a>
           )}
           {(order.items ?? []).some((it) => it.slug) && (
-            <ReorderButton items={(order.items ?? []).map((it) => ({ slug: it.slug, qty: it.qty }))} />
+            <ReorderButton items={(order.items ?? []).map((it) => ({ slug: it.slug, qty: it.qty, size: it.size }))} />
           )}
           <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${STATUS_STYLE[status] || "bg-muted text-muted-foreground"}`}>
             {status}
@@ -126,6 +126,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <div key={i} className="flex items-center justify-between gap-3 py-3 text-sm">
               <span className="min-w-0">
                 <span className="font-medium">{it.productName}</span>
+                {it.size && <span className="text-muted-foreground"> · {it.size}</span>}
                 <span className="text-muted-foreground"> × {it.qty}</span>
                 {it.sku && <span className="ml-2 text-xs text-muted-foreground">{it.sku}</span>}
               </span>

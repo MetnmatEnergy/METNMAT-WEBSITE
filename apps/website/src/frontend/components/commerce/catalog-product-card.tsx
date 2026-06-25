@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
+import { SlidersHorizontal } from "lucide-react";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
+import { Button } from "@/frontend/components/ui/button";
 import { PriceBlock } from "@/frontend/components/commerce/price-block";
 import { RatingStars } from "@/frontend/components/commerce/rating-stars";
 import { AddToCartButton } from "@/frontend/components/commerce/add-to-cart-button";
@@ -139,6 +141,18 @@ export function CatalogProductCard({
               withIcon
               className={cn("h-11 justify-center", isGrid ? "w-full" : "sm:flex-1")}
             />
+          ) : product.sizes && product.sizes.length > 0 ? (
+            // Variable product (multiple sizes) — pick options on the product page.
+            <>
+              <Button href={href} size="md" className={cn("gap-2", isGrid && "w-full")}>
+                <SlidersHorizontal className="h-4 w-4" /> Select options
+              </Button>
+              <RequestQuoteButton
+                product={{ name: product.name, slug: product.slug, sku: product.sku }}
+                label="Request a quote"
+                className={cn("h-11", isGrid && "w-full")}
+              />
+            </>
           ) : (
             <>
               <AddToCartButton product={product} size="md" fullWidth={isGrid} />

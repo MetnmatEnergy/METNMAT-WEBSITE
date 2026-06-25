@@ -5,16 +5,22 @@ import { unitPriceForQty, clampQty, isQuoteOnly, type Product } from "@/frontend
 
 // Cart/wishlist store a product SNAPSHOT taken at add-time (denormalized) so the
 // website no longer depends on static catalog data — products come from the CMS.
-type CartItem = { qty: number; product: Product };
-type CartLine = { slug: string; qty: number; product: Product; unitPrice: number; lineTotal: number };
+type CartItem = { qty: number; product: Product; size?: string };
+type CartLine = { slug: string; key: string; size?: string; qty: number; product: Product; unitPrice: number; lineTotal: number };
+
+/** A cart line's identity = product slug + selected size, so each size is its
+ *  own line. For sizeless products the key is just the slug (backward compatible). */
+const lineKey = (slug: string, size?: string) => (size ? `${slug}__${size}` : slug);
+const itemKey = (i: CartItem) => lineKey(i.product.slug, i.size);
 
 type Store = {
   cart: CartItem[];
   /** True once localStorage has been read — guards against a "false empty" flash. */
   ready: boolean;
-  addToCart: (product: Product, qty?: number) => void;
-  setQty: (slug: string, qty: number) => void;
-  removeFromCart: (slug: string) => void;
+  addToCart: (product: Product, qty?: number, size?: string) => void;
+  /** `key` is the cart line key (slug, or slug+size); equals the slug for sizeless products. */
+  setQty: (key: string, qty: number) => void;
+  removeFromCart: (key: string) => void;
   clearCart: () => void;
   cartCount: number;
   cartLines: CartLine[];
@@ -76,38 +82,37 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (ready) localStorage.setItem(WISH_KEY, JSON.stringify(wishlist));
   }, [wishlist, ready]);
 
-  const addToCart = React.useCallback((product: Product, qty = 1) => {
+  const addToCart = React.useCallback((product: Product, qty = 1, size?: string) => {
     // Quote-only items (no price) can't be bought online — they go through RFQ.
     if (isQuoteOnly(product)) return;
     setCart((prev) => {
-      const existing = prev.find((i) => i.product.slug === product.slug);
+      const k = lineKey(product.slug, size);
+      const existing = prev.find((i) => itemKey(i) === k);
       if (existing) {
         // clampQty floors to MOQ and caps at MAX_ORDER_QTY, so the cart qty can
         // never be a value the server will silently change at checkout.
         return prev.map((i) =>
-          i.product.slug === product.slug
-            ? { ...i, qty: clampQty(product, i.qty + qty), product }
-            : i
+          itemKey(i) === k ? { ...i, qty: clampQty(product, i.qty + qty), product } : i
         );
       }
-      return [...prev, { product, qty: clampQty(product, qty) }];
+      return [...prev, { product, qty: clampQty(product, qty), ...(size ? { size } : {}) }];
     });
   }, []);
 
-  const setQty = React.useCallback((slug: string, qty: number) => {
+  const setQty = React.useCallback((key: string, qty: number) => {
     // Floor to the product's MOQ (never below) and cap at MAX_ORDER_QTY, so the
     // displayed quantity always matches what gets charged. Removal goes through
     // removeFromCart (e.g. the cart-rail trash action at MOQ).
     setCart((prev) =>
-      prev.map((i) => (i.product.slug === slug ? { ...i, qty: clampQty(i.product, qty) } : i))
+      prev.map((i) => (itemKey(i) === key ? { ...i, qty: clampQty(i.product, qty) } : i))
     );
   }, []);
 
-  const removeFromCart = React.useCallback((slug: string) => {
+  const removeFromCart = React.useCallback((key: string) => {
     setCart((prev) => {
-      const removed = prev.find((i) => i.product.slug === slug);
+      const removed = prev.find((i) => itemKey(i) === key);
       if (removed) setLastRemoved(removed);
-      return prev.filter((i) => i.product.slug !== slug);
+      return prev.filter((i) => itemKey(i) !== key);
     });
   }, []);
   const clearCart = React.useCallback(() => setCart([]), []);
@@ -116,7 +121,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setLastRemoved((removed) => {
       if (removed) {
         setCart((prev) =>
-          prev.some((i) => i.product.slug === removed.product.slug) ? prev : [...prev, removed]
+          prev.some((i) => itemKey(i) === itemKey(removed)) ? prev : [...prev, removed]
         );
       }
       return null;
@@ -138,6 +143,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const unitPrice = unitPriceForQty(item.product, item.qty);
     return {
       slug: item.product.slug,
+      key: itemKey(item),
+      size: item.size,
       qty: item.qty,
       product: item.product,
       unitPrice,

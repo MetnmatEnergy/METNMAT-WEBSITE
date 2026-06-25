@@ -10,19 +10,61 @@ import { RequestQuoteButton } from "@/frontend/components/commerce/request-quote
 import { Button } from "@/frontend/components/ui/button";
 import { inclGST, unitPriceForQty, usdFor, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
+import { cn } from "@/frontend/lib/utils";
 
 export function ProductBuyBox({ product }: { product: Product }) {
   const { addToCart } = useStore();
   const { money } = useCurrency();
   const [qty, setQty] = React.useState(product.moq);
+  const [size, setSize] = React.useState<string>(product.sizes?.[0] ?? "");
   const [added, setAdded] = React.useState(false);
   const [plusTrigger, setPlusTrigger] = React.useState(0);
+
+  const hasSizes = !!(product.sizes && product.sizes.length > 0);
+  // The quote ref carries the chosen size into the customization drawer.
+  const quoteRef = {
+    name: product.name,
+    slug: product.slug,
+    sku: product.sku,
+    ...(hasSizes && size ? { size } : {}),
+  };
 
   const stock = (
     <p className={`mt-1 text-sm ${product.inStock ? "text-emerald-500" : "text-amber-500"}`}>
       {product.inStock ? "In stock" : "Made to order"} · {product.leadTime}
     </p>
   );
+
+  const sizePicker = hasSizes ? (
+    <div className="mt-4">
+      <p className="text-sm font-medium text-muted-foreground">
+        Size{product.sizes!.length > 1 ? <span className="ml-1 text-xs">· choose one</span> : null}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Size">
+        {product.sizes!.map((s) => {
+          const active = size === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => setSize(s)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm transition-colors",
+                active
+                  ? "border-brand bg-brand/10 font-semibold text-brand-soft"
+                  : "border-border text-foreground/80 hover:border-brand/40 hover:text-foreground"
+              )}
+            >
+              {active && <Check className="h-3.5 w-3.5" />}
+              {s}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
 
   // ── Quote-only (no online price): no cart, promote the RFQ flow. ──────────────
   if (isQuoteOnly(product)) {
@@ -33,18 +75,13 @@ export function ProductBuyBox({ product }: { product: Product }) {
           <span className="text-xs text-muted-foreground">/ {product.unit}</span>
         </div>
         {stock}
+        {sizePicker}
         <p className="mt-3 text-sm text-muted-foreground">
           This is a made-to-order / bulk item. Share your quantity and specs and we&apos;ll
           send a GST quote.
         </p>
         <div className="mt-4 grid gap-2">
-          <RequestQuoteButton
-            product={{ name: product.name, slug: product.slug, sku: product.sku }}
-            label="Request a quote"
-            variant="brand"
-            withIcon
-            className="w-full py-2.5"
-          />
+          <RequestQuoteButton product={quoteRef} label="Request a quote" variant="brand" withIcon className="w-full py-2.5" />
           <WishlistButton product={product} withLabel className="w-full justify-center" />
         </div>
         <p className="mt-4 text-center text-xs text-muted-foreground">
@@ -62,7 +99,7 @@ export function ProductBuyBox({ product }: { product: Product }) {
   const off = hasDiscount ? Math.round((1 - product.price / product.mrp!) * 100) : 0;
 
   function handleAdd() {
-    addToCart(product, qty);
+    addToCart(product, qty, hasSizes ? size || undefined : undefined);
     setAdded(true);
     setPlusTrigger((t) => t + 1);
     setTimeout(() => setAdded(false), 1500);
@@ -84,6 +121,7 @@ export function ProductBuyBox({ product }: { product: Product }) {
       )}
 
       {stock}
+      {sizePicker}
 
       <div className="mt-4 flex items-center justify-between gap-3">
         <span className="text-sm text-muted-foreground">
@@ -109,15 +147,10 @@ export function ProductBuyBox({ product }: { product: Product }) {
             {added ? "Added to cart" : "Add to cart"}
           </Button>
           <span className="sr-only" role="status" aria-live="polite">
-            {added ? `Added ${qty} × ${product.name} to cart` : ""}
+            {added ? `Added ${qty} × ${product.name}${hasSizes && size ? ` (${size})` : ""} to cart` : ""}
           </span>
         </span>
-        <RequestQuoteButton
-          product={{ name: product.name, slug: product.slug, sku: product.sku }}
-          variant="outline"
-          withIcon
-          className="w-full"
-        />
+        <RequestQuoteButton product={quoteRef} variant="outline" withIcon className="w-full" />
         <WishlistButton product={product} withLabel className="w-full justify-center" />
       </div>
 

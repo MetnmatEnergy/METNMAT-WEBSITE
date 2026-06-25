@@ -474,7 +474,7 @@ export default function CheckoutPage() {
               },
           deliveryNotes: form.deliveryNotes.trim(),
           marketingOptIn: form.marketingOptIn,
-          items: cartLines.map((l) => ({ slug: l.slug, qty: l.qty })),
+          items: cartLines.map((l) => ({ slug: l.slug, qty: l.qty, size: l.size })),
           displayCurrency: currency,
         }),
       });
@@ -804,9 +804,9 @@ export default function CheckoutPage() {
             <h2 className="font-display text-lg font-semibold">Your order</h2>
             <ul className="mt-4 space-y-3 text-sm">
               {cartLines.map((l) => (
-                <li key={l.slug} className="flex justify-between gap-3">
+                <li key={l.key} className="flex justify-between gap-3">
                   <span className="text-muted-foreground">
-                    {l.product.name} × {l.qty}
+                    {l.product.name}{l.size ? ` (${l.size})` : ""} × {l.qty}
                   </span>
                   <span className="font-medium tabular-nums">
                     {l.product.price

@@ -14,6 +14,7 @@ export type OrderItemInput = {
   productName: string;
   slug: string;
   sku?: string;
+  size?: string;
   qty: number;
   unitPrice: number; // incl. GST, ₹
   lineTotal: number; // incl. GST, ₹

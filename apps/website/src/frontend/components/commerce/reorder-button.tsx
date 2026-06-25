@@ -16,7 +16,7 @@ export function ReorderButton({
   items,
   className,
 }: {
-  items: { slug?: string; qty?: number }[];
+  items: { slug?: string; qty?: number; size?: string }[];
   className?: string;
 }) {
   const router = useRouter();
@@ -46,7 +46,7 @@ export function ReorderButton({
       for (const it of items) {
         const p = it.slug ? bySlug.get(it.slug) : undefined;
         if (p && p.price) {
-          addToCart(p, it.qty || p.moq || 1); // addToCart clamps to MOQ/cap
+          addToCart(p, it.qty || p.moq || 1, it.size); // addToCart clamps to MOQ/cap
           added += 1;
         }
       }

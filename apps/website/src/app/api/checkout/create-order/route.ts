@@ -39,7 +39,7 @@ type Body = {
   };
   deliveryNotes?: string;
   marketingOptIn?: boolean;
-  items?: { slug?: string; qty?: number }[];
+  items?: { slug?: string; qty?: number; size?: string }[];
   /** Display context only — never used for amounts. */
   displayCurrency?: string;
 };
@@ -126,6 +126,7 @@ export async function POST(req: Request) {
       productName: product.name,
       slug: product.slug,
       sku: product.sku,
+      size: i.size,
       qty,
       unitPrice: unitIncl,
       lineTotal: unitIncl * qty,

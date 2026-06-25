@@ -105,7 +105,7 @@ export type FullOrder = {
   pincode?: string;
   country?: string;
   gstin?: string;
-  items?: { productName?: string; slug?: string; sku?: string; qty?: number; unitPrice?: number; lineTotal?: number }[];
+  items?: { productName?: string; slug?: string; sku?: string; size?: string; qty?: number; unitPrice?: number; lineTotal?: number }[];
   subtotal?: number;
   gstAmount?: number;
   total?: number;

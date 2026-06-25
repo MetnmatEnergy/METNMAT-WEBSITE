@@ -17,9 +17,9 @@ export default function CartPage() {
 
   // "Save for later": keep the product on the wishlist, then drop it from the
   // cart (the existing remove-undo toast still fires, so a misclick is recoverable).
-  function moveToWishlist(slug: string, product: Product) {
-    if (!inWishlist(slug)) toggleWishlist(product);
-    removeFromCart(slug);
+  function moveToWishlist(key: string, product: Product) {
+    if (!inWishlist(product.slug)) toggleWishlist(product);
+    removeFromCart(key);
   }
   // Display GST-inclusive totals (catalog stores base prices excl. GST).
   const subtotalIncl = cartLines.reduce((n, l) => n + inclGST(l.unitPrice) * l.qty, 0);
@@ -68,7 +68,7 @@ export default function CartPage() {
         {/* Lines */}
         <div className="divide-y divide-border rounded-2xl border border-border">
           {cartLines.map((line) => (
-            <div key={line.slug} className="flex gap-4 p-4">
+            <div key={line.key} className="flex gap-4 p-4">
               <Link
                 href={`/shop/p/${line.slug}`}
                 className="block h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-border bg-white"
@@ -96,10 +96,13 @@ export default function CartPage() {
                     <Link href={`/shop/p/${line.slug}`} className="block font-medium hover:text-brand">
                       {line.product.name}
                     </Link>
+                    {line.size && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">Size: <span className="text-foreground/80">{line.size}</span></p>
+                    )}
                   </div>
                   <div className="flex h-fit items-center gap-3">
                     <button
-                      onClick={() => moveToWishlist(line.slug, line.product)}
+                      onClick={() => moveToWishlist(line.key, line.product)}
                       aria-label="Save for later"
                       title="Save for later"
                       className="text-muted-foreground hover:text-brand"
@@ -107,7 +110,7 @@ export default function CartPage() {
                       <Heart className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={() => removeFromCart(line.slug)}
+                      onClick={() => removeFromCart(line.key)}
                       aria-label="Remove"
                       className="text-muted-foreground hover:text-brand"
                     >
@@ -122,7 +125,7 @@ export default function CartPage() {
                   <QuantityStepper
                     value={line.qty}
                     min={line.product.moq}
-                    onChange={(v) => setQty(line.slug, v)}
+                    onChange={(v) => setQty(line.key, v)}
                   />
                   <span className="font-semibold">
                     {line.product.price

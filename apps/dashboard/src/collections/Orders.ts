@@ -136,9 +136,10 @@ export const Orders: CollectionConfig = {
         {
           type: "row",
           fields: [
-            { name: "slug", type: "text", admin: { width: "40%" } },
-            { name: "sku", type: "text", admin: { width: "30%" } },
-            { name: "qty", type: "number", required: true, admin: { width: "30%" } },
+            { name: "slug", type: "text", admin: { width: "30%" } },
+            { name: "sku", type: "text", admin: { width: "25%" } },
+            { name: "size", type: "text", admin: { width: "20%", description: "Selected size variant." } },
+            { name: "qty", type: "number", required: true, admin: { width: "25%" } },
           ],
         },
         {
