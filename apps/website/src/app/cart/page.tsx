@@ -1,17 +1,26 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
-import { Trash2, ArrowRight, FileText, ShoppingCart, Loader2 } from "lucide-react";
+import { Trash2, ArrowRight, FileText, ShoppingCart, Loader2, Heart } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { QuantityStepper } from "@/frontend/components/commerce/quantity-stepper";
 import { useStore } from "@/frontend/components/commerce/store-provider";
-import { inclGST, usdFor, lineUsdValue } from "@/frontend/lib/catalog";
+import { inclGST, usdFor, lineUsdValue, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 
 export default function CartPage() {
-  const { cartLines, setQty, removeFromCart, clearCart, cartCount, ready } = useStore();
+  const { cartLines, setQty, removeFromCart, clearCart, cartCount, ready, toggleWishlist, inWishlist } = useStore();
   const { money, currency, usdRate } = useCurrency();
+  const [confirmClear, setConfirmClear] = React.useState(false);
+
+  // "Save for later": keep the product on the wishlist, then drop it from the
+  // cart (the existing remove-undo toast still fires, so a misclick is recoverable).
+  function moveToWishlist(slug: string, product: Product) {
+    if (!inWishlist(slug)) toggleWishlist(product);
+    removeFromCart(slug);
+  }
   // Display GST-inclusive totals (catalog stores base prices excl. GST).
   const subtotalIncl = cartLines.reduce((n, l) => n + inclGST(l.unitPrice) * l.qty, 0);
   // For USD visitors, honor any staff-set USD price (base unit) so totals match the PDP.
@@ -88,13 +97,23 @@ export default function CartPage() {
                       {line.product.name}
                     </Link>
                   </div>
-                  <button
-                    onClick={() => removeFromCart(line.slug)}
-                    aria-label="Remove"
-                    className="h-fit text-muted-foreground hover:text-brand"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex h-fit items-center gap-3">
+                    <button
+                      onClick={() => moveToWishlist(line.slug, line.product)}
+                      aria-label="Save for later"
+                      title="Save for later"
+                      className="text-muted-foreground hover:text-brand"
+                    >
+                      <Heart className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => removeFromCart(line.slug)}
+                      aria-label="Remove"
+                      className="text-muted-foreground hover:text-brand"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {money(inclGST(line.unitPrice), usdFor(line.product, inclGST(line.unitPrice)))} / {line.product.unit} · incl. GST
@@ -114,11 +133,32 @@ export default function CartPage() {
               </div>
             </div>
           ))}
-          <div className="flex justify-between p-4">
-            <button onClick={clearCart} className="text-sm text-muted-foreground hover:text-brand">
-              Clear cart
-            </button>
-            <Link href="/shop" className="text-sm font-medium hover:text-brand">
+          <div className="flex items-center justify-between gap-4 p-4">
+            {confirmClear ? (
+              <span className="flex items-center gap-3 text-sm">
+                <span className="text-muted-foreground">Clear entire cart?</span>
+                <button
+                  onClick={() => { clearCart(); setConfirmClear(false); }}
+                  className="font-medium text-brand hover:underline"
+                >
+                  Yes, clear
+                </button>
+                <button
+                  onClick={() => setConfirmClear(false)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button
+                onClick={() => setConfirmClear(true)}
+                className="text-sm text-muted-foreground hover:text-brand"
+              >
+                Clear cart
+              </button>
+            )}
+            <Link href="/shop" className="shrink-0 text-sm font-medium hover:text-brand">
               Continue shopping →
             </Link>
           </div>

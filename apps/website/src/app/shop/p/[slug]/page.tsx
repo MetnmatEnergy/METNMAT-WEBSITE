@@ -9,7 +9,8 @@ import { ProductSizes } from "@/frontend/components/commerce/product-sizes";
 import { ProductGallery } from "@/frontend/components/commerce/product-gallery";
 import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
-import { JsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
+import { inclGST } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import {
   getProductBySlug,
@@ -74,18 +75,34 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           brand: { "@type": "Brand", name: product.brand },
           description: product.shortDesc,
           ...(product.imageUrl ? { image: product.imageUrl } : {}),
-          offers: {
-            "@type": "Offer",
-            priceCurrency: "INR",
-            ...(product.price ? { price: product.price } : {}),
-            availability: product.inStock
-              ? "https://schema.org/InStock"
-              : "https://schema.org/PreOrder",
-            itemCondition: "https://schema.org/NewCondition",
-            url: `${site.url}/shop/p/${product.slug}`,
-            seller: { "@type": "Organization", name: site.legalName },
-          },
+          // Only emit an Offer for items with an online price — a quote-only item
+          // has no price, and an Offer without one is invalid. The price must be
+          // GST-inclusive to match what the page shows.
+          ...(product.price
+            ? {
+                offers: {
+                  "@type": "Offer",
+                  priceCurrency: "INR",
+                  price: inclGST(product.price),
+                  availability: product.inStock
+                    ? "https://schema.org/InStock"
+                    : "https://schema.org/PreOrder",
+                  itemCondition: "https://schema.org/NewCondition",
+                  url: `${site.url}/shop/p/${product.slug}`,
+                  seller: { "@type": "Organization", name: site.legalName },
+                },
+              }
+            : {}),
         }}
+      />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Shop", path: "/shop" },
+          ...(parent ? [{ name: parent.name, path: `/shop/c/${parent.slug}` }] : []),
+          ...(category ? [{ name: category.name, path: `/shop/c/${category.slug}` }] : []),
+          { name: product.name, path: `/shop/p/${product.slug}` },
+        ])}
       />
 
       <Breadcrumbs

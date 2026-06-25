@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/frontend/components/ui/container";
+import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
 import { FilterSidebar } from "@/frontend/components/commerce/filter-sidebar";
 import { FilterDrawer } from "@/frontend/components/commerce/filter-drawer";
@@ -66,6 +67,14 @@ export default async function CategoryPage({
 
   return (
     <Container className="py-8">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Shop", path: "/shop" },
+          ...(parent ? [{ name: parent.name, path: `/shop/c/${parent.slug}` }] : []),
+          { name: cat.name, path: `/shop/c/${cat.slug}` },
+        ])}
+      />
       <Breadcrumbs
         items={[
           { name: "Home", href: "/" },
