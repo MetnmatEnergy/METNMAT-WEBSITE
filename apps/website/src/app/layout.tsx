@@ -14,7 +14,6 @@ import { QuoteModal } from "@/frontend/components/commerce/quote-modal";
 import { ChatWidget } from "@/frontend/components/chat/chat-widget";
 import { ChatCartBridge } from "@/frontend/components/commerce/chat-cart-bridge";
 import { CartRail } from "@/frontend/components/commerce/cart-rail";
-import { CartDrawer } from "@/frontend/components/commerce/cart-drawer";
 import { CartToast } from "@/frontend/components/commerce/cart-toast";
 
 const inter = Inter({
@@ -114,7 +113,6 @@ export default async function RootLayout({
         <QuoteDrawer />
         <QuoteModal />
         <CartRail />
-        <CartDrawer />
         <CartToast />
         <ChatWidget />
         <ChatCartBridge />

@@ -18,18 +18,16 @@ function Badge({ count }: { count: number }) {
 }
 
 export function CartButton() {
-  const { cartCount, openCartDrawer } = useStore();
+  const { cartCount } = useStore();
   return (
-    <button
-      type="button"
-      onClick={openCartDrawer}
-      aria-label={`Open cart, ${cartCount} item${cartCount === 1 ? "" : "s"}`}
-      aria-haspopup="dialog"
+    <Link
+      href="/cart"
+      aria-label={`Cart, ${cartCount} item${cartCount === 1 ? "" : "s"}`}
       className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-all hover:bg-muted hover:border-foreground/20 active:scale-95"
     >
       <ShoppingCart className="h-[18px] w-[18px]" />
       <Badge count={cartCount} />
-    </button>
+    </Link>
   );
 }
 

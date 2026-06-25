@@ -25,10 +25,6 @@ type Store = {
   cartCount: number;
   cartLines: CartLine[];
   cartSubtotal: number;
-  /** Quick-cart drawer (mobile + click-to-open). */
-  cartDrawerOpen: boolean;
-  openCartDrawer: () => void;
-  closeCartDrawer: () => void;
   wishlist: Product[];
   toggleWishlist: (product: Product) => void;
   inWishlist: (slug: string) => boolean;
@@ -48,9 +44,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [wishlist, setWishlist] = React.useState<Product[]>([]);
   const [ready, setReady] = React.useState(false);
   const [lastRemoved, setLastRemoved] = React.useState<CartItem | null>(null);
-  const [cartDrawerOpen, setCartDrawerOpen] = React.useState(false);
-  const openCartDrawer = React.useCallback(() => setCartDrawerOpen(true), []);
-  const closeCartDrawer = React.useCallback(() => setCartDrawerOpen(false), []);
 
   React.useEffect(() => {
     try {
@@ -162,9 +155,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     cartCount: cart.reduce((n, i) => n + i.qty, 0),
     cartLines,
     cartSubtotal: cartLines.reduce((n, l) => n + l.lineTotal, 0),
-    cartDrawerOpen,
-    openCartDrawer,
-    closeCartDrawer,
     wishlist,
     toggleWishlist,
     inWishlist: (slug) => wishlist.some((p) => p.slug === slug),
