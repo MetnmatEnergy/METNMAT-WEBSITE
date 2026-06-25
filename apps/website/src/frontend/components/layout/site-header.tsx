@@ -30,11 +30,14 @@ export async function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Search: the full bar shows on md+ (above); on smaller screens an icon
+              link to /search — visible on phones too, not just the sm–md range. */}
+          <Link href="/search" aria-label="Search the site" className={`${iconLink} md:hidden`}>
+            <Search className="h-[18px] w-[18px]" />
+          </Link>
+
           {/* Primary actions: profile · wishlist · cart — grouped as one cluster */}
           <span className="hidden items-center gap-1 sm:flex">
-            <Link href="/search" aria-label="Search the site" className={`${iconLink} md:hidden`}>
-              <Search className="h-[18px] w-[18px]" />
-            </Link>
             <Link href="/account" aria-label="Your account" className={iconLink}>
               <User className="h-[18px] w-[18px]" />
             </Link>
