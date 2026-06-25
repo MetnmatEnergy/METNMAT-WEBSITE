@@ -8,6 +8,9 @@ import { FilterDrawer } from "@/frontend/components/commerce/filter-drawer";
 import { SortSelect } from "@/frontend/components/commerce/sort-select";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { Pagination } from "@/frontend/components/commerce/pagination";
+import { ShopTransitionProvider } from "@/frontend/components/commerce/shop-transition";
+import { AppliedFilters } from "@/frontend/components/commerce/applied-filters";
+import { ResultsRegion } from "@/frontend/components/commerce/results-region";
 import { getAllProducts, getAllCategories } from "@/frontend/lib/cms";
 import { parseShopQuery, shopFacets, applyShopQuery, hasActiveFilters } from "@/frontend/lib/shop-query";
 import { pageMetadata } from "@/frontend/lib/seo";
@@ -64,49 +67,55 @@ export default async function AllProductsPage({
         </p>
       </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[260px_1fr]">
-        <div className="hidden lg:block">
-          <FilterSidebar {...sidebarProps} />
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
-            <div className="flex items-center gap-3">
-              <FilterDrawer {...sidebarProps} />
-              <p className="text-sm text-muted-foreground">
-                {total} {total === 1 ? "product" : "products"}
-              </p>
-            </div>
-            <SortSelect />
+      <ShopTransitionProvider>
+        <div className="mt-8 grid gap-8 lg:grid-cols-[260px_1fr]">
+          <div className="hidden lg:block">
+            <FilterSidebar {...sidebarProps} />
           </div>
 
-          {all.length === 0 ? (
-            <p className="py-16 text-center text-muted-foreground">No products in the catalog yet.</p>
-          ) : items.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-muted-foreground">No products match your filters.</p>
-              {filtersActive && (
-                <Link href="/shop/all" className="mt-2 inline-block text-sm text-brand hover:underline">
-                  Clear filters
-                </Link>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {items.map((p) => (
-                  <CatalogProductCard key={p.slug} product={p} />
-                ))}
+          <div>
+            <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <FilterDrawer {...sidebarProps} />
+                <p className="text-sm text-muted-foreground">
+                  {total} {total === 1 ? "product" : "products"}
+                </p>
               </div>
-              {totalPages > 1 && (
-                <div className="mt-10">
-                  <Pagination current={page} total={totalPages} />
+              <SortSelect />
+            </div>
+
+            <AppliedFilters />
+
+            <ResultsRegion count={total}>
+              {all.length === 0 ? (
+                <p className="py-16 text-center text-muted-foreground">No products in the catalog yet.</p>
+              ) : items.length === 0 ? (
+                <div className="py-16 text-center">
+                  <p className="text-muted-foreground">No products match your filters.</p>
+                  {filtersActive && (
+                    <Link href="/shop/all" className="mt-2 inline-block text-sm text-brand hover:underline">
+                      Clear filters
+                    </Link>
+                  )}
                 </div>
+              ) : (
+                <>
+                  <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                    {items.map((p) => (
+                      <CatalogProductCard key={p.slug} product={p} />
+                    ))}
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="mt-10">
+                      <Pagination current={page} total={totalPages} />
+                    </div>
+                  )}
+                </>
               )}
-            </>
-          )}
+            </ResultsRegion>
+          </div>
         </div>
-      </div>
+      </ShopTransitionProvider>
     </Container>
   );
 }

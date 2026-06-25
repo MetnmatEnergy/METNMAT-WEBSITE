@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import type { Category } from "@/frontend/lib/catalog";
+import { useShopTransition } from "@/frontend/components/commerce/shop-transition";
+import { cn } from "@/frontend/lib/utils";
 
 /**
  * Faceted filter rail (PLP). Category links route to other categories; brand,
@@ -35,9 +37,8 @@ export function FilterSidebar({
   priceMin?: number;
   priceMax?: number;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { navigate, isPending } = useShopTransition();
   const tops = categories.filter((c) => !c.parent);
 
   const selectedBrands = (searchParams.get("brand") || "")
@@ -48,16 +49,8 @@ export function FilterSidebar({
   const curMin = searchParams.get("min") || "";
   const curMax = searchParams.get("max") || "";
 
-  const update = (mut: (p: URLSearchParams) => void) => {
-    const params = new URLSearchParams(searchParams.toString());
-    mut(params);
-    params.delete("page"); // any filter change returns to page 1
-    const qs = params.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  };
-
   const toggleBrand = (b: string) =>
-    update((p) => {
+    navigate((p) => {
       const set = new Set(selectedBrands);
       if (set.has(b)) set.delete(b);
       else set.add(b);
@@ -66,7 +59,7 @@ export function FilterSidebar({
     });
 
   const toggleStock = () =>
-    update((p) => (inStockOnly ? p.delete("stock") : p.set("stock", "1")));
+    navigate((p) => (inStockOnly ? p.delete("stock") : p.set("stock", "1")));
 
   const [min, setMin] = React.useState(curMin);
   const [max, setMax] = React.useState(curMax);
@@ -76,7 +69,7 @@ export function FilterSidebar({
   }, [curMin, curMax]);
 
   const applyPrice = () =>
-    update((p) => {
+    navigate((p) => {
       if (min) p.set("min", min);
       else p.delete("min");
       if (max) p.set("max", max);
@@ -85,7 +78,7 @@ export function FilterSidebar({
 
   const anyFilter = selectedBrands.length > 0 || inStockOnly || !!curMin || !!curMax;
   const clearAll = () =>
-    update((p) => {
+    navigate((p) => {
       p.delete("brand");
       p.delete("stock");
       p.delete("min");
@@ -93,7 +86,10 @@ export function FilterSidebar({
     });
 
   return (
-    <aside className="space-y-1">
+    <aside
+      aria-busy={isPending}
+      className={cn("space-y-1 transition-opacity", isPending && "pointer-events-none opacity-60")}
+    >
       {anyFilter && (
         <button
           type="button"
