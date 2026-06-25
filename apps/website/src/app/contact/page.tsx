@@ -146,7 +146,7 @@ export default function ContactPage() {
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Email
                     </span>
-                    <span className="text-sm font-medium group-hover/card:text-brand">{site.contact.email}</span>
+                    <span className="break-words text-sm font-medium group-hover/card:text-brand">{site.contact.email}</span>
                   </a>
                   <a
                     href={`tel:${phone1}`}
