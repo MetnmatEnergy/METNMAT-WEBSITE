@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Circle, Package, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, Package, XCircle, FileText } from "lucide-react";
 import { Card } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
 import { ReorderButton } from "@/frontend/components/commerce/reorder-button";
@@ -68,7 +68,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <h2 className="font-display text-xl font-bold">{order.orderNumber}</h2>
           <p className="text-sm text-muted-foreground">Placed {fmtDate(order.createdAt)}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {["paid", "shipped", "delivered"].includes(status) && (
+            <a
+              href={`/api/orders/${encodeURIComponent(order.orderNumber || "")}/invoice`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-brand/40 hover:text-brand"
+            >
+              <FileText className="h-4 w-4" /> Invoice
+            </a>
+          )}
           {(order.items ?? []).some((it) => it.slug) && (
             <ReorderButton items={(order.items ?? []).map((it) => ({ slug: it.slug, qty: it.qty }))} />
           )}
