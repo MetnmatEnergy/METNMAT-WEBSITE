@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { patchCurrentCustomer, type Address } from "@/backend/lib/customer";
+import { getCustomerToken, patchCurrentCustomer, type Address } from "@/backend/lib/customer";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,17 @@ const clean = (a: Address): Address => ({
 });
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = await limitRate(`addresses:${clientIp(req)}`, 20, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many updates — please wait a moment and try again." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } }
+    );
+  }
+  if (!(await getCustomerToken())) {
+    return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
+  }
+
   let body: { addresses?: Address[] };
   try {
     body = await req.json();
@@ -30,6 +42,11 @@ export async function POST(req: Request): Promise<Response> {
   addresses = addresses.map((a, i) => ({ ...a, isDefault: i === firstDefault }));
 
   const updated = await patchCurrentCustomer({ addresses });
-  if (!updated) return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
+  if (!updated) {
+    return NextResponse.json(
+      { error: "Couldn't save your addresses right now. Please try again." },
+      { status: 502 }
+    );
+  }
   return NextResponse.json({ success: true, addresses: updated.addresses ?? [] });
 }

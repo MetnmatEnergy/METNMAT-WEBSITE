@@ -12,10 +12,13 @@ import {
   LayoutGrid,
   FileText,
   CornerDownLeft,
+  X,
 } from "lucide-react";
 import { inclGST } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { cn } from "@/frontend/lib/utils";
+
+const MIN_QUERY = 2;
 
 type SlimProduct = {
   slug: string;
@@ -50,9 +53,9 @@ function monogram(name: string): string {
 
 /**
  * Dynamic global site search. As you type it queries /api/search and shows a
- * live dropdown — products first, then research, blog, projects, categories and
- * pages. Submitting (Enter / Search) navigates to /search?q=… (works without JS
- * and is crawlable).
+ * live dropdown — products first (relevance-ranked), then research, blog,
+ * projects, categories and pages. Submitting (Enter / Search) navigates to
+ * /search?q=… (works without JS and is crawlable).
  */
 export function SearchBar({
   className,
@@ -69,6 +72,7 @@ export function SearchBar({
   const router = useRouter();
   const { money } = useCurrency();
   const listId = React.useId();
+  const optionId = (i: number) => `${listId}-opt-${i}`;
   const scopeQS = scope === "products" ? "&scope=products" : "";
   const [q, setQ] = React.useState("");
   const [results, setResults] = React.useState<Results>({ products: [], links: [] });
@@ -77,6 +81,7 @@ export function SearchBar({
   const [active, setActive] = React.useState(-1);
 
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = React.useRef<AbortController | null>(null);
 
@@ -94,12 +99,14 @@ export function SearchBar({
   }, [results]);
 
   const hasResults = flat.length > 0;
+  const resultCount = results.products.length + results.links.length;
+  const isOpen = open && q.trim().length >= MIN_QUERY;
 
   // Debounced fetch on query change.
   React.useEffect(() => {
     const term = q.trim();
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (term.length < 1) {
+    if (term.length < MIN_QUERY) {
       setResults({ products: [], links: [] });
       setLoading(false);
       return;
@@ -149,12 +156,19 @@ export function SearchBar({
     router.push(`/search?q=${encodeURIComponent(term)}${scopeQS}`);
   }
 
+  function clear() {
+    setQ("");
+    setResults({ products: [], links: [] });
+    setActive(-1);
+    inputRef.current?.focus();
+  }
+
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Escape") {
       setOpen(false);
       return;
     }
-    if (!open || !hasResults) {
+    if (!isOpen || !hasResults) {
       if (e.key === "Enter") {
         e.preventDefault();
         submit();
@@ -194,7 +208,7 @@ export function SearchBar({
         <div
           className={cn(
             "flex items-center overflow-hidden rounded-full border bg-surface transition-colors",
-            open && hasResults ? "border-brand" : "border-border focus-within:border-brand"
+            isOpen && hasResults ? "border-brand" : "border-border focus-within:border-brand"
           )}
         >
           <span className="pl-4 text-muted-foreground">
@@ -205,6 +219,7 @@ export function SearchBar({
             )}
           </span>
           <input
+            ref={inputRef}
             type="search"
             name="q"
             value={q}
@@ -217,12 +232,23 @@ export function SearchBar({
             placeholder={placeholder}
             aria-label="Search the site"
             role="combobox"
-            aria-expanded={open && hasResults}
+            aria-expanded={isOpen && hasResults}
             aria-controls={listId}
             aria-autocomplete="list"
+            aria-activedescendant={isOpen && active >= 0 && flat[active] ? optionId(active) : undefined}
             autoComplete="off"
             className={`${h} w-full bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:appearance-none`}
           />
+          {q && (
+            <button
+              type="button"
+              aria-label="Clear search"
+              onClick={clear}
+              className={`flex ${h} w-9 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground`}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
           <button
             type="submit"
             aria-label="Search"
@@ -234,25 +260,59 @@ export function SearchBar({
         </div>
       </form>
 
+      {/* Polite, screen-reader-only announcement of result counts / states. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {isOpen
+          ? loading
+            ? "Searching…"
+            : hasResults
+              ? `${resultCount} result${resultCount === 1 ? "" : "s"} for ${q.trim()}`
+              : `No matches for ${q.trim()}`
+          : ""}
+      </div>
+
       {/* ── Live results dropdown ─────────────────────────────── */}
-      {open && q.trim().length >= 1 && (
-        <div id={listId} role="listbox" aria-label="Search results" className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[80] overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
-          <div className="max-h-[70vh] overflow-y-auto py-2">
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[80] overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+          <div id={listId} role="listbox" aria-label="Search results" className="max-h-[70vh] overflow-y-auto py-2">
             {!hasResults && !loading && (
-              <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-                No matches for <span className="text-foreground">&ldquo;{q.trim()}&rdquo;</span>.
-              </p>
+              <div className="px-4 py-6 text-center text-sm">
+                <p className="text-muted-foreground">
+                  No matches for <span className="text-foreground">&ldquo;{q.trim()}&rdquo;</span>.
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Try a different term, or{" "}
+                  <button
+                    type="button"
+                    onClick={() => go("/quote")}
+                    className="font-medium text-brand hover:underline"
+                  >
+                    request a custom quote
+                  </button>
+                  .
+                </p>
+              </div>
             )}
 
             {/* Products first */}
             {results.products.length > 0 && (
               <div>
-                <p className="flex items-center gap-2 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <Package className="h-3.5 w-3.5 text-brand" /> Products
+                <p className="flex items-center justify-between gap-2 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span className="flex items-center gap-2">
+                    <Package className="h-3.5 w-3.5 text-brand" /> Products
+                  </span>
+                  {results.totalProducts && results.totalProducts > results.products.length ? (
+                    <span className="font-normal normal-case tracking-normal">
+                      {results.products.length} of {results.totalProducts}
+                    </span>
+                  ) : null}
                 </p>
                 {results.products.map((p, i) => (
                   <button
                     key={p.slug}
+                    id={optionId(i)}
+                    role="option"
+                    aria-selected={active === i}
                     type="button"
                     onMouseEnter={() => setActive(i)}
                     onClick={() => go(`/shop/p/${p.slug}`)}
@@ -292,6 +352,9 @@ export function SearchBar({
                     return (
                       <button
                         key={l.href}
+                        id={optionId(idx)}
+                        role="option"
+                        aria-selected={active === idx}
                         type="button"
                         onMouseEnter={() => setActive(idx)}
                         onClick={() => go(l.href)}

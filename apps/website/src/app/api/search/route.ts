@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
   const scope = url.searchParams.get("scope");
-  if (q.length < 1) return NextResponse.json({ products: [], links: [] });
+  if (q.length < 2) return NextResponse.json({ products: [], links: [], totalProducts: 0 });
 
   if (scope === "products") {
     const products = await searchProducts(q);

@@ -108,6 +108,9 @@ export function ProductBuyBox({ product }: { product: Product }) {
             {added ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
             {added ? "Added to cart" : "Add to cart"}
           </Button>
+          <span className="sr-only" role="status" aria-live="polite">
+            {added ? `Added ${qty} × ${product.name} to cart` : ""}
+          </span>
         </span>
         <RequestQuoteButton
           product={{ name: product.name, slug: product.slug, sku: product.sku }}

@@ -159,9 +159,35 @@ export async function getProductBySku(sku: string): Promise<Product | null> {
 export async function searchProducts(q: string): Promise<Product[]> {
   const term = q.trim().toLowerCase();
   if (!term) return [];
-  return (await getAllProducts()).filter((p) =>
-    [p.name, p.brand, p.sku, p.shortDesc].join(" ").toLowerCase().includes(term)
-  );
+  // Multi-token AND match (every word must appear somewhere) + relevance score
+  // so an exact name/SKU ranks above an incidental shortDesc mention — instead
+  // of the old "newest-first that happens to contain the substring".
+  const tokens = term.split(/\s+/).filter(Boolean);
+  const scored: { p: Product; score: number }[] = [];
+  for (const p of await getAllProducts()) {
+    const name = p.name.toLowerCase();
+    const sku = (p.sku ?? "").toLowerCase();
+    const brand = (p.brand ?? "").toLowerCase();
+    const desc = (p.shortDesc ?? "").toLowerCase();
+    const fields = [name, sku, brand, desc];
+    if (!tokens.every((t) => fields.some((f) => f.includes(t)))) continue; // AND
+    let score = 0;
+    if (name === term) score += 100;
+    else if (name.startsWith(term)) score += 45;
+    else if (name.includes(term)) score += 25;
+    if (sku === term) score += 80;
+    else if (sku.includes(term)) score += 25;
+    if (brand.includes(term)) score += 10;
+    for (const t of tokens) {
+      if (name.includes(t)) score += 6;
+      if (sku.includes(t)) score += 5;
+      if (brand.includes(t)) score += 2;
+      if (desc.includes(t)) score += 1;
+    }
+    scored.push({ p, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored.map((s) => s.p);
 }
 
 // ── Global site search ──────────────────────────────────────────────────────
