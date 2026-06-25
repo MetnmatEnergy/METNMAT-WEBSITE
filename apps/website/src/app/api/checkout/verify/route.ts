@@ -4,8 +4,8 @@ import {
   findOrderByRazorpayId,
   markOrderPaid,
   markOrderFailed,
+  sendOrderConfirmation,
 } from "@/backend/services/orders.service";
-import { sendOrderEmails } from "@/backend/lib/email";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 /**
@@ -75,27 +75,8 @@ export async function POST(req: Request) {
   const saved = await markOrderPaid(order.id, razorpay_payment_id);
 
   // Confirmation emails (best-effort — never block the success response).
-  const emailed = await sendOrderEmails({
-    orderNumber: order.orderNumber,
-    name: order.name,
-    email: order.email,
-    phone: order.phone,
-    items: order.items.map((it) => ({
-      productName: it.productName,
-      qty: it.qty,
-      lineTotal: it.lineTotal,
-    })),
-    subtotal: order.subtotal,
-    gstAmount: order.gstAmount,
-    total: order.total,
-    razorpayPaymentId: razorpay_payment_id,
-    address: [order.addressLine1, order.addressLine2, order.city, order.state, order.pincode]
-      .filter(Boolean)
-      .join(", "),
-    displayCurrency: order.displayCurrency,
-    usdRateAtPurchase: order.usdRateAtPurchase,
-    totalUsdApprox: order.totalUsdApprox,
-  }).catch(() => false);
+  // Sent-once across this path AND the webhook (idempotent via emailedAt).
+  const emailed = await sendOrderConfirmation(order, razorpay_payment_id);
 
   return NextResponse.json({
     ok: true,

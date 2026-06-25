@@ -5,6 +5,7 @@
  * Staff see and manage them in the admin under Sales → Orders.
  */
 import { outboundKey } from "@/backend/lib/internal-key";
+import { sendOrderEmails } from "@/backend/lib/email";
 
 const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
 const INTERNAL_KEY = outboundKey("CMS_ORDER_WRITE_KEY");
@@ -58,7 +59,13 @@ export type OrderInput = {
   totalUsdApprox?: number;
 };
 
-export type OrderDoc = OrderInput & { id: string; status: string; razorpayPaymentId?: string };
+export type OrderDoc = OrderInput & {
+  id: string;
+  status: string;
+  razorpayPaymentId?: string;
+  /** Set once the confirmation email has been sent (idempotency guard). */
+  emailedAt?: string;
+};
 
 const headers = {
   "Content-Type": "application/json",
@@ -137,6 +144,53 @@ export async function markOrderFailed(id: string): Promise<void> {
   } catch {
     /* best effort */
   }
+}
+
+/** Stamp the confirmation email as sent, so it's never re-sent. */
+async function markOrderEmailed(id: string): Promise<void> {
+  try {
+    await fetch(`${CMS}/api/orders/${id}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ emailedAt: new Date().toISOString() }),
+    });
+  } catch {
+    /* best effort */
+  }
+}
+
+/**
+ * Send the order confirmation (+ internal copy) exactly once. BOTH the browser
+ * verify path and the server webhook call this; the `emailedAt` flag — set after
+ * a successful send — stops a duplicate if both fire. Critically this means a
+ * buyer whose tab/network dies after capture still gets their confirmation +
+ * GST-invoice email from the webhook. Best-effort; never throws.
+ */
+export async function sendOrderConfirmation(order: OrderDoc, paymentId: string): Promise<boolean> {
+  if (order.emailedAt) return false; // already sent
+  const ok = await sendOrderEmails({
+    orderNumber: order.orderNumber,
+    name: order.name,
+    email: order.email,
+    phone: order.phone,
+    items: order.items.map((it) => ({
+      productName: it.productName,
+      qty: it.qty,
+      lineTotal: it.lineTotal,
+    })),
+    subtotal: order.subtotal,
+    gstAmount: order.gstAmount,
+    total: order.total,
+    razorpayPaymentId: paymentId,
+    address: [order.addressLine1, order.addressLine2, order.city, order.state, order.pincode]
+      .filter(Boolean)
+      .join(", "),
+    displayCurrency: order.displayCurrency,
+    usdRateAtPurchase: order.usdRateAtPurchase,
+    totalUsdApprox: order.totalUsdApprox,
+  }).catch(() => false);
+  if (ok && order.id) await markOrderEmailed(order.id);
+  return ok;
 }
 
 /** Append a payment gateway event to the immutable PaymentEvents log (best-effort). */

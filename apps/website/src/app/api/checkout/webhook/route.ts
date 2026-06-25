@@ -5,6 +5,7 @@ import {
   markOrderPaid,
   markOrderFailed,
   recordPaymentEvent,
+  sendOrderConfirmation,
 } from "@/backend/services/orders.service";
 
 export const dynamic = "force-dynamic";
@@ -95,6 +96,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, flagged: "amount-mismatch" });
     }
     const ok = await markOrderPaid(order.id, paymentId);
+    // Reconciliation path: if the browser's verify call never ran (tab/network
+    // died after capture), this is where the confirmation + GST-invoice email
+    // gets sent. Idempotent via emailedAt, so it never duplicates verify's email.
+    await sendOrderConfirmation(order, paymentId);
     return NextResponse.json({ ok, handled: type });
   }
 

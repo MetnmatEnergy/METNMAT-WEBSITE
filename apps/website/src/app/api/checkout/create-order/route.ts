@@ -115,11 +115,9 @@ export async function POST(req: Request) {
     if (!product.price) {
       return bad(`"${product.name}" is quote-only — please request a quote for it.`);
     }
-    // Never charge for an item the catalog has flagged out of stock — that would
-    // create a paid order we cannot fulfil and would have to refund.
-    if (product.inStock === false) {
-      return bad(`"${product.name}" is currently out of stock. Please remove it to continue, or request a quote.`);
-    }
+    // Note: inStock === false is "made to order" — orderable with a longer lead
+    // time (the storefront presents it that way). Truly unavailable items are set
+    // quote-only (handled above) or unpublished (never reach here).
     // Same clamp the cart uses client-side → the charged qty equals the shown qty.
     const qty = clampQty(product, i.qty as number);
     const unitIncl = inclGST(unitPriceForQty(product, qty));

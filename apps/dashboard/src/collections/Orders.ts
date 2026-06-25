@@ -169,6 +169,7 @@ export const Orders: CollectionConfig = {
         { name: "razorpayOrderId", type: "text", index: true, access: { update: fieldAccountsOrInternal }, admin: { readOnly: true } },
         { name: "razorpayPaymentId", type: "text", access: { update: fieldAccountsOrInternal }, admin: { readOnly: true } },
         { name: "paidAt", type: "date", access: { update: fieldAccountsOrInternal }, admin: { readOnly: true } },
+        { name: "emailedAt", type: "date", access: { update: fieldAccountsOrInternal }, admin: { readOnly: true, description: "When the confirmation email was sent (set automatically)." } },
       ],
     },
 
