@@ -6,7 +6,9 @@ import { PageHero } from "@/frontend/components/layout/page-hero";
 import { ServiceCard } from "@/frontend/components/cards/service-card";
 import { ExpandingCards, type ExpandCard } from "@/frontend/components/ui/expand-cards";
 import { CtaBand } from "@/frontend/components/home/cta";
+import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 import { getServices } from "@/frontend/lib/cms";
+import { site } from "@/frontend/lib/site";
 import { pageMetadata } from "@/frontend/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -68,8 +70,28 @@ export default async function ServicesPage() {
     image: SERVICE_IMAGES[s.slug],
   }));
 
+  const servicesJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "METNMAT services",
+    itemListElement: services.map((s, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: s.title,
+      description: s.summary,
+      url: `${site.url}/services#${s.slug}`,
+    })),
+  };
+
   return (
     <>
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Services", path: "/services" },
+        ])}
+      />
+      <JsonLd data={servicesJsonLd} />
       <PageHero
         eyebrow="Services"
         title="What we do"
@@ -80,6 +102,7 @@ export default async function ServicesPage() {
       {showcase.length > 0 && (
         <section className="section pt-0">
           <Container>
+            <h2 className="sr-only">Our services</h2>
             <ExpandingCards items={showcase} />
           </Container>
         </section>

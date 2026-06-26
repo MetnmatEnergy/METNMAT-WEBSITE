@@ -79,7 +79,7 @@ function CardMedia({ image, index }: { image?: string; index: number }) {
           src={image}
           alt=""
           aria-hidden
-          loading="lazy"
+          loading={index === 0 ? "eager" : "lazy"}
           onError={() => setFailed(true)}
           className="absolute inset-0 h-full w-full object-cover"
         />
@@ -115,7 +115,7 @@ export function ExpandingCards({
             onFocus={() => setActive(idx)}
             className={cn(
               "group/card relative flex h-60 shrink-0 overflow-hidden rounded-3xl border border-border/60 outline-none",
-              "transition-all duration-500 ease-in-out",
+              "transition-all duration-500 ease-in-out motion-reduce:transition-none",
               "focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               // Mobile: full-width stacked cards. Desktop: expand/collapse.
               "w-full lg:h-[26rem] lg:w-auto lg:min-w-[4.5rem]",
@@ -145,7 +145,7 @@ export function ExpandingCards({
             {/* Expanded content (and the default on mobile). */}
             <div
               className={cn(
-                "absolute inset-x-0 bottom-0 z-10 p-6 transition-opacity duration-300",
+                "absolute inset-x-0 bottom-0 z-10 p-6 transition-opacity duration-300 motion-reduce:transition-none",
                 isActive ? "opacity-100" : "opacity-100 lg:pointer-events-none lg:opacity-0"
               )}
             >
