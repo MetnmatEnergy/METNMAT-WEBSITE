@@ -96,6 +96,35 @@ async function seedContent(payload: Payload): Promise<void> {
   };
 
   await seedIfEmpty("services", seedServices);
+
+  // Additive top-up for services added to seedServices AFTER the initial seed
+  // (i.e. when the collection is no longer empty). Creates only these specific
+  // missing slugs — existing/edited docs are never touched, and the list is
+  // scoped so a service staff deliberately delete won't reappear site-wide.
+  const ensureServiceSlugs = [
+    "materials-testing-characterization",
+    "materials-processing-facilities",
+  ];
+  try {
+    for (const slug of ensureServiceSlugs) {
+      const row = seedServices.find((s) => s.slug === slug);
+      if (!row) continue;
+      const { totalDocs } = await payload.count({
+        collection: "services",
+        where: { slug: { equals: slug } },
+      });
+      if (totalDocs === 0) {
+        await payload.create({
+          collection: "services",
+          data: { ...row, order: seedServices.indexOf(row), active: true, _status: "published" },
+        });
+        payload.logger.info(`[seed] services: + ${slug}`);
+      }
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] ensure services failed: ${(e as Error).message}`);
+  }
+
   await seedIfEmpty("projects", seedProjects);
   await seedIfEmpty("posts", seedPosts);
   await seedIfEmpty("faqs", seedFaqs);
