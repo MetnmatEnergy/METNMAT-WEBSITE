@@ -3,7 +3,7 @@ import { FlaskConical, Gauge, Factory, type LucideIcon } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { PageHero } from "@/frontend/components/layout/page-hero";
-import { ServiceCard } from "@/frontend/components/cards/service-card";
+import { ServiceFlipbook, type BookPage } from "@/frontend/components/ui/service-flipbook";
 import { ExpandingCards, type ExpandCard } from "@/frontend/components/ui/expand-cards";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
@@ -68,6 +68,14 @@ export default async function ServicesPage() {
     href: `/services#${s.slug}`,
     icon: s.icon,
     image: SERVICE_IMAGES[s.slug],
+  }));
+
+  const bookPages: BookPage[] = services.map((s) => ({
+    slug: s.slug,
+    title: s.title,
+    summary: s.summary,
+    icon: s.icon,
+    href: "/quote",
   }));
 
   const servicesJsonLd = {
@@ -139,16 +147,17 @@ export default async function ServicesPage() {
         </Container>
       </section>
 
-      {/* Detailed grid — anchor targets (#slug) for deep links + SEO. */}
-      <section className="section">
+      {/* Flip-book — each service is a page; click the page, the arrows or ← →
+          to turn it. Leaves carry id={slug}, so showcase deep links open here. */}
+      <section className="section scroll-mt-28" id="services-book">
         <Container>
-          <SectionHeading eyebrow="In detail" title="Every service, explained" />
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:mt-10 lg:grid-cols-3">
-            {services.map((service) => (
-              <div key={service.slug} id={service.slug} className="scroll-mt-28">
-                <ServiceCard service={service} />
-              </div>
-            ))}
+          <SectionHeading
+            eyebrow="In detail"
+            title="Every service, explained"
+            description="Turn the page — click the leaf, the arrows, or use ← →."
+          />
+          <div className="mt-10">
+            <ServiceFlipbook pages={bookPages} />
           </div>
         </Container>
       </section>
