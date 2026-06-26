@@ -1,5 +1,17 @@
 import { site } from "@/frontend/lib/site";
 
+// Primary office → a proper schema.org PostalAddress (locality/region/postcode
+// are distinct fields so search engines parse the location correctly).
+const primaryOffice = site.addresses[0];
+const postalAddress = {
+  "@type": "PostalAddress",
+  streetAddress: primaryOffice.street,
+  addressLocality: primaryOffice.locality,
+  addressRegion: primaryOffice.region,
+  postalCode: primaryOffice.postalCode,
+  addressCountry: primaryOffice.country,
+};
+
 /** Injects JSON-LD structured data (Organization by default). */
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
   return (
@@ -31,12 +43,18 @@ export const organizationJsonLd = {
     "Copper alloys",
     "R&D",
   ],
-  address: site.addresses.map((a) => ({
-    "@type": "PostalAddress",
-    addressLocality: a.label,
-    addressCountry: "IN",
-    streetAddress: a.lines.join(", "),
-  })),
+  address: postalAddress,
+  location: {
+    "@type": "Place",
+    name: site.legalName,
+    address: postalAddress,
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: primaryOffice.geo.lat,
+      longitude: primaryOffice.geo.lng,
+    },
+    hasMap: primaryOffice.mapsUrl,
+  },
   contactPoint: [
     {
       "@type": "ContactPoint",

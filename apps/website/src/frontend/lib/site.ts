@@ -21,15 +21,27 @@ export const site = {
     shipping: "Shipping across India & worldwide",
   },
 
-  // Office address (METNMAT Research & Innovations).
+  // Office address (METNMAT Research & Innovations, Howrah). Single source of
+  // truth — used by the contact page, footer, GST invoice and Organization
+  // JSON-LD. `lines` is for display; the structured fields drive PostalAddress.
   addresses: [
     {
       label: "West Bengal",
       lines: [
-        "Jalan Industrial Complex, Gate No. 1, Lane No. 6,",
+        "Gate No. 1, Jalan Industrial Complex, Lane No. 6,",
         "Bipranna Para, Via Begri, Domjur,",
         "Howrah, West Bengal – 711411",
       ],
+      street: "Gate No. 1, Jalan Industrial Complex, Lane No. 6, Bipranna Para, Via Begri, Domjur",
+      locality: "Howrah",
+      region: "West Bengal",
+      postalCode: "711411",
+      country: "IN",
+      geo: { lat: 22.605699658971638, lng: 88.2146446453073 },
+      // Canonical Google Maps place (short link) + the official embed iframe URL.
+      mapsUrl: "https://maps.app.goo.gl/iumcjPYJrXrgQK3K6",
+      mapEmbedUrl:
+        "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1095.0482207212187!2d88.2146446453073!3d22.605699658971638!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39f881d03c1acb25%3A0xcc2337489e731bd7!2sMETNMAT%20Research%20%26%20Innovations!5e0!3m2!1sen!2sin!4v1782470052320!5m2!1sen!2sin",
     },
   ],
 

@@ -25,10 +25,6 @@ export const metadata: Metadata = pageMetadata({
   path: "/contact",
 });
 
-// Embedded-map query — Howrah (West Bengal) office.
-const MAP_QUERY =
-  "Jalan Industrial Complex, Gate No. 1, Lane No. 6, Bipranna Para, Begri, Domjur, Howrah, West Bengal 711411";
-
 const trust = [
   { icon: Clock, label: "≤ 1 business-day reply" },
   { icon: ShieldCheck, label: "GST invoice on every order" },
@@ -217,7 +213,7 @@ export default function ContactPage() {
                 </div>
               </div>
               <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(MAP_QUERY)}`}
+                href={office.mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-medium transition-colors hover:border-brand/40 hover:text-brand"
@@ -226,11 +222,12 @@ export default function ContactPage() {
               </a>
             </div>
             <iframe
-              title="METNMAT — Howrah office location"
-              src={`https://www.google.com/maps?q=${encodeURIComponent(MAP_QUERY)}&output=embed`}
+              title="METNMAT Research & Innovations — Howrah office location"
+              src={office.mapEmbedUrl}
               className="h-[360px] w-full border-0 sm:h-[440px]"
               loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
             />
           </div>
         </Container>
