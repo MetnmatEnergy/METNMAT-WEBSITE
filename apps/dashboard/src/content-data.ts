@@ -11,6 +11,8 @@ export const seedServices = [
   { slug: "product-benchmarking", title: "Product Benchmarking", icon: "target", summary: "Compare your products and services against market competitors to find the edge." },
   { slug: "microstructure-heat-treatment", title: "Microstructure Control & Heat Treatment", icon: "flame", summary: "Optimize multi-phase microstructure — volume fraction, morphology and phase distribution — through heat treatment." },
   { slug: "modeling-simulations", title: "Modeling & Simulations", icon: "cpu", summary: "Design and develop your process and product using advanced modeling and simulations." },
+  { slug: "materials-testing-characterization", title: "Materials Testing & Characterization", icon: "microscope", summary: "Mechanical, microstructural and compositional testing and characterization of your materials." },
+  { slug: "materials-processing-facilities", title: "Materials Processing Facilities", icon: "factory", summary: "Advanced materials-processing equipment and facilities to develop, refine and scale your process." },
 ];
 
 export const seedProjects = [

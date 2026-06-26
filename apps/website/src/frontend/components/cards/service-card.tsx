@@ -7,6 +7,8 @@ import {
   Target,
   Flame,
   Cpu,
+  Microscope,
+  Factory,
   ArrowUpRight,
   type LucideIcon,
 } from "lucide-react";
@@ -20,6 +22,8 @@ const ICONS: Record<string, LucideIcon> = {
   target: Target,
   flame: Flame,
   cpu: Cpu,
+  microscope: Microscope,
+  factory: Factory,
 };
 
 export function ServiceCard({ service }: { service: Service }) {

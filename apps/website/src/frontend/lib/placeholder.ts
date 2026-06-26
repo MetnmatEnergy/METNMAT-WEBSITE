@@ -137,6 +137,20 @@ export const services: Service[] = [
       "Design and develop your process and product using advanced modeling and simulations.",
     icon: "cpu",
   },
+  {
+    slug: "materials-testing-characterization",
+    title: "Materials Testing & Characterization",
+    summary:
+      "Mechanical, microstructural and compositional testing and characterization of your materials.",
+    icon: "microscope",
+  },
+  {
+    slug: "materials-processing-facilities",
+    title: "Materials Processing Facilities",
+    summary:
+      "Advanced materials-processing equipment and facilities to develop, refine and scale your process.",
+    icon: "factory",
+  },
 ];
 
 // Case studies / projects (grounded in METNMAT's described capabilities).

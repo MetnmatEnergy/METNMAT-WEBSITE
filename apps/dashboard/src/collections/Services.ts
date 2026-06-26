@@ -44,6 +44,8 @@ export const Services: CollectionConfig = {
         { label: "Target", value: "target" },
         { label: "Flame", value: "flame" },
         { label: "CPU / Chip", value: "cpu" },
+        { label: "Microscope", value: "microscope" },
+        { label: "Factory", value: "factory" },
       ],
     },
     { name: "description", type: "richText", admin: { description: "Optional longer write-up for the service detail section." } },
