@@ -63,7 +63,7 @@ export type ExpandCard = {
   image?: string;
 };
 
-function CardMedia({ image, index }: { image?: string; index: number }) {
+function CardMedia({ image, index, active }: { image?: string; index: number; active: boolean }) {
   const [failed, setFailed] = React.useState(false);
   return (
     <>
@@ -81,7 +81,10 @@ function CardMedia({ image, index }: { image?: string; index: number }) {
           aria-hidden
           loading={index === 0 ? "eager" : "lazy"}
           onError={() => setFailed(true)}
-          className="absolute inset-0 h-full w-full object-cover"
+          className={cn(
+            "absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out motion-reduce:transition-none",
+            active ? "scale-105" : "scale-100"
+          )}
         />
       )}
       {/* Legibility scrim for the white text. */}
@@ -123,7 +126,7 @@ export function ExpandingCards({
               isActive && "lg:border-brand/50"
             )}
           >
-            <CardMedia image={item.image} index={idx} />
+            <CardMedia image={item.image} index={idx} active={isActive} />
 
             {/* Icon — top-left, always visible. */}
             <span className="absolute left-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm">

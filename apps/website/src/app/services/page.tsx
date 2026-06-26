@@ -26,7 +26,7 @@ const unsplash = (id: string) =>
   `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=900&q=70`;
 
 const SERVICE_IMAGES: Record<string, string> = {
-  "product-process-development": unsplash("1565043666747-69f6646db940"),
+  "product-process-development": unsplash("1581092918056-0c4c3acd3789"),
   "applied-research-consultancy": unsplash("1581091226825-a6a2a5aee158"),
   "process-quality-improvement": unsplash("1581092160562-40aa08e78837"),
   "product-benchmarking": unsplash("1460925895917-afdab827c52f"),
@@ -96,6 +96,7 @@ export default async function ServicesPage() {
         eyebrow="Services"
         title="What we do"
         description="Customized, turnkey R&D for metallurgy & materials. Every client is unique, so we tailor each solution to your requirement — from lab-scale prototype to full industrial scale."
+        bordered={false}
       />
 
       {/* Expanding showcase — hover or focus a card to explore it (taps & stacks on mobile). */}
