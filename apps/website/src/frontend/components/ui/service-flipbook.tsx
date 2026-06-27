@@ -62,6 +62,8 @@ type PageFlipApi = {
   turnToPage: (page: number) => void;
   getCurrentPageIndex: () => number;
   getPageCount: () => number;
+  /** Recalculate bounds + re-render (used to fix a mis-measured init). */
+  update?: () => void;
 };
 type FlipBookRef = { pageFlip: () => PageFlipApi };
 
@@ -175,8 +177,31 @@ export function ServiceFlipbook({ pages }: { pages: BookPage[] }) {
   const [page, setPage] = React.useState(0); // raw book-page index (0 = cover)
   const bookRef = React.useRef<FlipBookRef | null>(null);
   const liveRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => setMounted(true), []);
+
+  // react-pageflip measures its parent on init; if that happens before the
+  // container has its real width (it sits high on the page), it lays the pages
+  // out collapsed and stays broken until a resize. Observe the container's
+  // WIDTH and fire a resize whenever it changes — this corrects the initial
+  // layout and keeps it responsive. We ignore height changes so autoSize
+  // (which sets the book's own height) can't cause a feedback loop.
+  React.useEffect(() => {
+    if (!mounted) return;
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let lastWidth = -1;
+    const ro = new ResizeObserver((entries) => {
+      const w = Math.round(entries[0].contentRect.width);
+      if (w !== lastWidth) {
+        lastWidth = w;
+        window.dispatchEvent(new Event("resize"));
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mounted]);
 
   const api = () => bookRef.current?.pageFlip();
   const next = () => api()?.flipNext();
@@ -220,7 +245,7 @@ export function ServiceFlipbook({ pages }: { pages: BookPage[] }) {
     >
       <div className="sr-only" aria-live="polite" ref={liveRef} />
 
-      <div className="flex min-h-[28rem] items-center justify-center sm:min-h-[34rem]">
+      <div ref={containerRef} className="flex min-h-[28rem] items-center justify-center sm:min-h-[34rem]">
         {!mounted ? (
           // SSR / pre-hydration: a static cover so there's no layout shift.
           <div className="h-[26rem] w-[18rem] overflow-hidden rounded-r-md rounded-l-sm shadow-2xl ring-1 ring-black/15 sm:h-[32rem] sm:w-[22rem]">
@@ -253,13 +278,27 @@ export function ServiceFlipbook({ pages }: { pages: BookPage[] }) {
             showPageCorners
             disableFlipByClick={false}
             onFlip={(e: { data: number }) => setPage(e.data)}
-            onInit={applyHash}
+            onInit={() => {
+              // page-flip can mis-measure its parent at init (pages collapse to
+              // 0). A resize event alone is unreliable here; the recalc that
+              // actually fixes it is update() + turning to the start page (which
+              // forces a full re-render). Defer a frame so the container is laid
+              // out, then open to any deep-linked service (or the cover).
+              requestAnimationFrame(() => {
+                const slug = decodeURIComponent(location.hash.slice(1));
+                const i = pages.findIndex((p) => p.slug === slug);
+                const flip = api();
+                flip?.update?.();
+                flip?.turnToPage(i >= 0 ? i + 1 : 0);
+                window.dispatchEvent(new Event("resize"));
+              });
+            }}
           >
             <div className="mm-leaf h-full w-full">
               <CoverFace />
             </div>
             {pages.map((p, i) => (
-              <div className="mm-leaf h-full w-full" key={p.slug} id={p.slug}>
+              <div className="mm-leaf h-full w-full" key={p.slug}>
                 <ServiceFace page={p} n={i + 1} total={total} />
               </div>
             ))}

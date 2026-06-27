@@ -4,7 +4,6 @@ import { Container } from "@/frontend/components/ui/container";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { ServiceFlipbook, type BookPage } from "@/frontend/components/ui/service-flipbook";
-import { ExpandingCards, type ExpandCard } from "@/frontend/components/ui/expand-cards";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 import { getServices } from "@/frontend/lib/cms";
@@ -17,24 +16,6 @@ export const metadata: Metadata = pageMetadata({
     "Customized, turnkey materials & metallurgy R&D from METNMAT — product & process development, applied research & consultancy, process & quality improvement, product benchmarking, materials testing & characterization, and materials processing facilities.",
   path: "/services",
 });
-
-// Themed Unsplash photography per service. If a photo is blocked or 404s, the
-// ExpandingCards component falls back to a brand gradient (never a broken card).
-// Keyed by every slug that can appear — placeholder fallback AND the live CMS —
-// so the showcase shows photos regardless of which data source is in use.
-const unsplash = (id: string) =>
-  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=900&q=70`;
-
-const SERVICE_IMAGES: Record<string, string> = {
-  "product-process-development": unsplash("1581092918056-0c4c3acd3789"),
-  "applied-research-consultancy": unsplash("1581091226825-a6a2a5aee158"),
-  "process-quality-improvement": unsplash("1581092160562-40aa08e78837"),
-  "product-benchmarking": unsplash("1460925895917-afdab827c52f"),
-  "microstructure-heat-treatment": unsplash("1635070041078-e363dbe005cb"),
-  "modeling-simulations": unsplash("1518770660439-4636190af475"),
-  "materials-testing-characterization": unsplash("1576086213369-97a306d36557"),
-  "materials-processing-facilities": unsplash("1504917595217-d4dc5ebe6122"),
-};
 
 // METNMAT's stated delivery arc — lab-scale prototype through to industrial scale.
 const APPROACH: { icon: LucideIcon; step: string; title: string; body: string }[] = [
@@ -60,15 +41,6 @@ const APPROACH: { icon: LucideIcon; step: string; title: string; body: string }[
 
 export default async function ServicesPage() {
   const services = await getServices();
-
-  // Showcase = the headline services (capped so the expanding row stays usable).
-  const showcase: ExpandCard[] = services.slice(0, 8).map((s) => ({
-    title: s.title,
-    summary: s.summary,
-    href: `/services#${s.slug}`,
-    icon: s.icon,
-    image: SERVICE_IMAGES[s.slug],
-  }));
 
   const bookPages: BookPage[] = services.map((s) => ({
     slug: s.slug,
@@ -107,15 +79,32 @@ export default async function ServicesPage() {
         bordered={false}
       />
 
-      {/* Expanding showcase — hover or focus a card to explore it (taps & stacks on mobile). */}
-      {showcase.length > 0 && (
-        <section className="section pt-0">
-          <Container>
-            <h2 className="sr-only">Our services</h2>
-            <ExpandingCards items={showcase} />
-          </Container>
-        </section>
-      )}
+      {/* Services — explored through the flip-book (the single service presentation). */}
+      <section className="section scroll-mt-28 pt-2" id="services-book">
+        <Container>
+          <SectionHeading
+            eyebrow="Our services"
+            title="Every service, explained"
+            description="Turn the page — click the leaf, the side arrows, the dots, or use ← →."
+          />
+
+          {/* Crawlable, deep-linkable source of truth for the services. Visually
+              replaced by the interactive book below; each item is the #slug
+              anchor target the book opens to via the URL hash. */}
+          <ul className="sr-only">
+            {services.map((s) => (
+              <li key={s.slug} id={s.slug}>
+                <h3>{s.title}</h3>
+                <p>{s.summary}</p>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-10">
+            <ServiceFlipbook pages={bookPages} />
+          </div>
+        </Container>
+      </section>
 
       {/* How we work — METNMAT's lab-to-industrial delivery arc. */}
       <section className="section border-t border-border bg-surface/40">
@@ -143,21 +132,6 @@ export default async function ServicesPage() {
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{s.body}</p>
               </div>
             ))}
-          </div>
-        </Container>
-      </section>
-
-      {/* Flip-book — each service is a page; click the page, the arrows or ← →
-          to turn it. Leaves carry id={slug}, so showcase deep links open here. */}
-      <section className="section scroll-mt-28" id="services-book">
-        <Container>
-          <SectionHeading
-            eyebrow="In detail"
-            title="Every service, explained"
-            description="Turn the page — click the leaf, the arrows, or use ← →."
-          />
-          <div className="mt-10">
-            <ServiceFlipbook pages={bookPages} />
           </div>
         </Container>
       </section>
