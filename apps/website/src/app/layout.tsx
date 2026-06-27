@@ -65,11 +65,8 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: { index: true, follow: true },
     manifest: "/manifest.webmanifest",
     appleWebApp: { capable: true, title: site.name },
-    icons: {
-      icon: "/logo-metnmat-transparent.png",
-      shortcut: "/logo-metnmat-transparent.png",
-      apple: "/logo-metnmat-transparent.png",
-    },
+    // Favicon + apple-touch icon come from the file convention
+    // (src/app/icon.png and src/app/apple-icon.png — the METNMAT logo).
   };
 }
 
