@@ -298,7 +298,7 @@ export function ServiceFlipbook({ pages }: { pages: BookPage[] }) {
               <CoverFace />
             </div>
             {pages.map((p, i) => (
-              <div className="mm-leaf h-full w-full" key={p.slug}>
+              <div className="mm-leaf h-full w-full" key={p.slug} id={p.slug}>
                 <ServiceFace page={p} n={i + 1} total={total} />
               </div>
             ))}
