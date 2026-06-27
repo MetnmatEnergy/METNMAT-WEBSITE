@@ -65,8 +65,17 @@ export async function generateMetadata(): Promise<Metadata> {
     robots: { index: true, follow: true },
     manifest: "/manifest.webmanifest",
     appleWebApp: { capable: true, title: site.name },
-    // Favicon + apple-touch icon come from the file convention
-    // (src/app/icon.png and src/app/apple-icon.png — the METNMAT logo).
+    // Square (1:1) METNMAT-logo favicons served from /public root URLs. Explicit
+    // 48px-multiple sizes so Google Search can pick a crisp favicon for results.
+    icons: {
+      icon: [
+        { url: "/icon-48x48.png", sizes: "48x48", type: "image/png" },
+        { url: "/icon-96x96.png", sizes: "96x96", type: "image/png" },
+        { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      ],
+      shortcut: "/favicon.ico",
+      apple: "/apple-touch-icon.png",
+    },
   };
 }
 
