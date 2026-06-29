@@ -7,12 +7,18 @@ Built with **Next.js 15** (App Router), **React 19**, and **Tailwind CSS**.
 ## Structure
 
 ```
-metnmat-website/
+METNMAT-WEBSITE/                  pnpm + Turborepo monorepo
 ├── apps/
-│   └── website/        Public site (Next.js, App Router)
+│   ├── website/        Public site + shop (Next.js, App Router)
+│   └── dashboard/      Admin CMS (Next.js + Payload CMS 3)
 └── packages/
     └── types/          Shared TypeScript types
 ```
+
+The AI customer-support **chatbot** lives in a separate repo (`Metnmat-customer-agent-main`).
+All three deploy to **Google Cloud Run** — see [`HANDOVER.md`](HANDOVER.md) for the
+deployment pipeline and [`DEPLOY-GCP.md`](https://github.com/MetnmatEnergy/METNMAT-WEBSITE)
+in the chatbot repo for the infra runbook.
 
 ## Getting started
 
