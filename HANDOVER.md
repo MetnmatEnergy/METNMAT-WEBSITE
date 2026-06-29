@@ -168,8 +168,17 @@ from **GCP Secret Manager** (referenced via `--set-secrets` on Cloud Run), never
 `.env` files. Summary of where each app's values live:
 
 - **Website** (`metnmat-website`): `INTERNAL_API_KEY`, `RAZORPAY_*`, `RESEND_API_KEY`,
-  `QUOTE_*`, `OPEN_EXCHANGE_RATES_APP_ID`, `UPSTASH_REDIS_REST_*`. `NEXT_PUBLIC_*` are
+  `QUOTE_*`, `OPEN_EXCHANGE_RATES_APP_ID`, `UPSTASH_REDIS_REST_*`,
+  `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (Google sign-in). `NEXT_PUBLIC_*` are
   build-time args. `INTERNAL_API_KEY` **must match the dashboard's**.
+
+  **Google Sign-In setup:** create a *Web* OAuth client in Google Cloud Console
+  (APIs & Services → Credentials) with Authorized redirect URIs
+  `https://www.metnmat.com/api/account/google/callback` (prod) and
+  `http://localhost:3000/api/account/google/callback` (dev). Put the Client ID +
+  secret in `deploy/secrets.env` (or Secret Manager) → the deploy attaches them to
+  `metnmat-website`. Until both are set the "Continue with Google" button shows a
+  graceful error; everything else is unaffected.
 - **Dashboard** (`metnmat-dashboard`): `MONGODB_URI`, `PAYLOAD_SECRET`, `PAYLOAD_PIN_PEPPER`,
   `INTERNAL_API_KEY`, `GCS_BUCKET`/`GCS_PROJECT_ID`, `CMS_URL`, `WEBSITE_URL`, `RESEND_API_KEY`.
 - **Chatbot** (`metnmat-chatbot`): `MONGODB_URI`, `GROQ_API_KEY`, `JWT_SECRET`,

@@ -52,14 +52,25 @@ function AuthCard() {
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((f) => ({ ...f, [k]: e.target.value }));
+    // Typing means they're acting now — drop any stale error (e.g. a leftover
+    // Google failure) so it doesn't make the email form look broken.
+    setError((prev) => (prev ? "" : prev));
+  };
 
-  // Surface a Google sign-in failure passed back as ?error= by the callback.
+  // Surface a Google sign-in failure passed back as ?error= by the callback,
+  // then strip the param from the URL so it doesn't linger over the email form
+  // or reappear on refresh.
   React.useEffect(() => {
     const code = params.get("error");
-    if (code) setError(OAUTH_ERRORS[code] || "Something went wrong. Please try again.");
-  }, [params]);
+    if (!code) return;
+    setError(OAUTH_ERRORS[code] || "Something went wrong. Please try again.");
+    const next = new URLSearchParams(params.toString());
+    next.delete("error");
+    const qs = next.toString();
+    router.replace(qs ? `/login?${qs}` : "/login", { scroll: false });
+  }, [params, router]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
