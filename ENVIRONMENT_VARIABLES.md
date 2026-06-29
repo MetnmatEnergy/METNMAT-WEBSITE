@@ -24,6 +24,9 @@ Consolidated reference for all three services. **Never commit real secrets.** Pe
 | `OPEN_EXCHANGE_RATES_APP_ID` | — | Live ₹/$ display rate (USD is display-only; charges are INR). |
 | `REDIS_URL` | ⛔ **recommended** | Shared rate-limit store. Without it the in-memory limiter is per-instance only (RL-01). |
 | `TURNSTILE_SECRET_KEY` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | — | Bot protection on public forms (optional). |
+| `GOOGLE_CLIENT_ID` | ✅ (Google sign-in) | Google OAuth 2.0 **Web** client id. Server-side only. Redirect URI = `${NEXT_PUBLIC_SITE_URL}/api/account/google/callback`. Button is hidden-by-error if unset. |
+| `GOOGLE_CLIENT_SECRET` | ✅ (Google sign-in) | Google OAuth client secret. Server-side only; never sent to the browser. |
+| `CMS_OAUTH_KEY` | — | Optional per-purpose key for the website→CMS `POST /api/customers/oauth` call (SEC-06 style). Falls back to `INTERNAL_API_KEY`. Set the **same** value on the dashboard if used. |
 
 ## Dashboard (`apps/dashboard` → `.env`) — template newly added (SEC-08)
 
