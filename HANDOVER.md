@@ -5,21 +5,32 @@ dashboard (CMS), and AI customer-support chatbot.
 
 > **Audience:** the engineering team that will own and deploy this project.
 > Everything needed to run it in production is in this document. No prior context required.
+>
+> **Production runs entirely on Google Cloud Run** (project `metnmat-website`, region
+> `asia-south1` / Mumbai). The step-by-step infra runbook is `DEPLOY-GCP.md` in the
+> chatbot repo (`Metnmat-customer-agent-main/DEPLOY-GCP.md`); this file is the high-level
+> map. Full env-var reference: `ENVIRONMENT_VARIABLES.md`.
 
 ---
 
 ## 1. What this project is
 
-Three independent applications plus four external service accounts.
+Three independent applications plus external services.
 
 ```
-3 codebases                              4 external accounts
-─────────────────────────────────       ──────────────────────────────
-1. Website   — public marketing + shop   • MongoDB Atlas — database
-2. Dashboard — admin CMS (Payload)        • Supabase      — file storage
-3. Chatbot   — AI customer agent          • Resend        — transactional email
-                                          • Groq          — chatbot AI model
+3 codebases                              External services (production)
+─────────────────────────────────       ──────────────────────────────────
+1. Website   — public marketing + shop   • MongoDB Atlas         — database
+2. Dashboard — admin CMS (Payload)        • Google Cloud Storage  — media/assets (private bucket)
+3. Chatbot   — AI customer agent          • Resend                — transactional email
+                                          • Groq                  — chatbot AI model
+                                          • Razorpay              — payments
+                                          • Upstash Redis         — rate-limit store
 ```
+
+> **Note:** Supabase Storage was used during early development only. **Production media
+> lives in a private GCS bucket** (`metnmat-media-prod`), served through Payload at
+> `admin.metnmat.com/api/media/file/…`. The Supabase keys are migration-only, never deployed.
 
 ### How they connect
 
@@ -27,14 +38,22 @@ Three independent applications plus four external service accounts.
                 ┌──────────────── WEBSITE (Next.js) ────────────────┐
    visitor ───▶ │  content/images ──▶ Dashboard (CMS)               │
                 │  chat bubble    ──▶ Chatbot (/widget.js)          │
-                │  quote emails   ──▶ Resend                         │
+                │  quote/order    ──▶ Resend (email) · Razorpay (pay)│
                 └───────────────────────────────────────────────────┘
-   DASHBOARD ──▶ MongoDB Atlas + Supabase (storage)
-   CHATBOT   ──▶ MongoDB Atlas + Groq (AI)
+   DASHBOARD ──▶ MongoDB Atlas (metnmat_cms) + GCS (media)
+   CHATBOT   ──▶ MongoDB Atlas (metnmat)     + Groq (AI)
 ```
 
-The three apps are **separate deployments**. They communicate over HTTPS via URLs only —
-they are **never** merged into one folder or one deployment.
+The three apps are **separate Cloud Run services**. They communicate over HTTPS via URLs
+only — they are **never** merged into one folder or one deployment.
+
+### Live URLs
+
+| Service | Cloud Run service | Public domain |
+|---|---|---|
+| Website | `metnmat-website` | `metnmat.com` / `www.metnmat.com` |
+| Dashboard (CMS) | `metnmat-dashboard` | `admin.metnmat.com` |
+| Chatbot | `metnmat-chatbot` | `chat.metnmat.com` |
 
 ---
 
@@ -42,13 +61,18 @@ they are **never** merged into one folder or one deployment.
 
 | App | Repo / folder | Framework | Local port |
 |-----|---------------|-----------|-----------|
-| **Website** | `METNMAT` monorepo → `apps/website` | Next.js 15 / React 19 | 3000 |
-| **Dashboard (CMS)** | `METNMAT` monorepo → `apps/dashboard` | Next.js 15 + Payload CMS 3 | 3001 |
+| **Website** | `METNMAT-WEBSITE` monorepo → `apps/website` | Next.js 15 / React 19 | 3000 |
+| **Dashboard (CMS)** | `METNMAT-WEBSITE` monorepo → `apps/dashboard` | Next.js 15 + Payload CMS 3 | 3001 |
 | **Chatbot** | `Metnmat-customer-agent-main` (separate repo) | Bun + Express + Mastra | 3002 (3001 default) |
 
-- The **website + dashboard** live in one **pnpm monorepo** (`METNMAT`), managed by Turborepo.
-- The **chatbot** is a **separate repository** (its own `package.json`, runtime, and `render.yaml`).
-- ⚠️ Push **both** the `METNMAT` monorepo and the chatbot repo to the **company's GitHub org**.
+- The **website + dashboard** live in one **pnpm monorepo** (`METNMAT-WEBSITE` on GitHub:
+  `MetnmatEnergy/METNMAT-WEBSITE`), managed by Turborepo.
+- The **chatbot** is a **separate repository** (its own `package.json`, Bun runtime, and
+  `deploy/` scripts).
+  - ⚠️ **The chatbot is currently NOT under git version control.** Initialise it and push it
+    to the company GitHub org before relying on it in production — there is no history or
+    rollback today, and it holds live secrets on disk. (See `PRODUCTION_AUDIT_REPORT.md`
+    DEVOPS-01.)
 
 ---
 
@@ -57,140 +81,166 @@ they are **never** merged into one folder or one deployment.
 - **Node.js** ≥ 20 (developed on 22.x)
 - **pnpm** 11.5.1 (`npm i -g pnpm@11.5.1`) — for the monorepo
 - **Bun** ≥ 1.2 (`https://bun.sh`) — for the chatbot
-- Accounts: GitHub, MongoDB Atlas, Supabase, Resend, Groq, plus a host (Vercel + Render recommended)
+- **Google Cloud SDK** (`gcloud`) + access to the `metnmat-website` GCP project (billing enabled)
+- Accounts (company-owned): GitHub, GCP, MongoDB Atlas, Resend, Groq, Razorpay, Upstash
 
 ---
 
-## 4. Deployment order (must follow — each step depends on the previous)
+## 4. How deployment works (CI/CD)
 
-> Deploy back-to-front: the website needs the dashboard + chatbot URLs to exist first.
+Production is **Google Cloud Run**. Images are built by **Cloud Build**, stored in
+**Artifact Registry** (`asia-south1-docker.pkg.dev/metnmat-website/metnmat/…`), with
+secrets in **Secret Manager** and a dedicated least-privilege runtime service account
+(`payload-storage-sa`).
 
-### Step 0 — Create the external accounts (company-owned)
-Create all four under a **company email** (not a personal one):
+There are **three deploy paths — know which one applies:**
 
-| Service | What to create | What you get |
-|---------|----------------|--------------|
-| MongoDB Atlas | A cluster + DB user. **Network Access → allow `0.0.0.0/0`** | `MONGODB_URI` |
-| Supabase | A project + a **private** Storage bucket (e.g. `metnmat-media`). Settings → Storage → S3 connection → generate keys | endpoint, region, key id, secret, bucket |
-| Resend | Verify the sending domain (`metnmat.com`) — add the DNS records | `RESEND_API_KEY` |
-| Groq | An API key. **Upgrade to Dev tier** (see §7) | `GROQ_API_KEY` |
+### Path A — GitHub Actions CI (quality gate, NOT a deploy)
+`.github/workflows/ci.yml` runs `lint → typecheck → test → build` on every push to `main`
+and every PR. **It does not deploy.** It only tells you whether the code is healthy.
 
-### Step 1 — Deploy the Dashboard (CMS) → `apps/dashboard`
-- **Host:** Render / Railway / Vercel (Node server).
-- **Build:** `pnpm install && pnpm --filter dashboard build`
-- **Start:** `pnpm --filter dashboard start` (serves on port 3001 / host port)
-- **Env vars:** see §5.2.
-- **Result:** the CMS URL, e.g. `https://metnmat-cms.onrender.com`. Admin panel at `/admin`.
-- Products auto-seed on first boot from `apps/dashboard/src/catalog-data.ts`.
+### Path B — Cloud Build push-to-`main` triggers (auto-deploy: website + dashboard)
+On every push to `main`, Cloud Build triggers build the image and `gcloud run deploy` it:
 
-### Step 2 — Deploy the Chatbot → `Metnmat-customer-agent-main`
-- **Host:** Render (a `render.yaml` blueprint is included — Render reads it automatically).
-- Render → New + → **Blueprint** → connect the chatbot repo.
-- **Env vars:** see §5.3. Leave `PUBLIC_URL` blank for the first deploy, then set it to the
-  Render URL it gives you and redeploy.
-- **Verify:** open `https://YOUR-CHATBOT.onrender.com/health` → `{"status":"ready"}`.
-- **Result:** the chatbot URL, e.g. `https://metnmat-chatbot.onrender.com`.
+| Trigger | Config file | Service |
+|---|---|---|
+| `metnmat-website-auto-deploy` | `cloudbuild.website.deploy.yaml` | `metnmat-website` |
+| `rmgpgab-metnmat-dashboard-…` | `cloudbuild.dashboard.deploy.yaml` | `metnmat-dashboard` |
 
-### Step 3 — Deploy the Website → `apps/website`
-- **Host:** **Vercel** (best for Next.js). Set the **root directory** to `apps/website`.
-  - Build: `pnpm install && pnpm --filter website build` · Output: `.next` · Start: `next start`
-  - (Vercel auto-detects Next.js; just point it at `apps/website` in the monorepo.)
-- **Env vars:** see §5.1 — point `NEXT_PUBLIC_CMS_URL` at the Step-1 URL and
-  `NEXT_PUBLIC_CHATBOT_URL` at the Step-2 URL.
-- **Result:** the live site.
+- The deploy is **image-only**: env vars, secrets, and the runtime service account are
+  **inherited** from the existing service. **Adding a new env var or secret is NOT picked up
+  by a push** — you must run `gcloud run services update …` (or the deploy script) once.
+- `NEXT_PUBLIC_*` values are **baked into the website image at build time** (client bundle +
+  CSP headers). Changing a public URL requires a rebuild with new `--build-arg`, not just a
+  Cloud Run env change. The trigger hard-codes the production domains, so this only matters
+  if domains change.
+- ⚠️ **Known cleanup item:** a second, auto-generated "Deploy to Cloud Run" trigger
+  (`rmgpgab-metnmat-website-…`, no config file → builds the root `Dockerfile`) **also**
+  deploys the website on every push. So today **two triggers race to deploy the website**.
+  Both build a correct image, but it doubles build minutes and the winning revision is
+  nondeterministic. **Fix:** disable one of the two (keep `metnmat-website-auto-deploy`):
+  `gcloud builds triggers update rmgpgab-metnmat-website-asia-south1-MetnmatEnergy-METNMAT-WExqs --region=global` … or delete it in Cloud Console → Cloud Build → Triggers.
 
-### Step 4 — Domain & DNS
-- Point `metnmat.com` / `metnmat.in` DNS at Vercel (the website).
-- Update each app's "public URL" env var to the final domain and redeploy:
-  `NEXT_PUBLIC_SITE_URL` (website), `NEXT_PUBLIC_SERVER_URL` (dashboard), `PUBLIC_URL` +
-  `ALLOWED_ORIGINS` (chatbot).
+### Path C — Manual script (the chatbot, and break-glass for all three)
+`Metnmat-customer-agent-main/deploy/deploy-gcp.ps1` is the idempotent one-shot that can
+build + deploy any/all services, push secrets, create infra, and map domains. **The chatbot
+only goes live this way** (it has no auto-deploy trigger).
 
----
+```powershell
+cd C:\Users\ritik\OneDrive\Desktop\Metnmat-customer-agent-main\deploy
+.\deploy-gcp.ps1 -Only chatbot      # build + deploy just the chatbot
+.\deploy-gcp.ps1 -SkipBuild         # redeploy existing images (config/secret change)
+.\deploy-gcp.ps1                     # full build + deploy of all three
+```
 
-## 5. Environment variables (the master list)
-
-> Every `.env` file is **gitignored** — values are NOT in the repos. Each team member /
-> host must set these. Copy real values from the secure credentials handover (§8), then
-> **rotate them** (§7).
-
-### 5.1 Website — `apps/website/.env.local`
-| Var | Purpose |
-|-----|---------|
-| `NEXT_PUBLIC_SITE_URL` | The website's own public URL |
-| `NEXT_PUBLIC_CMS_URL` | The **Dashboard** URL (content + images) |
-| `NEXT_PUBLIC_CHATBOT_URL` | The **Chatbot** URL (loads `/widget.js`) |
-| `RESEND_API_KEY` | Resend key for quote emails |
-| `QUOTE_FROM_EMAIL` | Sender, e.g. `METNMAT <noreply@metnmat.com>` |
-| `QUOTE_NOTIFY_EMAIL` | Internal inbox that receives quote requests |
-| `INTERNAL_API_KEY` | Shared secret — **must match** the Dashboard's value |
-
-### 5.2 Dashboard — `apps/dashboard/.env`
-| Var | Purpose |
-|-----|---------|
-| `PAYLOAD_SECRET` | Random secret for Payload sessions |
-| `NEXT_PUBLIC_SERVER_URL` | The Dashboard's own public URL |
-| `MONGODB_URI` | MongoDB Atlas connection string |
-| `MONGODB_DB` | DB name (e.g. `metnmat_cms`) |
-| `SUPABASE_S3_ENDPOINT` / `_REGION` / `_ACCESS_KEY_ID` / `_SECRET_ACCESS_KEY` | Supabase S3 storage |
-| `SUPABASE_BUCKET` | Storage bucket name |
-| `WEBSITE_URL` | The website URL (CORS / links) |
-| `INTERNAL_API_KEY` | Shared secret — **must match** the Website's value |
-| `GCS_*` | *(optional alternative to Supabase — leave blank if using Supabase)* |
-
-### 5.3 Chatbot — `.env` (see `.env.example`)
-| Var | Required | Purpose |
-|-----|----------|---------|
-| `MONGODB_URI` | Yes | Same Atlas cluster (products + conversations) |
-| `GROQ_API_KEY` | Yes | Groq AI key |
-| `JWT_SECRET` | Yes | Random secret for widget sessions |
-| `PUBLIC_URL` | Prod | The chatbot's own public HTTPS URL |
-| `ALLOWED_ORIGINS` | Prod | Comma-separated site origins, e.g. `https://www.metnmat.in,https://metnmat.in` |
-| `PORT` | No | Default 3001 (host usually injects this) |
-| `Meta_WA_*`, `FACEBOOK_*`, `Meta_IG_*` | Optional | WhatsApp / Facebook / Instagram channels |
+### Branch protection (do this — see §10)
+Because Path A (CI) and Path B (deploy) fire **independently**, a change that fails lint or
+tests **still deploys** as long as its Docker build succeeds. Protect `main` so nothing
+merges red. Setup steps in §10.
 
 ---
 
-## 6. Post-deploy verification checklist
+## 5. Shipping a change safely (runbook)
 
-- [ ] Dashboard `/admin` loads; you can log in; 68 products / 20 categories present.
-- [ ] Website loads; product pages show images (proves Website→Dashboard link).
-- [ ] Submit a quote request → confirmation email arrives (proves Resend).
+**Website / dashboard code change:**
+1. Branch off `main`; make the change.
+2. Locally mirror CI: `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+3. Open a PR; let GitHub Actions CI go green.
+4. Merge to `main` → Cloud Build auto-builds & deploys (~5–15 min).
+5. Watch it: `gcloud builds list --region=global --limit=5`.
+6. Smoke-test the live URL.
+7. **Rollback if needed** (instant, no rebuild):
+   `gcloud run services update-traffic metnmat-website --to-revisions=<PREV_REVISION>=100 --region=asia-south1`
+   (list revisions: `gcloud run revisions list --service=metnmat-website --region=asia-south1`).
+8. If you **added a secret/env var**, attach it once with `gcloud run services update` — the push alone won't apply it.
+
+**Chatbot code change:** edit → `./deploy-gcp.ps1 -Only chatbot`. (Commit it to git first.)
+
+**Content / product / price change (no code):** edit in `admin.metnmat.com` → live
+immediately, **no deploy** (Payload writes to Mongo; the website reads it).
+
+---
+
+## 6. Environment variables
+
+The full, authoritative list is in **`ENVIRONMENT_VARIABLES.md`**. In production these come
+from **GCP Secret Manager** (referenced via `--set-secrets` on Cloud Run), never on-disk
+`.env` files. Summary of where each app's values live:
+
+- **Website** (`metnmat-website`): `INTERNAL_API_KEY`, `RAZORPAY_*`, `RESEND_API_KEY`,
+  `QUOTE_*`, `OPEN_EXCHANGE_RATES_APP_ID`, `UPSTASH_REDIS_REST_*`. `NEXT_PUBLIC_*` are
+  build-time args. `INTERNAL_API_KEY` **must match the dashboard's**.
+- **Dashboard** (`metnmat-dashboard`): `MONGODB_URI`, `PAYLOAD_SECRET`, `PAYLOAD_PIN_PEPPER`,
+  `INTERNAL_API_KEY`, `GCS_BUCKET`/`GCS_PROJECT_ID`, `CMS_URL`, `WEBSITE_URL`, `RESEND_API_KEY`.
+- **Chatbot** (`metnmat-chatbot`): `MONGODB_URI`, `GROQ_API_KEY`, `JWT_SECRET`,
+  `ALLOWED_ORIGINS`, `PUBLIC_URL`, `UPSTASH_REDIS_REST_*`, `Meta_WA_*`.
+
+> Every value that ever lived in an OneDrive-synced `.env` / `secrets.env` must be **rotated**
+> (see `PRODUCTION_AUDIT_REPORT.md` and `ENVIRONMENT_VARIABLES.md`).
+
+---
+
+## 7. Post-deploy verification checklist
+
+- [ ] All three Cloud Run services return HTTP 200 (`gcloud run services list --region=asia-south1`).
+- [ ] Dashboard `/admin` loads; you can log in; products / categories present.
+- [ ] Website loads; product pages show images (proves Website→Dashboard→GCS link).
+- [ ] Submit a quote/order → confirmation email arrives (proves Resend).
+- [ ] Money path: shop → cart → checkout → pay (Razorpay) → confirmation.
 - [ ] Chatbot `/health` returns `ready`; chat bubble appears bottom-right on the website.
 - [ ] Send the bot "what products do you sell?" → real product answer (proves Groq + Mongo).
-- [ ] `INTERNAL_API_KEY` is identical in Website and Dashboard.
-- [ ] All "public URL" env vars point to the final domain, not localhost.
+- [ ] `INTERNAL_API_KEY` is identical in website and dashboard.
+- [ ] All "public URL" env vars / build-args point to the real domains, not localhost.
 
 ---
 
-## 7. Known constraints & production notes
+## 8. Known constraints & production notes
 
-- **Groq free tier = 12,000 tokens/minute.** Heavy or rapid chats can hit this limit.
-  **Upgrade to Groq Dev tier** before real traffic → https://console.groq.com/settings/billing
-- **Render free tier sleeps** after ~15 min idle (≈50s cold start on the next request).
-  Use a paid plan or an uptime pinger for production.
-- **MongoDB Atlas Network Access** must allow the hosts' IPs (`0.0.0.0/0` is simplest).
-- The chatbot runs from source (`bun run index.ts`), so code edits apply on restart.
-
----
-
-## 8. Credentials handover (do NOT commit this)
-
-Provide the company a **separate secure document** (password manager / sealed doc) containing
-the real values for every variable in §5, plus logins for the 4 external accounts. Then:
-
-1. **🔑 Rotate every key** — all dev keys were used during development and must be regenerated.
-2. **👤 Transfer account ownership** to a company email for Atlas, Supabase, Resend, Groq, GitHub, and the hosts.
-3. **🗑️ Revoke** your personal access once the company confirms everything works.
+- **Image-only auto-deploy** — see §4 Path B. New secrets/env vars need a one-time `gcloud run services update`.
+- **Two website triggers race** — see §4; disable the duplicate.
+- **Chatbot is not in git** — no rollback/history; `git init` + push to the company org (DEVOPS-01).
+- **`PAYLOAD_PIN_PEPPER = 5970`** — deliberately weak so staff PIN logins keep working; an
+  accepted risk. Schedule the strong-pepper + PIN-re-save migration in a maintenance window
+  (`PRODUCTION_AUDIT_REPORT.md` §3).
+- **Groq tier limits** — upgrade to a paid tier before heavy traffic (`console.groq.com/settings/billing`).
+- **MongoDB Atlas Network Access** must allow Cloud Run egress (`0.0.0.0/0` is simplest; or use the project's egress IPs).
+- **Rollback** is per-service via Cloud Run revisions (§5 step 7) — Cloud Run retains old revisions.
 
 ---
 
-## 9. Day-2 operations (for the company)
+## 9. Credentials handover (do NOT commit)
 
-- **Edit site content / products / prices:** Dashboard `/admin` — changes are live, no redeploy.
-- **Update the chatbot's product catalog:** it shares the same MongoDB; products sync from the CMS data.
-- **After website *code* changes:** redeploy the website (CMS *content* changes need no redeploy).
-- **Logs / debugging:** each host (Vercel / Render) has a logs tab per service.
+Provide the company a **separate secure document** (password manager / sealed doc) with the
+real values for every variable in `ENVIRONMENT_VARIABLES.md`, plus logins for GCP, MongoDB
+Atlas, Resend, Groq, Razorpay, Upstash, and GitHub. Then:
+
+1. **🔑 Rotate every key** — all dev keys were used during development and must be regenerated, then loaded into Secret Manager.
+2. **👤 Transfer account ownership** to a company email for every external service and GitHub.
+3. **🗑️ Revoke** personal access once the company confirms everything works.
 
 ---
 
-*Prepared as part of the internship handover. Questions during transition: keep this doc updated as the source of truth.*
+## 10. Day-2 operations
+
+- **Edit site content / products / prices:** Dashboard `/admin` — live, no redeploy.
+- **After website/dashboard *code* changes:** merge to `main` → auto-deploys (§5).
+- **After chatbot changes:** `./deploy-gcp.ps1 -Only chatbot` (§4 Path C).
+- **Logs:** `gcloud run services logs read <service> --region=asia-south1 --limit=100`.
+- **Builds:** `gcloud builds list --region=global --limit=10` (and `gcloud builds log <ID>`).
+- **Rollback:** §5 step 7.
+
+### Enable branch protection on `main` (GitHub UI — one-time)
+1. GitHub → repo **Settings → Branches → Add branch ruleset** (or *Add rule*) for `main`.
+2. Enable **Require a pull request before merging**.
+3. Enable **Require status checks to pass before merging** → select the **`build`** check
+   (from `.github/workflows/ci.yml`).
+4. Enable **Require branches to be up to date before merging**.
+5. (Recommended) **Do not allow bypassing** / include administrators.
+
+This makes the CI gate (§4 Path A) actually block bad code from reaching `main`, and
+therefore from auto-deploying.
+
+---
+
+*Source of truth for deployment: this file + `DEPLOY-GCP.md` + `ENVIRONMENT_VARIABLES.md`.
+Keep them updated as the system evolves.*

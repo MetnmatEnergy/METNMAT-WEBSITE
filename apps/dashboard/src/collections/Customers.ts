@@ -1,5 +1,7 @@
-import type { CollectionConfig } from "payload";
+import { getFieldsToSign, jwtSign, type CollectionConfig } from "payload";
+import { randomBytes } from "crypto";
 import { isAdmin } from "../access";
+import { inboundKeyMatches } from "../lib/internal-key";
 
 /**
  * Website customer accounts (storefront login) — a SEPARATE auth collection from
@@ -10,6 +12,13 @@ import { isAdmin } from "../access";
 export const Customers: CollectionConfig = {
   slug: "customers",
   auth: {
+    // Stateless JWT (no server-side sessions). The website stores the Payload JWT
+    // in an httpOnly cookie and sends it as a Bearer token; it never relied on
+    // Payload sessions. Disabling sessions lets us mint a valid token for Google
+    // sign-in (getFieldsToSign + jwtSign) WITHOUT a password — so auto-linking an
+    // existing account keeps that user's password intact — while existing
+    // email/password logins keep working unchanged.
+    useSessions: false,
     tokenExpiration: 60 * 60 * 24 * 7, // 7 days
     maxLoginAttempts: 8,
     lockTime: 10 * 60 * 1000,
@@ -59,6 +68,42 @@ export const Customers: CollectionConfig = {
       ],
     },
     { name: "gstin", type: "text", label: "GSTIN" },
+    // ── Sign-in provider (managed by the server; read-only in admin) ───────────
+    {
+      type: "row",
+      fields: [
+        {
+          name: "authProvider",
+          type: "select",
+          defaultValue: "local",
+          options: [
+            { label: "Local (password)", value: "local" },
+            { label: "Google", value: "google" },
+            { label: "Linked (password + Google)", value: "linked" },
+          ],
+          admin: { readOnly: true, width: "50%", description: "How this customer signs in." },
+        },
+        {
+          name: "emailVerified",
+          type: "checkbox",
+          defaultValue: false,
+          label: "Email verified",
+          admin: { readOnly: true, width: "50%" },
+        },
+      ],
+    },
+    {
+      name: "googleId",
+      type: "text",
+      index: true,
+      admin: { readOnly: true, description: "Google account id (the OAuth `sub`)." },
+    },
+    {
+      name: "avatarUrl",
+      type: "text",
+      label: "Avatar URL",
+      admin: { readOnly: true, description: "Google profile photo (optional)." },
+    },
     {
       name: "addresses",
       type: "array",
@@ -83,6 +128,102 @@ export const Customers: CollectionConfig = {
         },
         { name: "country", type: "text", defaultValue: "India" },
       ],
+    },
+  ],
+  endpoints: [
+    /**
+     * Server-to-server OAuth login. The website verifies the Google identity,
+     * then calls this with the shared internal key and a Google-verified email.
+     * We find-or-create/link the customer and return a Payload JWT the website
+     * stores in its `mm-customer` cookie — the same token shape as a normal login.
+     * Never exposed to the browser; guarded by the internal key only.
+     */
+    {
+      path: "/oauth",
+      method: "post",
+      handler: async (req) => {
+        if (!inboundKeyMatches(req.headers.get("x-internal-key"), "CMS_OAUTH_KEY")) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        let body: {
+          email?: string;
+          googleId?: string;
+          name?: string;
+          emailVerified?: boolean;
+          avatarUrl?: string;
+        };
+        try {
+          body = ((await req.json?.()) ?? {}) as typeof body;
+        } catch {
+          return Response.json({ error: "Invalid request" }, { status: 400 });
+        }
+        const email = String(body.email ?? "").trim().toLowerCase();
+        const googleId = String(body.googleId ?? "").trim();
+        const name = String(body.name ?? "").trim() || email.split("@")[0] || "Customer";
+        const avatarUrl = body.avatarUrl ? String(body.avatarUrl) : undefined;
+        // Only ever create/link off a Google-VERIFIED email (anti account-takeover).
+        if (!email || !googleId || body.emailVerified !== true) {
+          return Response.json({ error: "Invalid OAuth payload" }, { status: 400 });
+        }
+
+        const { payload } = req;
+        try {
+          const existing = await payload.find({
+            collection: "customers",
+            where: { email: { equals: email } },
+            limit: 1,
+            depth: 0,
+            overrideAccess: true,
+          });
+          let user = existing.docs[0];
+
+          if (!user) {
+            // New Google account. Random password = valid account with no known
+            // local password; the user can set one later via /forgot.
+            user = await payload.create({
+              collection: "customers",
+              overrideAccess: true,
+              data: {
+                name,
+                email,
+                googleId,
+                authProvider: "google",
+                emailVerified: true,
+                password: randomBytes(32).toString("base64url"),
+                ...(avatarUrl ? { avatarUrl } : {}),
+              },
+            });
+          } else {
+            // Auto-link Google to the existing account (password untouched).
+            user = await payload.update({
+              collection: "customers",
+              id: user.id,
+              overrideAccess: true,
+              data: {
+                googleId: user.googleId || googleId,
+                authProvider: user.authProvider === "google" ? "google" : "linked",
+                emailVerified: true,
+                ...(avatarUrl && !user.avatarUrl ? { avatarUrl } : {}),
+              },
+            });
+          }
+
+          const collectionConfig = payload.collections["customers"]!.config;
+          // getFieldsToSign expects the user object to carry its `collection`
+          // (Payload's own login sets this before signing).
+          const signUser = { ...user, collection: "customers" } as Parameters<typeof getFieldsToSign>[0]["user"];
+          const fieldsToSign = getFieldsToSign({ collectionConfig, email: String(user.email), user: signUser });
+          const { token, exp } = await jwtSign({
+            fieldsToSign,
+            secret: payload.secret,
+            tokenExpiration: collectionConfig.auth.tokenExpiration,
+          });
+          return Response.json({ token, exp });
+        } catch (e) {
+          payload.logger.error(`[customers/oauth] ${(e as Error).message}`);
+          return Response.json({ error: "OAuth login failed" }, { status: 500 });
+        }
+      },
     },
   ],
 };
