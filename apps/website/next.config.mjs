@@ -74,7 +74,15 @@ const nextConfig = {
     ],
   },
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [
+      { source: "/(.*)", headers: securityHeaders },
+      // Auth endpoints set Set-Cookie (session + OAuth handshake); never let any
+      // shared cache store these responses.
+      {
+        source: "/api/account/:path*",
+        headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
+      },
+    ];
   },
 };
 

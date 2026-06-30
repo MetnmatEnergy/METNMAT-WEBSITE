@@ -22,11 +22,11 @@ Consolidated reference for all three services. **Never commit real secrets.** Pe
 | `QUOTE_FROM_EMAIL` | — | Sender (must be Resend-verified, e.g. `noreply@metnmat.com`). |
 | `QUOTE_NOTIFY_EMAIL` | — | Internal inbox for order/quote/support notifications. |
 | `OPEN_EXCHANGE_RATES_APP_ID` | — | Live ₹/$ display rate (USD is display-only; charges are INR). |
-| `REDIS_URL` | ⛔ **recommended** | Shared rate-limit store. Without it the in-memory limiter is per-instance only (RL-01). |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | ⛔ **recommended** | Shared (cross-instance) rate-limit store via Upstash Redis REST. **Both** must be set; without them the limiter is per-instance in-memory only and resets on cold start (RL-01). *(The code reads these, NOT `REDIS_URL`.)* |
 | `TURNSTILE_SECRET_KEY` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | — | Bot protection on public forms (optional). |
 | `GOOGLE_CLIENT_ID` | ✅ (Google sign-in) | Google OAuth 2.0 **Web** client id. Server-side only. Redirect URI = `${NEXT_PUBLIC_SITE_URL}/api/account/google/callback`. Button is hidden-by-error if unset. |
 | `GOOGLE_CLIENT_SECRET` | ✅ (Google sign-in) | Google OAuth client secret. Server-side only; never sent to the browser. |
-| `CMS_OAUTH_KEY` | — | Optional per-purpose key for the website→CMS `POST /api/customers/oauth` call (SEC-06 style). Falls back to `INTERNAL_API_KEY`. Set the **same** value on the dashboard if used. |
+| `CMS_OAUTH_KEY` | ✅ (recommended) | Dedicated key for the website→CMS `POST /api/customers/oauth` **session-minting** call. **When set, the dashboard accepts ONLY this key** (a leaked shared `INTERNAL_API_KEY` then can't mint customer sessions). Must be the **same** value on website **and** dashboard. Generate: `openssl rand -hex 32`. If unset, falls back to `INTERNAL_API_KEY` (works, wider blast radius — logged). |
 
 ## Dashboard (`apps/dashboard` → `.env`) — template newly added (SEC-08)
 

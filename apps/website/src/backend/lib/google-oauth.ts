@@ -12,6 +12,10 @@ import { createHash, randomBytes } from "crypto";
 const GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const GOOGLE_ISSUERS = new Set(["https://accounts.google.com", "accounts.google.com"]);
+// Clock-skew tolerance for id_token exp — small, to absorb minor clock drift
+// only (the token is read fresh off the back-channel, so it's never legitimately
+// expired here). NOT a grace period for already-expired tokens.
+const CLOCK_SKEW_SEC = 5;
 
 export const clientId = (): string => process.env.GOOGLE_CLIENT_ID || "";
 const clientSecret = (): string => process.env.GOOGLE_CLIENT_SECRET || "";
@@ -26,6 +30,36 @@ export const siteBase = (): string =>
 
 /** Our callback URL — must EXACTLY match an Authorized redirect URI in Google. */
 export const redirectUri = (): string => `${siteBase()}/api/account/google/callback`;
+
+/**
+ * Validate a post-login redirect target. Returns a SAFE relative path (default
+ * "/account"). Rejects open-redirect tricks: backslashes (`/\evil.com`, which
+ * WHATWG normalises to `//evil.com` → off-origin), protocol-relative `//host`,
+ * and anything that resolves to a different origin. The origin comparison is the
+ * load-bearing guard.
+ */
+export function safeRedirect(raw: string | null | undefined): string {
+  if (!raw || raw.includes("\\")) return "/account";
+  try {
+    const base = new URL(siteBase());
+    const u = new URL(raw, base);
+    if (u.origin !== base.origin) return "/account";
+    if (!u.pathname.startsWith("/") || u.pathname.startsWith("//")) return "/account";
+    return u.pathname + u.search + u.hash;
+  } catch {
+    return "/account";
+  }
+}
+
+// Short-lived OAuth handshake cookie names. The `__Host-` prefix in production
+// makes them strictly host-only (Secure + Path=/ + no Domain), so a sibling
+// subdomain or non-secure same-site page can't plant/overwrite the CSRF state or
+// PKCE verifier. Dev is non-Secure, where `__Host-` is rejected, so plain names.
+const OAUTH_PREFIX = process.env.NODE_ENV === "production" ? "__Host-" : "";
+export const OAUTH_STATE_COOKIE = `${OAUTH_PREFIX}mm-oauth-state`;
+export const OAUTH_VERIFIER_COOKIE = `${OAUTH_PREFIX}mm-oauth-verifier`;
+export const OAUTH_REDIRECT_COOKIE = `${OAUTH_PREFIX}mm-oauth-redirect`;
+export const OAUTH_TEMP_COOKIES = [OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE, OAUTH_REDIRECT_COOKIE] as const;
 
 /** URL-safe random token (state, PKCE verifier). */
 export const randomToken = (bytes = 32): string => randomBytes(bytes).toString("base64url");
@@ -75,7 +109,8 @@ export function validateIdToken(idToken: string): GoogleProfile | null {
   if (c.aud !== clientId()) return null;
   if (!GOOGLE_ISSUERS.has(String(c.iss))) return null;
   const now = Math.floor(Date.now() / 1000);
-  if (typeof c.exp !== "number" || c.exp < now - 60) return null;
+  if (typeof c.exp !== "number" || c.exp < now - CLOCK_SKEW_SEC) return null;
+  if (typeof c.iat === "number" && c.iat > now + CLOCK_SKEW_SEC) return null;
   const email = typeof c.email === "string" ? c.email.toLowerCase() : "";
   const emailVerified = c.email_verified === true || c.email_verified === "true";
   if (!email || !emailVerified || !c.sub) return null;
