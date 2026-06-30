@@ -5,12 +5,17 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/frontend/lib/utils";
 
-/** The composed METNMAT shop banner (branding + product range + trust badges baked in). */
+/** The composed METNMAT shop showcase banners (branding baked in). They crossfade
+ *  automatically and can be navigated with the arrows, dots, or ← → keys. */
 const BANNERS = [
-  { src: "/site/shop-banner.webp", alt: "METNMAT Shop — electrochemical products, components & systems" },
+  { src: "/site/shop-banner-1.webp", alt: "METNMAT Shop — electrochemical products, components & systems" },
+  { src: "/site/shop-banner-2.webp", alt: "METNMAT electrochemical flow systems — PEM & AEM electrolysers, redox flow battery, MCDI cell" },
+  { src: "/site/shop-banner-3.webp", alt: "METNMAT electrochemical cells, reactors & systems" },
+  { src: "/site/shop-banner-4.webp", alt: "METNMAT systems & lab equipment — fluid handling, test stations, thermal control, MEA fabrication" },
+  { src: "/site/shop-banner-5.webp", alt: "METNMAT precision electrochemical hardware — cells, reactors, membranes, electrodes & systems" },
 ];
 
-const INTERVAL_MS = 6000;
+const INTERVAL_MS = 5000;
 
 /**
  * Premium banner showcase for the shop page: the composed product banners
