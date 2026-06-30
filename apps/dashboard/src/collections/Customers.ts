@@ -1,7 +1,7 @@
 import { getFieldsToSign, jwtSign, type CollectionConfig } from "payload";
 import { randomBytes } from "crypto";
 import { isAdmin } from "../access";
-import { inboundKeyMatches } from "../lib/internal-key";
+import { safeKeyEqual } from "../lib/internal-key";
 
 /**
  * Website customer accounts (storefront login) — a SEPARATE auth collection from
@@ -142,8 +142,26 @@ export const Customers: CollectionConfig = {
       path: "/oauth",
       method: "post",
       handler: async (req) => {
-        if (!inboundKeyMatches(req.headers.get("x-internal-key"), "CMS_OAUTH_KEY")) {
+        const { payload } = req;
+        // Session-minting endpoint: require the dedicated CMS_OAUTH_KEY when it is
+        // set (so a leaked shared INTERNAL_API_KEY cannot mint customer sessions);
+        // otherwise fall back to INTERNAL_API_KEY (logged) so a half-configured
+        // deploy still works. Set CMS_OAUTH_KEY on BOTH services for least privilege.
+        const providedKey = req.headers.get("x-internal-key");
+        const dedicatedKey = process.env.CMS_OAUTH_KEY;
+        const keyOk = dedicatedKey
+          ? safeKeyEqual(providedKey, dedicatedKey)
+          : safeKeyEqual(providedKey, process.env.INTERNAL_API_KEY);
+        if (!keyOk) {
+          payload.logger.warn(
+            "[customers/oauth] unauthorized: x-internal-key missing/mismatched — check CMS_OAUTH_KEY / INTERNAL_API_KEY parity between website and dashboard"
+          );
           return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        if (!dedicatedKey) {
+          payload.logger.warn(
+            "[customers/oauth] using INTERNAL_API_KEY fallback — set a dedicated CMS_OAUTH_KEY on BOTH services for least privilege"
+          );
         }
         let body: {
           email?: string;
@@ -163,48 +181,70 @@ export const Customers: CollectionConfig = {
         const avatarUrl = body.avatarUrl ? String(body.avatarUrl) : undefined;
         // Only ever create/link off a Google-VERIFIED email (anti account-takeover).
         if (!email || !googleId || body.emailVerified !== true) {
+          payload.logger.warn("[customers/oauth] rejected: missing email/googleId or email not Google-verified");
           return Response.json({ error: "Invalid OAuth payload" }, { status: 400 });
         }
 
-        const { payload } = req;
+        // Link data reused by the normal and the race-recovery paths. We always
+        // store the authenticating account's googleId and refresh the avatar when
+        // Google provides one. The existing password is never touched.
+        const linkData = (existingProvider: unknown) => ({
+          googleId,
+          authProvider: existingProvider === "google" ? "google" : "linked",
+          emailVerified: true,
+          ...(avatarUrl ? { avatarUrl } : {}),
+        });
+
         try {
-          const existing = await payload.find({
-            collection: "customers",
-            where: { email: { equals: email } },
-            limit: 1,
-            depth: 0,
-            overrideAccess: true,
-          });
-          let user = existing.docs[0];
+          const findByEmail = async () =>
+            (
+              await payload.find({
+                collection: "customers",
+                where: { email: { equals: email } },
+                limit: 1,
+                depth: 0,
+                overrideAccess: true,
+              })
+            ).docs[0];
+
+          let user = await findByEmail();
 
           if (!user) {
             // New Google account. Random password = valid account with no known
             // local password; the user can set one later via /forgot.
-            user = await payload.create({
-              collection: "customers",
-              overrideAccess: true,
-              data: {
-                name,
-                email,
-                googleId,
-                authProvider: "google",
-                emailVerified: true,
-                password: randomBytes(32).toString("base64url"),
-                ...(avatarUrl ? { avatarUrl } : {}),
-              },
-            });
+            try {
+              user = await payload.create({
+                collection: "customers",
+                overrideAccess: true,
+                data: {
+                  name,
+                  email,
+                  googleId,
+                  authProvider: "google",
+                  emailVerified: true,
+                  password: randomBytes(32).toString("base64url"),
+                  ...(avatarUrl ? { avatarUrl } : {}),
+                },
+              });
+            } catch (createErr) {
+              // A concurrent first login raced us to create this email (the auth
+              // email field is unique). Re-find and link instead of 500-ing.
+              const raced = await findByEmail();
+              if (!raced) throw createErr;
+              user = await payload.update({
+                collection: "customers",
+                id: raced.id,
+                overrideAccess: true,
+                data: linkData(raced.authProvider),
+              });
+            }
           } else {
             // Auto-link Google to the existing account (password untouched).
             user = await payload.update({
               collection: "customers",
               id: user.id,
               overrideAccess: true,
-              data: {
-                googleId: user.googleId || googleId,
-                authProvider: user.authProvider === "google" ? "google" : "linked",
-                emailVerified: true,
-                ...(avatarUrl && !user.avatarUrl ? { avatarUrl } : {}),
-              },
+              data: linkData(user.authProvider),
             });
           }
 

@@ -208,6 +208,8 @@ from **GCP Secret Manager** (referenced via `--set-secrets` on Cloud Run), never
 - **Image-only auto-deploy** — see §4 Path B. New secrets/env vars need a one-time `gcloud run services update`.
 - **Two website triggers race** — see §4; disable the duplicate.
 - **Chatbot is not in git** — no rollback/history; `git init` + push to the company org (DEVOPS-01).
+- **Customer sessions are stateless JWTs** — logout clears the `mm-customer` cookie but an issued token stays valid until its 7-day expiry; there is no server-side revocation. If force-logout / revoke-on-password-reset is ever needed, add a `tokenVersion` field to the `customers` collection and check it in an auth hook (don't re-enable Payload sessions).
+- **Rate-limit client IP** uses the left-most `X-Forwarded-For` hop (`backend/lib/rate-limit.ts`), which a client can spoof to evade per-IP limits. Low impact today (the OAuth callback is gated by the CSRF state cookie first), but for stricter limiting derive the trusted hop for your exact Cloud Run / load-balancer `XFF` shape.
 - **`PAYLOAD_PIN_PEPPER = 5970`** — deliberately weak so staff PIN logins keep working; an
   accepted risk. Schedule the strong-pepper + PIN-re-save migration in a maintenance window
   (`PRODUCTION_AUDIT_REPORT.md` §3).
