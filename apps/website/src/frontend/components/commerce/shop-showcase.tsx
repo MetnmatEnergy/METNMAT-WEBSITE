@@ -5,10 +5,9 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/frontend/lib/utils";
 
-/** The composed METNMAT showcase banners (redox.me style, with branding baked in). */
+/** The composed METNMAT shop banner (branding + product range + trust badges baked in). */
 const BANNERS = [
-  { src: "/site/shop-banner-1.png", alt: "METNMAT electrochemical flow systems — labelled product showcase" },
-  { src: "/site/shop-banner-2.png", alt: "METNMAT cells & reactors, systems & solutions — product lineup" },
+  { src: "/site/shop-banner.webp", alt: "METNMAT Shop — electrochemical products, components & systems" },
 ];
 
 const INTERVAL_MS = 6000;
