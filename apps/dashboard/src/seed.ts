@@ -7,7 +7,11 @@ import {
   seedFaqs,
   seedHomepage,
   seedNavigation,
+  seedBlogCategories,
+  seedBlogContentTypes,
+  dummyPostSlugs,
 } from "./content-data";
+import { plainTextToLexical } from "./lib/blog";
 
 // Real METNMAT electrochemistry catalog (phase 1), generated from
 // Product_data_sheet.xlsx into ./catalog-data.ts. Seeded on boot; idempotent.
@@ -126,8 +130,106 @@ async function seedContent(payload: Payload): Promise<void> {
   }
 
   await seedIfEmpty("projects", seedProjects);
-  await seedIfEmpty("posts", seedPosts);
   await seedIfEmpty("faqs", seedFaqs);
+
+  // Blog taxonomy — seed only when empty (no drafts on these collections).
+  const seedPlain = async (
+    collection: "blog-categories" | "blog-content-types",
+    rows: Record<string, unknown>[],
+  ): Promise<void> => {
+    try {
+      const { totalDocs } = await payload.count({ collection });
+      if (totalDocs > 0) return;
+      let i = 0;
+      for (const row of rows) {
+        await payload.create({
+          collection,
+          data: { ...row, displayOrder: i, isActive: true },
+        });
+        i++;
+      }
+      payload.logger.info(`[seed] ${collection}: ${rows.length} created.`);
+    } catch (e) {
+      payload.logger.warn(`[seed] ${collection} failed: ${(e as Error).message}`);
+    }
+  };
+  await seedPlain("blog-categories", seedBlogCategories);
+  await seedPlain("blog-content-types", seedBlogContentTypes);
+  await ensureRealBlogArticles(payload);
+}
+
+/**
+ * Blog content migration (idempotent, never overwrites staff edits):
+ *  1. Creates the real METNMAT-written articles from content-data.ts when
+ *     their slug does not exist yet (fresh DBs and the first deploy).
+ *  2. Removes the ORIGINAL placeholder posts once — only after the real
+ *     articles are confirmed present, and only the known dummy slugs.
+ * Staff-created/edited articles are never touched; further articles are
+ * authored directly in the CMS.
+ */
+async function ensureRealBlogArticles(payload: Payload): Promise<void> {
+  const idBySlug = async (
+    collection: "blog-categories" | "blog-content-types",
+    slug?: string,
+  ): Promise<string | undefined> => {
+    if (!slug) return undefined;
+    try {
+      const res = await payload.find({ collection, where: { slug: { equals: slug } }, limit: 1, depth: 0 });
+      return res.docs[0] ? String(res.docs[0].id) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  let realPresent = 0;
+  for (const post of seedPosts) {
+    try {
+      const { totalDocs } = await payload.count({
+        collection: "posts",
+        where: { slug: { equals: post.slug } },
+      });
+      if (totalDocs > 0) {
+        realPresent++;
+        continue;
+      }
+      const { bodyText, categorySlug, contentTypeSlug, ...rest } = post;
+      const [categoryId, contentTypeId] = await Promise.all([
+        idBySlug("blog-categories", categorySlug),
+        idBySlug("blog-content-types", contentTypeSlug),
+      ]);
+      await payload.create({
+        collection: "posts",
+        data: {
+          ...rest,
+          body: plainTextToLexical(bodyText),
+          ...(categoryId ? { primaryCategory: categoryId } : {}),
+          ...(contentTypeId ? { contentType: contentTypeId } : {}),
+          workflowStatus: "approved",
+          allowReactions: true,
+          _status: "published",
+        },
+      });
+      realPresent++;
+      payload.logger.info(`[seed] posts: + ${post.slug} (published)`);
+    } catch (e) {
+      payload.logger.warn(`[seed] posts ${post.slug} failed: ${(e as Error).message}`);
+    }
+  }
+
+  // Remove the placeholder posts only when the real content is fully in place,
+  // so the blog can never end up empty because a create failed.
+  if (realPresent === seedPosts.length) {
+    try {
+      const res = await payload.delete({
+        collection: "posts",
+        where: { slug: { in: dummyPostSlugs } },
+      });
+      const removed = (res as { docs?: unknown[] })?.docs?.length ?? 0;
+      if (removed) payload.logger.info(`[seed] posts: removed ${removed} placeholder article(s).`);
+    } catch (e) {
+      payload.logger.warn(`[seed] placeholder post removal failed: ${(e as Error).message}`);
+    }
+  }
 
   // Homepage global — seed only if the hero hasn't been filled in yet.
   try {

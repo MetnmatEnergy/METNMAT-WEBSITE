@@ -28,7 +28,9 @@ describe("sniffFileSignature", () => {
   it("rejects spoofed / dangerous content", () => {
     expect(sniffFileSignature(HTML)).toBeNull();
     expect(sniffFileSignature(Buffer.from("MZ\x90\x00"))).toBeNull(); // EXE, too short anyway
-    expect(sniffFileSignature(Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0, 0, 0, 0, 0]))).toBeNull(); // ZIP
+    // ZIP is now *detected* (blog manuscripts are docx/odt zips) but stays
+    // BLOCKED for the quote/RFQ flow — asserted in isAllowedUploadSignature below.
+    expect(sniffFileSignature(Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0, 0, 0, 0, 0]))).toBe("zip");
   });
 
   it("returns null for buffers shorter than 12 bytes", () => {
@@ -42,6 +44,8 @@ describe("isAllowedUploadSignature", () => {
     expect(isAllowedUploadSignature(PNG)).toBe(true);
     // A renamed HTML file claiming application/pdf is still rejected by content.
     expect(isAllowedUploadSignature(HTML)).toBe(false);
+    // ZIP/OLE documents are for the blog submission flow only — never quote/RFQ.
+    expect(isAllowedUploadSignature(Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0, 0, 0, 0, 0]))).toBe(false);
   });
 });
 

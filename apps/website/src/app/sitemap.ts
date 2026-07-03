@@ -1,14 +1,21 @@
 import type { MetadataRoute } from "next";
 import { site, mainNav } from "@/frontend/lib/site";
 import { getAllProducts, getAllCategories } from "@/frontend/lib/cms";
+import { listBlogArticlesForFeed } from "@/frontend/lib/blog";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticRoutes = Array.from(new Set(["/quote", "/search", ...mainNav.map((n) => n.href)]));
+  const staticRoutes = Array.from(
+    new Set(["/quote", "/search", "/blog/submit", ...mainNav.map((n) => n.href)]),
+  );
 
-  // Live catalog pages from the CMS so search engines & AI crawlers discover them.
-  const [products, categories] = await Promise.all([
+  // Live catalog + article pages from the CMS so search engines & AI crawlers
+  // discover them. Drafts / scheduled / archived / noIndex articles never
+  // appear (the CMS only exposes public articles and the feed helper also
+  // excludes noIndex).
+  const [products, categories, articles] = await Promise.all([
     getAllProducts().catch(() => []),
     getAllCategories().catch(() => []),
+    listBlogArticlesForFeed(500).catch(() => []),
   ]);
 
   const entries: MetadataRoute.Sitemap = [
@@ -26,6 +33,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${site.url}/shop/p/${p.slug}`,
       changeFrequency: "weekly" as const,
       priority: 0.8,
+    })),
+    ...articles.map((a) => ({
+      url: `${site.url}/blog/${a.slug}`,
+      ...(a.updatedAt ? { lastModified: a.updatedAt } : {}),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
     })),
   ];
 

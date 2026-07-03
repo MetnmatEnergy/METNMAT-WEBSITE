@@ -14,6 +14,13 @@ import { Products } from "./collections/Products";
 import { Services } from "./collections/Services";
 import { Projects } from "./collections/Projects";
 import { Posts } from "./collections/Posts";
+import { BlogCategories } from "./collections/BlogCategories";
+import { BlogContentTypes } from "./collections/BlogContentTypes";
+import { BlogAuthors } from "./collections/BlogAuthors";
+import { BlogReactions } from "./collections/BlogReactions";
+import { BlogSubmissions } from "./collections/BlogSubmissions";
+import { BlogSubmissionFiles } from "./collections/BlogSubmissionFiles";
+import { BlogSlugRedirects } from "./collections/BlogSlugRedirects";
 import { Faqs } from "./collections/Faqs";
 import { Team } from "./collections/Team";
 import { Clients } from "./collections/Clients";
@@ -94,6 +101,7 @@ const storageCollections = {
   media: true,
   documents: true,
   "enquiry-uploads": true,
+  "blog-submission-files": true,
 } as const;
 
 const storagePlugins = useGCS
@@ -150,6 +158,13 @@ export default buildConfig({
     Services,
     Projects,
     Posts,
+    BlogCategories,
+    BlogContentTypes,
+    BlogAuthors,
+    BlogSubmissions,
+    BlogSubmissionFiles,
+    BlogReactions,
+    BlogSlugRedirects,
     Faqs,
     Team,
     Clients,

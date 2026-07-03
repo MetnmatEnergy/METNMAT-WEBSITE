@@ -82,6 +82,12 @@ const nextConfig = {
         source: "/api/account/:path*",
         headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
       },
+      // Blog interaction endpoints set visitor cookies (reactions/views) —
+      // must never be cached by a shared cache.
+      {
+        source: "/api/blog/:path*",
+        headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
+      },
     ];
   },
 };

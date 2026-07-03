@@ -8,11 +8,26 @@
  * allows. No external dependency — these signatures are stable and well-known.
  */
 
-export type SniffedKind = "pdf" | "png" | "jpeg" | "gif" | "webp" | "isobmff" | null;
+export type SniffedKind = "pdf" | "png" | "jpeg" | "gif" | "webp" | "isobmff" | "zip" | "ole" | null;
 
 /** Returns the detected file kind from the leading bytes, or null if unknown. */
 export function sniffFileSignature(buf: Buffer): SniffedKind {
   if (buf.length < 12) return null;
+
+  // ZIP container ("PK\x03\x04" / empty "PK\x05\x06"): DOCX, XLSX, ODT are all
+  // OOXML/ODF zips. The blog submission flow pairs this with an extension +
+  // declared-MIME allowlist (a zip renamed .docx is still just an archive the
+  // CMS stores privately — never executed or served publicly).
+  if (buf[0] === 0x50 && buf[1] === 0x4b && (buf[2] === 0x03 || buf[2] === 0x05) && (buf[3] === 0x04 || buf[3] === 0x06)) {
+    return "zip";
+  }
+  // OLE2 compound document (legacy .doc / .xls): D0 CF 11 E0 A1 B1 1A E1
+  if (
+    buf[0] === 0xd0 && buf[1] === 0xcf && buf[2] === 0x11 && buf[3] === 0xe0 &&
+    buf[4] === 0xa1 && buf[5] === 0xb1 && buf[6] === 0x1a && buf[7] === 0xe1
+  ) {
+    return "ole";
+  }
 
   // PDF: "%PDF-"
   if (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46 && buf[4] === 0x2d) {
@@ -42,9 +57,19 @@ export function sniffFileSignature(buf: Buffer): SniffedKind {
   return null;
 }
 
-/** True only when the real bytes are an accepted PDF / image attachment. */
+/** True only when the real bytes are an accepted PDF / image attachment (quote/RFQ flow — documents stay excluded). */
 export function isAllowedUploadSignature(buf: Buffer): boolean {
-  return sniffFileSignature(buf) !== null;
+  const kind = sniffFileSignature(buf);
+  return kind !== null && kind !== "zip" && kind !== "ole";
+}
+
+/**
+ * Blog "Request to Publish" attachments: manuscripts + figures.
+ * PDF, DOC (OLE), DOCX/ODT/XLSX (zip-based), PNG, JPEG, WebP.
+ */
+export function isAllowedBlogSubmissionSignature(buf: Buffer): boolean {
+  const kind = sniffFileSignature(buf);
+  return kind === "pdf" || kind === "zip" || kind === "ole" || kind === "png" || kind === "jpeg" || kind === "webp";
 }
 
 /**

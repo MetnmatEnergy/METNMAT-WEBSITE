@@ -30,3 +30,9 @@ pnpm-debug.log*
 .turbo
 coverage/
 next-env.d.ts
+
+# local-dev CMS upload dirs (production stores files in GCS)
+apps/dashboard/media/
+apps/dashboard/enquiry-uploads/
+apps/dashboard/blog-submission-files/
+apps/dashboard/documents/

@@ -216,33 +216,26 @@ export const productCategories: string[] = [
   "Accessories",
 ];
 
-// Insights / news (topics tied to METNMAT's expertise).
+// Offline fallback for the real CMS-managed articles — shown ONLY when the CMS
+// is unreachable, so titles/slugs mirror the published articles (never invent
+// content here; the CMS is the source of truth).
 export const blogPosts: BlogPost[] = [
   {
-    slug: "iacs-oxygen-free-copper",
-    title: "Achieving 91–93% IACS in oxygen-free copper alloys",
+    slug: "ion-exchange-membranes",
+    title: "Ion Exchange Membranes (IEM)",
     excerpt:
-      "How alloying, rapid quenching, de-oxidation and aging combine to deliver high-conductivity, high-strength copper.",
-    category: "Insights",
-    date: "2026-01-15",
-    readingTime: "5 min read",
+      "What ion exchange membranes are, how protons and hydroxide ions move through them, and the properties that decide which membrane fits your electrolyzer or fuel cell.",
+    category: "Electrochemistry",
+    date: "2026-07-03",
+    readingTime: "3 min read",
   },
   {
-    slug: "microstructure-heat-treatment",
-    title: "Controlling microstructure through heat treatment",
+    slug: "anion-exchange-membrane-water-electrolysis",
+    title: "Anion Exchange Membrane Water Electrolysis (AEMWE)",
     excerpt:
-      "Tuning volume fraction, morphology and phase distribution to get the properties your application needs.",
-    category: "Materials",
-    date: "2026-02-10",
-    readingTime: "4 min read",
-  },
-  {
-    slug: "why-benchmarking-accelerates-rd",
-    title: "Why product benchmarking accelerates R&D",
-    excerpt:
-      "Comparing against market competitors is the fastest way to find where to focus development effort.",
-    category: "R&D",
-    date: "2026-03-05",
+      "How anion exchange membrane water electrolysis works — cell components, electrolyte choices and the four cell configurations — and why AEMWE is an economical route to green hydrogen.",
+    category: "Hydrogen & Fuel Cells",
+    date: "2026-07-03",
     readingTime: "3 min read",
   },
 ];

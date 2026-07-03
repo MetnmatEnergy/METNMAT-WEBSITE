@@ -381,3 +381,106 @@ export async function sendTicketReplyEmail(input: {
     return false;
   }
 }
+
+// ── Blog "Request to Publish" emails ─────────────────────────────────────────
+
+export type BlogSubmissionEmailInput = {
+  referenceNumber: string;
+  fullName: string;
+  email: string;
+  organisation?: string;
+  designation?: string;
+  country?: string;
+  proposedTitle: string;
+  contentTypeName?: string;
+  categoryName?: string;
+  researchArea?: string;
+  abstract: string;
+  keywords?: string;
+  attachmentNames?: string[];
+};
+
+/**
+ * Acknowledgement to the contributor + notification to the editorial inbox
+ * after a publication request is stored. Same provider/env model as the quote
+ * flow (Resend; safe no-op without RESEND_API_KEY). Returns true when the
+ * contributor acknowledgement was accepted by the provider.
+ */
+export async function sendBlogSubmissionEmails(input: BlogSubmissionEmailInput): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return true;
+  const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
+  const notifyTo = process.env.BLOG_NOTIFY_EMAIL || process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+
+  const rows: Array<[string, string | undefined]> = [
+    ["Reference", input.referenceNumber],
+    ["Proposed title", input.proposedTitle],
+    ["Article type", input.contentTypeName],
+    ["Category", input.categoryName],
+    ["Research area", input.researchArea],
+    ["Keywords", input.keywords],
+    ["Contributor", input.fullName],
+    ["Designation", input.designation],
+    ["Organisation", input.organisation],
+    ["Country", input.country],
+    ["Email", input.email],
+    ["Attachments", input.attachmentNames?.length ? input.attachmentNames.join(", ") : undefined],
+  ];
+  const table = `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;border-radius:10px;overflow:hidden">${rows
+    .filter(([, v]) => v && String(v).trim())
+    .map(
+      ([label, v], i) =>
+        `<tr style="background:${i % 2 ? "#ffffff" : "#fafafa"}">
+           <td style="padding:10px 14px;border-bottom:1px solid #eee;color:#6b7280;width:42%;vertical-align:top;font-size:13px">${esc(label)}</td>
+           <td style="padding:10px 14px;border-bottom:1px solid #eee;color:#111827;font-size:14px">${esc(String(v))}</td>
+         </tr>`,
+    )
+    .join("")}</table>`;
+  const abstractBlock = `<p style="margin:18px 0 6px;font-size:13px;color:#6b7280">Abstract / summary</p>
+    <div style="border:1px solid #eee;border-radius:10px;padding:14px;font-size:14px;line-height:1.6;color:#111827;white-space:pre-wrap">${esc(
+      input.abstract.slice(0, 4000),
+    )}</div>`;
+
+  const send = (payload: Record<string, unknown>) =>
+    fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+  let contributorOk = false;
+  try {
+    const res = await send({
+      from,
+      to: [input.email],
+      subject: `Publication request received — ${input.referenceNumber}`,
+      html: shell({
+        heading: "Your publication request has been submitted",
+        intro:
+          "The METNMAT editorial team will review the article for technical relevance, originality, quality and publication suitability. Submission does not guarantee publication — we will contact you at this address with the outcome or any questions.",
+        body: `${table}${abstractBlock}`,
+      }),
+    });
+    contributorOk = res.ok;
+  } catch {
+    contributorOk = false;
+  }
+
+  try {
+    await send({
+      from,
+      to: [notifyTo],
+      reply_to: input.email,
+      subject: `New publication request ${input.referenceNumber}: ${input.proposedTitle.slice(0, 120)}`,
+      html: shell({
+        heading: "New blog publication request",
+        intro:
+          "A contributor has requested to publish an article. Review it in the dashboard under Website Content → Publication Requests.",
+        body: `${table}${abstractBlock}`,
+      }),
+    });
+  } catch {
+    /* editorial copy is best-effort */
+  }
+  return contributorOk;
+}
