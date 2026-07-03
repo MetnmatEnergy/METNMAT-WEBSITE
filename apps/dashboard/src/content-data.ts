@@ -48,6 +48,8 @@ export const seedPosts = [
     category: "Electrochemistry",
     categorySlug: "electrochemistry",
     contentTypeSlug: "technical-article",
+    coverAsset: "src/seed-assets/blog/iem-cover.webp",
+    coverAlt: "Ion exchange membrane transporting H+ and OH- ions between porous electrode layers",
     author: "METNMAT Research Team",
     publishedDate: "2026-07-03T09:00:00.000Z",
     excerpt:
@@ -71,6 +73,8 @@ Beyond the chemistry of ion transport, membrane selection also depends on physic
     category: "Hydrogen & Fuel Cells",
     categorySlug: "hydrogen-fuel-cells",
     contentTypeSlug: "technical-article",
+    coverAsset: "src/seed-assets/blog/aemwe-cover.webp",
+    coverAlt: "Exploded view of an AEMWE electrolyzer cell: endplates, porous electrodes and the anion exchange membrane transporting OH- ions, splitting water into hydrogen and oxygen",
     author: "METNMAT Research Team",
     publishedDate: "2026-07-03T09:30:00.000Z",
     excerpt:

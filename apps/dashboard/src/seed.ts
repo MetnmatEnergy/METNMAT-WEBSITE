@@ -1,3 +1,5 @@
+import path from "path";
+import { existsSync } from "fs";
 import type { Payload } from "payload";
 import { seedCategories, seedProducts } from "./catalog-data";
 import {
@@ -156,6 +158,39 @@ async function seedContent(payload: Payload): Promise<void> {
   await seedPlain("blog-categories", seedBlogCategories);
   await seedPlain("blog-content-types", seedBlogContentTypes);
   await ensureRealBlogArticles(payload);
+
+  // Homepage global — seed only if the hero hasn't been filled in yet.
+  try {
+    const hp = (await payload.findGlobal({ slug: "homepage" })) as { titleLead?: string };
+    if (!hp?.titleLead) {
+      await payload.updateGlobal({ slug: "homepage", data: seedHomepage });
+      payload.logger.info("[seed] homepage global seeded.");
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] homepage global failed: ${(e as Error).message}`);
+  }
+
+  // Navigation global — seed only if no header links exist yet.
+  try {
+    const nav = (await payload.findGlobal({ slug: "navigation" })) as { headerLinks?: unknown[] };
+    if (!nav?.headerLinks?.length) {
+      await payload.updateGlobal({ slug: "navigation", data: seedNavigation });
+      payload.logger.info("[seed] navigation global seeded.");
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] navigation global failed: ${(e as Error).message}`);
+  }
+
+  // Commerce global — seed the USD display rate only if unset (staff maintain it).
+  try {
+    const commerce = (await payload.findGlobal({ slug: "commerce" })) as { usdExchangeRate?: number };
+    if (!commerce?.usdExchangeRate) {
+      await payload.updateGlobal({ slug: "commerce", data: { usdExchangeRate: 84 } });
+      payload.logger.info("[seed] commerce global seeded (usdExchangeRate 84).");
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] commerce global failed: ${(e as Error).message}`);
+  }
 }
 
 /**
@@ -181,18 +216,56 @@ async function ensureRealBlogArticles(payload: Payload): Promise<void> {
     }
   };
 
+  /**
+   * Attach the bundled cover image when the article has none. Runs on every
+   * boot but is a no-op once a cover is set (and staff replacing the cover in
+   * the admin is never overwritten). The asset path resolves against the app
+   * dir (process.cwd() is apps/dashboard both locally and in the container).
+   */
+  const ensureCover = async (
+    articleId: string | number,
+    coverAsset?: string,
+    coverAlt?: string,
+  ): Promise<void> => {
+    if (!coverAsset) return;
+    const filePath = path.resolve(process.cwd(), coverAsset);
+    if (!existsSync(filePath)) {
+      payload.logger.warn(`[seed] cover asset missing: ${filePath}`);
+      return;
+    }
+    const media = await payload.create({
+      collection: "media",
+      filePath,
+      data: { alt: coverAlt ?? "" },
+    });
+    await payload.update({
+      collection: "posts",
+      id: articleId,
+      data: { coverImage: media.id, coverImageAlt: coverAlt ?? "" },
+    });
+    payload.logger.info(`[seed] posts: cover attached (${coverAsset})`);
+  };
+
   let realPresent = 0;
   for (const post of seedPosts) {
     try {
-      const { totalDocs } = await payload.count({
+      const existing = await payload.find({
         collection: "posts",
         where: { slug: { equals: post.slug } },
+        limit: 1,
+        depth: 0,
       });
-      if (totalDocs > 0) {
+      if (existing.docs[0]) {
         realPresent++;
+        const doc = existing.docs[0] as { id: string | number; coverImage?: unknown };
+        if (!doc.coverImage) {
+          await ensureCover(doc.id, post.coverAsset, post.coverAlt).catch((e) =>
+            payload.logger.warn(`[seed] cover for ${post.slug} failed: ${(e as Error).message}`),
+          );
+        }
         continue;
       }
-      const { bodyText, categorySlug, contentTypeSlug, ...rest } = post;
+      const { bodyText, categorySlug, contentTypeSlug, coverAsset, coverAlt, ...rest } = post;
       const [categoryId, contentTypeId] = await Promise.all([
         idBySlug("blog-categories", categorySlug),
         idBySlug("blog-content-types", contentTypeSlug),
@@ -229,39 +302,6 @@ async function ensureRealBlogArticles(payload: Payload): Promise<void> {
     } catch (e) {
       payload.logger.warn(`[seed] placeholder post removal failed: ${(e as Error).message}`);
     }
-  }
-
-  // Homepage global — seed only if the hero hasn't been filled in yet.
-  try {
-    const hp = (await payload.findGlobal({ slug: "homepage" })) as { titleLead?: string };
-    if (!hp?.titleLead) {
-      await payload.updateGlobal({ slug: "homepage", data: seedHomepage });
-      payload.logger.info("[seed] homepage global seeded.");
-    }
-  } catch (e) {
-    payload.logger.warn(`[seed] homepage global failed: ${(e as Error).message}`);
-  }
-
-  // Navigation global — seed only if no header links exist yet.
-  try {
-    const nav = (await payload.findGlobal({ slug: "navigation" })) as { headerLinks?: unknown[] };
-    if (!nav?.headerLinks?.length) {
-      await payload.updateGlobal({ slug: "navigation", data: seedNavigation });
-      payload.logger.info("[seed] navigation global seeded.");
-    }
-  } catch (e) {
-    payload.logger.warn(`[seed] navigation global failed: ${(e as Error).message}`);
-  }
-
-  // Commerce global — seed the USD display rate only if unset (staff maintain it).
-  try {
-    const commerce = (await payload.findGlobal({ slug: "commerce" })) as { usdExchangeRate?: number };
-    if (!commerce?.usdExchangeRate) {
-      await payload.updateGlobal({ slug: "commerce", data: { usdExchangeRate: 84 } });
-      payload.logger.info("[seed] commerce global seeded (usdExchangeRate 84).");
-    }
-  } catch (e) {
-    payload.logger.warn(`[seed] commerce global failed: ${(e as Error).message}`);
   }
 }
 
