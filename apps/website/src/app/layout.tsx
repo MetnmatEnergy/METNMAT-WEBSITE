@@ -7,6 +7,7 @@ import { CurrencyProvider } from "@/frontend/components/commerce/currency-provid
 import { SiteHeader } from "@/frontend/components/layout/site-header";
 import { SiteFooter } from "@/frontend/components/layout/site-footer";
 import { TopBar } from "@/frontend/components/layout/top-bar";
+import { MaintenanceBanner } from "@/frontend/components/layout/maintenance-banner";
 import { StoreProvider } from "@/frontend/components/commerce/store-provider";
 import { QuoteProvider } from "@/frontend/components/commerce/quote-provider";
 import { QuoteDrawer } from "@/frontend/components/commerce/quote-drawer";
@@ -109,6 +110,7 @@ export default async function RootLayout({
         <StoreProvider>
         <QuoteProvider>
         <div className="flex min-h-dvh flex-col">
+          <MaintenanceBanner />
           <TopBar />
           <SiteHeader />
           <main id="main-content" className="flex-1">

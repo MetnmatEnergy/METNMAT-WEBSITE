@@ -189,6 +189,52 @@ export const Homepage: GlobalConfig = {
   ],
 };
 
+/**
+ * Site-wide maintenance notice — ONE switch for staff. Turning it on shows a
+ * professional banner at the top of every page on www.metnmat.com (the site
+ * keeps working underneath); turning it off removes it. Live within seconds
+ * of saving (revalidate ping), worst case ~1 minute (ISR).
+ */
+export const Maintenance: GlobalConfig = {
+  slug: "maintenance",
+  label: "Maintenance Notice",
+  ...settings({
+    admin: {
+      description:
+        "Show or hide the site-wide maintenance banner on www.metnmat.com. The website stays fully usable — this is a notice, not a shutdown.",
+    },
+  }),
+  fields: [
+    {
+      name: "enabled",
+      type: "checkbox",
+      label: "Show maintenance banner",
+      defaultValue: false,
+      admin: {
+        description:
+          "ON → the banner appears at the top of every page. OFF → it disappears. Takes effect within seconds of saving.",
+      },
+    },
+    {
+      name: "message",
+      type: "text",
+      defaultValue:
+        "We are currently performing scheduled maintenance. Some features may be temporarily unavailable.",
+      admin: { description: "The notice text shown to visitors. Keep it short and professional." },
+    },
+    {
+      name: "showContact",
+      type: "checkbox",
+      label: "Show customer service contact",
+      defaultValue: true,
+      admin: {
+        description:
+          "Append a 'contact our customer service' line with the email and phone from Website Settings → Contact.",
+      },
+    },
+  ],
+};
+
 /** Header & footer navigation links. */
 export const Navigation: GlobalConfig = {
   slug: "navigation",
@@ -234,4 +280,4 @@ export const Navigation: GlobalConfig = {
   ],
 };
 
-export const globals = [Branding, Company, Contact, Social, SEO, Commerce, Homepage, Navigation];
+export const globals = [Branding, Company, Contact, Social, SEO, Commerce, Homepage, Maintenance, Navigation];

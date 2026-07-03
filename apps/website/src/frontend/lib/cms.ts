@@ -496,6 +496,26 @@ export const getUsdRate = cache(async function getUsdRate(): Promise<number> {
   return sane(d?.usdExchangeRate) ?? 84;
 });
 
+// ── Maintenance notice (global) ───────────────────────────────────────────────
+export type MaintenanceNotice = { enabled: boolean; message: string; showContact: boolean };
+
+const DEFAULT_MAINTENANCE_MESSAGE =
+  "We are currently performing scheduled maintenance. Some features may be temporarily unavailable.";
+
+/**
+ * Staff-controlled maintenance banner state. Fail-safe: if the CMS is
+ * unreachable the banner stays OFF (the site must never look broken because
+ * the notice about maintenance could not be fetched).
+ */
+export async function getMaintenance(): Promise<MaintenanceNotice> {
+  const d = await api<Record<string, unknown>>("/api/globals/maintenance?depth=0");
+  return {
+    enabled: d?.enabled === true,
+    message: ((d?.message as string) || "").trim() || DEFAULT_MAINTENANCE_MESSAGE,
+    showContact: d?.showContact !== false,
+  };
+}
+
 // ── Website settings (globals) ────────────────────────────────────────────────
 export type SiteSettings = {
   company: { name: string; legalName: string; tagline: string; description: string };
