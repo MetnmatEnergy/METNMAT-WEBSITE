@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageCatalog, internalOrCanManageCatalog, isAdmin } from "../access";
+import { canManageSales, internalOrCanManageCatalog, isAdmin } from "../access";
 
 /**
  * Customer-uploaded files (PDF / image / camera photo) attached to a quote or
@@ -19,7 +19,7 @@ export const EnquiryUploads: CollectionConfig = {
   access: {
     create: () => true, // public website form uploads here
     read: internalOrCanManageCatalog, // staff, or website server via x-internal-key
-    update: canManageCatalog,
+    update: canManageSales,
     delete: isAdmin,
   },
   upload: {

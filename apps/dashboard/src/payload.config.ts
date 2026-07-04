@@ -7,6 +7,7 @@ import { gcsStorage } from "@payloadcms/storage-gcs";
 import sharp from "sharp";
 
 import { Users } from "./collections/Users";
+import { StaffRoles } from "./collections/StaffRoles";
 import { Media } from "./collections/Media";
 import { Documents } from "./collections/Documents";
 import { Categories } from "./collections/Categories";
@@ -171,6 +172,7 @@ export default buildConfig({
     Media,
     Documents,
     Users,
+    StaffRoles,
     AuditLogs,
     IntegrationLogs,
   ],
@@ -181,6 +183,11 @@ export default buildConfig({
     await seed(payload);
   },
   editor: lexicalEditor(),
+  // No first-party consumer uses GraphQL (website/admin/chatbot are REST/Mongo),
+  // and Payload's GraphQL auth binds req.user at depth 0 — which would silently
+  // ignore custom-role areas. Disable the endpoint entirely: less attack
+  // surface, no REST/GraphQL permission divergence.
+  graphQL: { disable: true },
   email: resendAdapter(),
   secret: process.env.PAYLOAD_SECRET || "",
   db: mongooseAdapter({ url: process.env.MONGODB_URI || "" }),

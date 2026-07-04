@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import type { Access, CollectionConfig, Where } from "payload";
-import { canManageContent, hasRole, type Role } from "../access";
+import { canManageContent, hasRoleOrArea, type Role } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { inboundKeyMatches } from "../lib/internal-key";
@@ -413,7 +413,9 @@ export const Posts: CollectionConfig = {
       method: "get",
       handler: async (req) => {
         const user = req.user as { roles?: Role[] } | null;
-        if (!hasRole(user, "super-admin", "admin", "marketing", "read-only-auditor")) {
+        if (
+          !hasRoleOrArea(user, ["super-admin", "admin", "marketing", "read-only-auditor"], ["content", "administration"])
+        ) {
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
         const { payload } = req;

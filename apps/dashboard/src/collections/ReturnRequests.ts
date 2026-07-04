@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageSupport, isLoggedIn, isAdmin } from "../access";
+import { canManageSupport, isStaff, isAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { returnBeforeChange } from "../hooks/workflow-gates";
 
@@ -17,7 +17,7 @@ export const ReturnRequests: CollectionConfig = {
     description: "Return, replacement & refund requests.",
   },
   access: {
-    read: isLoggedIn,
+    read: isStaff,
     create: canManageSupport,
     update: canManageSupport,
     delete: isAdmin,

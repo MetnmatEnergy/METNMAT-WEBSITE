@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageAccounts, isLoggedIn, isSuperAdmin } from "../access";
+import { canManageAccounts, isStaff, isSuperAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 
 /**
@@ -15,7 +15,7 @@ export const Invoices: CollectionConfig = {
     description: "GST tax invoices.",
   },
   access: {
-    read: isLoggedIn,
+    read: isStaff,
     create: canManageAccounts,
     update: canManageAccounts,
     delete: isSuperAdmin,

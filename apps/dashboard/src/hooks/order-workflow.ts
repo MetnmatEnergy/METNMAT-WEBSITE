@@ -1,5 +1,5 @@
 import type { CollectionBeforeChangeHook, CollectionBeforeDeleteHook } from "payload";
-import { hasRole, type Role } from "../access";
+import { hasRoleOrArea, type Role } from "../access";
 import { inboundKeyMatches } from "../lib/internal-key";
 
 /**
@@ -51,7 +51,7 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
   // state (the transition gate below only runs on update).
   if (operation === "create") {
     const to = (data?.status ?? "pending") as OrderStatus;
-    if (PAYMENT_STATES.has(to) && !hasRole(user, "super-admin", "admin", "accounts")) {
+    if (PAYMENT_STATES.has(to) && !hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
       throw new Error(`Only Accounts/Admin can create an order in the "${to}" state.`);
     }
     return data;
@@ -66,19 +66,23 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
     if (!(ALLOWED[from] ?? []).includes(to)) {
       throw new Error(`Invalid order status change: "${from}" → "${to}".`);
     }
-    if (PAYMENT_STATES.has(to) && !hasRole(user, "super-admin", "admin", "accounts")) {
+    if (PAYMENT_STATES.has(to) && !hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
       throw new Error(`Only Accounts/Admin can move an order to "${to}".`);
     }
     if (
       FULFILMENT_STATES.has(to) &&
-      !hasRole(user, "super-admin", "admin", "operations-manager", "inventory", "accounts")
+      !hasRoleOrArea(
+        user,
+        ["super-admin", "admin", "operations-manager", "inventory", "accounts"],
+        ["operations", "accounts"],
+      )
     ) {
       throw new Error(`Only Operations/Inventory/Accounts/Admin can move an order to "${to}".`);
     }
   }
 
   // Price snapshot is immutable except for Accounts/Admin/Super-admin.
-  if (!hasRole(user, "super-admin", "admin", "accounts")) {
+  if (!hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
     for (const f of AMOUNT_FIELDS) {
       if (data?.[f] !== undefined && JSON.stringify(data[f]) !== JSON.stringify(originalDoc[f])) {
         throw new Error(`You don't have permission to change order ${f}.`);

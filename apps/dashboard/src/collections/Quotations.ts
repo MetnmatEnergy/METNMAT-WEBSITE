@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageCatalog, isSuperAdmin, fieldAccountsOrInternal } from "../access";
+import { canManageSales, isSuperAdmin, fieldAccountsOrInternal } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { quotationBeforeChange } from "../hooks/workflow-gates";
 
@@ -18,9 +18,9 @@ export const Quotations: CollectionConfig = {
     description: "Formal price quotations against RFQs.",
   },
   access: {
-    read: canManageCatalog,
-    create: canManageCatalog,
-    update: canManageCatalog,
+    read: canManageSales,
+    create: canManageSales,
+    update: canManageSales,
     delete: isSuperAdmin,
   },
   fields: [

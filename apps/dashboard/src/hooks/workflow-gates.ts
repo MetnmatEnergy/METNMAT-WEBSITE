@@ -1,5 +1,5 @@
 import type { CollectionBeforeChangeHook } from "payload";
-import { hasRole, type Role } from "../access";
+import { hasRoleOrArea, type Role } from "../access";
 
 /**
  * Quotation workflow gates:
@@ -18,8 +18,19 @@ export const quotationBeforeChange: CollectionBeforeChangeHook = async ({
   const to = (data.status ?? from) as string;
   const user = req.user as { roles?: Role[] } | null | undefined;
 
+  // CREATE must pass the same gates as update — otherwise a sales user could
+  // create a quotation already "approved"/"sent", skipping commercial approval.
+  if (operation === "create" && (to === "approved" || to === "sent")) {
+    if (!hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
+      throw new Error(`Only Accounts/Admin can create a quotation in the "${to}" state.`);
+    }
+    if (to === "sent" && !data.quotationFile) {
+      throw new Error("Attach the quotation PDF before marking it Sent.");
+    }
+  }
+
   if (operation === "update" && to !== from) {
-    if (to === "approved" && !hasRole(user, "super-admin", "admin", "accounts")) {
+    if (to === "approved" && !hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
       throw new Error("Only Accounts/Admin can approve a quotation.");
     }
     if (to === "sent") {

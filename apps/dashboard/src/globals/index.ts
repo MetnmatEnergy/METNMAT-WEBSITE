@@ -1,11 +1,11 @@
 import type { GlobalConfig } from "payload";
-import { canManageContent, publicRead } from "../access";
+import { canManageSettings, publicRead } from "../access";
 import { revalidateWebsiteGlobal } from "../hooks/revalidate";
 
 const settings = (
   extra: Partial<GlobalConfig> = {}
 ): Pick<GlobalConfig, "access" | "admin" | "hooks"> => ({
-  access: { read: publicRead, update: canManageContent },
+  access: { read: publicRead, update: canManageSettings },
   admin: { group: "Website Settings", ...(extra.admin ?? {}) },
   // Saving any setting pings the website so the change goes live immediately.
   hooks: { afterChange: [revalidateWebsiteGlobal] },

@@ -346,8 +346,44 @@ export async function ensureSuperAdmin(payload: Payload): Promise<void> {
   }
 }
 
+/**
+ * SECURITY migration: legacy synthetic staff emails embedded the login PIN
+ * (staff-<PIN>-<ts>@staff.metnmat.local). Rewrite them to opaque addresses so
+ * no user-list reader can recover a credential. Idempotent — the new format
+ * never matches the legacy pattern. Login is unaffected (PIN sign-in looks up
+ * the pin field; the derived password is tied to the PIN, not the email).
+ */
+async function scrubPinBearingEmails(payload: Payload): Promise<void> {
+  try {
+    const legacy = /^staff-\d{4}-\d+@staff\.metnmat\.local$/;
+    const users = await payload.find({
+      collection: "users",
+      limit: 500,
+      depth: 0,
+      overrideAccess: true,
+    });
+    let fixed = 0;
+    for (const u of users.docs as Array<{ id: string | number; email?: string }>) {
+      if (u.email && legacy.test(u.email)) {
+        const { randomBytes } = await import("crypto");
+        await payload.update({
+          collection: "users",
+          id: u.id,
+          data: { email: `staff-${randomBytes(6).toString("hex")}@staff.metnmat.local` },
+          overrideAccess: true,
+        });
+        fixed++;
+      }
+    }
+    if (fixed) payload.logger.warn(`[seed] scrubbed ${fixed} PIN-bearing synthetic staff email(s).`);
+  } catch (e) {
+    payload.logger.warn(`[seed] email scrub failed: ${(e as Error).message}`);
+  }
+}
+
 export async function seed(payload: Payload): Promise<void> {
   await ensureSuperAdmin(payload);
+  await scrubPinBearingEmails(payload);
   await cleanupMalformed(payload);
 
   const catSlugs = new Set(seedCategories.map((c) => c.slug));

@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { isLoggedIn, isAdmin } from "../access";
+import { isStaff, isAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { taskBeforeChange } from "../hooks/workflow-gates";
 
@@ -17,9 +17,9 @@ export const Tasks: CollectionConfig = {
     description: "Internal work items and assignments.",
   },
   access: {
-    read: isLoggedIn,
-    create: isLoggedIn,
-    update: isLoggedIn,
+    read: isStaff,
+    create: isStaff,
+    update: isStaff,
     delete: isAdmin,
   },
   fields: [

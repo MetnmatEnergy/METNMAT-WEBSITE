@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { isLoggedIn, internalOrCanManageCatalog, isAdmin } from "../access";
+import { isStaff, internalOrCanManageCatalog, isAdmin } from "../access";
 
 /**
  * In-app notifications for staff (assignment, status changes, system alerts).
@@ -14,9 +14,9 @@ export const Notifications: CollectionConfig = {
     description: "Staff notifications.",
   },
   access: {
-    read: isLoggedIn,
+    read: isStaff,
     create: internalOrCanManageCatalog, // system/hooks create; staff can too
-    update: isLoggedIn, // mark as read
+    update: isStaff, // mark as read
     delete: isAdmin,
   },
   fields: [

@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageContent, publicRead } from "../access";
+import { canManageAssets, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 
@@ -9,9 +9,9 @@ export const Documents: CollectionConfig = {
   admin: { group: "Assets", useAsTitle: "title", description: "PDFs & documents." },
   access: {
     read: publicRead,
-    create: canManageContent,
-    update: canManageContent,
-    delete: canManageContent,
+    create: canManageAssets,
+    update: canManageAssets,
+    delete: canManageAssets,
   },
   upload: {
     staticDir: "documents",

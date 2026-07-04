@@ -1,5 +1,5 @@
 import type { Access, CollectionConfig, PayloadRequest } from "payload";
-import { canManageContent, hasRole, isSuperAdmin, type Role } from "../access";
+import { canManageContent, hasRoleOrArea, isSuperAdmin, type Role } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { inboundKeyMatches } from "../lib/internal-key";
 import { escapeHtml, plainTextToLexical, slugify } from "../lib/blog";
@@ -297,7 +297,7 @@ export const BlogSubmissions: CollectionConfig = {
       handler: async (req: PayloadRequest) => {
         const { payload } = req;
         const user = req.user as { roles?: Role[] } | null;
-        if (!hasRole(user, "super-admin", "admin", "marketing")) {
+        if (!hasRoleOrArea(user, ["super-admin", "admin", "marketing"], ["content"])) {
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
         let body: { id?: string };

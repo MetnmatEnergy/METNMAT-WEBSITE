@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageCatalog, isAdmin } from "../access";
+import { canManageSales, isAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { enquiryBeforeChange } from "../hooks/workflow-gates";
 
@@ -19,8 +19,8 @@ export const Enquiries: CollectionConfig = {
   },
   access: {
     create: () => true, // public website form submits here
-    read: canManageCatalog, // super-admin / admin / marketing / sales
-    update: canManageCatalog,
+    read: canManageSales, // super-admin / admin / marketing / sales
+    update: canManageSales,
     delete: isAdmin,
   },
   fields: [

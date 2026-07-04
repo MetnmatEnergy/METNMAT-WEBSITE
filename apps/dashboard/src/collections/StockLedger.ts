@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageInventory, isLoggedIn } from "../access";
+import { canManageInventory, isStaff } from "../access";
 
 /**
  * Append-only record of every stock movement. Inventory is never silently
@@ -16,7 +16,7 @@ export const StockLedger: CollectionConfig = {
     description: "Append-only record of every stock movement.",
   },
   access: {
-    read: isLoggedIn,
+    read: isStaff,
     create: canManageInventory,
     update: () => false,
     delete: () => false,

@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageCatalog, isAdmin } from "../access";
+import { canManageSales, isAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 
 /**
@@ -15,9 +15,9 @@ export const Leads: CollectionConfig = {
     description: "Top-of-funnel sales leads.",
   },
   access: {
-    read: canManageCatalog,
-    create: canManageCatalog,
-    update: canManageCatalog,
+    read: canManageSales,
+    create: canManageSales,
+    update: canManageSales,
     delete: isAdmin,
   },
   fields: [

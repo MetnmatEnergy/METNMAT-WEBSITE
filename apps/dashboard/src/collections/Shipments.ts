@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageInventory, isLoggedIn, isAdmin } from "../access";
+import { canManageInventory, isStaff, isAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 
 /**
@@ -14,7 +14,7 @@ export const Shipments: CollectionConfig = {
     description: "Dispatch & tracking for orders.",
   },
   access: {
-    read: isLoggedIn,
+    read: isStaff,
     create: canManageInventory,
     update: canManageInventory,
     delete: isAdmin,
