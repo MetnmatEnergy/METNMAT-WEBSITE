@@ -381,8 +381,81 @@ async function scrubPinBearingEmails(payload: Payload): Promise<void> {
   }
 }
 
+/**
+ * Director / super-admin bootstrap — env-driven so no credential is ever
+ * committed to git. On boot, when DIRECTOR_EMAIL + DIRECTOR_PIN are set, ensure
+ * that account exists as an ACTIVE super-admin. It is created through the local
+ * API (not a raw insert), so the PIN-derived password is hashed with the real
+ * production pepper — meaning the 4-digit PIN sign-in works in prod. When
+ * DIRECTOR_RESET=true, every OTHER staff account is removed AFTER the director
+ * is confirmed present (so a "fresh single-admin" CMS can be provisioned with no
+ * risk of lockout). Storefront customers are a separate collection and are NEVER
+ * touched. Fully idempotent and a complete no-op when the env vars are unset.
+ */
+async function ensureDirectorAccount(payload: Payload): Promise<void> {
+  const email = (process.env.DIRECTOR_EMAIL || "").trim().toLowerCase();
+  const pin = (process.env.DIRECTOR_PIN || "").trim();
+  const name = (process.env.DIRECTOR_NAME || "").trim() || "Administrator";
+  const reset = process.env.DIRECTOR_RESET === "true";
+  if (!email || !/^\d{4}$/.test(pin)) return;
+
+  try {
+    const existing = await payload.find({
+      collection: "users",
+      where: { email: { equals: email } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    });
+
+    let directorId: string | number;
+    if (existing.docs[0]) {
+      const doc = existing.docs[0] as { id: string | number; roles?: string[] };
+      await payload.update({
+        collection: "users",
+        id: doc.id,
+        data: { name, pin, roles: Array.from(new Set([...(doc.roles || []), "super-admin"])) },
+        overrideAccess: true,
+      });
+      directorId = doc.id;
+      payload.logger.warn(`[seed] director super-admin ensured (updated): ${email}`);
+    } else {
+      const created = await payload.create({
+        collection: "users",
+        data: { name, email, pin, roles: ["super-admin"] },
+        overrideAccess: true,
+      });
+      directorId = created.id;
+      payload.logger.warn(`[seed] director super-admin created: ${email}`);
+    }
+
+    if (reset && directorId) {
+      const others = await payload.find({
+        collection: "users",
+        where: { id: { not_equals: directorId } },
+        limit: 500,
+        depth: 0,
+        overrideAccess: true,
+      });
+      let removed = 0;
+      for (const u of others.docs as Array<{ id: string | number }>) {
+        await payload.delete({ collection: "users", id: u.id, overrideAccess: true });
+        removed++;
+      }
+      if (removed) {
+        payload.logger.warn(
+          `[seed] DIRECTOR_RESET: removed ${removed} other staff account(s) — the CMS now has a single super-admin (${email}).`,
+        );
+      }
+    }
+  } catch (e) {
+    payload.logger.error(`[seed] ensureDirectorAccount failed: ${(e as Error).message}`);
+  }
+}
+
 export async function seed(payload: Payload): Promise<void> {
   await ensureSuperAdmin(payload);
+  await ensureDirectorAccount(payload);
   await scrubPinBearingEmails(payload);
   await cleanupMalformed(payload);
 
