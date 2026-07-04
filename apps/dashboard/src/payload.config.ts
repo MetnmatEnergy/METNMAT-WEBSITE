@@ -127,7 +127,15 @@ export default buildConfig({
     // (payload-theme cookie → Sec-CH-Prefers-Color-Scheme client hint → light
     // fallback; the hint headers are set in next.config.mjs). The header
     // ThemeToggle + /admin/account persist an explicit per-browser choice.
-    meta: { titleSuffix: "· METNMAT Operations" },
+    meta: {
+      titleSuffix: "· METNMAT Operations",
+      // Brand M favicon (assets in public/) instead of the Payload default.
+      icons: {
+        icon: [{ url: "/icon-96x96.png", type: "image/png", sizes: "96x96" }],
+        shortcut: "/favicon.ico",
+        apple: "/apple-touch-icon.png",
+      },
+    },
     importMap: { baseDir: dirname },
     components: {
       graphics: {
