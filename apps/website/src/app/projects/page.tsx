@@ -57,7 +57,7 @@ export default async function ProjectsPage({
       />
 
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border">
+      <section className="relative overflow-hidden">
         <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.4] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
         <div className="bg-hero-glow pointer-events-none absolute inset-0" />
         <Container className="relative py-14 sm:py-20 lg:py-24">
