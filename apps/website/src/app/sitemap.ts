@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { site, mainNav } from "@/frontend/lib/site";
-import { getAllProducts, getAllCategories } from "@/frontend/lib/cms";
+import { getAllProducts, getAllCategories, getProjects } from "@/frontend/lib/cms";
 import { listBlogArticlesForFeed } from "@/frontend/lib/blog";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -12,10 +12,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // discover them. Drafts / scheduled / archived / noIndex articles never
   // appear (the CMS only exposes public articles and the feed helper also
   // excludes noIndex).
-  const [products, categories, articles] = await Promise.all([
+  const [products, categories, articles, projects] = await Promise.all([
     getAllProducts().catch(() => []),
     getAllCategories().catch(() => []),
     listBlogArticlesForFeed(500).catch(() => []),
+    getProjects().catch(() => []),
   ]);
 
   const entries: MetadataRoute.Sitemap = [
@@ -39,6 +40,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...(a.updatedAt ? { lastModified: a.updatedAt } : {}),
       changeFrequency: "monthly" as const,
       priority: 0.7,
+    })),
+    ...projects.map((p) => ({
+      url: `${site.url}/projects/${p.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
     })),
   ];
 

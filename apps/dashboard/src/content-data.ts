@@ -15,13 +15,216 @@ export const seedServices = [
   { slug: "materials-processing-facilities", title: "Materials Processing Facilities", icon: "factory", summary: "Advanced materials-processing equipment and facilities to develop, refine and scale your process." },
 ];
 
+/**
+ * Old generic placeholder projects — removed by the boot migration once the
+ * real case studies below are present. (oxygen-free-copper-alloy is reused, so
+ * it is NOT in this list — its URL is preserved.)
+ */
+export const dummyProjectSlugs = [
+  "microstructure-optimization",
+  "process-cost-reduction",
+  "competitive-benchmarking",
+  "prototype-to-scale-up",
+  "process-modeling-simulation",
+];
+
+/**
+ * Real METNMAT case studies (content from metnmat.in/projects). `bodyText` is
+ * plain text — blank lines separate paragraphs; the seed converts it to Lexical
+ * so it renders as rich text and stays editable in the admin. `highlights` are
+ * shown as a stat strip; only concrete, source-stated facts are included (no
+ * invented numbers). Further projects are authored directly in the CMS.
+ */
 export const seedProjects = [
-  { slug: "oxygen-free-copper-alloy", title: "Oxygen-free high-strength electrical copper alloy", category: "Alloy Development", summary: "Alloying, rapid quenching, de-oxidation, 60–90% cold reduction and aging to reach 91–93% IACS conductivity." },
-  { slug: "microstructure-optimization", title: "Multi-phase microstructure optimization", category: "Heat Treatment", summary: "Tuned volume fraction, morphology and phase distribution through controlled heat treatment." },
-  { slug: "process-cost-reduction", title: "Process cost & quality improvement", category: "Process Improvement", summary: "Identified and eliminated defects to cut cost and lift quality across the production line." },
-  { slug: "competitive-benchmarking", title: "Competitive product benchmarking", category: "Benchmarking", summary: "Benchmarked a client's product against market competitors to guide the development roadmap." },
-  { slug: "prototype-to-scale-up", title: "Lab prototype to industrial scale-up", category: "Process Development", summary: "Took a validated lab-scale prototype through to reliable industrial-scale production." },
-  { slug: "process-modeling-simulation", title: "Process design via modeling & simulation", category: "Simulation", summary: "Used advanced simulation to design and de-risk a new process before committing capital." },
+  {
+    slug: "microstructure-control-heat-treatment",
+    title: "Microstructure Control & Heat Treatment",
+    subtitle: "Engineering multi-phase microstructures for application-specific properties",
+    category: "Heat Treatment",
+    order: 0,
+    tags: ["Heat treatment", "Microstructure", "Phase engineering"],
+    summary:
+      "Optimising multi-phase microstructure — volume fraction, morphology and phase distribution — through heat treatment to deliver the exact property balance an application needs.",
+    bodyText:
+      "Optimisation of multi-phase microstructure to obtain a suitable volume fraction, morphology and distribution of different phases through heat treatment. The engineered microstructure imparts one — or a combination — of strength, ductility, wear resistance and other properties as required by the application.",
+  },
+  {
+    slug: "modeling-simulations",
+    title: "Modeling & Simulations",
+    subtitle: "Designing processes and products with advanced computational tools",
+    category: "Simulation",
+    order: 1,
+    tags: ["Simulation", "Process design", "Cost reduction"],
+    summary:
+      "Empowering industries to design and develop their process and product using advanced modeling and simulation — enabling informed decisions, lower manufacturing costs and improved product quality.",
+    bodyText:
+      "Empowering industries to design and develop their process and product using advanced modeling and simulations. This helps industries take informed decisions, lower manufacturing costs and improve product quality.",
+  },
+  {
+    slug: "oxygen-free-copper-alloy",
+    title: "Oxygen-Free High-Strength Electrical Copper Alloy",
+    subtitle: "High conductivity and high strength in a single copper alloy",
+    category: "Alloy Development",
+    order: 2,
+    tags: ["Copper alloy", "Electrical conductivity", "Cold working", "Aging"],
+    highlights: [
+      { label: "Conductivity", value: "91–93% IACS" },
+      { label: "Cold reduction", value: "60–90%" },
+    ],
+    summary:
+      "A copper alloy engineered through alloying, rapid quenching, de-oxidation, cold reduction and aging to reach 91–93% IACS conductivity together with high strength.",
+    bodyText:
+      "Addition of a suitable alloying element in copper to ensure complete solid solubility, followed by rapid quenching. The melt is treated with a suitable mix of de-oxidisers to prevent loss of alloying elements. A further 60–90% cold reduction imparts strength, followed by an aging treatment that improves electrical conductivity to about 91–93% IACS.",
+  },
+  {
+    slug: "alumina-insulation-fiber-board",
+    title: "High-Temperature Alumina Insulation Fiber Board",
+    subtitle: "Furnace-lining insulation that withstands ~1800°C",
+    category: "High-Temperature Materials",
+    order: 3,
+    tags: ["Alumina", "Thermal insulation", "Furnace lining", "Import substitution"],
+    highlights: [
+      { label: "Service temperature", value: "~1800°C" },
+      { label: "Shrinkage", value: "Very low" },
+    ],
+    summary:
+      "Furnace-lining insulation fabricated to withstand ~1800°C with very low shrinkage and thermal conductivity — improving furnace insulation and reducing dependency on imports.",
+    bodyText:
+      "Insulation materials used in furnace lining are fabricated to withstand high temperatures of around 1800°C, with very low shrinkage and thermal conductivity at high temperature. The technology improves furnace insulation, reduces dependency on foreign imports, and enables furnace manufacturers to make the material in-house.",
+  },
+  {
+    slug: "casting-yield-optimization",
+    title: "Casting Yield Optimization",
+    subtitle: "Recycling waste process heat to lift casting yield",
+    category: "Waste Heat Recovery",
+    order: 4,
+    tags: ["Thermoelectric", "Waste heat", "Casting", "Sustainability"],
+    summary:
+      "A thermoelectric material-based system that recycles waste process heat to hold consistent, controlled temperatures during casting — improving product quality, reducing defects and cutting material waste.",
+    bodyText:
+      "Our thermoelectric material-based system offers benefits in energy efficiency, sustainability and casting-yield optimisation. It efficiently recycles waste process heat to maintain consistent and controlled temperatures during casting, resulting in improved product quality and reduced defects. This optimisation enhances productivity, reduces material waste, and contributes to cost savings and environmental sustainability.",
+  },
+  {
+    slug: "ferritic-stainless-steel-texture",
+    title: "Texture Analysis of Ferritic Stainless-Steel Sheet",
+    subtitle: "Improving deep drawability through recrystallisation texture control",
+    category: "Heat Treatment",
+    order: 5,
+    tags: ["Ferritic stainless steel", "Texture", "Deep drawing", "Thermo-mechanical processing"],
+    summary:
+      "Improving the deep drawability of ferritic stainless steel by raising the r-value through microstructure and recrystallisation-texture control via multistage thermo-mechanical processing.",
+    bodyText:
+      "Deep drawability of ferritic stainless steel is improved by increasing the r-value, which depends on microstructure and recrystallisation texture. Multistage thermo-mechanical processing is performed to impart a homogeneous distribution of <111> || ND oriented grains.",
+  },
+  {
+    slug: "high-temperature-ceramic",
+    title: "High-Temperature Ceramic",
+    subtitle: "Thermally stable ceramics for thermoelectric waste-heat systems",
+    category: "High-Temperature Materials",
+    order: 6,
+    tags: ["Ceramics", "Thermoelectric", "Thermal stability"],
+    summary:
+      "High-temperature ceramics with excellent thermal stability and electrical conductivity that form a robust foundation for thermoelectric modules — enabling efficient heat-to-electricity conversion at elevated temperatures.",
+    bodyText:
+      "High-temperature ceramics can play a crucial role in the success of thermoelectric material-based systems for recycling waste process heat. With their excellent thermal stability and electrical conductivity, these ceramics provide a robust foundation for the thermoelectric modules, enabling efficient heat-to-electricity conversion at elevated temperatures. Incorporating high-temperature ceramics enhances the durability and performance of the technology, further contributing to improved energy efficiency and sustainability in manufacturing processes.",
+  },
+  {
+    slug: "aluminum-foam",
+    title: "Lightweight & High-Strength Aluminum Foam",
+    subtitle: "A melting-and-casting route to high-performance metal foam",
+    category: "Alloy Development",
+    order: 7,
+    tags: ["Aluminum foam", "Energy absorption", "Lightweighting", "Casting"],
+    summary:
+      "A melting-and-casting process for aluminum foam with high energy absorption, sound and thermal insulation and corrosion resistance — delivering high compressive strength at low density.",
+    bodyText:
+      "Aluminum foams have excellent properties such as high energy absorption, sound and thermal insulation, and corrosion resistance. The objective of this project was to develop a process for making aluminum foam through a melting and casting route. The effects of process parameters — foaming-agent content, casting temperature and holding time — were optimised. The resulting aluminum foam showed excellent mechanical properties with high compressive strength and low density.",
+  },
+  {
+    slug: "composite-materials",
+    title: "Composite Materials",
+    subtitle: "Tuning thermoelectric properties for better waste-heat recovery",
+    category: "Composites",
+    order: 8,
+    tags: ["Composites", "Thermoelectric", "Energy conversion"],
+    summary:
+      "Composite materials engineered to optimise thermoelectric properties — electrical and thermal conductivity — for improved energy-conversion efficiency, durability and flexibility across industries.",
+    bodyText:
+      "Composite materials offer an excellent opportunity to further enhance the efficiency and sustainability of thermoelectric material-based systems for recycling waste process heat. By incorporating composite materials into the design, it is possible to optimise thermoelectric properties such as electrical conductivity and thermal conductivity, resulting in improved energy-conversion efficiency. Composite materials also provide enhanced durability and flexibility, enabling their application across a wide range of industries for more effective waste-heat recovery and utilisation.",
+  },
+  {
+    slug: "surface-casting-improvement",
+    title: "Surface Casting Improvement",
+    subtitle: "Capturing waste heat to optimise surface-casting processes",
+    category: "Waste Heat Recovery",
+    order: 9,
+    tags: ["Thermoelectric", "Waste heat", "Surface casting", "Emissions"],
+    summary:
+      "Applying thermoelectric waste-heat recycling to surface casting — optimising energy use, reducing operating costs and minimising greenhouse-gas emissions in this specific manufacturing technique.",
+    bodyText:
+      "In addition to its benefits for energy efficiency and sustainability, our thermoelectric material-based system contributes to improving surface-casting processes. By capturing and utilising waste heat generated during surface casting, the technology helps optimise energy consumption, reduce operating costs and minimise greenhouse-gas emissions in this specific manufacturing technique. This integration of thermoelectric recycling into surface casting enhances the overall energy efficiency and sustainability of the production process.",
+  },
+  {
+    slug: "material-synthesis",
+    title: "Material Synthesis",
+    subtitle: "Advanced fabrication of high-performance thermoelectric materials",
+    category: "Waste Heat Recovery",
+    order: 10,
+    tags: ["Material synthesis", "Thermoelectric", "Fabrication"],
+    summary:
+      "Developing advanced fabrication techniques and optimising composition and structure to create thermoelectric materials with high electrical and low thermal conductivity — maximising waste-heat-to-electricity conversion.",
+    bodyText:
+      "To achieve efficient thermoelectric material synthesis for recycling waste process heat, our team focuses on developing advanced fabrication techniques and optimising the composition and structure of the materials. By carefully controlling the synthesis parameters and employing innovative approaches, we aim to create thermoelectric materials with enhanced properties such as high electrical conductivity and low thermal conductivity. This enables us to maximise the conversion of waste heat into usable electricity, contributing to improved energy efficiency and sustainability across industries.",
+  },
+  {
+    slug: "new-aluminum-alloy",
+    title: "New Aluminum Alloy Development",
+    subtitle: "Custom alloys for transportation, aerospace and construction",
+    category: "Alloy Development",
+    order: 11,
+    tags: ["Aluminum alloy", "Aerospace", "Transportation", "Thermo-mechanical processing"],
+    summary:
+      "Custom aluminum alloys developed through melting, casting and thermo-mechanical processing — tuned for strength, ductility and corrosion resistance across transportation, aerospace and construction.",
+    bodyText:
+      "Our expertise in melting, casting and thermo-mechanical processing allows us to develop and optimise aluminum alloys for diverse applications, including transportation, aerospace and construction. We customise the composition and processing of aluminum alloys to meet specific performance requirements such as strength, ductility and corrosion resistance. We also offer tailored solutions to reduce material costs and enhance the sustainability of aluminum production, helping industries achieve their material-property and business objectives.",
+  },
+  {
+    slug: "wear-resistant-composites",
+    title: "Wear-Resistant Composite Materials",
+    subtitle: "Metal-matrix composites tailored by interfacial bonding",
+    category: "Composites",
+    order: 12,
+    tags: ["Metal-matrix composites", "Wear resistance", "Reinforcement"],
+    summary:
+      "Metal-matrix composites with a wide range of selectable ceramics and reinforcements — with properties tuned through interfacial bonding between reinforcement and matrix.",
+    bodyText:
+      "We develop and manufacture metal-matrix composites. Depending on the application, a wide range of ceramic and reinforcement materials can be selected or further developed. The properties of the metal-matrix composites depend on the interfacial bonding between the reinforcement and the matrix. We provide customised solutions to enhance the performance and functionality of the composite materials.",
+  },
+  {
+    slug: "waste-heat-recycling-system",
+    title: "Advanced Solid-State Waste-Heat Recycling System",
+    subtitle: "Turning lost process heat back into usable energy",
+    category: "Waste Heat Recovery",
+    order: 13,
+    tags: ["Thermoelectric", "Waste heat", "Energy efficiency", "Emissions"],
+    highlights: [{ label: "Energy lost as heat", value: "20–50%" }],
+    summary:
+      "An efficient thermoelectric material-based system for recycling waste process heat — cutting energy consumption and operating costs while minimising greenhouse-gas emissions, where 20–50% of manufacturing energy is otherwise lost as heat.",
+    bodyText:
+      "Manufacturing processes generate a substantial amount of waste heat, with an estimated 20–50% of energy being lost in the form of heat. Our team has developed an efficient thermoelectric material-based system for recycling waste process heat. The technology has the potential to reduce energy consumption and operating costs across industries, while also minimising greenhouse-gas emissions. It enhances the energy efficiency and sustainability of production processes.",
+  },
+  {
+    slug: "casting-defects",
+    title: "Reducing Casting Defects in Metal",
+    subtitle: "Stabilising casting conditions with recovered waste heat",
+    category: "Waste Heat Recovery",
+    order: 14,
+    tags: ["Thermoelectric", "Casting quality", "Defect reduction"],
+    summary:
+      "Applying thermoelectric waste-heat recycling to metal casting — optimising energy use and improving operating conditions to minimise casting defects for a more reliable, high-quality process.",
+    bodyText:
+      "Casting defects in metal production can be addressed by implementing the thermoelectric material-based system for recycling waste process heat. By efficiently capturing and utilising the waste heat generated during casting, this technology optimises energy consumption, improves operating conditions and minimises casting defects. The enhanced energy efficiency and sustainability offered by the system contribute to a more reliable and high-quality metal-casting process.",
+  },
 ];
 
 /**

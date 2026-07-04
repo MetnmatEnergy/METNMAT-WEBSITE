@@ -239,7 +239,7 @@ export async function searchSite(
   // Projects / case studies.
   const projectLinks: SiteLink[] = projs
     .filter((p) => has(`${p.title} ${p.category} ${p.summary}`))
-    .map((p) => ({ type: "Project", title: p.title, href: `/projects#${p.slug}`, desc: p.summary }));
+    .map((p) => ({ type: "Project", title: p.title, href: `/projects/${p.slug}`, desc: p.summary }));
 
   const categoryLinks: SiteLink[] = cats
     .filter((c) => has(`${c.name} ${c.blurb ?? ""}`))
@@ -293,12 +293,99 @@ export async function getServices(): Promise<Service[]> {
   return docs.map((d) => ({ slug: d.slug, title: d.title, summary: d.summary ?? "", icon: d.icon }));
 }
 
-type CmsProjectDoc = { slug: string; title: string; category?: string; summary?: string };
+type CmsProjectDoc = {
+  slug: string;
+  title: string;
+  subtitle?: string;
+  category?: string;
+  client?: string;
+  year?: number;
+  featured?: boolean;
+  summary?: string;
+  tags?: { tag?: string }[];
+  highlights?: { label?: string; value?: string }[];
+  coverImage?: Media;
+  coverImageAlt?: string;
+  body?: unknown;
+  gallery?: { image?: Media; caption?: string }[];
+  seoTitle?: string;
+  metaDescription?: string;
+  externalUrl?: string;
+};
+
+function mapProjectCard(d: CmsProjectDoc): Project {
+  return {
+    slug: d.slug,
+    title: d.title,
+    category: d.category ?? "",
+    summary: d.summary ?? "",
+    subtitle: d.subtitle,
+    client: d.client,
+    year: d.year,
+    featured: d.featured,
+    tags: (d.tags ?? []).map((t) => t.tag?.trim()).filter(Boolean) as string[],
+    highlights: (d.highlights ?? [])
+      .filter((h) => h.label && h.value)
+      .map((h) => ({ label: h.label as string, value: h.value as string })),
+    coverUrl: mediaUrl(d.coverImage),
+    coverAlt: d.coverImageAlt,
+  };
+}
+
+// Public visibility (published + active) is enforced by the CMS access rules;
+// the explicit where clause here is defense in depth.
+const PROJECT_PUBLIC_WHERE =
+  "where[_status][equals]=published&where[active][not_equals]=false";
+
+// The CMS orders by `order`; the listing then pins featured projects to the top.
 export async function getProjects(): Promise<Project[]> {
-  const data = await api<{ docs: CmsProjectDoc[] }>("/api/projects?depth=0&limit=100&sort=order");
-  const docs = data?.docs ?? [];
-  if (!docs.length) return phProjects;
-  return docs.map((d) => ({ slug: d.slug, title: d.title, category: d.category ?? "", summary: d.summary ?? "" }));
+  const data = await api<{ docs: CmsProjectDoc[] }>(
+    `/api/projects?depth=1&limit=200&sort=order&${PROJECT_PUBLIC_WHERE}`
+  );
+  // Offline fallback ONLY when the CMS is unreachable — an empty result is a
+  // legitimate state (staff unpublished everything) and must render as empty.
+  if (!data) return phProjects;
+  const mapped = (data.docs ?? []).map(mapProjectCard);
+  return [...mapped].sort((a, b) => Number(b.featured) - Number(a.featured));
+}
+
+/** Full project for the detail page: card meta + rich body, gallery and SEO. */
+export type ProjectFull = Project & {
+  body?: unknown;
+  gallery?: { url?: string; caption?: string; alt?: string }[];
+  seoTitle?: string;
+  metaDescription?: string;
+  externalUrl?: string;
+};
+
+export async function getProjectFull(slug: string): Promise<ProjectFull | null> {
+  const data = await api<{ docs: CmsProjectDoc[] }>(
+    `/api/projects?depth=1&limit=1&where[slug][equals]=${encodeURIComponent(slug)}&${PROJECT_PUBLIC_WHERE}`
+  );
+  const doc = data?.docs?.[0];
+  if (doc) {
+    return {
+      ...mapProjectCard(doc),
+      body: doc.body,
+      gallery: (doc.gallery ?? [])
+        .map((g) => ({
+          url: mediaUrl(g.image),
+          caption: g.caption,
+          // Prefer the staff-authored Media alt text; caption/title are fallbacks.
+          alt:
+            (typeof g.image === "object" && g.image?.alt) || g.caption || doc.title,
+        }))
+        .filter((g) => g.url),
+      seoTitle: doc.seoTitle,
+      metaDescription: doc.metaDescription,
+      externalUrl: doc.externalUrl,
+    };
+  }
+  // Placeholder fallback ONLY when the CMS is unreachable — if the CMS answered
+  // and the slug isn't publicly visible (draft/inactive/deleted), 404 correctly.
+  if (data) return null;
+  const ph = phProjects.find((p) => p.slug === slug);
+  return ph ? { ...ph } : null;
 }
 
 export async function getProjectBySlug(slug: string): Promise<Project | null> {

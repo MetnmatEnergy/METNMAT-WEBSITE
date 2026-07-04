@@ -12,6 +12,7 @@ import {
   seedBlogCategories,
   seedBlogContentTypes,
   dummyPostSlugs,
+  dummyProjectSlugs,
 } from "./content-data";
 import { plainTextToLexical } from "./lib/blog";
 
@@ -131,10 +132,10 @@ async function seedContent(payload: Payload): Promise<void> {
     payload.logger.warn(`[seed] ensure services failed: ${(e as Error).message}`);
   }
 
-  await seedIfEmpty("projects", seedProjects);
   await seedIfEmpty("faqs", seedFaqs);
 
   // Blog taxonomy — seed only when empty (no drafts on these collections).
+  // MUST run before ensureRealBlogArticles so articles can link categories.
   const seedPlain = async (
     collection: "blog-categories" | "blog-content-types",
     rows: Record<string, unknown>[],
@@ -157,6 +158,8 @@ async function seedContent(payload: Payload): Promise<void> {
   };
   await seedPlain("blog-categories", seedBlogCategories);
   await seedPlain("blog-content-types", seedBlogContentTypes);
+
+  await ensureRealProjects(payload);
   await ensureRealBlogArticles(payload);
 
   // Homepage global — seed only if the hero hasn't been filled in yet.
@@ -193,6 +196,110 @@ async function seedContent(payload: Payload): Promise<void> {
   }
 }
 
+/** True when a Lexical body has real content (used to detect bare seed rows). */
+function hasLexicalBody(body: unknown): boolean {
+  return Boolean((body as { root?: { children?: unknown[] } } | null)?.root?.children?.length);
+}
+
+/**
+ * One-time real-project migration. Runs the create/reconcile/cleanup pass ONLY
+ * while migration is still pending — i.e. the old placeholder projects exist,
+ * or the collection has none of the real case studies yet (fresh database).
+ * Once migrated, this is a permanent no-op: a case study a staffer deliberately
+ * deletes stays deleted (no resurrection on the next boot), and staff-authored
+ * content is never overwritten. Further projects are authored in the CMS.
+ */
+async function ensureRealProjects(payload: Payload): Promise<void> {
+  try {
+    const [dummies, real] = await Promise.all([
+      payload.count({
+        collection: "projects",
+        where: { slug: { in: dummyProjectSlugs } },
+        overrideAccess: true,
+      }),
+      payload.count({
+        collection: "projects",
+        where: { slug: { in: seedProjects.map((p) => p.slug) } },
+        overrideAccess: true,
+      }),
+    ]);
+    if (dummies.totalDocs === 0 && real.totalDocs > 0) return; // migrated — never resurrect
+  } catch (e) {
+    payload.logger.warn(`[seed] project migration pre-check failed: ${(e as Error).message}`);
+    return;
+  }
+
+  let realPresent = 0;
+  for (const project of seedProjects) {
+    try {
+      const existing = await payload.find({
+        collection: "projects",
+        where: { slug: { equals: project.slug } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+      const doc = existing.docs[0] as { id: string | number; body?: unknown } | undefined;
+      const { bodyText, tags, ...rest } = project;
+      const data = {
+        ...rest,
+        // content-data lists tags as plain strings; the collection stores { tag }.
+        tags: (tags ?? []).map((t) => ({ tag: t })),
+        body: plainTextToLexical(bodyText),
+        _status: "published" as const,
+      };
+
+      if (doc) {
+        realPresent++;
+        // Reconcile a stale bare-seed project (no body) to the real content.
+        // A project with a body (staff-authored) is never overwritten, and the
+        // update does NOT touch `active`/`featured` (staff intent preserved).
+        if (!hasLexicalBody(doc.body)) {
+          await payload.update({ collection: "projects", id: doc.id, data, overrideAccess: true });
+          payload.logger.info(`[seed] projects: reconciled ${project.slug}`);
+        }
+        continue;
+      }
+
+      await payload.create({
+        collection: "projects",
+        data: { ...data, active: true, featured: false },
+      });
+      realPresent++;
+      payload.logger.info(`[seed] projects: + ${project.slug} (published)`);
+    } catch (e) {
+      payload.logger.warn(`[seed] project ${project.slug} failed: ${(e as Error).message}`);
+    }
+  }
+
+  // Remove the old placeholders only when the real content fully landed, and
+  // only rows that are still bare seeds — a placeholder slug that a staffer
+  // filled with real content is left in place (warned) rather than destroyed.
+  if (realPresent === seedProjects.length) {
+    for (const slug of dummyProjectSlugs) {
+      try {
+        const found = await payload.find({
+          collection: "projects",
+          where: { slug: { equals: slug } },
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        });
+        const doc = found.docs[0] as { id: string | number; body?: unknown } | undefined;
+        if (!doc) continue;
+        if (hasLexicalBody(doc.body)) {
+          payload.logger.warn(`[seed] placeholder slug '${slug}' has staff content — left in place.`);
+          continue;
+        }
+        await payload.delete({ collection: "projects", id: doc.id, overrideAccess: true });
+        payload.logger.info(`[seed] projects: removed placeholder '${slug}'.`);
+      } catch (e) {
+        payload.logger.warn(`[seed] placeholder removal '${slug}' failed: ${(e as Error).message}`);
+      }
+    }
+  }
+}
+
 /**
  * Blog content migration (idempotent, never overwrites staff edits):
  *  1. Creates the real METNMAT-written articles from content-data.ts when
@@ -203,6 +310,28 @@ async function seedContent(payload: Payload): Promise<void> {
  * authored directly in the CMS.
  */
 async function ensureRealBlogArticles(payload: Payload): Promise<void> {
+  // One-shot: once the placeholders are gone and any real article exists, the
+  // migration never runs again — an article staff deliberately delete stays
+  // deleted (no resurrection on the next boot).
+  try {
+    const [dummies, real] = await Promise.all([
+      payload.count({
+        collection: "posts",
+        where: { slug: { in: dummyPostSlugs } },
+        overrideAccess: true,
+      }),
+      payload.count({
+        collection: "posts",
+        where: { slug: { in: seedPosts.map((p) => p.slug) } },
+        overrideAccess: true,
+      }),
+    ]);
+    if (dummies.totalDocs === 0 && real.totalDocs > 0) return;
+  } catch (e) {
+    payload.logger.warn(`[seed] blog migration pre-check failed: ${(e as Error).message}`);
+    return;
+  }
+
   const idBySlug = async (
     collection: "blog-categories" | "blog-content-types",
     slug?: string,

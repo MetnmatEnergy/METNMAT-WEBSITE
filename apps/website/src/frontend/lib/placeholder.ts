@@ -17,6 +17,14 @@ export type Project = {
   title: string;
   category: string;
   summary: string;
+  subtitle?: string;
+  client?: string;
+  year?: number;
+  featured?: boolean;
+  tags?: string[];
+  highlights?: { label: string; value: string }[];
+  coverUrl?: string;
+  coverAlt?: string;
 };
 export type Product = {
   slug: string;
@@ -153,50 +161,24 @@ export const services: Service[] = [
   },
 ];
 
-// Case studies / projects (grounded in METNMAT's described capabilities).
+// Case studies / projects — offline fallback that mirrors the real CMS content
+// (metnmat.in/projects) so pages render even when the CMS is unreachable.
 export const projects: Project[] = [
-  {
-    slug: "oxygen-free-copper-alloy",
-    title: "Oxygen-free high-strength electrical copper alloy",
-    category: "Alloy Development",
-    summary:
-      "Alloying, rapid quenching, de-oxidation, 60–90% cold reduction and aging to reach 91–93% IACS conductivity.",
-  },
-  {
-    slug: "microstructure-optimization",
-    title: "Multi-phase microstructure optimization",
-    category: "Heat Treatment",
-    summary:
-      "Tuned volume fraction, morphology and phase distribution through controlled heat treatment.",
-  },
-  {
-    slug: "process-cost-reduction",
-    title: "Process cost & quality improvement",
-    category: "Process Improvement",
-    summary:
-      "Identified and eliminated defects to cut cost and lift quality across the production line.",
-  },
-  {
-    slug: "competitive-benchmarking",
-    title: "Competitive product benchmarking",
-    category: "Benchmarking",
-    summary:
-      "Benchmarked a client's product against market competitors to guide the development roadmap.",
-  },
-  {
-    slug: "prototype-to-scale-up",
-    title: "Lab prototype to industrial scale-up",
-    category: "Process Development",
-    summary:
-      "Took a validated lab-scale prototype through to reliable industrial-scale production.",
-  },
-  {
-    slug: "process-modeling-simulation",
-    title: "Process design via modeling & simulation",
-    category: "Simulation",
-    summary:
-      "Used advanced simulation to design and de-risk a new process before committing capital.",
-  },
+  { slug: "microstructure-control-heat-treatment", title: "Microstructure Control & Heat Treatment", category: "Heat Treatment", summary: "Optimising multi-phase microstructure — volume fraction, morphology and phase distribution — through heat treatment to deliver the exact property balance an application needs." },
+  { slug: "modeling-simulations", title: "Modeling & Simulations", category: "Simulation", summary: "Advanced modeling and simulation that helps industries take informed decisions, lower manufacturing costs and improve product quality." },
+  { slug: "oxygen-free-copper-alloy", title: "Oxygen-Free High-Strength Electrical Copper Alloy", category: "Alloy Development", summary: "A copper alloy engineered to reach 91–93% IACS conductivity together with high strength." },
+  { slug: "alumina-insulation-fiber-board", title: "High-Temperature Alumina Insulation Fiber Board", category: "High-Temperature Materials", summary: "Furnace-lining insulation fabricated to withstand ~1800°C with very low shrinkage and thermal conductivity." },
+  { slug: "casting-yield-optimization", title: "Casting Yield Optimization", category: "Waste Heat Recovery", summary: "A thermoelectric system that recycles waste process heat to hold controlled temperatures during casting — improving quality and reducing defects." },
+  { slug: "ferritic-stainless-steel-texture", title: "Texture Analysis of Ferritic Stainless-Steel Sheet", category: "Heat Treatment", summary: "Improving deep drawability by raising the r-value through recrystallisation-texture control via multistage thermo-mechanical processing." },
+  { slug: "high-temperature-ceramic", title: "High-Temperature Ceramic", category: "High-Temperature Materials", summary: "Thermally stable ceramics that form a robust foundation for thermoelectric modules at elevated temperatures." },
+  { slug: "aluminum-foam", title: "Lightweight & High-Strength Aluminum Foam", category: "Alloy Development", summary: "A melting-and-casting route to aluminum foam with high energy absorption and compressive strength at low density." },
+  { slug: "composite-materials", title: "Composite Materials", category: "Composites", summary: "Composites engineered to optimise thermoelectric properties for improved energy-conversion efficiency, durability and flexibility." },
+  { slug: "surface-casting-improvement", title: "Surface Casting Improvement", category: "Waste Heat Recovery", summary: "Thermoelectric waste-heat recycling applied to surface casting to cut energy use, costs and emissions." },
+  { slug: "material-synthesis", title: "Material Synthesis", category: "Waste Heat Recovery", summary: "Advanced fabrication of thermoelectric materials with high electrical and low thermal conductivity for waste-heat-to-electricity conversion." },
+  { slug: "new-aluminum-alloy", title: "New Aluminum Alloy Development", category: "Alloy Development", summary: "Custom aluminum alloys for transportation, aerospace and construction — tuned for strength, ductility and corrosion resistance." },
+  { slug: "wear-resistant-composites", title: "Wear-Resistant Composite Materials", category: "Composites", summary: "Metal-matrix composites with selectable ceramics and reinforcements, tuned through interfacial bonding." },
+  { slug: "waste-heat-recycling-system", title: "Advanced Solid-State Waste-Heat Recycling System", category: "Waste Heat Recovery", summary: "A thermoelectric system that turns lost process heat — 20–50% of manufacturing energy — back into usable energy." },
+  { slug: "casting-defects", title: "Reducing Casting Defects in Metal", category: "Waste Heat Recovery", summary: "Thermoelectric waste-heat recycling that stabilises casting conditions to minimise defects for a more reliable process." },
 ];
 
 // TODO(content): real products from the catalog (or fetch from API/Meilisearch).
