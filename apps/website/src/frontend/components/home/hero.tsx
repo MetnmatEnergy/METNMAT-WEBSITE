@@ -16,9 +16,9 @@ export function Hero({
 } = {}) {
   return (
     <section className="relative overflow-hidden border-b border-border">
-      {/* Background texture — visible but behind a fade mask so it never competes
-          with the headline (legibility first). Glow sits top-right, away from the copy. */}
-      <div className="bg-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:linear-gradient(to_bottom,black,transparent)]" />
+      {/* Background texture — softer than the inner-page heroes: the homepage
+          headline is the hero, the grid must support it, not compete with it. */}
+      <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.35] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
       <div className="bg-hero-glow pointer-events-none absolute inset-0" />
 
       <Container className="relative grid items-start gap-8 pb-10 pt-8 sm:gap-10 sm:pt-10 lg:grid-cols-2 lg:gap-12 lg:pb-16 lg:pt-12">
