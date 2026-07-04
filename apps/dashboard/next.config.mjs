@@ -8,7 +8,15 @@ const nextConfig = {
     return [
       {
         source: "/:path*",
-        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
+          // Client hints so Payload can SSR the admin in the visitor's OS
+          // colour scheme when they haven't picked a theme yet (no light↔dark
+          // flash on hard loads in Chromium browsers).
+          { key: "Accept-CH", value: "Sec-CH-Prefers-Color-Scheme" },
+          { key: "Critical-CH", value: "Sec-CH-Prefers-Color-Scheme" },
+          { key: "Vary", value: "Sec-CH-Prefers-Color-Scheme" },
+        ],
       },
     ];
   },

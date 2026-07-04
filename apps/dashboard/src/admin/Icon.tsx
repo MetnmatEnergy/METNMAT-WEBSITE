@@ -6,6 +6,9 @@ import React from "react";
  * would otherwise disappear against #09090b).
  */
 export default function Icon() {
+  // Sized to fit Payload's 16px step-nav home slot exactly (a larger tile gets
+  // clipped by the slot's hidden-overflow wrapper and the mark shows cut off);
+  // custom-admin.css additionally un-collapses the wrapper.
   return (
     <span
       style={{
@@ -13,11 +16,11 @@ export default function Icon() {
         alignItems: "center",
         justifyContent: "center",
         verticalAlign: "middle",
-        width: 22,
-        height: 22,
-        borderRadius: 6,
+        width: 20,
+        height: 20,
+        borderRadius: 5,
         background: "#fff",
-        padding: 2.5,
+        padding: 2,
         boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08)",
         flex: "0 0 auto",
       }}

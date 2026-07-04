@@ -122,7 +122,11 @@ const storagePlugins = useGCS
 export default buildConfig({
   admin: {
     user: Users.slug,
-    theme: "dark", // premium dark UI; hides the light/dark toggle
+    // Both palettes ship (custom-admin.css). With admin.theme unset (Payload
+    // default "all"), first-time visitors follow their OS colour scheme
+    // (payload-theme cookie → Sec-CH-Prefers-Color-Scheme client hint → light
+    // fallback; the hint headers are set in next.config.mjs). The header
+    // ThemeToggle + /admin/account persist an explicit per-browser choice.
     meta: { titleSuffix: "· METNMAT Operations" },
     importMap: { baseDir: dirname },
     components: {
@@ -130,6 +134,8 @@ export default buildConfig({
         Logo: "/admin/Logo",
         Icon: "/admin/Icon",
       },
+      // Light/dark switch in the header (top right).
+      actions: ["/admin/ThemeToggle"],
       // PIN pad is the primary sign-in; the welcome line sits above it.
       beforeLogin: ["/admin/BeforeLogin", "/admin/PinLogin"],
       beforeDashboard: ["/admin/BeforeDashboard"],

@@ -53,7 +53,7 @@ export default function ConvertSubmissionButton() {
         <button
           type="button"
           onClick={() => openArticle(String(converted))}
-          style={btnStyle("#2c2c2c")}
+          style={{ ...btnStyle("var(--theme-elevation-150)"), color: "var(--theme-text)" }}
         >
           Open converted draft →
         </button>

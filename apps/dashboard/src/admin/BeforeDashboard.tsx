@@ -12,15 +12,26 @@ import type { Payload } from "payload";
 type Props = { payload?: Payload };
 
 const BRAND = "#d81f26";
+// Per-theme hues from custom-admin.css so pills/charts stay readable in BOTH
+// light and dark mode (raw dark-tuned hexes wash out on white surfaces).
+const SUCCESS = "var(--mn-success)";
+const WARNING = "var(--mn-warning)";
+const DANGER = "var(--mn-danger)";
+const INFO = "var(--mn-info)";
+const ACCENT = "var(--mn-accent)";
+const PURPLE = "var(--mn-purple)";
+const MUTED = "var(--mn-muted)";
 const STATUS_COLOR: Record<string, string> = {
-  paid: "#22c55e",
-  pending: "#f59e0b",
-  shipped: "#6366f1",
-  delivered: "#22d3ee",
-  failed: "#ef4444",
-  cancelled: "#71717a",
-  refunded: "#a855f7",
+  paid: SUCCESS,
+  pending: WARNING,
+  shipped: INFO,
+  delivered: ACCENT,
+  failed: DANGER,
+  cancelled: MUTED,
+  refunded: PURPLE,
 };
+/** Soft tint of a status colour for pill backgrounds (works with CSS vars). */
+const tint = (color: string) => `color-mix(in srgb, ${color} 14%, transparent)`;
 const PAID_STATUSES = new Set(["paid", "shipped", "delivered"]);
 
 const panel: React.CSSProperties = {
@@ -117,7 +128,9 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   const step = data.length > 1 ? w / (data.length - 1) : w;
   const pts = data.map((v, i) => `${i * step},${h - ((v - min) / span) * (h - 4) - 2}`).join(" ");
   const areaPts = `0,${h} ${pts} ${w},${h}`;
-  const id = `spk-${color.replace("#", "")}-${data.join("").length}`;
+  // Sanitised: colours may be CSS var() strings, and url(#id) refs break on
+  // parentheses/spaces.
+  const id = `spk-${color.replace(/[^a-zA-Z0-9-]/g, "")}-${data.join("").length}`;
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }}>
       <defs>
@@ -204,7 +217,7 @@ function Donut({ segments }: { segments: { label: string; value: number; color: 
 }
 
 function ChangeBadge({ change }: { change: { text: string; up: boolean } }) {
-  const color = change.up ? "#22c55e" : BRAND;
+  const color = change.up ? SUCCESS : BRAND;
   return (
     <span style={{ color, fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}>
       {change.text !== "—" && change.text !== "New" ? (change.up ? "▲" : "▼") : ""} {change.text}
@@ -283,15 +296,15 @@ export default async function BeforeDashboard({ payload }: Props) {
   const monthLabels = months.map((m) => m.label);
 
   const kpis = [
-    { label: "Total earnings", value: inrCompact(totalRevenue), sub: `${paidCount} paid orders`, series: revSeries, color: "#22c55e", change: pctChange(revSeries) },
+    { label: "Total earnings", value: inrCompact(totalRevenue), sub: `${paidCount} paid orders`, series: revSeries, color: SUCCESS, change: pctChange(revSeries) },
     { label: "Total orders", value: String(orders.length), sub: `${openTickets} need action`, series: ordSeries, color: BRAND, change: pctChange(ordSeries) },
-    { label: "Customers", value: String(customers.size), sub: "unique buyers", series: custSeries, color: "#6366f1", change: pctChange(custSeries) },
-    { label: "Enquiries (RFQ)", value: String(enquiries.length), sub: `${newEnquiries} new this week`, series: enqSeries, color: "#22d3ee", change: pctChange(enqSeries) },
+    { label: "Customers", value: String(customers.size), sub: "unique buyers", series: custSeries, color: INFO, change: pctChange(custSeries) },
+    { label: "Enquiries (RFQ)", value: String(enquiries.length), sub: `${newEnquiries} new this week`, series: enqSeries, color: ACCENT, change: pctChange(enqSeries) },
   ];
 
   const donutSegments = [...statusCounts.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([status, count]) => ({ label: status, value: count, color: STATUS_COLOR[status] || "#71717a" }));
+    .map(([status, count]) => ({ label: status, value: count, color: STATUS_COLOR[status] || MUTED }));
 
   const topProducts = [...productAgg.entries()]
     .map(([name, agg]) => ({ name, ...agg }))
@@ -397,8 +410,8 @@ export default async function BeforeDashboard({ payload }: Props) {
                           textTransform: "capitalize",
                           padding: "3px 9px",
                           borderRadius: 999,
-                          color: STATUS_COLOR[o.status || "pending"] || "#a1a1aa",
-                          background: `${STATUS_COLOR[o.status || "pending"] || "#71717a"}1f`,
+                          color: STATUS_COLOR[o.status || "pending"] || MUTED,
+                          background: tint(STATUS_COLOR[o.status || "pending"] || MUTED),
                         }}
                       >
                         {o.status || "pending"}
@@ -466,20 +479,22 @@ function QuickLinks() {
     {
       title: "Website content",
       links: [
-        { label: "Blog posts", href: "/admin/collections/posts" },
-        { label: "Services", href: "/admin/collections/services" },
+        { label: "Blog articles", href: "/admin/collections/posts" },
+        { label: "Publication requests", href: "/admin/collections/blog-submissions" },
         { label: "Projects", href: "/admin/collections/projects" },
-        { label: "FAQs", href: "/admin/collections/faqs" },
+        { label: "Services", href: "/admin/collections/services" },
         { label: "Team", href: "/admin/collections/team" },
+        { label: "+ New article", href: "/admin/collections/posts/create", primary: true },
       ],
     },
     {
-      title: "Site settings",
+      title: "Site & administration",
       links: [
         { label: "Homepage", href: "/admin/globals/homepage" },
         { label: "Navigation", href: "/admin/globals/navigation" },
-        { label: "Branding", href: "/admin/globals/branding" },
-        { label: "Contact", href: "/admin/globals/contact" },
+        { label: "Maintenance banner", href: "/admin/globals/maintenance" },
+        { label: "Staff roles", href: "/admin/collections/staff-roles" },
+        { label: "Staff users", href: "/admin/collections/users" },
       ],
     },
   ];

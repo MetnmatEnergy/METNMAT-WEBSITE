@@ -1,8 +1,9 @@
 /*
- * METNMAT Operations Dashboard — premium dark theme for Payload v3 admin.
- * Near-black surfaces (#09090b) + brand red (#d81f26), one consistent token
- * system, refined navigation / tables / forms / login, and full responsive
- * behavior. Imported once from app/(payload)/layout.tsx → applies admin-wide.
+ * METNMAT Operations Dashboard — premium theming for Payload v3 admin.
+ * Brand red (#d81f26) + a matched pair of palettes: near-black dark mode and a
+ * clean paper-white light mode. The palette follows html[data-theme] (managed
+ * by Payload's ThemeProvider — toggled from the header + /admin/account), so
+ * every rule below resolves through tokens and works in BOTH modes.
  *
  * Principles: hairline borders not heavy shadows; restraint over flash; brand
  * red reserved for primary actions + genuine attention (never "normal" state);
@@ -16,10 +17,6 @@
   --mn-brand-tint: color-mix(in srgb, #d81f26 12%, transparent);
   --mn-brand-ring: color-mix(in srgb, #d81f26 22%, transparent);
 
-  --mn-success: #4ade80;
-  --mn-warning: #fbbf24;
-  --mn-danger: #f87171;
-
   --mn-space-1: 4px;  --mn-space-2: 8px;  --mn-space-3: 12px; --mn-space-4: 16px;
   --mn-space-5: 20px; --mn-space-6: 24px; --mn-space-8: 32px;
   --mn-radius-sm: 8px; --mn-radius-md: 12px; --mn-radius-lg: 14px; --mn-radius-xl: 16px;
@@ -29,12 +26,27 @@
   --mn-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
 }
 
-/* Premium dark palette — applied to every theme state so it's consistently dark.
+/* Premium DARK palette (default — matches the brand site).
    Elevation ramp: 0 = darkest surface → 1000 = near-white text/icons. */
 html,
-html[data-theme="dark"],
-html[data-theme="light"] {
+html[data-theme="dark"] {
   color-scheme: dark;
+
+  --mn-success: #4ade80;
+  --mn-warning: #fbbf24;
+  --mn-danger: #f87171;
+  /* Chart / status hues tuned for dark surfaces */
+  --mn-info: #818cf8;
+  --mn-accent: #22d3ee;
+  --mn-purple: #c084fc;
+  --mn-muted: #a1a1aa;
+
+  --mn-nav-bg: #0c0c0f;
+  --mn-thead-bg: #0e0e12;
+  --mn-active-text: #fff;
+  --mn-body-glow:
+    radial-gradient(1100px 520px at 82% -8%, rgba(216, 31, 38, 0.09), transparent 60%),
+    radial-gradient(900px 500px at -5% 4%, rgba(120, 80, 220, 0.05), transparent 55%);
 
   --theme-bg: #09090b;
   --theme-input-bg: #141417;
@@ -62,14 +74,60 @@ html[data-theme="light"] {
   --theme-warning-500: var(--mn-warning);
 }
 
+/* Premium LIGHT palette — paper-white surfaces, ink text, same brand accents.
+   The elevation ramp mirrors dark mode (0 = lightest surface → 1000 = ink) so
+   every component written against the ramp works unchanged. */
+html[data-theme="light"] {
+  color-scheme: light;
+
+  --mn-success: #15803d;
+  --mn-warning: #b45309;
+  --mn-danger: #dc2626;
+  /* Chart / status hues tuned for light surfaces */
+  --mn-info: #4f46e5;
+  --mn-accent: #0e7490;
+  --mn-purple: #7e22ce;
+  --mn-muted: #52525b;
+
+  --mn-nav-bg: #ffffff;
+  --mn-thead-bg: #f7f7f8;
+  --mn-active-text: #18181b;
+  --mn-body-glow:
+    radial-gradient(1100px 520px at 82% -8%, rgba(216, 31, 38, 0.05), transparent 60%),
+    radial-gradient(900px 500px at -5% 4%, rgba(120, 80, 220, 0.03), transparent 55%);
+
+  --theme-bg: #f7f7f8;
+  --theme-input-bg: #ffffff;
+  --theme-text: #1c1c20;
+
+  --theme-elevation-0: #ffffff;
+  --theme-elevation-25: #fafafa;
+  --theme-elevation-50: #f4f4f5;
+  --theme-elevation-100: #e7e7ea;
+  --theme-elevation-150: #d9d9de;
+  --theme-elevation-200: #c9c9cf;
+  --theme-elevation-250: #b8b8bf;
+  --theme-elevation-300: #a5a5ad;
+  --theme-elevation-400: #8c8c94;
+  --theme-elevation-450: #7e7e87;
+  --theme-elevation-500: #71717a;
+  --theme-elevation-600: #57575f;
+  --theme-elevation-700: #434349;
+  --theme-elevation-800: #303035;
+  --theme-elevation-900: #202024;
+  --theme-elevation-1000: #101013;
+
+  --theme-success-500: var(--mn-success);
+  --theme-error-500: var(--mn-danger);
+  --theme-warning-500: var(--mn-warning);
+}
+
 /* ── Base typography ─────────────────────────────────────────────────────── */
 html { font-size: 14px; }
 body {
   font-family: var(--mn-font);
   background-color: var(--theme-bg);
-  background-image:
-    radial-gradient(1100px 520px at 82% -8%, rgba(216, 31, 38, 0.09), transparent 60%),
-    radial-gradient(900px 500px at -5% 4%, rgba(120, 80, 220, 0.05), transparent 55%);
+  background-image: var(--mn-body-glow);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -92,7 +150,7 @@ a, .nav__link:hover { color: var(--metnmat-brand); }
 
 /* ── Sidebar navigation ──────────────────────────────────────────────────── */
 .nav, .template-default__nav {
-  background-color: #0c0c0f;
+  background-color: var(--mn-nav-bg);
   backdrop-filter: blur(8px);
   border-right: 1px solid var(--theme-elevation-100);
 }
@@ -122,7 +180,7 @@ a, .nav__link:hover { color: var(--metnmat-brand); }
 .nav .nav__link--active,
 .nav a[aria-current="page"],
 .nav .nav-group__toggle.active {
-  color: #fff;
+  color: var(--mn-active-text);
   background: var(--mn-brand-tint);
   box-shadow: inset 3px 0 0 0 var(--metnmat-brand);
   border-radius: var(--mn-radius-sm);
@@ -148,7 +206,7 @@ a, .nav__link:hover { color: var(--metnmat-brand); }
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #0e0e12;
+  background: var(--mn-thead-bg);
   border-bottom: 1px solid var(--theme-elevation-150);
   font-size: 12px;
   font-weight: 600;
@@ -200,8 +258,26 @@ a, .nav__link:hover { color: var(--metnmat-brand); }
   border: 1px solid var(--theme-elevation-100);
   border-radius: var(--metnmat-radius);
 }
-.tabs-field__tab--active { box-shadow: inset 0 -2px 0 var(--metnmat-brand); color: #fff; }
+.tabs-field__tab--active { box-shadow: inset 0 -2px 0 var(--metnmat-brand); color: var(--mn-active-text); }
 /* (Payload's .doc-controls is already sticky at top:0 — no override needed.) */
+
+/* ── Header breadcrumb logo ──────────────────────────────────────────────── */
+/* Payload's home slot is a 16px box whose inner wrapper collapses to 0×0 with
+   overflow hidden — a custom Icon larger than that renders CUT IN HALF. Give
+   the slot and its wrapper a real box so the METNMAT mark shows whole. */
+.step-nav__home {
+  width: auto;
+  height: auto;
+  display: inline-flex;
+  align-items: center;
+}
+.step-nav__home > span,
+.step-nav__home .graphic-icon {
+  display: inline-flex;
+  width: auto;
+  height: auto;
+  overflow: visible;
+}
 
 /* ── Login screen (PIN-first) ────────────────────────────────────────────── */
 /* Hide Payload's email/password form by default; the PIN pad (beforeLogin) is
