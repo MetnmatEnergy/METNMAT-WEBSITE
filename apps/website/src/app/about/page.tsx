@@ -69,7 +69,7 @@ export default async function AboutPage() {
         {/* Brand WebGL plasma (recolored red/dark), dimmed under a scrim for legibility */}
         <AnimatedShaderBackground className="absolute inset-0 opacity-60" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/50 via-background/65 to-background" />
-        <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.12] [mask-image:radial-gradient(80%_60%_at_50%_0%,black,transparent)]" />
+        <div className="bg-grid pointer-events-none absolute inset-0 opacity-50 [mask-image:radial-gradient(80%_60%_at_50%_0%,black,transparent)]" />
 
         <Container className="relative py-16 text-center sm:py-20 lg:py-24">
           <Reveal className="flex justify-center">

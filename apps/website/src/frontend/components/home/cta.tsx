@@ -7,7 +7,7 @@ export function CtaBand() {
     <section className="section">
       <Container>
         <div className="bg-hero-glow relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-14 text-center sm:px-16">
-          <div className="bg-grid pointer-events-none absolute inset-0 opacity-30" />
+          <div className="bg-grid pointer-events-none absolute inset-0 opacity-60" />
           <div className="relative mx-auto max-w-2xl">
             {/* TODO(content): final CTA copy. */}
             <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">

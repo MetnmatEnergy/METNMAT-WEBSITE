@@ -182,14 +182,13 @@
     animation: badge-pop 0.35s ease-out;
   }
 
-  /* Subtle grid texture used behind the hero */
+  /* Grid texture used behind the hero. Lines are FOREGROUND-based (not border):
+     the light theme's border grey is ~88% lightness — invisible on white at any
+     opacity. Foreground flips with the theme, so the squares read in both modes;
+     each usage tunes final strength via its own opacity utility. */
   .bg-grid {
-    background-image: linear-gradient(
-        to right,
-        hsl(var(--border) / 0.5) 1px,
-        transparent 1px
-      ),
-      linear-gradient(to bottom, hsl(var(--border) / 0.5) 1px, transparent 1px);
+    background-image: linear-gradient(to right, hsl(var(--foreground) / 0.18) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--foreground) / 0.18) 1px, transparent 1px);
     background-size: 56px 56px;
   }
 }

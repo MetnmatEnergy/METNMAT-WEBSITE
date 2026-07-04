@@ -59,7 +59,7 @@ const config: Config = {
       },
       backgroundImage: {
         "hero-glow":
-          "radial-gradient(60% 70% at 80% 0%, hsl(var(--brand) / 0.22), transparent 60%)",
+          "radial-gradient(60% 70% at 80% 0%, hsl(var(--brand) / 0.32), transparent 60%)",
         "brand-text":
           "linear-gradient(92deg, hsl(var(--brand)) 0%, #ff7a6e 100%)",
       },
