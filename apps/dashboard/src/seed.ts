@@ -400,25 +400,36 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
   if (!email || !/^\d{4}$/.test(pin)) return;
 
   try {
-    const existing = await payload.find({
+    // Match by email OR by the target PIN. A pre-existing account that already
+    // holds this email or this PIN must be RECONCILED, never duplicated — and
+    // matching the PIN avoids the unique-PIN validation failure that a blind
+    // create would hit. If several match, keep the earliest and delete the rest.
+    const matches = await payload.find({
       collection: "users",
-      where: { email: { equals: email } },
-      limit: 1,
+      where: { or: [{ email: { equals: email } }, { pin: { equals: pin } }] },
+      sort: "createdAt",
+      limit: 50,
       depth: 0,
       overrideAccess: true,
     });
+    const docs = matches.docs as Array<{ id: string | number }>;
 
     let directorId: string | number;
-    if (existing.docs[0]) {
-      const doc = existing.docs[0] as { id: string | number; roles?: string[] };
+    if (docs.length > 0) {
+      directorId = docs[0].id;
+      // Remove duplicate matches first so the email + PIN are free to set.
+      for (const dup of docs.slice(1)) {
+        await payload.delete({ collection: "users", id: dup.id, overrideAccess: true });
+      }
       await payload.update({
         collection: "users",
-        id: doc.id,
-        data: { name, pin, roles: Array.from(new Set([...(doc.roles || []), "super-admin"])) },
+        id: directorId,
+        data: { name, email, pin, roles: ["super-admin"] },
         overrideAccess: true,
       });
-      directorId = doc.id;
-      payload.logger.warn(`[seed] director super-admin ensured (updated): ${email}`);
+      payload.logger.warn(
+        `[seed] director super-admin ensured: ${email}${docs.length > 1 ? ` (removed ${docs.length - 1} duplicate match(es))` : ""}`,
+      );
     } else {
       const created = await payload.create({
         collection: "users",
