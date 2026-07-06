@@ -44,13 +44,9 @@ export async function SiteFooter() {
   return (
     <footer className="border-t border-border bg-surface">
       <Container className="py-14">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-16">
-          {/* Left zone — branding + link columns; the HQ map fills the open
-              area beneath them (bottom-aligned with the address column). */}
-          <div className="flex min-w-0 flex-col">
-            <div className="flex flex-col gap-12 sm:flex-row sm:justify-between sm:gap-10">
-              {/* --- Branding --- */}
-              <div className="max-w-sm">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)_300px] lg:gap-14">
+          {/* --- Branding --- */}
+          <div className="max-w-sm">
             <span className="inline-flex items-center rounded-lg bg-white px-3 py-2 shadow-sm">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -100,8 +96,10 @@ export async function SiteFooter() {
             </div>
           </div>
 
-              {/* --- Link columns --- */}
-              <div className="grid grid-cols-2 gap-8 sm:shrink-0 sm:gap-12">
+          {/* Middle zone — link columns with the HQ map filling the open
+              area right beneath them (Howrah pin only). */}
+          <div className="flex min-w-0 flex-col">
+            <div className="grid grid-cols-2 gap-8 sm:gap-12">
             {groups.map((group) => (
               <div key={group.title}>
                 <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
@@ -116,18 +114,14 @@ export async function SiteFooter() {
                 </ul>
               </div>
             ))}
-
-              </div>
             </div>
 
-            {/* HQ location — fills the open area under branding + links
-                (Howrah pin only), bottom-aligned with the address column. */}
             {office && (
-              <div className="mt-10 lg:mt-auto lg:pt-10">
+              <div className="mt-8 flex flex-1 flex-col">
                 <iframe
                   title={`Map — ${legalName}, ${office.label}`}
                   src={office.mapEmbedUrl}
-                  className="h-52 w-full rounded-2xl border border-border sm:h-60"
+                  className="min-h-[13rem] w-full flex-1 rounded-2xl border border-border shadow-sm"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                   allowFullScreen
