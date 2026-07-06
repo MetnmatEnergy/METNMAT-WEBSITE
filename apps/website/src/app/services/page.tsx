@@ -8,6 +8,7 @@ import { ExpandingCards, type ExpandCard } from "@/frontend/components/ui/expand
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 import { getServices } from "@/frontend/lib/cms";
+import { SERVICE_IMAGES } from "@/frontend/lib/service-images";
 import { site } from "@/frontend/lib/site";
 import { pageMetadata } from "@/frontend/lib/seo";
 
@@ -17,24 +18,6 @@ export const metadata: Metadata = pageMetadata({
     "Customized, turnkey materials & metallurgy R&D from METNMAT — product & process development, applied research & consultancy, process & quality improvement, product benchmarking, materials testing & characterization, and materials processing facilities.",
   path: "/services",
 });
-
-// Themed Unsplash photography per service. If a photo is blocked or 404s, the
-// ExpandingCards component falls back to a brand gradient (never a broken card).
-// Keyed by every slug that can appear — placeholder fallback AND the live CMS —
-// so the showcase shows photos regardless of which data source is in use.
-const unsplash = (id: string) =>
-  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=900&q=70`;
-
-const SERVICE_IMAGES: Record<string, string> = {
-  "product-process-development": unsplash("1581092918056-0c4c3acd3789"),
-  "applied-research-consultancy": unsplash("1581091226825-a6a2a5aee158"),
-  "process-quality-improvement": unsplash("1581092160562-40aa08e78837"),
-  "product-benchmarking": unsplash("1460925895917-afdab827c52f"),
-  "microstructure-heat-treatment": unsplash("1635070041078-e363dbe005cb"),
-  "modeling-simulations": unsplash("1518770660439-4636190af475"),
-  "materials-testing-characterization": unsplash("1576086213369-97a306d36557"),
-  "materials-processing-facilities": unsplash("1504917595217-d4dc5ebe6122"),
-};
 
 // METNMAT's stated delivery arc — lab-scale prototype through to industrial scale.
 const APPROACH: { icon: LucideIcon; step: string; title: string; body: string }[] = [

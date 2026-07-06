@@ -8,7 +8,8 @@ import { BlogTeaser } from "@/frontend/components/home/blog-teaser";
 import { Faq } from "@/frontend/components/home/faq";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/frontend/components/seo/json-ld";
-import { getHomepage, getServices, getBlogPosts, getClients, getFaqs } from "@/frontend/lib/cms";
+import { getHomepage, getServices, getClients, getFaqs } from "@/frontend/lib/cms";
+import { listBlogArticlesForFeed } from "@/frontend/lib/blog";
 
 // Self-canonical for the homepage. The root layout no longer forces canonical
 // "/" on every route (Next merges metadata down the tree), so each page sets its own.
@@ -18,7 +19,8 @@ export default async function HomePage() {
   const [home, services, posts, logos, faqs] = await Promise.all([
     getHomepage(),
     getServices(),
-    getBlogPosts(),
+    // Same source as the /blog listing — latest public articles, covers included.
+    listBlogArticlesForFeed(3).catch(() => []),
     getClients(),
     getFaqs(),
   ]);
