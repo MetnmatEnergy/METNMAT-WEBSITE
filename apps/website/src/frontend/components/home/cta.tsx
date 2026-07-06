@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-button";
@@ -6,10 +7,26 @@ export function CtaBand() {
   return (
     <section className="section">
       <Container>
-        <div className="bg-hero-glow relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-14 text-center sm:px-16">
-          <div className="bg-grid pointer-events-none absolute inset-0 opacity-60" />
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-surface px-8 py-14 text-center sm:px-16">
+          {/* Brand banner (light mode). Decorative; a legibility scrim keeps the
+              centred copy readable over the lighter and pink-accented areas. */}
+          <div className="pointer-events-none absolute inset-0 dark:hidden">
+            <Image
+              src="/cta-banner.webp"
+              alt=""
+              aria-hidden
+              fill
+              sizes="(max-width: 768px) 100vw, 1200px"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(65%_120%_at_50%_45%,hsl(var(--surface)/0.55),transparent_75%)]" />
+          </div>
+          {/* Dark mode keeps the themed glow + grid (the light banner would
+              swallow dark-mode's near-white text). */}
+          <div className="bg-hero-glow pointer-events-none absolute inset-0 hidden opacity-60 dark:block" />
+          <div className="bg-grid pointer-events-none absolute inset-0 hidden opacity-60 dark:block" />
+
           <div className="relative mx-auto max-w-2xl">
-            {/* TODO(content): final CTA copy. */}
             <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
               Have a materials challenge? Let&apos;s solve it.
             </h2>
