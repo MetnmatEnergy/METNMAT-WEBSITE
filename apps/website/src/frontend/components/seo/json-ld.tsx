@@ -24,17 +24,33 @@ export function JsonLd({ data }: { data: Record<string, unknown> }) {
 
 export const organizationJsonLd = {
   "@context": "https://schema.org",
-  "@type": "Organization",
+  // Dual-typed: Organization for brand/knowledge-panel signals, LocalBusiness
+  // so the geo/address/opening-hours drive local search (GEO).
+  "@type": ["Organization", "LocalBusiness"],
   name: site.legalName,
   alternateName: site.name,
   url: site.url,
   logo: `${site.url}/icon-512.png`,
   image: `${site.url}/opengraph-image`,
   description: site.description,
-  email: site.contact.email,
+  email: [site.contact.email, site.contact.email2],
   telephone: site.contact.phone,
   foundingDate: "2018",
   areaServed: ["IN", "Worldwide"],
+  geo: {
+    "@type": "GeoCoordinates",
+    latitude: primaryOffice.geo.lat,
+    longitude: primaryOffice.geo.lng,
+  },
+  hasMap: primaryOffice.mapsUrl,
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      opens: "10:00",
+      closes: "18:30",
+    },
+  ],
   knowsAbout: [
     "Metallurgy",
     "Materials science",

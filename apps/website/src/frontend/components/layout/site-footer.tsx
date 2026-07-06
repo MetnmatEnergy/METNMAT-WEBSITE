@@ -15,6 +15,7 @@ const bottomLinks = [
 export async function SiteFooter() {
   const [settings, nav] = await Promise.all([getSettings(), getNavigation()]);
   const email = settings.contact.email || site.contact.email;
+  const email2 = settings.contact.email2 || site.contact.email2;
   const phone = settings.contact.phone || site.contact.phone;
   const social = {
     linkedin:
@@ -63,6 +64,14 @@ export async function SiteFooter() {
               <a href={`mailto:${email}`} className="flex items-center gap-2 transition-colors hover:text-brand">
                 <Mail className="h-4 w-4 shrink-0 text-brand" /> {email}
               </a>
+              {email2 && (
+                <a
+                  href={`mailto:${email2}`}
+                  className="flex items-center gap-2 transition-colors hover:text-brand"
+                >
+                  <Mail className="h-4 w-4 shrink-0 text-brand" /> {email2}
+                </a>
+              )}
               <a
                 href={`tel:${phone.replace(/\s/g, "")}`}
                 className="flex items-center gap-2 transition-colors hover:text-brand"
@@ -121,6 +130,26 @@ export async function SiteFooter() {
                 <Clock className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                 <span>Mon – Sat · 10:00 AM – 6:30 PM IST</span>
               </p>
+              {office && (
+                <>
+                  <iframe
+                    title={`Map — ${legalName}, ${office.label}`}
+                    src={office.mapEmbedUrl}
+                    className="mt-4 h-40 w-full rounded-2xl border border-border"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                  <a
+                    href={office.mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline"
+                  >
+                    Open in Google Maps
+                  </a>
+                </>
+              )}
             </div>
           </div>
         </div>

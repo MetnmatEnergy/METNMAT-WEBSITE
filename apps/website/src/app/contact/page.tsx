@@ -132,18 +132,23 @@ export default function ContactPage() {
             <HighlighterItem className="rounded-3xl">
               <div className="relative flex h-full flex-col gap-4 rounded-3xl border border-border bg-surface p-6 sm:p-8">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <a
-                    href={`mailto:${site.contact.email}`}
-                    className="group/card flex flex-col gap-2 rounded-2xl border border-border bg-background/50 p-4 transition-all hover:-translate-y-0.5 hover:border-brand/40"
-                  >
+                  <div className="group/card flex flex-col gap-2 rounded-2xl border border-border bg-background/50 p-4 transition-all hover:-translate-y-0.5 hover:border-brand/40">
                     <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/10 text-brand">
                       <Mail className="h-4 w-4" />
                     </span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                       Email
                     </span>
-                    <span className="break-words text-sm font-medium group-hover/card:text-brand">{site.contact.email}</span>
-                  </a>
+                    <span className="text-sm font-medium leading-relaxed">
+                      <a href={`mailto:${site.contact.email}`} className="break-words hover:text-brand">
+                        {site.contact.email}
+                      </a>
+                      <br />
+                      <a href={`mailto:${site.contact.email2}`} className="break-words hover:text-brand">
+                        {site.contact.email2}
+                      </a>
+                    </span>
+                  </div>
                   <a
                     href={`tel:${phone1}`}
                     className="group/card flex flex-col gap-2 rounded-2xl border border-border bg-background/50 p-4 transition-all hover:-translate-y-0.5 hover:border-brand/40"

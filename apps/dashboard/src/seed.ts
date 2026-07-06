@@ -593,6 +593,47 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
   }
 }
 
+/**
+ * One-shot migration (2026-07-06): drop the "first" claim from copy that was
+ * seeded before the wording change. Exact-match / exact-fragment only, so
+ * anything staff have already customised is never touched.
+ */
+async function dropFirstFromLegacyCopy(payload: Payload): Promise<void> {
+  const OLD_EYEBROW = "India's first private Metallurgy & Materials R&D";
+  const NEW_EYEBROW = "India's private Metallurgy & Materials R&D";
+  try {
+    const hp = (await payload.findGlobal({ slug: "homepage" })) as { eyebrow?: string };
+    if (hp?.eyebrow === OLD_EYEBROW) {
+      await payload.updateGlobal({ slug: "homepage", data: { eyebrow: NEW_EYEBROW } });
+      payload.logger.info("[seed] homepage eyebrow: dropped the 'first' claim.");
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] eyebrow migration failed: ${(e as Error).message}`);
+  }
+  const OLD_FRAG = "India's first private metallurgy & materials R&D company";
+  const NEW_FRAG = "India's private metallurgy & materials R&D company";
+  try {
+    const res = await payload.find({
+      collection: "faqs",
+      where: { answer: { contains: "India's first private" } },
+      limit: 20,
+    });
+    for (const doc of res.docs) {
+      const answer = ((doc as { answer?: string }).answer ?? "");
+      if (answer.includes(OLD_FRAG)) {
+        await payload.update({
+          collection: "faqs",
+          id: doc.id,
+          data: { answer: answer.replace(OLD_FRAG, NEW_FRAG) },
+        });
+        payload.logger.info(`[seed] faq ${doc.id}: dropped the 'first' claim.`);
+      }
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] faq migration failed: ${(e as Error).message}`);
+  }
+}
+
 export async function seed(payload: Payload): Promise<void> {
   await ensureSuperAdmin(payload);
   await ensureDirectorAccount(payload);
@@ -642,13 +683,16 @@ export async function seed(payload: Payload): Promise<void> {
   }
   payload.logger.info(`[seed] Products: ${created} created, ${updated} updated.`);
 
-  await payload.updateGlobal({ slug: "company", data: { name: "METNMAT", legalName: "METNMAT INNOVATIONS PRIVATE LIMITED", tagline: "India's first private Metallurgy & Materials R&D", description: "METNMAT supplies electrochemistry lab equipment — electrodes, membranes, cells, reactors, equipment and accessories — and turnkey materials R&D from prototype to industrial scale.", foundedYear: 2018 } });
-  await payload.updateGlobal({ slug: "contact", data: { email: "contact@metnmat.com", phone: "+91 78726 86501", whatsapp: "+91 78726 86501", shippingNote: "Shipping across India & worldwide · ISO-aligned R&D", addresses: [{ label: "West Bengal", line: "Howrah, West Bengal, India" }] } });
+  await payload.updateGlobal({ slug: "company", data: { name: "METNMAT", legalName: "METNMAT INNOVATIONS PRIVATE LIMITED", tagline: "India's private Metallurgy & Materials R&D", description: "METNMAT supplies electrochemistry lab equipment — electrodes, membranes, cells, reactors, equipment and accessories — and turnkey materials R&D from prototype to industrial scale.", foundedYear: 2018 } });
+  await payload.updateGlobal({ slug: "contact", data: { email: "contact@metnmat.com", email2: "mk@metnmat.com", phone: "+91 78726 86501", whatsapp: "+91 78726 86501", shippingNote: "Shipping across India & worldwide · ISO-aligned R&D", addresses: [{ label: "West Bengal", line: "Howrah, West Bengal, India" }] } });
   await payload.updateGlobal({ slug: "social", data: { linkedin: "https://in.linkedin.com/company/metnmat", youtube: "https://www.youtube.com/@metnmatresearchinnovations628", facebook: "https://www.facebook.com/metnmat", amazon: "https://www.amazon.in/l/27943762031?ie=UTF8&marketplaceID=A21TJRUUN4KGV&me=AV4YEPJ3X45CF" } });
   await payload.updateGlobal({ slug: "seo", data: { defaultTitle: "METNMAT — Metallurgy & Materials R&D", titleTemplate: "%s · METNMAT", description: "Electrodes, membranes, electrochemical cells, reactors & lab equipment for research — plus turnkey materials R&D." } });
 
   // 5) Seed website content (services / projects / posts / faqs + homepage/nav).
   await seedContent(payload);
+
+  // 6) Legacy copy fix-ups (exact-match, one-shot).
+  await dropFirstFromLegacyCopy(payload);
 
   payload.logger.info(`[seed] Done. ${prodSlugs.size} catalog products, ${catSlugs.size} categories.`);
 }

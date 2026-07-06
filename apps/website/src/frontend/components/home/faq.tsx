@@ -8,7 +8,7 @@ import { JsonLd, faqJsonLd } from "@/frontend/components/seo/json-ld";
 const DEFAULT_FAQS = [
   {
     q: "What does METNMAT Research & Innovations do?",
-    a: "METNMAT is India's first private metallurgy & materials R&D company. We deliver customized turnkey solutions — from lab-scale prototype to full industrial scale — across product and process development, applied research, benchmarking, heat treatment and simulation.",
+    a: "METNMAT is India's private metallurgy & materials R&D company. We deliver customized turnkey solutions — from lab-scale prototype to full industrial scale — across product and process development, applied research, benchmarking, heat treatment and simulation.",
   },
   {
     q: "What products can I buy from METNMAT?",

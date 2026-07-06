@@ -65,6 +65,7 @@ export const Contact: GlobalConfig = {
   ...settings(),
   fields: [
     { name: "email", type: "email" },
+    { name: "email2", type: "email", admin: { description: "Secondary contact email (shown alongside the primary)." } },
     { name: "phone", type: "text" },
     { name: "whatsapp", type: "text" },
     { name: "shippingNote", type: "text" },

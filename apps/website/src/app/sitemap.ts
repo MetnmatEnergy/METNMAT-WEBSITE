@@ -4,8 +4,10 @@ import { getAllProducts, getAllCategories, getProjects } from "@/frontend/lib/cm
 import { listBlogArticlesForFeed } from "@/frontend/lib/blog";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // No "/search" here — robots.ts disallows it, and a sitemap must not list
+  // URLs crawlers are told to skip.
   const staticRoutes = Array.from(
-    new Set(["/quote", "/search", "/blog/submit", ...mainNav.map((n) => n.href)]),
+    new Set(["/quote", "/blog/submit", ...mainNav.map((n) => n.href)]),
   );
 
   // Live catalog + article pages from the CMS so search engines & AI crawlers

@@ -44,7 +44,7 @@ export type BlogPost = {
 
 /** Hero headline split so the last line can use the brand gradient. */
 export const hero = {
-  eyebrow: "India's first private Metallurgy & Materials R&D",
+  eyebrow: "India's private Metallurgy & Materials R&D",
   titleLead: "Turning materials science into",
   titleAccent: "industrial advantage",
   subtitle:

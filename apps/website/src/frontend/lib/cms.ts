@@ -606,7 +606,7 @@ export async function getMaintenance(): Promise<MaintenanceNotice> {
 // ── Website settings (globals) ────────────────────────────────────────────────
 export type SiteSettings = {
   company: { name: string; legalName: string; tagline: string; description: string };
-  contact: { email: string; phone: string; shippingNote: string };
+  contact: { email: string; email2?: string; phone: string; shippingNote: string };
   social: { linkedin?: string; youtube?: string; facebook?: string; amazon?: string; instagram?: string; x?: string };
   branding: { logoUrl?: string; faviconUrl?: string };
   seo: { defaultTitle?: string; titleTemplate?: string; description?: string };
@@ -624,11 +624,12 @@ export async function getSettings(): Promise<SiteSettings> {
     company: {
       name: (company?.name as string) || "METNMAT",
       legalName: (company?.legalName as string) || "METNMAT INNOVATIONS PRIVATE LIMITED",
-      tagline: (company?.tagline as string) || "India's first private Metallurgy & Materials R&D",
+      tagline: (company?.tagline as string) || "India's private Metallurgy & Materials R&D",
       description: (company?.description as string) || "",
     },
     contact: {
       email: (contact?.email as string) || "contact@metnmat.com",
+      email2: (contact?.email2 as string) || "",
       phone: (contact?.phone as string) || "+91 78726 86501",
       shippingNote: (contact?.shippingNote as string) || "Shipping across India & worldwide",
     },
