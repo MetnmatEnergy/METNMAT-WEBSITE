@@ -8,7 +8,7 @@ import { BlogTeaser } from "@/frontend/components/home/blog-teaser";
 import { Faq } from "@/frontend/components/home/faq";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, organizationJsonLd, websiteJsonLd } from "@/frontend/components/seo/json-ld";
-import { getHomepage, getServices, getClients, getFaqs } from "@/frontend/lib/cms";
+import { getHomepage, getServices, getClients, getFaqs, getProjects } from "@/frontend/lib/cms";
 import { listBlogArticlesForFeed } from "@/frontend/lib/blog";
 
 // Self-canonical for the homepage. The root layout no longer forces canonical
@@ -16,14 +16,23 @@ import { listBlogArticlesForFeed } from "@/frontend/lib/blog";
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
-  const [home, services, posts, logos, faqs] = await Promise.all([
+  const [home, services, posts, logos, faqs, projects] = await Promise.all([
     getHomepage(),
     getServices(),
     // Same source as the /blog listing — latest public articles, covers included.
     listBlogArticlesForFeed(3).catch(() => []),
     getClients(),
     getFaqs(),
+    getProjects().catch(() => []),
   ]);
+
+  // Homepage featured case study: the CMS-selected project, else the first
+  // project flagged Featured, else the first project. Only public projects
+  // reach here (getProjects filters to published + active).
+  const featuredProject =
+    projects.find((p) => p.slug === home.featuredProjectSlug) ??
+    projects.find((p) => p.featured) ??
+    projects[0];
 
   return (
     <>
@@ -34,7 +43,7 @@ export default async function HomePage() {
         <TrustedBy companies={logos.companies} institutions={logos.institutions} />
       )}
       {home.show.services && <ServicesPreview services={services} />}
-      {home.show.projects && <FeaturedCaseStudy />}
+      {home.show.projects && featuredProject && <FeaturedCaseStudy project={featuredProject} />}
       <ProductsPreview />
       {home.show.blog && <BlogTeaser posts={posts} />}
       <Faq faqs={faqs} />

@@ -173,6 +173,15 @@ export const Homepage: GlobalConfig = {
       ],
     },
     {
+      name: "featuredProject",
+      type: "relationship",
+      relationTo: "projects",
+      admin: {
+        description:
+          "Project shown in the homepage 'Featured case study' spotlight. Leave empty to use the first project marked Featured (then the first project).",
+      },
+    },
+    {
       type: "collapsible",
       label: "Section visibility",
       admin: { description: "Toggle which homepage sections are shown." },

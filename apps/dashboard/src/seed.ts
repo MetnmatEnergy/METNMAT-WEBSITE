@@ -634,6 +634,32 @@ async function dropFirstFromLegacyCopy(payload: Payload): Promise<void> {
   }
 }
 
+/**
+ * Default the homepage "Featured case study" to the flagship copper-alloy
+ * project when staff haven't picked one. Runs each boot but only sets the
+ * relationship while it's empty — an explicit staff choice is never overwritten.
+ */
+async function ensureHomepageFeaturedProject(payload: Payload): Promise<void> {
+  try {
+    const hp = (await payload.findGlobal({ slug: "homepage", depth: 0 })) as {
+      featuredProject?: unknown;
+    };
+    if (hp?.featuredProject) return; // staff (or a prior run) already chose one
+    const res = await payload.find({
+      collection: "projects",
+      where: { slug: { equals: "oxygen-free-copper-alloy" } },
+      limit: 1,
+    });
+    const proj = res.docs[0];
+    if (proj) {
+      await payload.updateGlobal({ slug: "homepage", data: { featuredProject: proj.id } });
+      payload.logger.info("[seed] homepage featuredProject → oxygen-free-copper-alloy.");
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] featuredProject seed failed: ${(e as Error).message}`);
+  }
+}
+
 export async function seed(payload: Payload): Promise<void> {
   await ensureSuperAdmin(payload);
   await ensureDirectorAccount(payload);
@@ -693,6 +719,9 @@ export async function seed(payload: Payload): Promise<void> {
 
   // 6) Legacy copy fix-ups (exact-match, one-shot).
   await dropFirstFromLegacyCopy(payload);
+
+  // 7) Default the homepage featured case study (only while unset).
+  await ensureHomepageFeaturedProject(payload);
 
   payload.logger.info(`[seed] Done. ${prodSlugs.size} catalog products, ${catSlugs.size} categories.`);
 }

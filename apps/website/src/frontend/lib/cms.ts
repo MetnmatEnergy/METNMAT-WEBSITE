@@ -495,10 +495,18 @@ export type Homepage = {
   };
   stats: Stat[];
   show: { clients: boolean; services: boolean; projects: boolean; blog: boolean };
+  /** Slug of the CMS-selected homepage featured project (if set + public). */
+  featuredProjectSlug?: string;
 };
 export async function getHomepage(): Promise<Homepage> {
-  const d = await api<Record<string, unknown>>("/api/globals/homepage?depth=0");
+  // depth=1 populates the featuredProject relationship (respecting public
+  // read access, so a draft/inactive selection resolves to just an id and is
+  // ignored by the slug check below → the caller falls back).
+  const d = await api<Record<string, unknown>>("/api/globals/homepage?depth=1");
   const s = (d?.stats as Stat[] | undefined) ?? [];
+  const fp = d?.featuredProject;
+  const featuredProjectSlug =
+    fp && typeof fp === "object" ? ((fp as { slug?: string }).slug || undefined) : undefined;
   return {
     hero: {
       eyebrow: (d?.eyebrow as string) || phHero.eyebrow,
@@ -521,6 +529,7 @@ export async function getHomepage(): Promise<Homepage> {
       projects: d?.showProjects !== false,
       blog: d?.showBlog !== false,
     },
+    featuredProjectSlug,
   };
 }
 
