@@ -113,46 +113,48 @@ export async function SiteFooter() {
               </div>
             ))}
 
-            {/* Get in touch */}
+            {/* Get in touch — hours first, then every office (HQ leads). */}
             <div>
               <h3 className="text-sm font-semibold text-foreground">Get in touch</h3>
-              {office && (
-                <p className="mt-4 flex gap-2 text-sm text-muted-foreground">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-                  <span>
-                    <span className="font-medium text-foreground/90">{office.label}</span>
-                    <br />
-                    {office.lines.join(" ")}
-                  </span>
-                </p>
-              )}
-              <p className="mt-3 flex gap-2 text-sm text-muted-foreground">
+              <p className="mt-4 flex gap-2 text-sm text-muted-foreground">
                 <Clock className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                 <span>Mon – Sat · 10:00 AM – 6:30 PM IST</span>
               </p>
-              {office && (
-                <>
-                  <iframe
-                    title={`Map — ${legalName}, ${office.label}`}
-                    src={office.mapEmbedUrl}
-                    className="mt-4 h-40 w-full rounded-2xl border border-border"
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    allowFullScreen
-                  />
-                  <a
-                    href={office.mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline"
-                  >
-                    Open in Google Maps
-                  </a>
-                </>
-              )}
+              {site.addresses.map((a) => (
+                <p key={a.label} className="mt-3 flex gap-2 text-sm text-muted-foreground">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+                  <span>
+                    <span className="font-medium text-foreground/90">{a.label}</span>
+                    <br />
+                    {a.lines.join(" ")}
+                  </span>
+                </p>
+              ))}
             </div>
           </div>
         </div>
+
+        {/* HQ location — one wide map strip (Howrah only). */}
+        {office && (
+          <div className="mt-12">
+            <iframe
+              title={`Map — ${legalName}, ${office.label}`}
+              src={office.mapEmbedUrl}
+              className="h-44 w-full rounded-2xl border border-border sm:h-56"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+            />
+            <a
+              href={office.mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline"
+            >
+              Open in Google Maps
+            </a>
+          </div>
+        )}
       </Container>
 
       {/* --- Bottom bar --- */}

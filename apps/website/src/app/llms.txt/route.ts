@@ -8,6 +8,9 @@ import { site } from "@/frontend/lib/site";
 export const dynamic = "force-static";
 
 const office = site.addresses[0];
+const addressLines = site.addresses
+  .map((a) => `- ${a.label}: ${a.street}, ${a.locality}, ${a.region} ${a.postalCode}, India`)
+  .join("\n");
 
 const body = `# ${site.legalName} (${site.name})
 
@@ -21,8 +24,8 @@ const body = `# ${site.legalName} (${site.name})
 Key facts:
 
 - Founded: 2018
-- Address: ${office.street}, ${office.locality}, ${office.region} ${office.postalCode}, India
-- Map: ${office.mapsUrl}
+${addressLines}
+- HQ map: ${office.mapsUrl}
 - Email: ${site.contact.email}, ${site.contact.email2}
 - Phone: ${site.contact.phone}, ${site.contact.phone2}
 - Hours: Mon-Sat 10:00-18:30 IST

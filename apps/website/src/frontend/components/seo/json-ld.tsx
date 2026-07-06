@@ -1,16 +1,18 @@
 import { site } from "@/frontend/lib/site";
 
-// Primary office → a proper schema.org PostalAddress (locality/region/postcode
-// are distinct fields so search engines parse the location correctly).
+// Offices → proper schema.org PostalAddress (locality/region/postcode are
+// distinct fields so search engines parse the location correctly). Index 0
+// is the Howrah HQ and remains the LocalBusiness primary address.
 const primaryOffice = site.addresses[0];
-const postalAddress = {
+const toPostalAddress = (a: (typeof site.addresses)[number]) => ({
   "@type": "PostalAddress",
-  streetAddress: primaryOffice.street,
-  addressLocality: primaryOffice.locality,
-  addressRegion: primaryOffice.region,
-  postalCode: primaryOffice.postalCode,
-  addressCountry: primaryOffice.country,
-};
+  streetAddress: a.street,
+  addressLocality: a.locality,
+  addressRegion: a.region,
+  postalCode: a.postalCode,
+  addressCountry: a.country,
+});
+const postalAddress = toPostalAddress(primaryOffice);
 
 /** Injects JSON-LD structured data (Organization by default). */
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
@@ -60,17 +62,18 @@ export const organizationJsonLd = {
     "R&D",
   ],
   address: postalAddress,
-  location: {
+  // All offices as Places; only the HQ carries geo + the canonical map link.
+  location: site.addresses.map((a) => ({
     "@type": "Place",
-    name: site.legalName,
-    address: postalAddress,
-    geo: {
-      "@type": "GeoCoordinates",
-      latitude: primaryOffice.geo.lat,
-      longitude: primaryOffice.geo.lng,
-    },
-    hasMap: primaryOffice.mapsUrl,
-  },
+    name: `${site.legalName} — ${a.label}`,
+    address: toPostalAddress(a),
+    ...("geo" in a
+      ? {
+          geo: { "@type": "GeoCoordinates", latitude: a.geo.lat, longitude: a.geo.lng },
+          hasMap: a.mapsUrl,
+        }
+      : {}),
+  })),
   contactPoint: [
     {
       "@type": "ContactPoint",

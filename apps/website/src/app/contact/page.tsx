@@ -177,17 +177,20 @@ export default function ContactPage() {
                   </div>
                 </div>
 
-                {office && (
-                  <div className="flex items-start gap-3 rounded-2xl border border-border bg-background/50 p-4">
+                {site.addresses.map((a) => (
+                  <div
+                    key={a.label}
+                    className="flex items-start gap-3 rounded-2xl border border-border bg-background/50 p-4"
+                  >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
                       <MapPin className="h-4 w-4" />
                     </span>
                     <div className="text-sm">
-                      <p className="font-medium">{office.label} office</p>
-                      <p className="mt-0.5 leading-relaxed text-muted-foreground">{office.lines.join(" ")}</p>
+                      <p className="font-medium">{a.label}</p>
+                      <p className="mt-0.5 leading-relaxed text-muted-foreground">{a.lines.join(" ")}</p>
                     </div>
                   </div>
-                )}
+                ))}
 
                 <a
                   href={`https://wa.me/${wa}`}
