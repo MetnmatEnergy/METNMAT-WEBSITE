@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Mail, Phone, MapPin, Clock, Linkedin, Youtube, Facebook } from "lucide-react";
+import { AmazonIcon } from "@/frontend/components/ui/amazon-icon";
 import { Container } from "@/frontend/components/ui/container";
 import { site, footerNav } from "@/frontend/lib/site";
 import { getSettings, getNavigation } from "@/frontend/lib/cms";
@@ -22,6 +23,8 @@ export async function SiteFooter() {
       settings.social.youtube && settings.social.youtube !== "#" ? settings.social.youtube : site.social.youtube,
     facebook:
       settings.social.facebook && settings.social.facebook !== "#" ? settings.social.facebook : site.social.facebook,
+    amazon:
+      settings.social.amazon && settings.social.amazon !== "#" ? settings.social.amazon : site.social.amazon,
   };
   const groups = nav?.footerGroups?.length ? nav.footerGroups : footerNav;
   const tagline = settings.company.tagline || site.tagline;
@@ -34,6 +37,7 @@ export async function SiteFooter() {
     { href: social.linkedin, label: "LinkedIn", Icon: Linkedin },
     { href: social.youtube, label: "YouTube", Icon: Youtube },
     { href: social.facebook, label: "Facebook", Icon: Facebook },
+    { href: social.amazon, label: "Amazon store", Icon: AmazonIcon },
   ];
 
   return (

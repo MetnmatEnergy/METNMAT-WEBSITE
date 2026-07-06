@@ -46,9 +46,11 @@ export const site = {
   ],
 
   social: {
-    linkedin: "#",
-    youtube: "#",
-    facebook: "#",
+    linkedin: "https://in.linkedin.com/company/metnmat",
+    youtube: "https://www.youtube.com/@metnmatresearchinnovations628",
+    facebook: "https://www.facebook.com/metnmat",
+    // Amazon.in storefront — the query params identify the merchant, keep them.
+    amazon: "https://www.amazon.in/l/27943762031?ie=UTF8&marketplaceID=A21TJRUUN4KGV&me=AV4YEPJ3X45CF",
   },
 } as const;
 

@@ -1,4 +1,5 @@
 import { Mail, Phone, Linkedin, Youtube, Facebook } from "lucide-react";
+import { AmazonIcon } from "@/frontend/components/ui/amazon-icon";
 import { Container } from "@/frontend/components/ui/container";
 import { site } from "@/frontend/lib/site";
 import { getSettings } from "@/frontend/lib/cms";
@@ -13,6 +14,7 @@ export async function TopBar() {
     linkedin: settings.social.linkedin && settings.social.linkedin !== "#" ? settings.social.linkedin : site.social.linkedin,
     youtube: settings.social.youtube && settings.social.youtube !== "#" ? settings.social.youtube : site.social.youtube,
     facebook: settings.social.facebook && settings.social.facebook !== "#" ? settings.social.facebook : site.social.facebook,
+    amazon: settings.social.amazon && settings.social.amazon !== "#" ? settings.social.amazon : site.social.amazon,
   };
   return (
     <div className="hidden border-b border-border bg-background/60 text-xs text-muted-foreground lg:block">
@@ -36,14 +38,41 @@ export async function TopBar() {
         <div className="flex items-center gap-5">
           <span>{shipping}</span>
           <span className="flex items-center gap-3">
-            <a href={social.linkedin} aria-label="LinkedIn" className="hover:text-foreground">
+            <a
+              href={social.linkedin}
+              aria-label="LinkedIn"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground"
+            >
               <Linkedin className="h-4 w-4" />
             </a>
-            <a href={social.youtube} aria-label="YouTube" className="hover:text-foreground">
+            <a
+              href={social.youtube}
+              aria-label="YouTube"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground"
+            >
               <Youtube className="h-4 w-4" />
             </a>
-            <a href={social.facebook} aria-label="Facebook" className="hover:text-foreground">
+            <a
+              href={social.facebook}
+              aria-label="Facebook"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground"
+            >
               <Facebook className="h-4 w-4" />
+            </a>
+            <a
+              href={social.amazon}
+              aria-label="Amazon store"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground"
+            >
+              <AmazonIcon className="h-4 w-4" />
             </a>
           </span>
         </div>

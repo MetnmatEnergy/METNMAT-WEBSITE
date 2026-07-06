@@ -72,9 +72,9 @@ export const organizationJsonLd = {
       areaServed: "IN",
     },
   ],
-  sameAs: [site.social.linkedin, site.social.youtube, site.social.facebook].filter(
-    (u) => u && u !== "#"
-  ),
+  sameAs: (
+    [site.social.linkedin, site.social.youtube, site.social.facebook, site.social.amazon] as string[]
+  ).filter((u) => u && u !== "#"),
 };
 
 /** WebSite schema with a SearchAction — helps search engines + AI answer engines. */

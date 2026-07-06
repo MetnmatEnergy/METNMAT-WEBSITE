@@ -88,6 +88,7 @@ export const Social: GlobalConfig = {
     { name: "linkedin", type: "text" },
     { name: "youtube", type: "text" },
     { name: "facebook", type: "text" },
+    { name: "amazon", type: "text", admin: { description: "Amazon storefront URL" } },
     { name: "instagram", type: "text" },
     { name: "x", type: "text" },
   ],

@@ -607,7 +607,7 @@ export async function getMaintenance(): Promise<MaintenanceNotice> {
 export type SiteSettings = {
   company: { name: string; legalName: string; tagline: string; description: string };
   contact: { email: string; phone: string; shippingNote: string };
-  social: { linkedin?: string; youtube?: string; facebook?: string; instagram?: string; x?: string };
+  social: { linkedin?: string; youtube?: string; facebook?: string; amazon?: string; instagram?: string; x?: string };
   branding: { logoUrl?: string; faviconUrl?: string };
   seo: { defaultTitle?: string; titleTemplate?: string; description?: string };
 };
@@ -636,6 +636,7 @@ export async function getSettings(): Promise<SiteSettings> {
       linkedin: (social?.linkedin as string) || "#",
       youtube: (social?.youtube as string) || "#",
       facebook: (social?.facebook as string) || "#",
+      amazon: (social?.amazon as string) || "#",
     },
     branding: {
       logoUrl: mediaUrl(branding?.logo as Media),
