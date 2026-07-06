@@ -3,7 +3,7 @@ import { FlaskConical, Gauge, Factory, type LucideIcon } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { PageHero } from "@/frontend/components/layout/page-hero";
-import { ServiceFlipbook, type BookPage } from "@/frontend/components/ui/service-flipbook";
+import { ServiceGrid, type ServiceCard } from "@/frontend/components/ui/service-grid";
 import { ExpandingCards, type ExpandCard } from "@/frontend/components/ui/expand-cards";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
@@ -70,7 +70,7 @@ export default async function ServicesPage() {
     image: SERVICE_IMAGES[s.slug],
   }));
 
-  const bookPages: BookPage[] = services.map((s) => ({
+  const detailCards: ServiceCard[] = services.map((s) => ({
     slug: s.slug,
     title: s.title,
     summary: s.summary,
@@ -147,17 +147,16 @@ export default async function ServicesPage() {
         </Container>
       </section>
 
-      {/* Flip-book — each service is a page; click the page, the arrows or ← →
-          to turn it. Leaves carry id={slug}, so showcase deep links open here. */}
+      {/* Service detail grid — cards carry id={slug}, so showcase deep links land here. */}
       <section className="section scroll-mt-28" id="services-book">
         <Container>
           <SectionHeading
             eyebrow="In detail"
             title="Every service, explained"
-            description="Turn the page — click the leaf, the side arrows, the dots, or use ← →."
+            description="Eight disciplines, one team — every engagement runs lab bench to plant floor."
           />
           <div className="mt-10">
-            <ServiceFlipbook pages={bookPages} />
+            <ServiceGrid items={detailCards} />
           </div>
         </Container>
       </section>

@@ -113,7 +113,7 @@ export default function ContactPage() {
           <HighlightGroup className="group grid gap-6 lg:grid-cols-[1.15fr_.85fr]">
             {/* Message form */}
             <HighlighterItem className="rounded-3xl">
-              <div className="relative h-full rounded-3xl border border-border bg-surface p-6 sm:p-8">
+              <div className="relative flex h-full flex-col rounded-3xl border border-border bg-surface p-6 sm:p-8">
                 <h2 className="font-display text-xl font-bold tracking-tight">Send us a message</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Buying products? Use the{" "}
@@ -124,6 +124,16 @@ export default function ContactPage() {
                 </p>
                 <div className="mt-6">
                   <ContactForm />
+                </div>
+                <div className="mt-auto pt-6">
+                  <a
+                    href={`https://wa.me/${wa}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-5 py-3 text-sm font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/10 dark:text-emerald-400"
+                  >
+                    <MessageCircle className="h-4 w-4" /> Chat with us on WhatsApp
+                  </a>
                 </div>
               </div>
             </HighlighterItem>
@@ -192,14 +202,6 @@ export default function ContactPage() {
                   </div>
                 ))}
 
-                <a
-                  href={`https://wa.me/${wa}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-auto flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-5 py-3 text-sm font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/10 dark:text-emerald-400"
-                >
-                  <MessageCircle className="h-4 w-4" /> Chat with us on WhatsApp
-                </a>
               </div>
             </HighlighterItem>
           </HighlightGroup>

@@ -43,7 +43,7 @@ export async function SiteFooter() {
 
   return (
     <footer className="border-t border-border bg-surface">
-      <Container className="py-14">
+      <Container className="pb-8 pt-14">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)_300px] lg:gap-14">
           {/* --- Branding --- */}
           <div className="max-w-sm">
