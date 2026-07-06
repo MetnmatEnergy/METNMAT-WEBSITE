@@ -47,14 +47,22 @@ export async function SiteFooter() {
         <div className="grid gap-12 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)_300px] lg:gap-14">
           {/* --- Branding --- */}
           <div className="max-w-sm">
-            <span className="inline-flex items-center rounded-lg bg-white px-3 py-2 shadow-sm">
+            <span className="inline-flex items-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/logo-metnmat.png"
                 alt={`${legalName} logo`}
-                className="h-9 w-auto"
-                width={183}
-                height={54}
+                className="h-9 w-auto dark:hidden"
+                width={656}
+                height={194}
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo-metnmat-dark.png"
+                alt={`${legalName} logo`}
+                className="hidden h-9 w-auto dark:block"
+                width={656}
+                height={194}
               />
             </span>
             <p className="mt-4 text-sm font-medium text-foreground/90">{tagline}.</p>
