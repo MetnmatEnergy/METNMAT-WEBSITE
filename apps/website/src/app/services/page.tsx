@@ -3,7 +3,7 @@ import { FlaskConical, Gauge, Factory, type LucideIcon } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { PageHero } from "@/frontend/components/layout/page-hero";
-import { ServiceGrid, type ServiceCard } from "@/frontend/components/ui/service-grid";
+import { ServiceCardStack, type ServiceStackItem } from "@/frontend/components/ui/service-card-stack";
 import { ExpandingCards, type ExpandCard } from "@/frontend/components/ui/expand-cards";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
@@ -53,12 +53,13 @@ export default async function ServicesPage() {
     image: SERVICE_IMAGES[s.slug],
   }));
 
-  const detailCards: ServiceCard[] = services.map((s) => ({
+  const detailCards: ServiceStackItem[] = services.map((s) => ({
     slug: s.slug,
     title: s.title,
     summary: s.summary,
     icon: s.icon,
     href: "/quote",
+    image: SERVICE_IMAGES[s.slug],
   }));
 
   const servicesJsonLd = {
@@ -130,16 +131,17 @@ export default async function ServicesPage() {
         </Container>
       </section>
 
-      {/* Service detail grid — cards carry id={slug}, so showcase deep links land here. */}
+      {/* Service card deck — cards carry id={slug}; showcase deep links spin
+          the matching card to the front. */}
       <section className="section scroll-mt-28" id="services-book">
         <Container>
           <SectionHeading
             eyebrow="In detail"
             title="Every service, explained"
-            description="Eight disciplines, one team — every engagement runs lab bench to plant floor."
+            description="Drag through the deck — eight disciplines, every engagement runs lab bench to plant floor."
           />
           <div className="mt-10">
-            <ServiceGrid items={detailCards} />
+            <ServiceCardStack items={detailCards} />
           </div>
         </Container>
       </section>
