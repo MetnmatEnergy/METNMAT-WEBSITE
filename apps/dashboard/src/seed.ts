@@ -660,6 +660,75 @@ async function ensureHomepageFeaturedProject(payload: Payload): Promise<void> {
   }
 }
 
+/**
+ * Bundled cover images for seeded projects. Attaches a cover only when the
+ * project has none, so it's a no-op once set and a staff-uploaded cover is
+ * never overwritten. STANDALONE (not inside ensureRealProjects, which
+ * early-returns once the DB is migrated) so it still runs on prod. The media
+ * create uploads to GCS on prod and to local disk on dev. Asset paths resolve
+ * against process.cwd() (apps/dashboard, locally and in the container).
+ */
+const PROJECT_COVERS: { slug: string; asset: string; alt: string }[] = [
+  {
+    slug: "microstructure-control-heat-treatment",
+    asset: "src/seed-assets/projects/microstructure-heat-treatment.webp",
+    alt: "Heat-treated metal billet glowing from hot to cool beside a gear and shaft, with a strip of micrographs showing the microstructure evolving through heat treatment.",
+  },
+];
+
+async function ensureProjectCovers(payload: Payload): Promise<void> {
+  for (const { slug, asset, alt } of PROJECT_COVERS) {
+    try {
+      const res = await payload.find({
+        collection: "projects",
+        where: { slug: { equals: slug } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+      const doc = res.docs[0] as { id: string | number; coverImage?: unknown } | undefined;
+      if (!doc || doc.coverImage) continue; // no such project, or a cover is already set
+      const filePath = path.resolve(process.cwd(), asset);
+      if (!existsSync(filePath)) {
+        payload.logger.warn(`[seed] project cover asset missing: ${filePath}`);
+        continue;
+      }
+      // Reuse an already-uploaded copy instead of minting a new Media row. This
+      // keeps the attach idempotent across retries after a partial failure,
+      // concurrent boots, and a staff clear+reboot — none of which would leave
+      // an orphaned upload in the GCS bucket. Payload auto-increments filenames
+      // on collision, so a bare create would otherwise silently duplicate.
+      const filename = path.basename(asset);
+      const existingMedia = await payload.find({
+        collection: "media",
+        where: { filename: { equals: filename } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+      const mediaId =
+        (existingMedia.docs[0] as { id: string | number } | undefined)?.id ??
+        (
+          await payload.create({
+            collection: "media",
+            filePath,
+            data: { alt },
+            overrideAccess: true,
+          })
+        ).id;
+      await payload.update({
+        collection: "projects",
+        id: doc.id,
+        data: { coverImage: mediaId, coverImageAlt: alt },
+        overrideAccess: true,
+      });
+      payload.logger.info(`[seed] projects: cover attached (${slug}).`);
+    } catch (e) {
+      payload.logger.warn(`[seed] project cover for ${slug} failed: ${(e as Error).message}`);
+    }
+  }
+}
+
 export async function seed(payload: Payload): Promise<void> {
   await ensureSuperAdmin(payload);
   await ensureDirectorAccount(payload);
@@ -722,6 +791,9 @@ export async function seed(payload: Payload): Promise<void> {
 
   // 7) Default the homepage featured case study (only while unset).
   await ensureHomepageFeaturedProject(payload);
+
+  // 8) Attach bundled project cover images (only while unset).
+  await ensureProjectCovers(payload);
 
   payload.logger.info(`[seed] Done. ${prodSlugs.size} catalog products, ${catSlugs.size} categories.`);
 }
