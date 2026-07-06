@@ -635,25 +635,37 @@ async function dropFirstFromLegacyCopy(payload: Payload): Promise<void> {
 }
 
 /**
- * Default the homepage "Featured case study" to the flagship copper-alloy
- * project when staff haven't picked one. Runs each boot but only sets the
- * relationship while it's empty — an explicit staff choice is never overwritten.
+ * Default the homepage "Featured case study" to the Microstructure Control &
+ * Heat Treatment project (the case study with a cover image, so a real photo
+ * shows on the home page). Sets the relationship while it's empty, and does a
+ * one-time move off the PREVIOUS default (the copper-alloy project) which no
+ * staffer ever chose — the featuredProject field predates any staff use. A
+ * deliberate staff pick of any OTHER project is left untouched: once the value
+ * is neither empty nor the old default, this is a permanent no-op.
  */
+const HOME_FEATURED_SLUG = "microstructure-control-heat-treatment";
+const HOME_FEATURED_PREV_SLUG = "oxygen-free-copper-alloy";
+
 async function ensureHomepageFeaturedProject(payload: Payload): Promise<void> {
   try {
-    const hp = (await payload.findGlobal({ slug: "homepage", depth: 0 })) as {
-      featuredProject?: unknown;
+    const hp = (await payload.findGlobal({ slug: "homepage", depth: 1 })) as {
+      featuredProject?: { slug?: string } | string | null;
     };
-    if (hp?.featuredProject) return; // staff (or a prior run) already chose one
+    const current = hp?.featuredProject;
+    const currentSlug = current && typeof current === "object" ? current.slug : undefined;
+    // Set while empty, or move the old default forward once. Anything else (incl.
+    // already pointing at the new default) is a deliberate/settled choice — leave it.
+    if (current && currentSlug !== HOME_FEATURED_PREV_SLUG) return;
     const res = await payload.find({
       collection: "projects",
-      where: { slug: { equals: "oxygen-free-copper-alloy" } },
+      where: { slug: { equals: HOME_FEATURED_SLUG } },
       limit: 1,
+      overrideAccess: true,
     });
     const proj = res.docs[0];
     if (proj) {
       await payload.updateGlobal({ slug: "homepage", data: { featuredProject: proj.id } });
-      payload.logger.info("[seed] homepage featuredProject → oxygen-free-copper-alloy.");
+      payload.logger.info(`[seed] homepage featuredProject → ${HOME_FEATURED_SLUG}.`);
     }
   } catch (e) {
     payload.logger.warn(`[seed] featuredProject seed failed: ${(e as Error).message}`);
