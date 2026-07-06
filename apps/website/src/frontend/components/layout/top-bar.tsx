@@ -1,5 +1,5 @@
-import { Mail, Phone, Linkedin, Youtube, Facebook } from "lucide-react";
-import { AmazonIcon } from "@/frontend/components/ui/amazon-icon";
+import { Mail, Phone } from "lucide-react";
+import { AmazonIcon, FacebookIcon, LinkedInIcon, YouTubeIcon } from "@/frontend/components/ui/brand-icons";
 import { Container } from "@/frontend/components/ui/container";
 import { site } from "@/frontend/lib/site";
 import { getSettings } from "@/frontend/lib/cms";
@@ -43,34 +43,34 @@ export async function TopBar() {
               aria-label="LinkedIn"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-foreground"
+              className="opacity-90 transition-opacity hover:opacity-100"
             >
-              <Linkedin className="h-4 w-4" />
+              <LinkedInIcon className="h-4 w-4" />
             </a>
             <a
               href={social.youtube}
               aria-label="YouTube"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-foreground"
+              className="opacity-90 transition-opacity hover:opacity-100"
             >
-              <Youtube className="h-4 w-4" />
+              <YouTubeIcon className="h-4 w-4" />
             </a>
             <a
               href={social.facebook}
               aria-label="Facebook"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-foreground"
+              className="opacity-90 transition-opacity hover:opacity-100"
             >
-              <Facebook className="h-4 w-4" />
+              <FacebookIcon className="h-4 w-4" />
             </a>
             <a
               href={social.amazon}
               aria-label="Amazon store"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-foreground"
+              className="opacity-90 transition-opacity hover:opacity-100"
             >
               <AmazonIcon className="h-4 w-4" />
             </a>

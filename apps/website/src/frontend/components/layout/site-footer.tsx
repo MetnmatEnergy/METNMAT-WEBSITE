@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Mail, Phone, MapPin, Clock, Linkedin, Youtube, Facebook } from "lucide-react";
-import { AmazonIcon } from "@/frontend/components/ui/amazon-icon";
+import { Mail, Phone, MapPin, Clock } from "lucide-react";
+import { AmazonIcon, FacebookIcon, LinkedInIcon, YouTubeIcon } from "@/frontend/components/ui/brand-icons";
 import { Container } from "@/frontend/components/ui/container";
 import { site, footerNav } from "@/frontend/lib/site";
 import { getSettings, getNavigation } from "@/frontend/lib/cms";
@@ -34,9 +34,9 @@ export async function SiteFooter() {
     "Advanced materials, electrochemical systems and turnkey R&D — from lab-scale prototype to reliable industrial scale-up.";
   const office = site.addresses[0];
   const socialLinks = [
-    { href: social.linkedin, label: "LinkedIn", Icon: Linkedin },
-    { href: social.youtube, label: "YouTube", Icon: Youtube },
-    { href: social.facebook, label: "Facebook", Icon: Facebook },
+    { href: social.linkedin, label: "LinkedIn", Icon: LinkedInIcon },
+    { href: social.youtube, label: "YouTube", Icon: YouTubeIcon },
+    { href: social.facebook, label: "Facebook", Icon: FacebookIcon },
     { href: social.amazon, label: "Amazon store", Icon: AmazonIcon },
   ];
 
@@ -71,7 +71,7 @@ export async function SiteFooter() {
               </a>
             </div>
 
-            <div className="mt-5 flex items-center gap-2">
+            <div className="mt-5 flex items-center gap-4">
               {socialLinks.map(({ href, label, Icon }) => (
                 <a
                   key={label}
@@ -79,9 +79,9 @@ export async function SiteFooter() {
                   aria-label={label}
                   target={href?.startsWith("http") ? "_blank" : undefined}
                   rel={href?.startsWith("http") ? "noopener noreferrer" : undefined}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-brand/40 hover:text-brand"
+                  className="transition-transform hover:scale-110"
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-6 w-6" />
                 </a>
               ))}
             </div>
