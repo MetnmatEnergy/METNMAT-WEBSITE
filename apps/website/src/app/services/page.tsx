@@ -9,6 +9,7 @@ import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 import { getServices } from "@/frontend/lib/cms";
 import { SERVICE_IMAGES } from "@/frontend/lib/service-images";
+import { SERVICE_DETAILS } from "@/frontend/lib/service-details";
 import { site } from "@/frontend/lib/site";
 import { pageMetadata } from "@/frontend/lib/seo";
 
@@ -53,14 +54,20 @@ export default async function ServicesPage() {
     image: SERVICE_IMAGES[s.slug],
   }));
 
-  const detailCards: ServiceStackItem[] = services.map((s) => ({
-    slug: s.slug,
-    title: s.title,
-    summary: s.summary,
-    icon: s.icon,
-    href: "/quote",
-    image: SERVICE_IMAGES[s.slug],
-  }));
+  const detailCards: ServiceStackItem[] = services.map((s) => {
+    const detail = SERVICE_DETAILS[s.slug];
+    return {
+      slug: s.slug,
+      title: s.title,
+      summary: s.summary,
+      icon: s.icon,
+      href: "/quote",
+      image: SERVICE_IMAGES[s.slug],
+      detail: detail?.detail,
+      points: detail?.points,
+      outcome: detail?.outcome,
+    };
+  });
 
   const servicesJsonLd = {
     "@context": "https://schema.org",

@@ -14,6 +14,7 @@ import {
   Factory,
   ChevronLeft,
   ChevronRight,
+  ArrowRight,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/frontend/lib/utils";
@@ -38,7 +39,9 @@ const ICONS: Record<string, LucideIcon> = {
   factory: Factory,
 };
 
-const DELIVERY_POINTS = ["Lab → industrial scale", "Turnkey delivery", "GST invoice"] as const;
+// Generic fallback chips — only used for a service that has no entry in
+// SERVICE_DETAILS (real per-service capability chips are supplied via `points`).
+const FALLBACK_POINTS = ["Lab → industrial scale", "Turnkey delivery", "GST invoice"];
 
 export type ServiceStackItem = {
   slug: string;
@@ -48,6 +51,12 @@ export type ServiceStackItem = {
   href: string;
   cta?: string;
   image?: string;
+  /** Richer 2-sentence explanation shown on the card (falls back to `summary`). */
+  detail?: string;
+  /** 4 specific capability/technique chips (falls back to FALLBACK_POINTS). */
+  points?: string[];
+  /** One-line "what you walk away with" result. */
+  outcome?: string;
 };
 
 const OFFSET_PERCENT = 4.5; // vertical peek of the cards behind
@@ -123,8 +132,10 @@ export function ServiceCardStack({ items }: { items: ServiceStackItem[] }) {
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* Breathing room for the stacked cards peeking above the front card. */}
-      <div className="relative mt-6 aspect-[16/11] w-full sm:aspect-[16/9]">
+      {/* Breathing room for the stacked cards peeking above the front card.
+          Mobile leans portrait (5:6) so the full detail copy + outcome fit
+          without crowding the top icon row; desktop stays cinematic 16:9. */}
+      <div className="relative mt-6 aspect-[5/6] w-full sm:aspect-[16/9]">
         <ul className="relative m-0 h-full w-full list-none p-0">
           {order.map((itemIdx, i) => {
             const s = items[itemIdx];
@@ -133,6 +144,7 @@ export function ServiceCardStack({ items }: { items: ServiceStackItem[] }) {
             const hidden = i > VISIBLE_DEPTH;
             const Icon = (s.icon && ICONS[s.icon]) || Rocket;
             const number = String(itemIdx + 1).padStart(2, "0");
+            const points = s.points?.length ? s.points : FALLBACK_POINTS;
 
             return (
               <motion.li
@@ -182,8 +194,9 @@ export function ServiceCardStack({ items }: { items: ServiceStackItem[] }) {
                 ) : (
                   <div aria-hidden className="h-full w-full bg-gradient-to-br from-brand/30 via-surface to-surface" />
                 )}
-                {/* Legibility gradient + service copy (photo cards read white in both themes). */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+                {/* Legibility scrim — stronger at the base so the fuller detail
+                    copy stays readable over any photo, in both themes. */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/10" />
                 <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4 sm:p-5">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-sm">
                     <Icon className="h-5 w-5" />
@@ -196,16 +209,24 @@ export function ServiceCardStack({ items }: { items: ServiceStackItem[] }) {
                   <h3 className="font-display text-lg font-semibold leading-snug text-white sm:text-2xl">
                     {s.title}
                   </h3>
-                  <p className="mt-1.5 max-w-lg text-xs leading-relaxed text-white/80 sm:mt-2 sm:text-sm">
-                    {s.summary}
+                  <p className="mt-1.5 max-w-lg text-xs leading-relaxed text-white/85 sm:mt-2 sm:text-sm">
+                    {s.detail ?? s.summary}
                   </p>
-                  <ul className="mt-2.5 hidden flex-wrap gap-x-3 gap-y-1 text-[11px] text-white/70 sm:flex">
-                    {DELIVERY_POINTS.map((d) => (
+                  {/* Per-service capability chips — the concrete "what's included". */}
+                  <ul className="mt-3 hidden grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] text-white/75 sm:grid">
+                    {points.map((d) => (
                       <li key={d} className="inline-flex items-center gap-1.5">
-                        <span aria-hidden className="h-1 w-1 rounded-full bg-brand-soft" /> {d}
+                        <span aria-hidden className="h-1 w-1 shrink-0 rounded-full bg-brand-soft" />
+                        <span>{d}</span>
                       </li>
                     ))}
                   </ul>
+                  {s.outcome && (
+                    <p className="mt-3 flex items-center gap-1.5 text-[11px] font-medium">
+                      <ArrowRight className="h-3 w-3 shrink-0 text-brand-soft" />
+                      <span className="text-white/85">{s.outcome}</span>
+                    </p>
+                  )}
                   <Link
                     href={s.href}
                     onClick={(e) => {
@@ -215,6 +236,7 @@ export function ServiceCardStack({ items }: { items: ServiceStackItem[] }) {
                     className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-brand-foreground shadow-md shadow-black/20 transition-colors hover:bg-brand/90 sm:mt-4 sm:text-sm"
                   >
                     {s.cta ?? "Get a quote"}
+                    <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
               </motion.li>
