@@ -295,6 +295,58 @@ The electrolyte used for AEMWE is typically a KOH solution, which enhances the r
 
 Depending on how the electrolyte is fed, there are four different kinds of cells. In the most widely used configuration, liquid electrolyte is passed through both sides — cathode and anode. In the sweeping-gas configuration, one side of the cell is fed with an inert gas while an alkaline solution is passed on the other. If one side of the cell is instead maintained under vacuum, the cell is known as a vacuum-based water electrolyzer. A further type involves sweeping inert gas on the anodic side, in which case H2O molecules — rather than OH- ions — are transported across the membrane. In comparison with proton exchange membrane water electrolysis (PEMWE), AEMWE is preferred because the catalysts used are economical, and it has been reported that the start-up time for electrolysis is lower for AEMWE than for PEMWE.`,
   },
+  {
+    slug: "co2-fuel-cells",
+    title: "CO₂ Fuel Cells: Turning a Greenhouse Gas into Stored Power",
+    category: "Electrochemistry",
+    categorySlug: "electrochemistry",
+    contentTypeSlug: "review-article",
+    coverAsset: "src/seed-assets/blog/co2-fuel-cell-cover.webp",
+    coverAlt: "Exploded view of a CO₂ electroreduction cell: CO₂ fed in at the cathode, electrons flowing through the external circuit, and products — CO, formate, hydrocarbons and alcohols — coming out.",
+    author: "METNMAT Research Team",
+    publishedDate: "2026-07-07T09:00:00.000Z",
+    excerpt:
+      "Metal–CO₂ cells turn carbon dioxide from waste into an active reactant — reducing it at the cathode while storing energy at high density. Where the science stands, and why the remaining bottlenecks are, above all, materials problems.",
+    abstract:
+      "Metal–CO₂ cells and CO₂ fuel cells reduce carbon dioxide at a catalytic gas cathode while delivering electrical energy, fixing it into a solid carbonate. This review outlines the two device concepts — rechargeable metal–CO₂ batteries and continuous-feed fuel cells — the archetypal Li–CO₂ discharge chemistry and its high theoretical energy density, and why the central obstacle (reversibly forming and decomposing an insulating lithium carbonate) makes bifunctional cathode catalysts, discharge-product steering, and electrolyte/interphase engineering the defining materials challenges of the field.",
+    keywords:
+      "CO2 fuel cell, metal-CO2 battery, Li-CO2, CO2 reduction reaction, CRR, bifunctional catalyst, carbon utilization, energy storage, lithium carbonate",
+    researchArea: "Electrochemical energy storage",
+    tags: [{ tag: "CO₂ Reduction" }, { tag: "Energy Storage" }, { tag: "Catalysis" }, { tag: "Metal–CO₂ Cells" }],
+    bodyText: `Metal–CO₂ cells sit at the intersection of carbon utilization and high-density energy storage. Here is where the science stands — and why the remaining bottlenecks are, above all, materials problems.
+
+Few molecules are as unwelcome in the energy conversation as carbon dioxide. Yet a growing class of electrochemical devices treats CO₂ not as waste to be sequestered, but as an active reactant to be consumed. Broadly termed metal–CO₂ cells — and, in their continuous-feed configurations, CO₂ fuel cells — these systems reduce carbon dioxide at the cathode while delivering electrical energy, fixing it into a solid carbonate in the process. For a research community working on metals and materials, they represent one of the more compelling problems on the bench today: a single device that promises to address decarbonization and energy storage at once.
+
+## One chemistry, two device concepts
+
+It is worth being precise about terminology, since the literature uses both. A metal–CO₂ battery is a closed, rechargeable system: it captures CO₂ during discharge through the CO₂ reduction reaction (CRR) and releases it during charge through the CO₂ evolution reaction (CER). A metal–CO₂ fuel cell, by contrast, is typically a primary device fed a continuous stream of CO₂ — recently demonstrated, for example, in a Mg–CO₂ system using a composite gas-diffusion cathode and a choline chloride deep eutectic electrolyte. Different engineering, same core cathode electrochemistry.
+
+## The working principle
+
+A metal–CO₂ cell couples a reactive metal anode (Li, Na, K, Mg, Al, or Zn) to a porous, catalytically active gas cathode where CO₂ is supplied. Taking the lithium system as the archetype, discharge proceeds along the widely accepted reaction:
+
+4 Li + 3 CO₂ → 2 Li₂CO₃ + C
+
+with the reverse process — decomposing lithium carbonate and evolving CO₂ — occurring on charge. The appeal is energetic: non-aqueous Li–CO₂ and Na–CO₂ chemistries offer theoretical energy densities on the order of 1876 and 1136 Wh kg⁻¹ respectively, comfortably beyond today's lithium-ion cells.
+
+The catch is embedded in that same equation. Lithium carbonate is a wide-bandgap insulator, and decomposing it demands a high potential. The result is a large charge overpotential, sluggish redox kinetics, and discharge products that accumulate at the cathode–electrolyte interface, raising impedance and eroding cycle life. This single fact — the difficulty of reversibly making and unmaking an insulating carbonate — drives most of the field's research agenda.
+
+## Why this is a materials problem
+
+Nearly every open challenge in metal–CO₂ cells resolves into a question of materials design.
+
+Bifunctional cathode catalysts. The central requirement is a catalyst that accelerates both the CRR and the CER — activity in one direction is not enough. Candidates span carbon nanostructures (carbon nanotubes, graphene, heteroatom-doped carbons), noble metals (notably ruthenium and iridium), transition-metal carbides such as Mo₂C, single-atom catalysts, MOF-derived architectures, high-entropy alloys, and polyoxometalates. Each trades off catalytic activity, conductivity, cost, and mass transport differently.
+
+Steering the discharge product. A promising direction is designing catalysts that direct the reaction toward more readily decomposable phases — favoring a lithium oxalate (Li₂C₂O₄) pathway over stubborn Li₂CO₃, for instance. Density-functional studies pairing specific crystal facets with particular nucleation products are now guiding catalyst selection rather than merely rationalizing it after the fact.
+
+Electrolytes and interphases. Electrolyte stability against reactive reduction intermediates remains a limiting factor, motivating work on deep eutectic solvents, ionic liquids, and solid-state approaches. On the anode side, dendrite growth, corrosion, and interphase instability of the reactive metal must all be controlled.
+
+## The road ahead
+
+Despite genuine progress, round-trip efficiency, reversibility, and cycle life remain below what practical deployment requires, and the complexity of the gas–liquid–solid interface continues to resist simple solutions. Scale-up introduces further questions: cell engineering, continuous CO₂ delivery for fuel-cell modes, and tolerance to realistic feed streams laden with O₂, water vapor, and other flue-gas impurities.
+
+What has changed is the character of the effort. The field is shifting from serendipitous proof-of-concept toward rational, materials-by-design development — where catalyst architectures, electrolyte chemistries, and interphase engineering are the levers being pulled deliberately. For the metals and materials community, that is precisely the opportunity: the next breakthroughs in CO₂ fuel cells will be won at the level of structure, composition, and interface.`,
+  },
 ];
 
 export const seedFaqs = [

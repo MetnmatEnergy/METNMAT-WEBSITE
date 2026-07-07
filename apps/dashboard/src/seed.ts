@@ -399,7 +399,7 @@ async function ensureRealBlogArticles(payload: Payload): Promise<void> {
         idBySlug("blog-categories", categorySlug),
         idBySlug("blog-content-types", contentTypeSlug),
       ]);
-      await payload.create({
+      const created = await payload.create({
         collection: "posts",
         data: {
           ...rest,
@@ -411,6 +411,10 @@ async function ensureRealBlogArticles(payload: Payload): Promise<void> {
           _status: "published",
         },
       });
+      // Attach the cover on the same boot (not a later one).
+      await ensureCover(created.id, coverAsset, coverAlt).catch((e) =>
+        payload.logger.warn(`[seed] cover for ${post.slug} failed: ${(e as Error).message}`),
+      );
       realPresent++;
       payload.logger.info(`[seed] posts: + ${post.slug} (published)`);
     } catch (e) {
@@ -803,6 +807,18 @@ const BLOG_FIGURES: {
       },
     ],
   },
+  {
+    slug: "co2-fuel-cells",
+    figures: [
+      {
+        afterParagraph: 4,
+        asset: "src/seed-assets/blog/co2-fig-cell-principle.webp",
+        alt: "Schematic of a metal–CO₂ cell: a lithium metal anode and a porous CO₂-fed gas cathode in a non-aqueous electrolyte, with the discharge (CRR) and charge (CER) reactions.",
+        caption:
+          "Working principle of a metal–CO₂ cell (Li–CO₂ archetype). On discharge, CO₂ is reduced at the porous gas cathode to Li₂CO₃ + C (CRR); on charge the reaction reverses (CER). Li₂CO₃ is an insulator, which drives the large charge overpotential at the heart of the field's research.",
+      },
+    ],
+  },
 ];
 
 type LexNode = { type?: string; children?: LexNode[]; [k: string]: unknown };
@@ -888,6 +904,72 @@ async function ensureBlogFigures(payload: Payload): Promise<void> {
   }
 }
 
+/**
+ * Blog articles added AFTER the one-shot migration (ensureRealBlogArticles
+ * early-returns once the DB is seeded, so a new seedPosts entry would never be
+ * created on dev/prod). This creates each listed slug if it is missing and
+ * attaches its cover — create-if-missing, so it also brings the article back if
+ * a boot half-created it. Add a slug here when introducing a new seeded article.
+ */
+const EXTRA_ARTICLE_SLUGS = ["co2-fuel-cells"];
+
+async function ensureExtraBlogArticles(payload: Payload): Promise<void> {
+  const idBySlug = async (
+    collection: "blog-categories" | "blog-content-types",
+    slug?: string,
+  ): Promise<string | undefined> => {
+    if (!slug) return undefined;
+    const r = await payload.find({ collection, where: { slug: { equals: slug } }, limit: 1, depth: 0, overrideAccess: true });
+    return r.docs[0] ? String(r.docs[0].id) : undefined;
+  };
+  for (const slug of EXTRA_ARTICLE_SLUGS) {
+    try {
+      const post = seedPosts.find((p) => p.slug === slug);
+      if (!post) continue;
+      const existing = await payload.find({ collection: "posts", where: { slug: { equals: slug } }, limit: 1, depth: 0, overrideAccess: true });
+      if (existing.docs[0]) continue; // already present — never overwrite
+
+      const { bodyText, categorySlug, contentTypeSlug, coverAsset, coverAlt, ...rest } = post as typeof post & {
+        categorySlug?: string;
+        contentTypeSlug?: string;
+        coverAsset?: string;
+        coverAlt?: string;
+      };
+      const [categoryId, contentTypeId] = await Promise.all([
+        idBySlug("blog-categories", categorySlug),
+        idBySlug("blog-content-types", contentTypeSlug),
+      ]);
+      const created = await payload.create({
+        collection: "posts",
+        data: {
+          ...rest,
+          body: plainTextToLexical(bodyText),
+          ...(categoryId ? { primaryCategory: categoryId } : {}),
+          ...(contentTypeId ? { contentType: contentTypeId } : {}),
+          workflowStatus: "approved",
+          allowReactions: true,
+          _status: "published",
+        },
+        overrideAccess: true,
+      });
+      if (coverAsset) {
+        const filePath = path.resolve(process.cwd(), coverAsset);
+        if (existsSync(filePath)) {
+          const filename = path.basename(coverAsset);
+          const em = await payload.find({ collection: "media", where: { filename: { equals: filename } }, limit: 1, depth: 0, overrideAccess: true });
+          const mediaId =
+            (em.docs[0] as { id: string | number } | undefined)?.id ??
+            (await payload.create({ collection: "media", filePath, data: { alt: coverAlt ?? "" }, overrideAccess: true })).id;
+          await payload.update({ collection: "posts", id: created.id, data: { coverImage: mediaId, coverImageAlt: coverAlt ?? "" }, overrideAccess: true });
+        }
+      }
+      payload.logger.info(`[seed] posts: + ${slug} (extra article, published).`);
+    } catch (e) {
+      payload.logger.warn(`[seed] extra article ${slug} failed: ${(e as Error).message}`);
+    }
+  }
+}
+
 export async function seed(payload: Payload): Promise<void> {
   await ensureSuperAdmin(payload);
   await ensureDirectorAccount(payload);
@@ -954,7 +1036,10 @@ export async function seed(payload: Payload): Promise<void> {
   // 8) Attach bundled project cover images (only while unset).
   await ensureProjectCovers(payload);
 
-  // 9) Inject bundled diagrams into the seeded blog articles (only while none).
+  // 9) Create post-migration blog articles (create-if-missing) before figures.
+  await ensureExtraBlogArticles(payload);
+
+  // 10) Inject bundled diagrams into the seeded blog articles (only while none).
   await ensureBlogFigures(payload);
 
   payload.logger.info(`[seed] Done. ${prodSlugs.size} catalog products, ${catSlugs.size} categories.`);

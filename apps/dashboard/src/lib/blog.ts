@@ -62,10 +62,24 @@ export function escapeHtml(s: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
+const lexText = (text: string): Record<string, unknown> => ({
+  type: "text",
+  version: 1,
+  text,
+  format: 0,
+  detail: 0,
+  mode: "normal",
+  style: "",
+});
+
 /**
  * Convert plain text (contributor manuscript) into a minimal Lexical document —
  * one paragraph per blank-line-separated block — so a converted submission
- * opens as editable rich text in the article editor.
+ * opens as editable rich text in the article editor. A block that is a single
+ * line beginning with `## ` (or `### `) becomes an h2 (or h3) heading, so
+ * seeded articles can carry real section headings (which drive the on-page
+ * table of contents). Existing manuscripts have no such lines, so this stays
+ * backward-compatible.
  */
 export function plainTextToLexical(text: string): unknown {
   const blocks = (text || "")
@@ -73,23 +87,32 @@ export function plainTextToLexical(text: string): unknown {
     .split(/\n{2,}/)
     .map((b) => b.trim())
     .filter(Boolean);
-  const children = (blocks.length ? blocks : [""]).map((block) => ({
-    type: "paragraph",
-    version: 1,
-    format: "",
-    indent: 0,
-    direction: null,
-    children: block
-      .split(/\n/)
-      .flatMap((line, i): Record<string, unknown>[] =>
-        i === 0
-          ? [{ type: "text", version: 1, text: line, format: 0, detail: 0, mode: "normal", style: "" }]
-          : [
-              { type: "linebreak", version: 1 },
-              { type: "text", version: 1, text: line, format: 0, detail: 0, mode: "normal", style: "" },
-            ],
-      ),
-  }));
+  const children = (blocks.length ? blocks : [""]).map((block) => {
+    const heading = /^(#{2,3})\s+(.+)$/.exec(block);
+    if (heading && !block.includes("\n")) {
+      return {
+        type: "heading",
+        tag: heading[1] === "##" ? "h2" : "h3",
+        version: 1,
+        format: "",
+        indent: 0,
+        direction: null,
+        children: [lexText(heading[2].trim())],
+      };
+    }
+    return {
+      type: "paragraph",
+      version: 1,
+      format: "",
+      indent: 0,
+      direction: null,
+      children: block
+        .split(/\n/)
+        .flatMap((line, i): Record<string, unknown>[] =>
+          i === 0 ? [lexText(line)] : [{ type: "linebreak", version: 1 }, lexText(line)],
+        ),
+    };
+  });
   return {
     root: { type: "root", version: 1, format: "", indent: 0, direction: null, children },
   };
