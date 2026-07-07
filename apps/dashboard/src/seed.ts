@@ -686,6 +686,31 @@ const PROJECT_COVERS: { slug: string; asset: string; alt: string }[] = [
     asset: "src/seed-assets/projects/microstructure-heat-treatment.webp",
     alt: "Heat-treated metal billet glowing from hot to cool beside a gear and shaft, with a strip of micrographs showing the microstructure evolving through heat treatment.",
   },
+  {
+    slug: "ferritic-stainless-steel-texture",
+    asset: "src/seed-assets/projects/ferritic-stainless-steel-texture.webp",
+    alt: "Deep-drawn stainless-steel cup, sheet and flange beside a thermo-mechanical processing temperature curve and micrographs of recrystallisation texture evolution.",
+  },
+  {
+    slug: "casting-yield-optimization",
+    asset: "src/seed-assets/projects/casting-yield-optimization.webp",
+    alt: "Molten metal pouring from a furnace with a thermoelectric module recycling waste process heat to lift casting yield.",
+  },
+  {
+    slug: "alumina-insulation-fiber-board",
+    asset: "src/seed-assets/projects/alumina-insulation-fiber-board.webp",
+    alt: "White high-temperature alumina insulation fiber boards with a fibre close-up, in front of a glowing furnace lining.",
+  },
+  {
+    slug: "oxygen-free-copper-alloy",
+    asset: "src/seed-assets/projects/oxygen-free-copper-alloy.webp",
+    alt: "Polished copper block, coil and rods with a grain-structure micrograph — oxygen-free high-strength electrical copper alloy at 91-93% IACS.",
+  },
+  {
+    slug: "modeling-simulations",
+    asset: "src/seed-assets/projects/modeling-simulations.webp",
+    alt: "Finite-element simulation of a valve body: meshed CAD model on one half, von-Mises stress colour map on the other, with solver code and result charts.",
+  },
 ];
 
 async function ensureProjectCovers(payload: Payload): Promise<void> {
