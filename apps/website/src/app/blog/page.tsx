@@ -92,7 +92,7 @@ export default async function BlogPage({
       <section className="border-b border-border bg-surface/50">
         {/* Compact hero — same rhythm as /projects: presence from the type,
             not the padding. */}
-        <Container className="pb-7 pt-8 md:pb-8 md:pt-10">
+        <Container className="pb-6 pt-8 md:pb-7 md:pt-10">
           <Breadcrumbs items={[{ name: "Home", href: "/" }, { name: "Blog" }]} />
           <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
@@ -127,12 +127,13 @@ export default async function BlogPage({
       </section>
 
       {/* pt override: the hero's bottom padding + border already separate the
-          zones — .section's full lg:pt-16 doubled the gap. */}
-      <section className="section pt-8 lg:pt-10">
+          zones, so the transition stays tight rather than doubling .section's
+          full top padding. */}
+      <section className="section pt-6 lg:pt-8">
         <Container>
           {featured.length > 0 && <FeaturedArticles articles={featured} />}
 
-          <div className="mb-6 flex items-baseline justify-between gap-4">
+          <div className="mb-5 flex items-baseline justify-between gap-4">
             <h2 className="font-display text-xl font-semibold">
               {filtered ? "Results" : "Latest articles"}
             </h2>
@@ -177,14 +178,14 @@ export default async function BlogPage({
           )}
 
           {listing.totalPages > 1 && (
-            <div className="mt-12">
+            <div className="mt-10">
               <Suspense>
                 <Pagination current={listing.page} total={listing.totalPages} />
               </Suspense>
             </div>
           )}
 
-          <div className="mt-16 rounded-2xl border border-border bg-surface p-6 md:flex md:items-center md:justify-between md:p-8">
+          <div className="mt-12 rounded-2xl border border-border bg-surface p-6 md:flex md:items-center md:justify-between md:p-8">
             <div className="max-w-2xl">
               <h2 className="font-display text-lg font-semibold">Publish with METNMAT</h2>
               <p className="mt-1 text-sm text-muted-foreground">

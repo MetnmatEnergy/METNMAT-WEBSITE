@@ -13,7 +13,7 @@ export function FeaturedArticles({ articles }: { articles: BlogArticleCard[] }) 
   const secondaries = rest.slice(0, 3);
 
   return (
-    <section aria-labelledby="featured-heading" className="mb-12">
+    <section aria-labelledby="featured-heading" className="mb-10">
       <h2 id="featured-heading" className="sr-only">
         Featured articles
       </h2>
