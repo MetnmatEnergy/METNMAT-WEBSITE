@@ -55,8 +55,10 @@ export function ShopShowcase() {
       onBlurCapture={() => setPaused(false)}
       className="group/showcase relative overflow-hidden rounded-3xl border border-border bg-white shadow-sm ring-1 ring-black/[0.03]"
     >
-      {/* aspect tuned to the banner artwork (~2.35:1), capped so it stays a banner on large screens */}
-      <div className="relative aspect-[2/1] max-h-[460px] w-full sm:aspect-[2.35/1]">
+      {/* Stage matches the banner artwork's intrinsic 1600×680 exactly (all five
+          are that size), so the slides render full-bleed to the card edges —
+          no letterboxing, no cropping, at every viewport width. */}
+      <div className="relative aspect-[1600/680] w-full">
         {BANNERS.map((b, i) => (
           <Image
             key={b.src}
@@ -66,7 +68,7 @@ export function ShopShowcase() {
             priority={i === 0}
             sizes="(max-width: 1280px) 100vw, 1200px"
             className={cn(
-              "object-contain p-2 transition-opacity duration-700 sm:p-4",
+              "object-cover transition-opacity duration-700",
               i === active ? "opacity-100" : "opacity-0"
             )}
           />
