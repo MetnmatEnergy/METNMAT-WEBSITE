@@ -60,24 +60,24 @@ export default async function ProjectsPage({
       <section className="relative overflow-hidden">
         <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.4] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
         <div className="bg-hero-glow pointer-events-none absolute inset-0" />
-        {/* Asymmetric padding: roomy top for presence, trimmed bottom — the
-            filter row below owns the gap (its section pt is zeroed). */}
-        <Container className="relative pb-8 pt-10 sm:pb-10 sm:pt-14 lg:pb-12 lg:pt-16">
-          <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
+        {/* Compact hero: presence comes from the display type, not padding —
+            the filter row below owns the gap (its section pt is zeroed). */}
+        <Container className="relative pb-6 pt-8 sm:pb-8 sm:pt-10 lg:pb-10 lg:pt-12">
+          <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
             <Link href="/" className="hover:text-foreground">Home</Link>
             <span aria-hidden>/</span>
             <span className="text-foreground">Projects</span>
           </nav>
           <Badge variant="brand">Our Work</Badge>
-          <h1 className="mt-5 max-w-4xl font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="mt-4 max-w-4xl font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
             Projects &amp; Case Studies
           </h1>
-          <p className="mt-5 max-w-2xl text-base leading-relaxed text-foreground/70 sm:text-lg">
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-foreground/70 sm:text-lg">
             A selection of METNMAT&apos;s research and engineering work — from high-conductivity
             copper alloys and high-temperature materials to metal foams, composites and
             thermoelectric waste-heat recovery — taken from concept to industrial scale.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm">
+          <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm">
             <p className="flex items-baseline gap-2">
               <span className="font-display text-2xl font-bold text-brand">{projects.length}</span>
               <span className="text-muted-foreground">case studies</span>
@@ -118,7 +118,7 @@ export default async function ProjectsPage({
 
           {spotlight && <FeaturedProject project={spotlight} />}
 
-          <div className="mb-6 mt-12 flex items-baseline justify-between gap-4">
+          <div className="mb-5 mt-10 flex items-baseline justify-between gap-4">
             <h2 className="font-display text-xl font-semibold">
               {active === "All" ? "All case studies" : active}
             </h2>
@@ -157,7 +157,7 @@ function FeaturedProject({ project }: { project: Project }) {
   return (
     <Link
       href={`/projects/${project.slug}`}
-      className="group mt-8 grid overflow-hidden rounded-3xl border border-border bg-surface transition-all duration-300 hover:border-brand/40 hover:shadow-[0_24px_70px_-30px_hsl(var(--brand)/0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:grid-cols-2"
+      className="group mt-6 grid overflow-hidden rounded-3xl border border-border bg-surface transition-all duration-300 hover:border-brand/40 hover:shadow-[0_24px_70px_-30px_hsl(var(--brand)/0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:grid-cols-2"
     >
       <div className="relative aspect-[16/10] overflow-hidden lg:aspect-auto">
         {project.coverUrl ? (
