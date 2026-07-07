@@ -766,6 +766,128 @@ async function ensureProjectCovers(payload: Payload): Promise<void> {
   }
 }
 
+/**
+ * Bundled explanatory diagrams for the seeded blog articles, injected into the
+ * article body as Lexical `upload` nodes (the website renders them as captioned,
+ * auto-numbered figures; the admin editor shows them inline and lets staff add
+ * more). STANDALONE + idempotent: it only injects while the body has NO figure
+ * yet, and it splices into the EXISTING body (never rebuilds from seed text), so
+ * staff text edits are preserved and re-runs are no-ops. Media create dedupes by
+ * filename (uploads to GCS on prod / local disk on dev).
+ */
+const BLOG_FIGURES: {
+  slug: string;
+  figures: { afterParagraph: number; asset: string; alt: string; caption: string }[];
+}[] = [
+  {
+    slug: "ion-exchange-membranes",
+    figures: [
+      {
+        afterParagraph: 2,
+        asset: "src/seed-assets/blog/iem-fig-proton-transport.webp",
+        alt: "Proton transport across a proton exchange membrane by the vehicular and Grotthuss mechanisms.",
+        caption:
+          "Proton (H⁺) transport across a PEM. In the vehicular mechanism the whole H₃O⁺ ion diffuses bodily across; in the Grotthuss mechanism the proton is relayed along a hydrogen-bonded water chain.",
+      },
+    ],
+  },
+  {
+    slug: "anion-exchange-membrane-water-electrolysis",
+    figures: [
+      {
+        afterParagraph: 2,
+        asset: "src/seed-assets/blog/aemwe-fig-cell-construction.webp",
+        alt: "Cross-section of an AEMWE cell showing endplates, current collectors, gaskets, catalyst electrodes and the central anion exchange membrane carrying OH⁻ ions.",
+        caption:
+          "AEMWE cell construction and working principle — endplates, current collectors with flow channels, gaskets and catalyst-coated electrodes around a central anion exchange membrane that carries OH⁻ from cathode to anode.",
+      },
+    ],
+  },
+];
+
+type LexNode = { type?: string; children?: LexNode[]; [k: string]: unknown };
+
+const lexHasUpload = (n: LexNode): boolean =>
+  n?.type === "upload" || (n?.children ?? []).some(lexHasUpload);
+
+async function ensureBlogFigures(payload: Payload): Promise<void> {
+  const { randomBytes } = await import("crypto");
+  for (const { slug, figures } of BLOG_FIGURES) {
+    try {
+      const res = await payload.find({
+        collection: "posts",
+        where: { slug: { equals: slug } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+      const doc = res.docs[0] as { id: string | number; body?: { root?: { children?: LexNode[] } } } | undefined;
+      const children = doc?.body?.root?.children;
+      if (!doc || !Array.isArray(children)) continue; // no article, or empty body
+      if (children.some(lexHasUpload)) continue; // figures already present — idempotent
+
+      // Resolve (dedupe-by-filename) each figure's media id.
+      const built: { afterParagraph: number; node: LexNode }[] = [];
+      for (const fig of figures) {
+        const filePath = path.resolve(process.cwd(), fig.asset);
+        if (!existsSync(filePath)) {
+          payload.logger.warn(`[seed] blog figure asset missing: ${filePath}`);
+          continue;
+        }
+        const filename = path.basename(fig.asset);
+        const existing = await payload.find({
+          collection: "media",
+          where: { filename: { equals: filename } },
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        });
+        const mediaId =
+          (existing.docs[0] as { id: string | number } | undefined)?.id ??
+          (await payload.create({ collection: "media", filePath, data: { alt: fig.alt }, overrideAccess: true })).id;
+        built.push({
+          afterParagraph: fig.afterParagraph,
+          // Payload Lexical v3 upload node: block-level sibling of paragraphs,
+          // `value` is the raw media id, `id` a fresh 24-char hex, unique per node.
+          node: {
+            type: "upload",
+            version: 3,
+            id: randomBytes(12).toString("hex"),
+            relationTo: "media",
+            value: mediaId,
+            fields: { caption: fig.caption },
+            format: "",
+          },
+        });
+      }
+      if (!built.length) continue;
+
+      // Splice each figure in after its Nth paragraph. Descending order so an
+      // earlier insertion never shifts a later target index.
+      const out = [...children];
+      for (const ins of [...built].sort((a, b) => b.afterParagraph - a.afterParagraph)) {
+        let count = 0;
+        let at = out.length - 1;
+        for (let i = 0; i < out.length; i++) {
+          if (out[i]?.type === "paragraph") {
+            count += 1;
+            if (count === ins.afterParagraph) {
+              at = i;
+              break;
+            }
+          }
+        }
+        out.splice(at + 1, 0, ins.node);
+      }
+      const newBody = { ...doc.body, root: { ...doc.body!.root, children: out } };
+      await payload.update({ collection: "posts", id: doc.id, data: { body: newBody }, overrideAccess: true });
+      payload.logger.info(`[seed] posts: injected ${built.length} figure(s) into ${slug}.`);
+    } catch (e) {
+      payload.logger.warn(`[seed] blog figures for ${slug} failed: ${(e as Error).message}`);
+    }
+  }
+}
+
 export async function seed(payload: Payload): Promise<void> {
   await ensureSuperAdmin(payload);
   await ensureDirectorAccount(payload);
@@ -831,6 +953,9 @@ export async function seed(payload: Payload): Promise<void> {
 
   // 8) Attach bundled project cover images (only while unset).
   await ensureProjectCovers(payload);
+
+  // 9) Inject bundled diagrams into the seeded blog articles (only while none).
+  await ensureBlogFigures(payload);
 
   payload.logger.info(`[seed] Done. ${prodSlugs.size} catalog products, ${catSlugs.size} categories.`);
 }
