@@ -90,9 +90,11 @@ export default async function BlogPage({
       <JsonLd data={breadcrumbJsonLd([{ name: "Home", path: "/" }, { name: "Blog", path: "/blog" }])} />
 
       <section className="border-b border-border bg-surface/50">
-        <Container className="py-10 md:py-14">
+        {/* Compact hero — same rhythm as /projects: presence from the type,
+            not the padding. */}
+        <Container className="pb-7 pt-8 md:pb-8 md:pt-10">
           <Breadcrumbs items={[{ name: "Home", href: "/" }, { name: "Blog" }]} />
-          <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <h1 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
                 METNMAT Research &amp; Engineering Insights
@@ -111,7 +113,7 @@ export default async function BlogPage({
               </Button>
             </div>
           </div>
-          <div className="mt-8">
+          <div className="mt-6">
             <Suspense>
               <BlogToolbar
                 categories={categories}
@@ -124,7 +126,9 @@ export default async function BlogPage({
         </Container>
       </section>
 
-      <section className="section">
+      {/* pt override: the hero's bottom padding + border already separate the
+          zones — .section's full lg:pt-16 doubled the gap. */}
+      <section className="section pt-8 lg:pt-10">
         <Container>
           {featured.length > 0 && <FeaturedArticles articles={featured} />}
 
