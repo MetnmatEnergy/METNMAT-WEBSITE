@@ -3,7 +3,27 @@
 > **New session? Read this file and you have everything.** It is the one-stop brief for
 > understanding the project, running it locally, and shipping changes live. Deeper detail
 > lives in `HANDOVER.md`, `ENVIRONMENT_VARIABLES.md`, and `PRODUCTION_AUDIT_REPORT.md`.
-> _Last updated: 2026-07-04 (end of session — everything below is LIVE unless marked open)._
+> _Last updated: 2026-07-07 (end of session — everything below is LIVE unless marked open). `main` @ `0f1e973`._
+>
+> **Shipped since 2026-07-04 (all live):** flat "M" brand favicon (site + admin); brand-colour
+> social links + Amazon storefront (top bar + footer); second email mk@metnmat.com; 3 offices
+> (Howrah HQ / Mumbai / Sambalpur — footer 3-col with hours-less "Get in touch" + wide HQ-only
+> map strip); tagline dropped "first"; SEO tab title "METNMAT — Electrochemical Systems |
+> Reference Electrodes | metnmat.com"; LocalBusiness JSON-LD + `/llms.txt` GEO layer; homepage
+> blog teaser shows real covers; homepage "What we do" = InfoCard (cursor-tracking conic border);
+> services "Every service, explained" = framer-motion draggable card-stack deck; contact WhatsApp
+> CTA inside the message-form card; CTA band brand-banner bg (light-mode); logo white-plate
+> removed + dark-mode logo variant (theme-swapped); **homepage Featured case study is CMS-driven**
+> (Homepage global `featuredProject` → defaults to a project WITH a cover so a real photo shows;
+> revalidates on any project save); **project covers 6/15 seeded** (text-safe rendering across
+> card/hero/spotlight/home — covers are text-left/art-right, cropped `object-left`); projects +
+> blog hero spacing tightened; **blog: inline diagrams** (Lexical `upload` nodes → captioned
+> figures; editor already supports admin image insert) on all 3 articles; **3rd blog article**
+> "CO₂ Fuel Cells" added (cover + authored diagram; `## ` headings now supported in seeded body).
+> Seed gotcha learned: `ensureRealBlogArticles`/`ensureRealProjects` early-return once migrated —
+> add NEW seeded content via a standalone create-if-missing (see `EXTRA_ARTICLE_SLUGS`,
+> `PROJECT_COVERS`, `BLOG_FIGURES` in `apps/dashboard/src/seed.ts`). Payload Lexical `upload`
+> node v3 shape is documented in auto-memory [[metnmat-blog-platform]]._
 
 ---
 
@@ -157,12 +177,37 @@ verify via curl/a11y-snapshot/computed styles, or restart the preview server.
 
 ## 7. Open / optional items
 
+**▶ DO FIRST — user approved (2026-07-07): disable the duplicate website Cloud Build
+trigger.** There are TWO triggers deploying the same website Cloud Run service on
+every push: the canonical `metnmat-website-auto-deploy` (uses committed
+`cloudbuild.website.deploy.yaml`) and a wizard-generated duplicate
+`rmgpgab-metnmat-website-asia-south1-MetnmatEnergy-METNMAT-WExqs` (no config file).
+Both build, then race on the deploy step — one loses ~every other push (proven:
+false-alarm FAILUREs on several pushes this session; the winner always deploys the
+same commit so the live site stayed correct, but it's doubled cost + noisy alarms).
+The user asked to disable it; the auto-mode classifier blocked it as shared-infra —
+run it WITH the user's ok (or they run it themselves):
+```
+gcloud builds triggers update github "rmgpgab-metnmat-website-asia-south1-MetnmatEnergy-METNMAT-WExqs" --region=global --disabled
+```
+Leave the dashboard's `rmgpgab-…-dashboard-…` trigger alone — it's the dashboard's only pipeline.
+
+Other open / optional:
 - Confirm live Google OAuth consent once (prod redirect URI
   `https://www.metnmat.com/api/account/google/callback` in Google console).
-- Disable duplicate website Cloud Build trigger (`rmgpgab-metnmat-website-…`).
-- Upload real cover images for the 15 projects (admin → Projects → Media tab).
-- Interactive browser click-check of blog reactions on prod (API fully verified via
-  curl; hydration never re-verified in a real browser after local preview tooling broke).
+- Project covers: **6 of 15 done** (microstructure-control-heat-treatment,
+  ferritic-stainless-steel-texture, casting-yield-optimization,
+  alumina-insulation-fiber-board, oxygen-free-copper-alloy, modeling-simulations).
+  9 remain (aluminum-foam, composite-materials, surface-casting-improvement,
+  material-synthesis, new-aluminum-alloy, wear-resistant-composites,
+  waste-heat-recycling-system, casting-defects, high-temperature-ceramic). Paste
+  artwork (text-left / art-right, 1600×900) → add to `PROJECT_COVERS` in seed.ts.
+- Offered & liked but not yet done: a SECOND diagram per blog article (e.g. PEM-vs-AEM
+  for IEM, four electrolyte configs for AEMWE); a text-free crop of the microstructure
+  cover (its baked title duplicates the page heading).
+- Interactive browser click-check of blog reactions on prod (API verified via curl;
+  the built-in preview browser is flaky for client-JS/image loading — all UI this
+  session was verified via curl/DOM-eval/computed-styles + offline sharp composites).
 - Old shop routes (`/shop/p/<bad-slug>`) return soft-200s — pre-existing, low priority.
 
 ---
