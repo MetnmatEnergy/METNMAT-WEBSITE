@@ -18,15 +18,17 @@ export function FeaturedCaseStudy({ project }: { project: Project }) {
     <section className="section border-y border-border bg-surface/40">
       <Container className="grid items-center gap-12 lg:grid-cols-2">
         <Link href={href} className="group block overflow-hidden rounded-2xl" aria-label={project.title}>
-          {/* Native 3:2 frame — cover images are shot/composed at 3:2, and a
-              4:3 crop was slicing into the artwork's baked-in text. The image
-              spans half the grid on lg, so tell next/image the real width. */}
+          {/* 3:2 frame fits the 3:2 covers exactly; 16:9 covers crop — but all
+              covers anchor their baked text hard-left with art on the right,
+              so object-left makes any crop eat the art side, never the text.
+              The image spans half the grid on lg, so tell next/image the width. */}
           <MediaPlaceholder
             className="aspect-[3/2] transition-transform duration-500 group-hover:scale-[1.02]"
             src={project.coverUrl}
             alt={project.coverAlt ?? project.title}
             label="Featured case study"
             sizes="(max-width: 1023px) 100vw, 50vw"
+            imageClassName="object-left"
           />
         </Link>
         <div>

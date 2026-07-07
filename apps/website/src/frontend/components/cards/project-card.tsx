@@ -21,8 +21,10 @@ export function ProjectCard({
       href={`/projects/${project.slug}`}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_18px_50px_-24px_hsl(var(--brand)/0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      {/* Media */}
-      <div className="relative aspect-[16/10] overflow-hidden">
+      {/* Media — 16:9 matches the composed cover artwork (1600×900 exactly;
+          3:2 covers lose only a sliver of background top/bottom). No overlays:
+          the artwork carries its own composition, chips live in the content. */}
+      <div className="relative aspect-video overflow-hidden">
         {project.coverUrl ? (
           <Image
             src={project.coverUrl}
@@ -40,21 +42,20 @@ export function ProjectCard({
             </span>
           </div>
         )}
-        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
-        {project.category && (
-          <span className="absolute left-4 top-4 rounded-full border border-white/15 bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-foreground/90 backdrop-blur">
-            {project.category}
-          </span>
-        )}
-        {highlight && (
-          <span className="absolute bottom-4 left-4 rounded-full bg-brand/90 px-3 py-1 text-[11px] font-semibold tracking-wide text-brand-foreground shadow-sm">
-            {highlight.value}
-          </span>
-        )}
       </div>
 
       {/* Content */}
       <div className="flex flex-1 flex-col p-6">
+        {(project.category || highlight) && (
+          <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-widest">
+            {project.category && <span className="text-brand-soft">{project.category}</span>}
+            {highlight && (
+              <span className="normal-case tracking-normal text-muted-foreground">
+                {highlight.value}
+              </span>
+            )}
+          </div>
+        )}
         <h3 className="font-display text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:text-brand">
           {project.title}
         </h3>

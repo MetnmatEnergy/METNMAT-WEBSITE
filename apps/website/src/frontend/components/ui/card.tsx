@@ -28,12 +28,15 @@ export function MediaPlaceholder({
   src,
   alt,
   sizes = "(max-width: 768px) 100vw, 33vw",
+  imageClassName,
 }: {
   className?: string;
   label?: string;
   src?: string;
   alt?: string;
   sizes?: string;
+  /** Extra classes for the inner next/image (e.g. "object-left" when the art's text anchors left). */
+  imageClassName?: string;
 }) {
   return (
     <div
@@ -43,7 +46,7 @@ export function MediaPlaceholder({
       )}
     >
       {src ? (
-        <Image src={src} alt={alt ?? label} fill sizes={sizes} className="object-cover" />
+        <Image src={src} alt={alt ?? label} fill sizes={sizes} className={cn("object-cover", imageClassName)} />
       ) : (
         <>
           {/* Branded placeholder: soft brand wash + watermark, instead of a flat gray box. */}

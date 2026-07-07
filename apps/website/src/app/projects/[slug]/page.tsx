@@ -114,7 +114,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<Pa
 
       {/* Cover */}
       <Container className="relative -mt-px">
-        <div className="relative aspect-[16/9] overflow-hidden rounded-b-3xl border-x border-b border-border sm:aspect-[21/9]">
+        {/* 2:1 (not 21:9) on larger screens: the composed covers carry baked-in
+            titles near the top — a 21:9 centre crop clips them on 16:9 art. */}
+        <div className="relative aspect-[16/9] overflow-hidden rounded-b-3xl border-x border-b border-border sm:aspect-[2/1]">
           {project.coverUrl ? (
             <Image
               src={project.coverUrl}

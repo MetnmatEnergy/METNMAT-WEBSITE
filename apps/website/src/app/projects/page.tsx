@@ -159,14 +159,17 @@ function FeaturedProject({ project }: { project: Project }) {
       href={`/projects/${project.slug}`}
       className="group mt-6 grid overflow-hidden rounded-3xl border border-border bg-surface transition-all duration-300 hover:border-brand/40 hover:shadow-[0_24px_70px_-30px_hsl(var(--brand)/0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:grid-cols-2"
     >
-      <div className="relative aspect-[16/10] overflow-hidden lg:aspect-auto">
+      {/* 16:9 matches the wide covers exactly; on lg the cell tracks the text
+          column height, so object-left keeps the covers' left-anchored baked
+          text visible and lets any crop eat the art side instead. */}
+      <div className="relative aspect-video overflow-hidden lg:aspect-auto">
         {project.coverUrl ? (
           <Image
             src={project.coverUrl}
             alt={project.coverAlt || project.title}
             fill
             sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            className="object-cover object-left transition-transform duration-500 group-hover:scale-[1.03]"
             priority
           />
         ) : (
