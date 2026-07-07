@@ -60,7 +60,9 @@ export default async function ProjectsPage({
       <section className="relative overflow-hidden">
         <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.4] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
         <div className="bg-hero-glow pointer-events-none absolute inset-0" />
-        <Container className="relative py-14 sm:py-20 lg:py-24">
+        {/* Asymmetric padding: roomy top for presence, trimmed bottom — the
+            filter row below owns the gap (its section pt is zeroed). */}
+        <Container className="relative pb-8 pt-10 sm:pb-10 sm:pt-14 lg:pb-12 lg:pt-16">
           <nav aria-label="Breadcrumb" className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
             <Link href="/" className="hover:text-foreground">Home</Link>
             <span aria-hidden>/</span>
@@ -89,8 +91,9 @@ export default async function ProjectsPage({
         </Container>
       </section>
 
-      {/* Filter + grid */}
-      <section className="section">
+      {/* Filter + grid — pt-0: the hero's bottom padding already provides the
+          gap, so the section's own top padding would double it. */}
+      <section className="section pt-0">
         <Container>
           <nav aria-label="Filter projects by focus area" className="flex flex-wrap gap-2">
             {["All", ...categories].map((cat) => {
@@ -154,7 +157,7 @@ function FeaturedProject({ project }: { project: Project }) {
   return (
     <Link
       href={`/projects/${project.slug}`}
-      className="group mt-10 grid overflow-hidden rounded-3xl border border-border bg-surface transition-all duration-300 hover:border-brand/40 hover:shadow-[0_24px_70px_-30px_hsl(var(--brand)/0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:grid-cols-2"
+      className="group mt-8 grid overflow-hidden rounded-3xl border border-border bg-surface transition-all duration-300 hover:border-brand/40 hover:shadow-[0_24px_70px_-30px_hsl(var(--brand)/0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:grid-cols-2"
     >
       <div className="relative aspect-[16/10] overflow-hidden lg:aspect-auto">
         {project.coverUrl ? (
