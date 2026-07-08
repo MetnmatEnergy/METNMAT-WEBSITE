@@ -79,9 +79,9 @@ export function AddressBook({ initial }: { initial: Address[] }) {
             <input className={field} placeholder="Address line 1" value={a.line1 || ""} onChange={(e) => upd(i, "line1", e.target.value)} />
             <input className={field} placeholder="Address line 2 (optional)" value={a.line2 || ""} onChange={(e) => upd(i, "line2", e.target.value)} />
             <div className="grid gap-2.5 sm:grid-cols-3">
-              <input className={field} placeholder="City" value={a.city || ""} onChange={(e) => upd(i, "city", e.target.value)} />
+              <input className={field} placeholder="Town / City" value={a.city || ""} onChange={(e) => upd(i, "city", e.target.value)} />
               <input className={field} placeholder="State" value={a.state || ""} onChange={(e) => upd(i, "state", e.target.value)} />
-              <input className={field} placeholder="PIN code" value={a.pincode || ""} onChange={(e) => upd(i, "pincode", e.target.value)} />
+              <input className={field} placeholder="PIN code / ZIP code" value={a.pincode || ""} onChange={(e) => upd(i, "pincode", e.target.value)} />
             </div>
             <input className={field} placeholder="Country" value={a.country || "India"} onChange={(e) => upd(i, "country", e.target.value)} />
           </div>

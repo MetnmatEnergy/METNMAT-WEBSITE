@@ -615,7 +615,7 @@ export default function CheckoutPage() {
               <div>
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <label htmlFor="f-phone" className="block text-xs font-medium text-muted-foreground">
-                    Phone<span className="text-brand"> *</span>
+                    Phone / landline<span className="text-brand"> *</span>
                   </label>
                   <InfoHint text="Your country's dialing code fills in automatically — just type your local number." />
                 </div>
@@ -641,7 +641,7 @@ export default function CheckoutPage() {
                     inputMode="tel"
                     autoComplete="tel-national"
                     className="w-full bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
-                    placeholder={isIndia ? "10-digit mobile number" : "Local phone number"}
+                    placeholder={isIndia ? "10-digit mobile / landline" : "Local phone number"}
                     value={form.phone}
                     aria-required="true"
                     aria-invalid={errors.phone ? true : undefined}
@@ -688,7 +688,7 @@ export default function CheckoutPage() {
               />
               <div className="grid gap-4 sm:grid-cols-3">
                 <TextField
-                  k="city" label="City" required autoComplete="address-level2"
+                  k="city" label="Town / City" required autoComplete="address-level2"
                   value={form.city} error={errors.city} valid={validTick("city")}
                   onChange={upd("city")} onBlur={blur("city")}
                 />
@@ -698,7 +698,7 @@ export default function CheckoutPage() {
                   onChange={upd("state")} onBlur={blur("state")}
                 />
                 <TextField
-                  k="pincode" label={isIndia ? "PIN code" : "Postal / ZIP code"} required
+                  k="pincode" label={isIndia ? "PIN code / ZIP code" : "Postal / ZIP code"} required
                   inputMode={isIndia ? "numeric" : "text"} autoComplete="postal-code"
                   value={form.pincode} error={errors.pincode} valid={validTick("pincode")}
                   onChange={upd("pincode")} onBlur={blur("pincode")}
@@ -744,7 +744,7 @@ export default function CheckoutPage() {
                     <CountrySelect id="f-bCountry" label="Country" required value={form.bCountry} onChange={setBCountry} />
                     <div className="grid gap-4 sm:grid-cols-3">
                       <TextField
-                        k="bCity" label="City" required autoComplete="off"
+                        k="bCity" label="Town / City" required autoComplete="off"
                         value={form.bCity} error={errors.bCity} valid={validTick("bCity")}
                         onChange={upd("bCity")} onBlur={blur("bCity")}
                       />
@@ -754,7 +754,7 @@ export default function CheckoutPage() {
                         onChange={upd("bState")} onBlur={blur("bState")}
                       />
                       <TextField
-                        k="bPincode" label={isIndiaName(form.bCountry) ? "PIN code" : "Postal / ZIP"} required autoComplete="off"
+                        k="bPincode" label={isIndiaName(form.bCountry) ? "PIN code / ZIP code" : "Postal / ZIP code"} required autoComplete="off"
                         value={form.bPincode} error={errors.bPincode} valid={validTick("bPincode")}
                         onChange={upd("bPincode")} onBlur={blur("bPincode")}
                       />
