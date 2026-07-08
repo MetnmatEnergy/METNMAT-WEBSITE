@@ -147,6 +147,17 @@
     @apply py-10 sm:py-12 lg:py-16;
   }
 
+  /* Homepage projects carousel: the thin auto-advance progress bar. Driven by
+     scaleX so it's cheap; play-state is toggled inline to freeze it on pause. */
+  @keyframes carousel-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
   /* "+1" chip that floats up from the Add-to-cart button (marketplace feedback). */
   @keyframes float-plus {
     0% {

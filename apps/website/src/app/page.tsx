@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Hero } from "@/frontend/components/home/hero";
 import { TrustedBy } from "@/frontend/components/home/trusted-by";
 import { ServicesPreview } from "@/frontend/components/home/services-preview";
-import { FeaturedCaseStudy } from "@/frontend/components/home/featured-case-study";
+import { FeaturedProjectsCarousel } from "@/frontend/components/home/featured-projects-carousel";
 import { ProductsPreview } from "@/frontend/components/home/products-preview";
 import { BlogTeaser } from "@/frontend/components/home/blog-teaser";
 import { Faq } from "@/frontend/components/home/faq";
@@ -26,13 +26,18 @@ export default async function HomePage() {
     getProjects().catch(() => []),
   ]);
 
-  // Homepage featured case study: the CMS-selected project, else the first
-  // project flagged Featured, else the first project. Only public projects
+  // Homepage projects carousel shows EVERY public project, cross-fading through
+  // them so visitors see the full breadth of our work. The CMS-selected project
+  // (else the first flagged Featured, else the first) leads the deck, preserving
+  // the old "featured case study" behaviour as slide one. Only public projects
   // reach here (getProjects filters to published + active).
-  const featuredProject =
+  const lead =
     projects.find((p) => p.slug === home.featuredProjectSlug) ??
     projects.find((p) => p.featured) ??
     projects[0];
+  const orderedProjects = lead
+    ? [lead, ...projects.filter((p) => p.slug !== lead.slug)]
+    : projects;
 
   return (
     <>
@@ -43,7 +48,9 @@ export default async function HomePage() {
         <TrustedBy companies={logos.companies} institutions={logos.institutions} />
       )}
       {home.show.services && <ServicesPreview services={services} />}
-      {home.show.projects && featuredProject && <FeaturedCaseStudy project={featuredProject} />}
+      {home.show.projects && orderedProjects.length > 0 && (
+        <FeaturedProjectsCarousel projects={orderedProjects} />
+      )}
       <ProductsPreview />
       {home.show.blog && <BlogTeaser posts={posts} />}
       <Faq faqs={faqs} />
