@@ -3,14 +3,15 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, Loader2, ShieldCheck, FileText, Check, HelpCircle, Truck, ChevronDown } from "lucide-react";
+import { Lock, Loader2, ShieldCheck, FileText, Check, HelpCircle, Truck, Package } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { useStore } from "@/frontend/components/commerce/store-provider";
-import { formatINR, inclGST, usdFor, lineUsdValue } from "@/frontend/lib/catalog";
+import { formatINR, inclGST, usdFor, lineUsdValue, GST_RATE } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { site } from "@/frontend/lib/site";
-import { COUNTRIES, countryByName, dialFor, flagFor, isIndiaName } from "@/frontend/lib/countries";
+import { countryByName, dialFor, isIndiaName } from "@/frontend/lib/countries";
+import { CountryPicker } from "@/frontend/components/commerce/country-picker";
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(" ");
 
@@ -151,30 +152,27 @@ function TextField({
   );
 }
 
-/** Full-country dropdown. Value is the country name (kept in sync with the order). */
+/** Searchable full-country field. Value is the country name (kept in sync with
+ *  the order); type to filter ~200 countries by name or dialing code. */
 function CountrySelect({
   id,
   label,
   required,
   value,
   onChange,
+  invalid,
 }: {
   id: string;
   label: string;
   required?: boolean;
   value: string;
   onChange: (v: string) => void;
+  invalid?: boolean;
 }) {
   return (
     <div>
       <Label htmlFor={id} required={required}>{label}</Label>
-      <select id={id} className={field} autoComplete="country-name" value={value} onChange={(e) => onChange(e.target.value)}>
-        {COUNTRIES.map((c) => (
-          <option key={c.iso2} value={c.name}>
-            {flagFor(c.iso2)} {c.name} ({c.dial})
-          </option>
-        ))}
-      </select>
+      <CountryPicker id={id} variant="full" value={value} onChange={onChange} ariaLabel={label} invalid={invalid} />
     </div>
   );
 }
@@ -307,6 +305,9 @@ export default function CheckoutPage() {
 
   // Display GST-inclusive totals (catalog stores base prices excl. GST).
   const subtotalIncl = cartLines.reduce((n, l) => n + inclGST(l.unitPrice) * l.qty, 0);
+  const subtotalExcl = cartLines.reduce((n, l) => n + l.unitPrice * l.qty, 0);
+  const gstAmount = subtotalIncl - subtotalExcl;
+  const itemCount = cartLines.reduce((n, l) => n + l.qty, 0);
   const usdSubtotal =
     currency === "USD"
       ? cartLines.reduce((n, l) => n + lineUsdValue(l.product, l.unitPrice, l.qty, usdRate), 0)
@@ -314,7 +315,6 @@ export default function CheckoutPage() {
   const hasQuoteOnly = cartLines.some((l) => !l.product.price);
   const isIndia = isIndiaName(form.country);
   const dialCode = dialFor(form.country) || "+91";
-  const shipFlag = flagFor(countryByName(form.country)?.iso2 ?? "");
 
   // Prefill from the signed-in customer's saved profile + default address
   // (checkout is gated, so one always exists). Runs once on mount, before the
@@ -349,7 +349,7 @@ export default function CheckoutPage() {
           const addrs = customer.addresses ?? [];
           const def = addrs.find((a) => a.isDefault) ?? addrs[0];
           if (def) {
-            if (def.country && COUNTRIES.some((c) => c.name === def.country)) n.country = def.country;
+            if (def.country && countryByName(def.country)) n.country = def.country;
             if (!n.line1 && def.line1) n.line1 = def.line1;
             if (!n.line2 && def.line2) n.line2 = def.line2;
             if (!n.city && def.city) n.city = def.city;
@@ -622,7 +622,7 @@ export default function CheckoutPage() {
                 </div>
                 <div
                   className={cx(
-                    "flex items-stretch overflow-hidden rounded-lg border bg-surface transition-colors focus-within:ring-2 focus-within:ring-ring/30",
+                    "flex items-stretch rounded-lg border bg-surface transition-colors focus-within:ring-2 focus-within:ring-ring/30",
                     errors.phone
                       ? "border-brand"
                       : phoneValid
@@ -630,27 +630,16 @@ export default function CheckoutPage() {
                         : "border-input focus-within:border-brand"
                   )}
                 >
-                  {/* Dial-code picker. Its value is the country NAME (unambiguous —
-                      US/Canada share +1) and writes to form.country via setCountry,
-                      the same source the Country/region select reads. So the two
-                      stay in sync both ways: change either, the other follows. */}
-                  <div className="relative flex shrink-0 select-none items-center gap-1.5 border-r border-input bg-background/40 pl-3 pr-2 text-sm font-medium text-foreground">
-                    <span className="text-base leading-none" aria-hidden>{shipFlag}</span>
-                    <span aria-hidden>{dialCode}</span>
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-                    <select
-                      aria-label="Country dialing code"
-                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                      value={form.country}
-                      onChange={(e) => setCountry(e.target.value)}
-                    >
-                      {COUNTRIES.map((c) => (
-                        <option key={c.iso2} value={c.name}>
-                          {flagFor(c.iso2)} {c.name} ({c.dial})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Searchable dial-code picker. Value is the country NAME
+                      (US/Canada share +1) written to form.country via setCountry —
+                      the same source the Country/region select reads, so the two
+                      stay in sync both ways. */}
+                  <CountryPicker
+                    variant="compact"
+                    value={form.country}
+                    onChange={setCountry}
+                    ariaLabel="Country dialing code"
+                  />
                   <input
                     id="f-phone"
                     type="tel"
@@ -817,14 +806,33 @@ export default function CheckoutPage() {
         {/* Order summary */}
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-2xl border border-border bg-surface p-5">
-            <h2 className="font-display text-lg font-semibold">Your order</h2>
-            <ul className="mt-4 space-y-3 text-sm">
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="font-display text-lg font-semibold">Your order</h2>
+              <span className="text-xs text-muted-foreground">
+                {itemCount} item{itemCount === 1 ? "" : "s"}
+              </span>
+            </div>
+            <ul className="mt-4 space-y-3">
               {cartLines.map((l) => (
-                <li key={l.key} className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">
-                    {l.product.name}{l.size ? ` (${l.size})` : ""} × {l.qty}
-                  </span>
-                  <span className="font-medium tabular-nums">
+                <li key={l.key} className="flex items-center gap-3">
+                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/40">
+                    {l.product.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={l.product.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <Package className="h-4 w-4" aria-hidden />
+                      </span>
+                    )}
+                    <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand px-1 text-[10px] font-semibold text-brand-foreground">
+                      {l.qty}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-foreground">{l.product.name}</p>
+                    {l.size ? <p className="truncate text-xs text-muted-foreground">{l.size}</p> : null}
+                  </div>
+                  <span className="shrink-0 text-sm font-medium tabular-nums">
                     {l.product.price
                       ? money(inclGST(l.unitPrice) * l.qty, usdFor(l.product, inclGST(l.unitPrice) * l.qty))
                       : "On request"}
@@ -832,12 +840,19 @@ export default function CheckoutPage() {
                 </li>
               ))}
             </ul>
-            <div className="mt-4 space-y-1 border-t border-border pt-4 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal (incl. GST)</span>
-                <span className="font-semibold tabular-nums">{money(subtotalIncl, usdSubtotal)}</span>
+            <div className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Subtotal</span>
+                <span className="tabular-nums text-foreground">{money(subtotalExcl)}</span>
               </div>
-              <p className="text-xs text-muted-foreground">Includes GST</p>
+              <div className="flex justify-between text-muted-foreground">
+                <span>GST ({Math.round(GST_RATE * 100)}%)</span>
+                <span className="tabular-nums text-foreground">{money(gstAmount)}</span>
+              </div>
+              <div className="flex items-baseline justify-between border-t border-border pt-2.5">
+                <span className="font-semibold">Total</span>
+                <span className="font-display text-lg font-bold tabular-nums">{money(subtotalIncl, usdSubtotal)}</span>
+              </div>
             </div>
 
             {hasQuoteOnly && (
@@ -871,10 +886,15 @@ export default function CheckoutPage() {
             <Button href="/quote" variant="outline" className="mt-2 w-full">
               <FileText className="h-4 w-4" /> Request quote instead
             </Button>
-            <p className="mt-3 text-center text-xs text-muted-foreground">
-              <ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-brand" />
-              Secured by Razorpay · GST invoice with every order
-            </p>
+            <div className="mt-3 space-y-1.5 text-center">
+              <p className="text-xs text-muted-foreground">
+                <ShieldCheck className="mr-1 inline h-3.5 w-3.5 text-brand" />
+                Secured by Razorpay · GST invoice with every order
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Accepts UPI · Visa · Mastercard · Netbanking · Wallets
+              </p>
+            </div>
             <Link href="/cart" className="mt-3 block text-center text-sm text-muted-foreground hover:text-foreground">
               ← Back to cart
             </Link>
