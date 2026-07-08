@@ -3,14 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, Loader2, ShieldCheck, FileText, Check, HelpCircle, Truck } from "lucide-react";
+import { Lock, Loader2, ShieldCheck, FileText, Check, HelpCircle, Truck, ChevronDown } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { useStore } from "@/frontend/components/commerce/store-provider";
 import { formatINR, inclGST, usdFor, lineUsdValue } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { site } from "@/frontend/lib/site";
-import { COUNTRIES, dialFor, isIndiaName } from "@/frontend/lib/countries";
+import { COUNTRIES, countryByName, dialFor, flagFor, isIndiaName } from "@/frontend/lib/countries";
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(" ");
 
@@ -171,7 +171,7 @@ function CountrySelect({
       <select id={id} className={field} autoComplete="country-name" value={value} onChange={(e) => onChange(e.target.value)}>
         {COUNTRIES.map((c) => (
           <option key={c.iso2} value={c.name}>
-            {c.name} ({c.dial})
+            {flagFor(c.iso2)} {c.name} ({c.dial})
           </option>
         ))}
       </select>
@@ -314,6 +314,7 @@ export default function CheckoutPage() {
   const hasQuoteOnly = cartLines.some((l) => !l.product.price);
   const isIndia = isIndiaName(form.country);
   const dialCode = dialFor(form.country) || "+91";
+  const shipFlag = flagFor(countryByName(form.country)?.iso2 ?? "");
 
   // Prefill from the signed-in customer's saved profile + default address
   // (checkout is gated, so one always exists). Runs once on mount, before the
@@ -629,12 +630,27 @@ export default function CheckoutPage() {
                         : "border-input focus-within:border-brand"
                   )}
                 >
-                  <span
-                    className="flex shrink-0 select-none items-center border-r border-input bg-background/40 px-3 text-sm font-medium text-foreground"
-                    aria-hidden
-                  >
-                    {dialCode}
-                  </span>
+                  {/* Dial-code picker. Its value is the country NAME (unambiguous —
+                      US/Canada share +1) and writes to form.country via setCountry,
+                      the same source the Country/region select reads. So the two
+                      stay in sync both ways: change either, the other follows. */}
+                  <div className="relative flex shrink-0 select-none items-center gap-1.5 border-r border-input bg-background/40 pl-3 pr-2 text-sm font-medium text-foreground">
+                    <span className="text-base leading-none" aria-hidden>{shipFlag}</span>
+                    <span aria-hidden>{dialCode}</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                    <select
+                      aria-label="Country dialing code"
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      value={form.country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    >
+                      {COUNTRIES.map((c) => (
+                        <option key={c.iso2} value={c.name}>
+                          {flagFor(c.iso2)} {c.name} ({c.dial})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <input
                     id="f-phone"
                     type="tel"

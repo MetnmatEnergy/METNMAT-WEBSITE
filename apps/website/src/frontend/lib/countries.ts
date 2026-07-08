@@ -220,3 +220,13 @@ export const countryByName = (name: string): Country | undefined =>
 export const dialFor = (name: string): string => countryByName(name)?.dial ?? "";
 
 export const isIndiaName = (name: string): boolean => name.trim().toLowerCase() === "india";
+
+/**
+ * Emoji flag for an ISO-3166 alpha-2 code (e.g. "IN" → 🇮🇳), built from the two
+ * Regional Indicator Symbols. Renders as a flag on iOS/Android/macOS; Windows
+ * has no flag glyphs and shows the two letters (e.g. "IN") — still informative.
+ */
+export const flagFor = (iso2: string): string =>
+  /^[A-Za-z]{2}$/.test(iso2)
+    ? iso2.toUpperCase().replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)))
+    : "";
