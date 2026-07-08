@@ -18,7 +18,7 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
   }
 
-  let body: { name?: string; phone?: string; company?: string; gstin?: string };
+  let body: { name?: string; phone?: string; company?: string; gstin?: string; role?: string };
   try {
     body = await req.json();
   } catch {
@@ -27,11 +27,18 @@ export async function POST(req: Request): Promise<Response> {
   const name = String(body?.name ?? "").trim();
   if (!name) return NextResponse.json({ error: "Name can't be empty." }, { status: 400 });
 
+  // Only forward a recognised role (the CMS select rejects unknowns; keep it clean).
+  const ROLES = ["", "student", "phd", "faculty", "scientist", "procurement", "industry", "other"];
+  const role = ROLES.includes(String(body?.role ?? "")) ? String(body?.role ?? "") : "";
+
   const updated = await patchCurrentCustomer({
     name,
     phone: String(body?.phone ?? "").trim(),
     company: String(body?.company ?? "").trim(),
     gstin: String(body?.gstin ?? "").trim(),
+    // null (not "") — Payload's select validator rejects "" but accepts null, so
+    // this both saves a chosen role and lets a user clear it back to "Not set".
+    role: role || null,
   });
   // A null here means the save failed upstream (network/CMS), not a bad session —
   // don't mislead the user into re-logging in.

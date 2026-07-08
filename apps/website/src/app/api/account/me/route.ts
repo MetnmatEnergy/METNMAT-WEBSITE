@@ -13,11 +13,13 @@ export async function GET(): Promise<Response> {
   if (!c) return NextResponse.json({ customer: null });
   return NextResponse.json({
     customer: {
+      userCode: c.userCode ?? "",
       name: c.name ?? "",
       email: c.email ?? "",
       phone: c.phone ?? "",
       company: c.company ?? "",
       gstin: c.gstin ?? "",
+      role: c.role ?? "",
       addresses: c.addresses ?? [],
     },
   });

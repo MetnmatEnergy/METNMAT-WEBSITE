@@ -15,6 +15,7 @@ import {
   dummyProjectSlugs,
 } from "./content-data";
 import { plainTextToLexical } from "./lib/blog";
+import { istYear2, formatUserCode, bumpCounter, countersModel, userCodeCounterKey } from "./hooks/customer-code";
 
 // Real METNMAT electrochemistry catalog (phase 1), generated from
 // Product_data_sheet.xlsx into ./catalog-data.ts. Seeded on boot; idempotent.
@@ -970,6 +971,86 @@ async function ensureExtraBlogArticles(payload: Payload): Promise<void> {
   }
 }
 
+/**
+ * One-shot, idempotent backfill: assign an MNM-U-YY code to every customer that
+ * predates the field. Runs via the raw Mongo model (bypasses collection hooks)
+ * and advances the SAME atomic per-year counter the live signup hook uses, so
+ * backfilled and future codes never collide. Ordered by createdAt so codes
+ * roughly follow signup order. Once every row has a code this is a no-op.
+ */
+async function backfillCustomerCodes(payload: Payload): Promise<void> {
+  type CustomerRow = { _id: unknown; createdAt?: string | Date };
+  type CustomersModel = {
+    find: (
+      filter: Record<string, unknown>,
+      projection: Record<string, unknown>,
+    ) => {
+      sort: (s: Record<string, number>) => { lean: () => Promise<CustomerRow[]> };
+    };
+    updateOne: (
+      filter: Record<string, unknown>,
+      update: Record<string, unknown>,
+    ) => Promise<{ modifiedCount?: number }>;
+  };
+  const UNCODED = { $or: [{ userCode: { $exists: false } }, { userCode: null }, { userCode: "" }] };
+  const collections = (payload.db as unknown as { collections: Record<string, unknown> }).collections;
+  const Customers = collections?.["customers"] as CustomersModel | undefined;
+  if (!Customers || !collections?.["counters"]) return;
+
+  let missing: CustomerRow[] = [];
+  try {
+    missing = await Customers.find(UNCODED, { _id: 1, createdAt: 1 }).sort({ createdAt: 1 }).lean();
+  } catch (e) {
+    payload.logger.warn(`[seed] customer-code backfill skipped (query failed): ${(e as Error).message}`);
+    return;
+  }
+  if (!missing.length) return;
+
+  const counters = countersModel(payload.db);
+  let assigned = 0;
+  for (const row of missing) {
+    try {
+      const created = row.createdAt ? new Date(row.createdAt) : new Date();
+      const year2 = istYear2(created);
+      const seq = await bumpCounter(counters, userCodeCounterKey(year2));
+      // Conditional write: only code a row that is STILL un-coded, so two
+      // instances booting at once can't double-write it (last one loses the race,
+      // modifiedCount 0). No duplicates, crash-safe (a re-run finishes the rest).
+      const res = await Customers.updateOne(
+        { _id: row._id, ...UNCODED },
+        { $set: { userCode: formatUserCode(year2, seq) } },
+      );
+      if (res?.modifiedCount === 1) assigned++;
+    } catch (e) {
+      payload.logger.warn(`[seed] customer-code backfill: one row failed — ${(e as Error).message}`);
+    }
+  }
+  payload.logger.info(`[seed] Backfilled ${assigned}/${missing.length} customer code(s).`);
+}
+
+/**
+ * DB-level uniqueness backstop for userCode. A PARTIAL unique index (only over
+ * docs where userCode is a string) so legacy null/unset rows never block the
+ * build, while any duplicate real code fails loudly with an 11000 instead of
+ * being silently accepted (the field's own index is non-unique). Idempotent.
+ */
+async function ensureUserCodeIndex(payload: Payload): Promise<void> {
+  type IndexableModel = {
+    collection?: { createIndex: (keys: Record<string, number>, opts: Record<string, unknown>) => Promise<unknown> };
+  };
+  const Customers = (payload.db as unknown as { collections: Record<string, IndexableModel> }).collections?.["customers"];
+  const coll = Customers?.collection;
+  if (!coll) return;
+  try {
+    await coll.createIndex(
+      { userCode: 1 },
+      { unique: true, name: "userCode_unique", partialFilterExpression: { userCode: { $type: "string" } } },
+    );
+  } catch (e) {
+    payload.logger.warn(`[seed] userCode unique index not ensured: ${(e as Error).message}`);
+  }
+}
+
 export async function seed(payload: Payload): Promise<void> {
   await ensureSuperAdmin(payload);
   await ensureDirectorAccount(payload);
@@ -1041,6 +1122,11 @@ export async function seed(payload: Payload): Promise<void> {
 
   // 10) Inject bundled diagrams into the seeded blog articles (only while none).
   await ensureBlogFigures(payload);
+
+  // 11) Backfill MNM-U customer codes for accounts created before the field,
+  //     then establish the partial-unique index backstop.
+  await backfillCustomerCodes(payload);
+  await ensureUserCodeIndex(payload);
 
   payload.logger.info(`[seed] Done. ${prodSlugs.size} catalog products, ${catSlugs.size} categories.`);
 }

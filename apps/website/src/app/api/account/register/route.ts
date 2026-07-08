@@ -13,7 +13,7 @@ export async function POST(req: Request): Promise<Response> {
       { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } }
     );
   }
-  let body: { name?: string; email?: string; password?: string; phone?: string; company?: string };
+  let body: { name?: string; email?: string; password?: string; phone?: string; company?: string; role?: string };
   try {
     body = await req.json();
   } catch {
@@ -24,6 +24,10 @@ export async function POST(req: Request): Promise<Response> {
   const password = String(body?.password ?? "");
   const phone = String(body?.phone ?? "").trim();
   const company = String(body?.company ?? "").trim();
+  // Optional audience role; only forward a recognised value (defensive — the CMS
+  // select would reject unknowns, but we keep the payload clean).
+  const ROLES = ["student", "phd", "faculty", "scientist", "procurement", "industry", "other"];
+  const role = ROLES.includes(String(body?.role ?? "")) ? String(body?.role) : "";
 
   if (!name || !email || !password) {
     return NextResponse.json({ error: "Name, email, and password are required." }, { status: 400 });
@@ -36,11 +40,12 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
-    // Create the customer (public registration).
+    // Create the customer (public registration). The CMS assigns the immutable
+    // userCode in a collection hook and returns it on the created doc.
     const cr = await fetch(`${CMS}/api/customers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, phone, company }),
+      body: JSON.stringify({ name, email, password, phone, company, ...(role ? { role } : {}) }),
       cache: "no-store",
     });
     if (!cr.ok) {
@@ -51,6 +56,8 @@ export async function POST(req: Request): Promise<Response> {
       }
       return NextResponse.json({ error: "Couldn't create your account. Please check your details." }, { status: 400 });
     }
+    const created = (await cr.json().catch(() => ({}))) as { doc?: { userCode?: string } };
+    const userCode = created?.doc?.userCode ?? "";
 
     // Auto sign-in.
     const lr = await fetch(`${CMS}/api/customers/login`, {
@@ -60,7 +67,7 @@ export async function POST(req: Request): Promise<Response> {
       cache: "no-store",
     });
     const ld = (await lr.json().catch(() => ({}))) as { token?: string; exp?: number };
-    const res = NextResponse.json({ success: true });
+    const res = NextResponse.json({ success: true, userCode });
     if (lr.ok && ld?.token) {
       const maxAge = ld.exp ? Math.max(60, ld.exp - Math.floor(Date.now() / 1000)) : undefined;
       res.cookies.set(CUSTOMER_COOKIE, ld.token, cookieOptions(maxAge));

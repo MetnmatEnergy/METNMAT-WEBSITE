@@ -24,11 +24,15 @@ export type Address = {
 
 export type Customer = {
   id: string;
+  /** Permanent METNMAT member id (MNM-U-YY-000000), assigned on signup. */
+  userCode?: string;
   name?: string;
   email?: string;
   phone?: string;
   company?: string;
   gstin?: string;
+  /** Self-selected audience role: student | phd | faculty | scientist | procurement | industry | other. */
+  role?: string;
   addresses?: Address[];
 };
 

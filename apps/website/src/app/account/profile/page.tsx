@@ -10,11 +10,13 @@ export default async function ProfilePage() {
     <div className="space-y-6">
       <ProfileForm
         initial={{
+          userCode: customer?.userCode,
           name: customer?.name,
           email: customer?.email,
           phone: customer?.phone,
           company: customer?.company,
           gstin: customer?.gstin,
+          role: customer?.role,
         }}
       />
       <PasswordForm />

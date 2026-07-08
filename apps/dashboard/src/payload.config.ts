@@ -41,6 +41,7 @@ import { ReturnRequests } from "./collections/ReturnRequests";
 import { Leads } from "./collections/Leads";
 import { Notifications } from "./collections/Notifications";
 import { IntegrationLogs } from "./collections/IntegrationLogs";
+import { Counters } from "./collections/Counters";
 import { globals } from "./globals";
 import { seed } from "./seed";
 import { resendAdapter } from "./lib/email-adapter";
@@ -189,6 +190,7 @@ export default buildConfig({
     StaffRoles,
     AuditLogs,
     IntegrationLogs,
+    Counters,
   ],
   globals,
   onInit: async (payload) => {

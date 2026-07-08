@@ -22,9 +22,17 @@ export default async function AccountDashboard() {
 
   return (
     <div className="space-y-8">
-      <p className="text-muted-foreground">
-        {firstName ? `Welcome back, ${firstName}.` : "Welcome back."} Here&apos;s a quick overview.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-muted-foreground">
+          {firstName ? `Welcome back, ${firstName}.` : "Welcome back."} Here&apos;s a quick overview.
+        </p>
+        {customer?.userCode ? (
+          <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm">
+            <span className="text-xs text-muted-foreground">Member ID</span>
+            <span className="font-mono font-semibold tracking-wide text-foreground">{customer.userCode}</span>
+          </div>
+        ) : null}
+      </div>
       <div className="grid gap-5 sm:grid-cols-3">
         {cards.map((c) => (
           <Link key={c.href} href={c.href}>

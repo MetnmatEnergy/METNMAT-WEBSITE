@@ -2,6 +2,20 @@ import { getFieldsToSign, jwtSign, type CollectionConfig } from "payload";
 import { randomBytes } from "crypto";
 import { isAdmin } from "../access";
 import { safeKeyEqual } from "../lib/internal-key";
+import { assignUserCode } from "../hooks/customer-code";
+
+/**
+ * Field access for server-managed sign-in fields. `admin.readOnly` only hides a
+ * field in the admin UI — it does NOT stop a REST/Local API write. Since public
+ * registration (create) and customer self-update are allowed, without this a
+ * customer could PATCH their own record to forge emailVerified / authProvider /
+ * googleId. Only staff may write these; the Google OAuth endpoint uses
+ * overrideAccess (which bypasses field access) so its link/create still works.
+ */
+const staffOnlyField = {
+  create: ({ req }: { req: { user?: { collection?: string } | null } }) => req.user?.collection === "users",
+  update: ({ req }: { req: { user?: { collection?: string } | null } }) => req.user?.collection === "users",
+};
 
 /**
  * Website customer accounts (storefront login) — a SEPARATE auth collection from
@@ -41,7 +55,7 @@ export const Customers: CollectionConfig = {
   admin: {
     group: "Sales",
     useAsTitle: "email",
-    defaultColumns: ["name", "email", "phone", "company", "createdAt"],
+    defaultColumns: ["userCode", "name", "email", "phone", "company", "createdAt"],
     description: "Storefront customer accounts. Created when shoppers register on the website.",
   },
   access: {
@@ -59,13 +73,48 @@ export const Customers: CollectionConfig = {
     delete: isAdmin,
   },
   fields: [
+    {
+      // Permanent METNMAT member id (MNM-U-YY-000000). Assigned once on create by
+      // the assignUserCode hook (below) from an atomic per-year counter, then
+      // immutable. Indexed (non-unique — a unique index can't build while legacy
+      // rows share a null value; the atomic counter is the uniqueness guarantee).
+      name: "userCode",
+      type: "text",
+      index: true,
+      label: "Customer code",
+      admin: {
+        readOnly: true,
+        position: "sidebar",
+        description: "Permanent METNMAT member id — auto-assigned on signup, immutable.",
+      },
+    },
     { name: "name", type: "text", required: true },
     {
       type: "row",
       fields: [
         { name: "phone", type: "text", admin: { width: "50%" } },
-        { name: "company", type: "text", admin: { width: "50%" } },
+        {
+          name: "company",
+          type: "text",
+          label: "Institution / Company",
+          admin: { width: "50%", description: "University, lab, or company." },
+        },
       ],
+    },
+    {
+      name: "role",
+      type: "select",
+      label: "Role",
+      options: [
+        { label: "Student", value: "student" },
+        { label: "PhD / Research Scholar", value: "phd" },
+        { label: "Faculty / Professor", value: "faculty" },
+        { label: "Scientist / R&D", value: "scientist" },
+        { label: "Institution / Procurement", value: "procurement" },
+        { label: "Industry", value: "industry" },
+        { label: "Other", value: "other" },
+      ],
+      admin: { description: "Self-selected at signup (optional). Helps tailor support." },
     },
     { name: "gstin", type: "text", label: "GSTIN" },
     // ── Sign-in provider (managed by the server; read-only in admin) ───────────
@@ -76,6 +125,7 @@ export const Customers: CollectionConfig = {
           name: "authProvider",
           type: "select",
           defaultValue: "local",
+          access: staffOnlyField,
           options: [
             { label: "Local (password)", value: "local" },
             { label: "Google", value: "google" },
@@ -87,6 +137,7 @@ export const Customers: CollectionConfig = {
           name: "emailVerified",
           type: "checkbox",
           defaultValue: false,
+          access: staffOnlyField,
           label: "Email verified",
           admin: { readOnly: true, width: "50%" },
         },
@@ -96,12 +147,14 @@ export const Customers: CollectionConfig = {
       name: "googleId",
       type: "text",
       index: true,
+      access: staffOnlyField,
       admin: { readOnly: true, description: "Google account id (the OAuth `sub`)." },
     },
     {
       name: "avatarUrl",
       type: "text",
       label: "Avatar URL",
+      access: staffOnlyField,
       admin: { readOnly: true, description: "Google profile photo (optional)." },
     },
     {
@@ -130,6 +183,11 @@ export const Customers: CollectionConfig = {
       ],
     },
   ],
+  hooks: {
+    // Mint the immutable MNM-U-YY code on create (both email + Google signup flow
+    // through here); keep it unchangeable on every update. See customer-code.ts.
+    beforeChange: [assignUserCode],
+  },
   endpoints: [
     /**
      * Server-to-server OAuth login. The website verifies the Google identity,
