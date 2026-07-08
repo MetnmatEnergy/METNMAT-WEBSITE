@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Check, Copy } from "lucide-react";
+import { Loader2, Check, Copy, BadgeCheck } from "lucide-react";
 import { Card } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
-import { fieldClass } from "@/frontend/components/ui/field";
+import { TextField, SelectField } from "@/frontend/components/ui/field";
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Not set" },
@@ -37,6 +37,7 @@ export function ProfileForm({ initial }: { initial: Initial }) {
     gstin: initial.gstin || "",
     role: initial.role || "",
   });
+  const [nameError, setNameError] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const [msg, setMsg] = React.useState<{ ok: boolean; text: string } | null>(null);
@@ -44,6 +45,7 @@ export function ProfileForm({ initial }: { initial: Initial }) {
   const set =
     (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setForm((f) => ({ ...f, [k]: e.target.value }));
+      if (k === "name") setNameError("");
       setMsg(null);
     };
 
@@ -60,13 +62,17 @@ export function ProfileForm({ initial }: { initial: Initial }) {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.name.trim()) {
+      setNameError("Please enter your name.");
+      return;
+    }
     setSaving(true);
     setMsg(null);
     try {
       const res = await fetch("/api/account/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, name: form.name.trim() }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data?.success) {
@@ -75,7 +81,7 @@ export function ProfileForm({ initial }: { initial: Initial }) {
         // so an updated name reflects immediately, not only after a hard reload.
         router.refresh();
       } else {
-        setMsg({ ok: false, text: data?.error || "Couldn't save." });
+        setMsg({ ok: false, text: data?.error || "Couldn't save your changes." });
       }
     } catch {
       setMsg({ ok: false, text: "Network error — please try again." });
@@ -84,87 +90,92 @@ export function ProfileForm({ initial }: { initial: Initial }) {
   }
 
   return (
-    <Card className="max-w-xl">
-      <h2 className="font-display text-lg font-semibold">Profile</h2>
+    <Card className="max-w-2xl">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-lg font-semibold">Profile</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Your details for orders, quotes &amp; GST invoices.
+          </p>
+        </div>
+      </div>
 
       {initial.userCode ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-3.5 py-2.5">
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">Member ID</p>
-            <p className="truncate font-mono text-sm font-semibold tracking-wide text-foreground">
-              {initial.userCode}
-            </p>
+        <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand sm:flex">
+              <BadgeCheck className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Member ID · permanent</p>
+              <p className="truncate font-mono text-sm font-semibold tracking-wide text-foreground">
+                {initial.userCode}
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={copyCode}
             aria-label="Copy member ID"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-input text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
           >
             {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
           </button>
         </div>
       ) : null}
 
-      <form onSubmit={save} className="mt-5 grid gap-4">
+      <form onSubmit={save} noValidate className="mt-5 grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-1.5 text-sm">
-            <span className="text-muted-foreground">Full name</span>
-            <input className={fieldClass} value={form.name} onChange={set("name")} required />
-          </label>
-          <label className="grid gap-1.5 text-sm">
-            <span className="text-muted-foreground">Email</span>
-            <input
-              className={fieldClass}
-              value={initial.email || ""}
-              disabled
-              title="Contact support to change your email"
-            />
-          </label>
+          <TextField
+            label="Full name"
+            value={form.name}
+            onChange={set("name")}
+            error={nameError}
+            autoComplete="name"
+          />
+          <TextField
+            label="Email"
+            labelHint="locked"
+            value={initial.email || ""}
+            disabled
+            hint="Contact support to change your email."
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-1.5 text-sm">
-            <span className="text-muted-foreground">Phone</span>
-            <input className={fieldClass} value={form.phone} onChange={set("phone")} />
-          </label>
-          <label className="grid gap-1.5 text-sm">
-            <span className="text-muted-foreground">Institution / Company</span>
-            <input className={fieldClass} value={form.company} onChange={set("company")} />
-          </label>
+          <TextField label="Phone" value={form.phone} onChange={set("phone")} autoComplete="tel" inputMode="tel" />
+          <TextField
+            label="Institution / Company"
+            value={form.company}
+            onChange={set("company")}
+            autoComplete="organization"
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-1.5 text-sm">
-            <span className="text-muted-foreground">Role</span>
-            <select
-              className={`${fieldClass} cursor-pointer appearance-none pr-9`}
-              value={form.role}
-              onChange={set("role")}
-            >
-              {ROLE_OPTIONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5 text-sm">
-            <span className="text-muted-foreground">GSTIN (optional)</span>
-            <input
-              className={fieldClass}
-              value={form.gstin}
-              onChange={set("gstin")}
-              placeholder="For GST invoices"
-            />
-          </label>
+          <SelectField label="Role" value={form.role} onChange={set("role")}>
+            {ROLE_OPTIONS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </SelectField>
+          <TextField
+            label="GSTIN"
+            labelHint="optional"
+            value={form.gstin}
+            onChange={set("gstin")}
+            placeholder="For GST invoices"
+          />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="mt-1 flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={saving} className="justify-self-start">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             {saving ? "Saving…" : "Save changes"}
           </Button>
           {msg && (
-            <span className={`text-sm ${msg.ok ? "text-emerald-600" : "text-brand"}`}>{msg.text}</span>
+            <span role="status" className={`text-sm ${msg.ok ? "text-emerald-600" : "text-brand"}`}>
+              {msg.text}
+            </span>
           )}
         </div>
       </form>

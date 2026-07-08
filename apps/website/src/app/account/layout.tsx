@@ -29,10 +29,13 @@ export default async function AccountLayout({ children }: { children: React.Reac
         </p>
       </div>
       <div className="mt-8 grid gap-8 lg:grid-cols-[240px_1fr]">
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:self-start">
           <AccountNav />
         </aside>
-        <div>{children}</div>
+        {/* min-w-0: a grid item's default min-width:auto refuses to shrink below its
+            content's min-content (long email/ID strings), which would overflow the
+            track and cause horizontal scroll on mobile. */}
+        <div className="min-w-0">{children}</div>
       </div>
     </Container>
   );

@@ -1,4 +1,7 @@
+"use client";
+
 import * as React from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/frontend/lib/utils";
 
 /**
@@ -78,6 +81,34 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(func
         <span className="text-xs text-muted-foreground">{hint}</span>
       ) : null}
     </div>
+  );
+});
+
+type PasswordFieldProps = Omit<TextFieldProps, "type" | "rightSlot"> & { toggleLabel?: string };
+
+/** Password input with a built-in show/hide toggle. */
+export const PasswordField = React.forwardRef<HTMLInputElement, PasswordFieldProps>(function PasswordField(
+  { toggleLabel = "password", ...props },
+  ref,
+) {
+  const [show, setShow] = React.useState(false);
+  return (
+    <TextField
+      ref={ref}
+      type={show ? "text" : "password"}
+      rightSlot={
+        <button
+          type="button"
+          onClick={() => setShow((s) => !s)}
+          aria-label={`${show ? "Hide" : "Show"} ${toggleLabel}`}
+          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+          tabIndex={-1}
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      }
+      {...props}
+    />
   );
 });
 
