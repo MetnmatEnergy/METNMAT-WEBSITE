@@ -1,10 +1,17 @@
-import { isPhotoAvatar, isEmojiAvatar, gradientFor } from "@/frontend/lib/avatar-presets";
+import {
+  isPhotoAvatar,
+  isIllustrationAvatar,
+  illustrationSrc,
+  illustrationLabel,
+  gradientFor,
+} from "@/frontend/lib/avatar-presets";
 import { cn } from "@/frontend/lib/utils";
 
 /**
- * Renders a customer's profile picture: an uploaded photo (data URI), an emoji
- * on a colourful gradient, or — as a fallback — the member's initial. Purely
- * presentational, so it works in server and client components alike.
+ * Renders a customer's profile picture: an uploaded photo (data URI), a bundled
+ * OpenMoji illustration on a colourful gradient, or — as a fallback — the
+ * member's initial. Purely presentational, so it works in server and client
+ * components alike.
  */
 export function Avatar({
   value,
@@ -32,10 +39,11 @@ export function Avatar({
     );
   }
 
-  if (isEmojiAvatar(value)) {
+  if (isIllustrationAvatar(value)) {
     return (
-      <span className={cn(base, "bg-gradient-to-br", gradientFor(value!))} aria-hidden>
-        <span className={cn("leading-none", textClass)}>{value}</span>
+      <span className={cn(base, "bg-gradient-to-br", gradientFor(value!))}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- tiny bundled SVG illustration */}
+        <img src={illustrationSrc(value!)} alt={illustrationLabel(value!)} className="h-[72%] w-[72%] object-contain" />
       </span>
     );
   }

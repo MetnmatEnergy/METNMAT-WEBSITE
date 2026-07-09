@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ImageUp, Trash2 } from "lucide-react";
-import { AVATAR_EMOJIS } from "@/frontend/lib/avatar-presets";
+import { AVATAR_ILLUSTRATIONS } from "@/frontend/lib/avatar-presets";
 import { Avatar } from "./avatar";
 import { cn } from "@/frontend/lib/utils";
 
@@ -95,25 +95,37 @@ export function AvatarPicker({
 
       <p className="mt-4 text-xs font-medium text-muted-foreground">Or pick an illustration</p>
       <div className="mt-2 grid grid-cols-6 gap-2 sm:grid-cols-8">
-        {AVATAR_EMOJIS.map((e) => (
+        {AVATAR_ILLUSTRATIONS.map((a) => (
           <button
-            key={e}
+            key={a.id}
             type="button"
             onClick={() => {
-              onChange(e);
+              onChange(a.id);
               setErr("");
             }}
-            aria-label={`Choose ${e} avatar`}
-            aria-pressed={value === e}
+            aria-label={`Choose ${a.label} avatar`}
+            aria-pressed={value === a.id}
             className={cn(
               "aspect-square rounded-full outline-none transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-brand/60",
-              value === e && "ring-2 ring-brand ring-offset-2 ring-offset-surface",
+              value === a.id && "ring-2 ring-brand ring-offset-2 ring-offset-surface",
             )}
           >
-            <Avatar value={e} sizeClass="h-full w-full" textClass="text-lg" />
+            <Avatar value={a.id} sizeClass="h-full w-full" />
           </button>
         ))}
       </div>
+      <p className="mt-3 text-[11px] text-muted-foreground">
+        Illustrations by{" "}
+        <a
+          href="https://openmoji.org"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          OpenMoji
+        </a>{" "}
+        · CC BY-SA 4.0
+      </p>
     </div>
   );
 }

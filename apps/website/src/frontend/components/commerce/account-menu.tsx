@@ -17,6 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/frontend/lib/utils";
+import { Avatar } from "@/frontend/components/commerce/avatar";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -27,7 +28,7 @@ import {
   DropdownMenuSeparator,
 } from "@/frontend/components/ui/dropdown-menu";
 
-type Me = { name?: string; email?: string; userCode?: string };
+type Me = { name?: string; email?: string; userCode?: string; avatar?: string };
 
 const LINKS = [
   { href: "/account/profile", label: "Profile", icon: UserRound },
@@ -86,8 +87,20 @@ export function AccountMenu({ triggerClassName }: { triggerClassName?: string })
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <button type="button" aria-label="Your account" className={cn(triggerClassName)}>
-          <User className="h-[18px] w-[18px]" />
+        <button
+          type="button"
+          aria-label="Your account"
+          className={cn(
+            me
+              ? "flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ring-1 ring-border transition-transform hover:ring-foreground/25 active:scale-95"
+              : triggerClassName,
+          )}
+        >
+          {me ? (
+            <Avatar value={me.avatar} name={me.name} email={me.email} sizeClass="h-full w-full" textClass="text-sm" />
+          ) : (
+            <User className="h-[18px] w-[18px]" />
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={10} className="w-64">
@@ -97,14 +110,17 @@ export function AccountMenu({ triggerClassName }: { triggerClassName?: string })
           </div>
         ) : me ? (
           <>
-            <DropdownMenuLabel className="flex flex-col gap-1 py-2 normal-case">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Signed in as</span>
-              <span className="truncate text-sm font-semibold text-foreground">{me.name || me.email}</span>
-              {me.userCode ? (
-                <span className="w-fit rounded-full border border-border bg-muted/50 px-2 py-0.5 font-mono text-[11px] font-medium text-foreground/80">
-                  {me.userCode}
-                </span>
-              ) : null}
+            <DropdownMenuLabel className="flex items-center gap-3 py-2 normal-case">
+              <Avatar value={me.avatar} name={me.name} email={me.email} sizeClass="h-10 w-10" textClass="text-base" />
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Signed in as</span>
+                <span className="truncate text-sm font-semibold text-foreground">{me.name || me.email}</span>
+                {me.userCode ? (
+                  <span className="w-fit rounded-full border border-border bg-muted/50 px-2 py-0.5 font-mono text-[11px] font-medium text-foreground/80">
+                    {me.userCode}
+                  </span>
+                ) : null}
+              </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
