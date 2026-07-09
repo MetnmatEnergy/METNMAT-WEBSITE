@@ -14,6 +14,7 @@ export async function GET(): Promise<Response> {
   return NextResponse.json({
     customer: {
       userCode: c.userCode ?? "",
+      avatar: c.avatar ?? "",
       name: c.name ?? "",
       email: c.email ?? "",
       phone: c.phone ?? "",

@@ -26,6 +26,8 @@ export type Customer = {
   id: string;
   /** Permanent METNMAT member id (MNM-U-YY-000000), assigned on signup. */
   userCode?: string;
+  /** Customer-chosen profile picture: an emoji preset or a data-URI photo. */
+  avatar?: string;
   name?: string;
   email?: string;
   phone?: string;

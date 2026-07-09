@@ -11,6 +11,7 @@ export default async function ProfilePage() {
       <ProfileForm
         initial={{
           userCode: customer?.userCode,
+          avatar: customer?.avatar,
           name: customer?.name,
           email: customer?.email,
           phone: customer?.phone,

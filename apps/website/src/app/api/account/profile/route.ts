@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCustomerToken, patchCurrentCustomer } from "@/backend/lib/customer";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
+import { sanitizeAvatar } from "@/frontend/lib/avatar-presets";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,14 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: "Please sign in again." }, { status: 401 });
   }
 
-  let body: { name?: string; phone?: string; company?: string; gstin?: string; role?: string };
+  let body: {
+    name?: string;
+    phone?: string;
+    company?: string;
+    gstin?: string;
+    role?: string;
+    avatar?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -31,6 +39,11 @@ export async function POST(req: Request): Promise<Response> {
   const ROLES = ["", "student", "phd", "faculty", "scientist", "procurement", "industry", "other"];
   const role = ROLES.includes(String(body?.role ?? "")) ? String(body?.role ?? "") : "";
 
+  // Validate the avatar (emoji preset, small data-URI, or "" to clear). An OMITTED
+  // field leaves the picture unchanged (null); an explicit "" clears it; an invalid
+  // value is ignored (null) so it can't overwrite an existing picture with garbage.
+  const avatar = body?.avatar === undefined ? null : sanitizeAvatar(body?.avatar);
+
   const updated = await patchCurrentCustomer({
     name,
     phone: String(body?.phone ?? "").trim(),
@@ -39,6 +52,7 @@ export async function POST(req: Request): Promise<Response> {
     // null (not "") — Payload's select validator rejects "" but accepts null, so
     // this both saves a chosen role and lets a user clear it back to "Not set".
     role: role || null,
+    ...(avatar !== null ? { avatar } : {}),
   });
   // A null here means the save failed upstream (network/CMS), not a bad session —
   // don't mislead the user into re-logging in.

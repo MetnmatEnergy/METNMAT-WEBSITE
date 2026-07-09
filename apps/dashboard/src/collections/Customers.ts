@@ -158,6 +158,16 @@ export const Customers: CollectionConfig = {
       admin: { readOnly: true, description: "Google profile photo (optional)." },
     },
     {
+      // Customer-chosen profile picture, set on the storefront account page: an
+      // emoji preset (a few bytes) or a small resized data-URI photo. Size-capped
+      // so it can't bloat the record. Distinct from the Google-managed avatarUrl.
+      name: "avatar",
+      type: "text",
+      label: "Profile picture",
+      maxLength: 300000,
+      admin: { readOnly: true, description: "Emoji preset or small data-URI photo (self-set)." },
+    },
+    {
       name: "addresses",
       type: "array",
       labels: { singular: "Address", plural: "Addresses" },

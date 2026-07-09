@@ -6,6 +6,8 @@ import { Loader2, Check, Copy, Pencil, X } from "lucide-react";
 import { Card } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
 import { TextField, SelectField } from "@/frontend/components/ui/field";
+import { Avatar } from "@/frontend/components/commerce/avatar";
+import { AvatarPicker } from "@/frontend/components/commerce/avatar-picker";
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Role (optional)" },
@@ -20,6 +22,7 @@ const ROLE_OPTIONS: { value: string; label: string }[] = [
 
 type Initial = {
   userCode?: string;
+  avatar?: string;
   name?: string;
   email?: string;
   phone?: string;
@@ -34,6 +37,7 @@ const emptyFrom = (i: Initial) => ({
   company: i.company || "",
   gstin: i.gstin || "",
   role: i.role || "",
+  avatar: i.avatar || "",
 });
 
 /** Read-only "label + value" row shown in view mode. */
@@ -63,7 +67,6 @@ export function ProfileForm({ initial }: { initial: Initial }) {
     };
 
   const displayName = (form.name || initial.name || initial.email || "").trim();
-  const avatarInitial = displayName.charAt(0).toUpperCase() || "?";
   const roleLabel = form.role ? ROLE_OPTIONS.find((r) => r.value === form.role)?.label : undefined;
 
   const copyCode = async () => {
@@ -140,12 +143,14 @@ export function ProfileForm({ initial }: { initial: Initial }) {
       {/* Identity: avatar + permanent member id */}
       <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span
-            aria-hidden
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand/70 font-display text-lg font-bold text-white shadow-sm"
-          >
-            {avatarInitial}
-          </span>
+          <Avatar
+            value={form.avatar}
+            name={displayName}
+            email={initial.email}
+            sizeClass="h-11 w-11"
+            textClass="text-lg"
+            className="shadow-sm"
+          />
           <div className="min-w-0">
             {initial.userCode ? (
               <>
@@ -176,6 +181,14 @@ export function ProfileForm({ initial }: { initial: Initial }) {
 
       {editing ? (
         <form onSubmit={save} noValidate className="mt-5 grid gap-4">
+          <AvatarPicker
+            value={form.avatar}
+            name={displayName}
+            onChange={(v) => {
+              setForm((f) => ({ ...f, avatar: v }));
+              setMsg(null);
+            }}
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField label="Full name" value={form.name} onChange={set("name")} error={nameError} autoComplete="name" />
             <TextField
