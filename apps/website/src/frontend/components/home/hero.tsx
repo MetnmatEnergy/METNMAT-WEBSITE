@@ -4,6 +4,7 @@ import { Button } from "@/frontend/components/ui/button";
 import { Badge } from "@/frontend/components/ui/badge";
 import AnimatedTextCycle from "@/frontend/components/ui/animated-text-cycle";
 import { ProductMosaic } from "@/frontend/components/home/product-mosaic";
+import { HeroStats } from "@/frontend/components/home/hero-stats";
 import { hero as phHero, stats as phStats, type Stat } from "@/frontend/lib/placeholder";
 import type { Homepage } from "@/frontend/lib/cms";
 
@@ -77,16 +78,7 @@ export function Hero({
             </Button>
           </div>
 
-          <dl className="mt-8 grid max-w-xl grid-cols-2 gap-x-4 gap-y-6 border-t border-border pt-6 sm:grid-cols-3 sm:gap-x-6 lg:mt-10">
-            {stats.map((s) => (
-              <div key={s.label} className="flex flex-col">
-                <dt className="font-display text-2xl font-bold leading-none tracking-tight tabular-nums sm:text-3xl lg:text-4xl">
-                  {s.value}
-                </dt>
-                <dd className="mt-2 text-xs leading-snug text-muted-foreground">{s.label}</dd>
-              </div>
-            ))}
-          </dl>
+          <HeroStats stats={stats} />
         </div>
 
         {/* Right: auto-scrolling product mosaic (live featured products) */}
