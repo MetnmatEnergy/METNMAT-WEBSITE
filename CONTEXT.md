@@ -3,7 +3,10 @@
 > **New session? Read this file and you have everything.** It is the one-stop brief for
 > understanding the project, running it locally, and shipping changes live. Deeper detail
 > lives in `HANDOVER.md`, `ENVIRONMENT_VARIABLES.md`, and `PRODUCTION_AUDIT_REPORT.md`.
-> _Last updated: 2026-07-07 (end of session — everything below is LIVE unless marked open). `main` @ `0f1e973`._
+> _Last updated: 2026-07-09 (end of session — everything below is LIVE unless marked open). `main` @ `5325c30`; prod **website `metnmat-website-00192-cwj` / dashboard `metnmat-dashboard-00102-zhn`**._
+>
+> **Shipped 2026-07-09 (all live) — storefront account, checkout & services push:**
+> **(1) Customer member codes** `MNM-U-YY-000001` — atomic per-year Mongo `$inc` counter (`Counters` collection + `hooks/customer-code.ts`), immutable, backfilled for existing customers in `seed.ts`. **(2) Pro researcher signup** — optional Role select + Institution; **two-pane auth redesign** (`commerce/auth-card.tsx`); shared form primitives (`ui/field.tsx`). **(3) Profile view/edit mode** + **Google-style profile picture** — the avatar has a camera badge → Radix **modal** (`commerce/avatar-modal.tsx` + `ui/dialog.tsx`): 48 bundled **Noto-Emoji** illustrations (`public/avatars/*.svg`, Apache-2.0, NOTICE+LICENSE included) + photo upload (client-resized 256px JPEG) + take-a-picture; **saves INSTANTLY** via `POST /api/account/avatar` (a PARTIAL patch — only the picture, never other fields); appears in profile card, account header, AND the site-header account menu. **(4) Header account dropdown** (`commerce/account-menu.tsx` + `ui/dropdown-menu.tsx`, Radix) — state fetched CLIENT-side (`/api/account/me`) so the shared server header stays static-prerenderable. **(5) Checkout**: internationalized labels (PIN/ZIP, Town/City, Phone/landline) + **flag + searchable dial-code country picker** (`commerce/country-picker.tsx`, synced two-ways with shipping) + marketplace order summary. **(6) Services**: GSAP **fanned card deck** (`ui/card-fan-carousel.tsx`, needs `gsap`) replaced the ExpandingCards showcase (now-unused `ui/expand-cards.tsx`). Security surface (customer codes atomicity/immutability, avatar data-URI XSS + partial-save, static-prerender preservation) was adversarially reviewed via Workflows. **Verification gotcha:** the dev preview never hydrated client JS this session — everything was verified via SSR curl/DOM-eval + direct API calls + review workflows, NOT interactive preview clicks.
 >
 > **Shipped since 2026-07-04 (all live):** flat "M" brand favicon (site + admin); brand-colour
 > social links + Amazon storefront (top bar + footer); second email mk@metnmat.com; 3 offices
@@ -177,20 +180,28 @@ verify via curl/a11y-snapshot/computed styles, or restart the preview server.
 
 ## 7. Open / optional items
 
-**▶ DO FIRST — user approved (2026-07-07): disable the duplicate website Cloud Build
-trigger.** There are TWO triggers deploying the same website Cloud Run service on
-every push: the canonical `metnmat-website-auto-deploy` (uses committed
-`cloudbuild.website.deploy.yaml`) and a wizard-generated duplicate
-`rmgpgab-metnmat-website-asia-south1-MetnmatEnergy-METNMAT-WExqs` (no config file).
-Both build, then race on the deploy step — one loses ~every other push (proven:
-false-alarm FAILUREs on several pushes this session; the winner always deploys the
-same commit so the live site stayed correct, but it's doubled cost + noisy alarms).
-The user asked to disable it; the auto-mode classifier blocked it as shared-infra —
-run it WITH the user's ok (or they run it themselves):
-```
-gcloud builds triggers update github "rmgpgab-metnmat-website-asia-south1-MetnmatEnergy-METNMAT-WExqs" --region=global --disabled
-```
-Leave the dashboard's `rmgpgab-…-dashboard-…` trigger alone — it's the dashboard's only pipeline.
+**▶ DO FIRST — disable the duplicate website Cloud Build trigger (STILL PENDING).**
+TWO triggers deploy the same website Cloud Run service on every push: the canonical
+`metnmat-website-auto-deploy` (committed `cloudbuild.website.deploy.yaml`) and a
+wizard-generated duplicate `rmgpgab-metnmat-website-asia-south1-MetnmatEnergy-METNMAT-WExqs`
+(no config file). Both build, then race on deploy → wasted builds + occasional
+false-alarm FAILUREs (live site always correct — winner deploys the same commit).
+**Attempted repeatedly, could not do it from the shell:** the `--disabled` flag does
+NOT exist on this `gcloud` (use `gcloud beta builds triggers export|import` with a
+`disabled: true` line); the deployer SA (`metnmat-deployer@`) can EXPORT but lacks
+trigger-EDIT permission; the `energy@metnmat.com` account needs interactive
+`gcloud auth login`. **Easiest fix — the user does it: GCP Console → Cloud Build →
+Triggers (region: global) → `…WExqs` → ⋮ → Disable.** Leave the dashboard
+`rmgpgab-…-dashboard-…` trigger alone.
+
+**Account/checkout follow-ups offered this session (optional):** desktop webcam
+capture for the avatar "Take a picture" (currently a mobile `capture` input; desktop
+falls back to file picker); more avatar illustrations (`AVATAR_ILLUSTRATIONS` +
+`public/avatars/`); decouple phone-country from shipping-country on checkout
+(currently SYNCED per an earlier request); guaranteed flag *images* on Windows for
+the dial-code picker (emoji flags render as 2-letter codes on Windows desktop).
+Note: any customer who set an OLD emoji avatar renders their initial until they
+re-pick (the switch to illustration ids replaced emoji values).
 
 Other open / optional:
 - Confirm live Google OAuth consent once (prod redirect URI
