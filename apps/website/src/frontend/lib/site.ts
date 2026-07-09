@@ -9,7 +9,7 @@ export const site = {
   // Product "seller" and the Razorpay payment modal. The CMS `company.legalName`
   // global overrides this at runtime (see seed.ts) — keep both in sync.
   legalName: "METNMAT INNOVATIONS PRIVATE LIMITED",
-  tagline: "India's private Metallurgy & Materials R&D",
+  tagline: "Research. Design. Build. Scale.",
   url: "https://www.metnmat.com",
   description:
     "Metallurgy & materials R&D — lab-scale prototype to full industrial scale.",

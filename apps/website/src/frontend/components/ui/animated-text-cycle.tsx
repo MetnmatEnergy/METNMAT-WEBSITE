@@ -8,6 +8,12 @@ interface AnimatedTextCycleProps {
   words: string[];
   interval?: number;
   className?: string;
+  /**
+   * Classes for the outer wrapper. Defaults to reserving ~2 lines for headline
+   * use (so long words wrap without shifting the page). Pass e.g. "block
+   * whitespace-nowrap" for a single-line pill/badge that shouldn't reserve height.
+   */
+  wrapperClassName?: string;
 }
 
 /**
@@ -20,6 +26,7 @@ export default function AnimatedTextCycle({
   words,
   interval = 5000,
   className = "",
+  wrapperClassName = "block min-h-[2.3em]",
 }: AnimatedTextCycleProps) {
   const [index, setIndex] = useState(0);
   const reduce = useReducedMotion();
@@ -38,8 +45,7 @@ export default function AnimatedTextCycle({
   };
 
   return (
-    // Reserve ~2 lines so a long word can wrap without clipping or shifting the page.
-    <span className="block min-h-[2.3em]">
+    <span className={wrapperClassName}>
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
           key={index}

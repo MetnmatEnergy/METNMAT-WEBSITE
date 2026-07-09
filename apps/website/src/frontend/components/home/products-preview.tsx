@@ -12,7 +12,7 @@ export async function ProductsPreview() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <SectionHeading
             eyebrow="Shop"
-            title="Lab-grade products"
+            title="High Quality Research Grade Products"
             description="Featured items from the catalog. Replace with real products or wire to the API."
           />
           <Button href="/shop" variant="outline" size="sm">

@@ -44,19 +44,21 @@ export type BlogPost = {
 
 /** Hero headline split so the last line can use the brand gradient. */
 export const hero = {
-  eyebrow: "India's private Metallurgy & Materials R&D",
+  eyebrow: "Research. Design. Build. Scale.",
   titleLead: "Turning materials science into",
   titleAccent: "industrial advantage",
   subtitle:
-    "Customized turnkey R&D solutions for metallurgy & materials industries — from lab-scale prototype to full industrial scale, making your process cheaper, cleaner and stronger.",
+    "METNMAT delivers end-to-end R&D, deep-technology development, and engineered systems across materials science, manufacturing, industrial processes, electrochemistry, sustainable technologies, and energy — from lab scale to pilot validation and industrial deployment.",
   primaryCta: { label: "Explore METNMAT", href: "/services" },
   secondaryCta: { label: "Shop Now", href: "/shop" },
 };
 
 export const stats: Stat[] = [
-  { value: "100+", label: "R&D projects delivered" },
-  { value: "2018", label: "Innovating since" },
-  { value: "91–93%", label: "IACS conductivity" },
+  { value: "100+", label: "Industrial R&D projects delivered" },
+  { value: "250+", label: "Satisfied customers" },
+  { value: "200+", label: "Products in catalogue" },
+  { value: "15+", label: "Countries served" },
+  { value: "1–9", label: "TRL span, idea to production" },
 ];
 
 // Clients / partners (from the company site).

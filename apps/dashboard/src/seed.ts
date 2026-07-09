@@ -640,6 +640,44 @@ async function dropFirstFromLegacyCopy(payload: Payload): Promise<void> {
 }
 
 /**
+ * One-shot rebrand (2026-07-09): the homepage hero was seeded with the old
+ * "India's private…" positioning. Move any still-default Homepage global forward
+ * to the new copy — eyebrow → the "Research. Design. Build. Scale." tagline, the
+ * new company-description subtitle, and the 5-stat band. Exact-match only, so a
+ * value a staffer has customised in the admin is never overwritten. Reads the
+ * NEW values from seedHomepage so this stays a single source of truth.
+ */
+async function rebrandHomepageCopy(payload: Payload): Promise<void> {
+  const OLD_EYEBROW = "India's private Metallurgy & Materials R&D";
+  const OLD_SUBTITLE =
+    "Customized turnkey R&D solutions for metallurgy & materials industries — from lab-scale prototype to full industrial scale, making your process cheaper, cleaner and stronger.";
+  const OLD_STATS = [
+    { value: "100+", label: "R&D projects delivered" },
+    { value: "2018", label: "Innovating since" },
+    { value: "91–93%", label: "IACS conductivity" },
+  ];
+  const statKey = (arr?: { value?: string; label?: string }[]) =>
+    JSON.stringify((arr ?? []).map((s) => [s.value, s.label]));
+  try {
+    const hp = (await payload.findGlobal({ slug: "homepage" })) as {
+      eyebrow?: string;
+      subtitle?: string;
+      stats?: { value?: string; label?: string }[];
+    };
+    const data: Record<string, unknown> = {};
+    if (hp?.eyebrow === OLD_EYEBROW) data.eyebrow = seedHomepage.eyebrow;
+    if (hp?.subtitle === OLD_SUBTITLE) data.subtitle = seedHomepage.subtitle;
+    if (statKey(hp?.stats) === statKey(OLD_STATS)) data.stats = seedHomepage.stats;
+    if (Object.keys(data).length) {
+      await payload.updateGlobal({ slug: "homepage", data });
+      payload.logger.info(`[seed] homepage rebrand: updated ${Object.keys(data).join(", ")}.`);
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] homepage rebrand failed: ${(e as Error).message}`);
+  }
+}
+
+/**
  * Default the homepage "Featured case study" to the Microstructure Control &
  * Heat Treatment project (the case study with a cover image, so a real photo
  * shows on the home page). Sets the relationship while it's empty, and does a
@@ -1100,7 +1138,7 @@ export async function seed(payload: Payload): Promise<void> {
   }
   payload.logger.info(`[seed] Products: ${created} created, ${updated} updated.`);
 
-  await payload.updateGlobal({ slug: "company", data: { name: "METNMAT", legalName: "METNMAT INNOVATIONS PRIVATE LIMITED", tagline: "India's private Metallurgy & Materials R&D", description: "METNMAT supplies electrochemistry lab equipment — electrodes, membranes, cells, reactors, equipment and accessories — and turnkey materials R&D from prototype to industrial scale.", foundedYear: 2018 } });
+  await payload.updateGlobal({ slug: "company", data: { name: "METNMAT", legalName: "METNMAT INNOVATIONS PRIVATE LIMITED", tagline: "Research. Design. Build. Scale.", description: "METNMAT supplies electrochemistry lab equipment — electrodes, membranes, cells, reactors, equipment and accessories — and turnkey materials R&D from prototype to industrial scale.", foundedYear: 2018 } });
   await payload.updateGlobal({ slug: "contact", data: { email: "contact@metnmat.com", email2: "mk@metnmat.com", phone: "+91 78726 86501", whatsapp: "+91 78726 86501", shippingNote: "Shipping across India & worldwide · ISO-aligned R&D", addresses: [{ label: "West Bengal", line: "Howrah, West Bengal, India" }] } });
   await payload.updateGlobal({ slug: "social", data: { linkedin: "https://in.linkedin.com/company/metnmat", youtube: "https://www.youtube.com/@metnmatresearchinnovations628", facebook: "https://www.facebook.com/metnmat", amazon: "https://www.amazon.in/l/27943762031?ie=UTF8&marketplaceID=A21TJRUUN4KGV&me=AV4YEPJ3X45CF" } });
   await payload.updateGlobal({ slug: "seo", data: { defaultTitle: "METNMAT — Electrochemical Systems | Reference Electrodes | metnmat.com", titleTemplate: "%s · METNMAT", description: "Electrodes, membranes, electrochemical cells, reactors & lab equipment for research — plus turnkey materials R&D." } });
@@ -1110,6 +1148,7 @@ export async function seed(payload: Payload): Promise<void> {
 
   // 6) Legacy copy fix-ups (exact-match, one-shot).
   await dropFirstFromLegacyCopy(payload);
+  await rebrandHomepageCopy(payload);
 
   // 7) Default the homepage featured case study (only while unset).
   await ensureHomepageFeaturedProject(payload);

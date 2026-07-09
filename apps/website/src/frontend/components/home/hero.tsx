@@ -7,6 +7,19 @@ import { ProductMosaic } from "@/frontend/components/home/product-mosaic";
 import { hero as phHero, stats as phStats, type Stat } from "@/frontend/lib/placeholder";
 import type { Homepage } from "@/frontend/lib/cms";
 
+// The product-mosaic badge cycles the "research grade" positioning. The first
+// phrase is the static rename of the old "Lab-grade products" pill (so it reads
+// correctly on first paint), then it rotates through the research-credibility
+// taglines from the brief.
+const RESEARCH_BADGE_PHRASES = [
+  "High Quality Research Grade Products",
+  "Made by researchers, for researchers",
+  "Engineered for the lab",
+  "Trusted in 15+ countries",
+  "Research Grade",
+  "Published, peer-reviewed results",
+];
+
 export function Hero({
   hero = phHero,
   stats = phStats,
@@ -64,7 +77,7 @@ export function Hero({
             </Button>
           </div>
 
-          <dl className="mt-8 grid max-w-lg grid-cols-3 gap-x-4 border-t border-border pt-6 sm:gap-x-6 lg:mt-10">
+          <dl className="mt-8 grid max-w-xl grid-cols-2 gap-x-4 gap-y-6 border-t border-border pt-6 sm:grid-cols-3 sm:gap-x-6 lg:mt-10">
             {stats.map((s) => (
               <div key={s.label} className="flex flex-col">
                 <dt className="font-display text-2xl font-bold leading-none tracking-tight tabular-nums sm:text-3xl lg:text-4xl">
@@ -84,9 +97,13 @@ export function Hero({
             <Globe className="h-4 w-4 text-brand" />
             Shipping worldwide
           </div>
-          <div className="absolute -bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground shadow-lg">
-            <BadgeCheck className="h-4 w-4 text-brand" />
-            Lab-grade products
+          <div className="absolute -bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-card-foreground shadow-lg">
+            <BadgeCheck className="h-4 w-4 shrink-0 text-brand" />
+            <AnimatedTextCycle
+              words={RESEARCH_BADGE_PHRASES}
+              interval={2600}
+              wrapperClassName="block whitespace-nowrap"
+            />
           </div>
         </div>
       </Container>

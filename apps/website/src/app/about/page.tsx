@@ -101,7 +101,7 @@ export default async function AboutPage() {
           </Reveal>
 
           <Reveal delay={0.2}>
-            <dl className="mx-auto mt-14 grid max-w-2xl grid-cols-3 gap-x-6 border-t border-border pt-6">
+            <dl className="mx-auto mt-14 grid max-w-2xl grid-cols-2 gap-x-6 gap-y-6 border-t border-border pt-6 sm:grid-cols-3">
               {stats.map((s) => (
                 <div key={s.label}>
                   <dt className="font-display text-2xl font-bold tracking-tight tabular-nums sm:text-3xl lg:text-4xl">
