@@ -4,7 +4,7 @@ import { Container } from "@/frontend/components/ui/container";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { ServiceCardStack, type ServiceStackItem } from "@/frontend/components/ui/service-card-stack";
-import { ExpandingCards, type ExpandCard } from "@/frontend/components/ui/expand-cards";
+import CardFanCarousel, { type CardItem } from "@/frontend/components/ui/card-fan-carousel";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 import { getServices } from "@/frontend/lib/cms";
@@ -45,14 +45,16 @@ const APPROACH: { icon: LucideIcon; step: string; title: string; body: string }[
 export default async function ServicesPage() {
   const services = await getServices();
 
-  // Showcase = the headline services (capped so the expanding row stays usable).
-  const showcase: ExpandCard[] = services.slice(0, 8).map((s) => ({
-    title: s.title,
-    summary: s.summary,
-    href: `/services#${s.slug}`,
-    icon: s.icon,
-    image: SERVICE_IMAGES[s.slug],
-  }));
+  // Showcase = the headline services as a fanned card deck (capped at 8).
+  const fanCards: CardItem[] = services
+    .slice(0, 8)
+    .map((s) => ({
+      imgUrl: SERVICE_IMAGES[s.slug],
+      alt: s.title,
+      title: s.title,
+      linkUrl: `/services#${s.slug}`,
+    }))
+    .filter((c) => Boolean(c.imgUrl));
 
   const detailCards: ServiceStackItem[] = services.map((s) => {
     const detail = SERVICE_DETAILS[s.slug];
@@ -98,13 +100,12 @@ export default async function ServicesPage() {
         bordered={false}
       />
 
-      {/* Expanding showcase — hover or focus a card to explore it (taps & stacks on mobile). */}
-      {showcase.length > 0 && (
-        <section className="section pt-0">
-          <Container>
-            <h2 className="sr-only">Our services</h2>
-            <ExpandingCards items={showcase} />
-          </Container>
+      {/* Fanned service deck — hover to spread the cards; tap a card to jump to
+          that service's detail. Arrows/dots paginate the 8 disciplines. */}
+      {fanCards.length > 0 && (
+        <section className="section pt-0" aria-label="Our services">
+          <h2 className="sr-only">Our services</h2>
+          <CardFanCarousel cards={fanCards} />
         </section>
       )}
 
