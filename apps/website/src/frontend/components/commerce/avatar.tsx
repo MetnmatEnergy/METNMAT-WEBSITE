@@ -9,7 +9,7 @@ import { cn } from "@/frontend/lib/utils";
 
 /**
  * Renders a customer's profile picture: an uploaded photo (data URI), a bundled
- * OpenMoji illustration on a colourful gradient, or — as a fallback — the
+ * Noto Emoji illustration on a colourful gradient, or — as a fallback — the
  * member's initial. Purely presentational, so it works in server and client
  * components alike.
  */

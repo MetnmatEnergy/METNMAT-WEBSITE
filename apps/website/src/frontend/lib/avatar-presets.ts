@@ -2,13 +2,14 @@
  * Profile-picture presets. A stored avatar value is one of:
  *   - "" / undefined         → no picture; render the member's initial
  *   - a `data:image/…` URI   → a photo the customer uploaded (resized client-side)
- *   - an illustration id      → a bundled OpenMoji illustration (see /public/avatars)
+ *   - an illustration id      → a bundled Noto Emoji illustration (see /public/avatars)
  *
- * The illustrations are OpenMoji (openmoji.org), CC BY-SA 4.0 — flat, colourful
- * vector art self-hosted under /avatars/<id>.svg (id = the emoji's lowercase
- * codepoint), so they render identically on every device and satisfy the CSP
- * (same-origin images). Google's own profile illustrations are proprietary and
- * can't be reused, so we ship this open, illustration-style gallery instead.
+ * The illustrations are Google Noto Emoji, Apache-2.0 (see
+ * /public/avatars/NOTICE.txt) — flat, colourful vector art self-hosted under
+ * /avatars/<id>.svg (id = the emoji's lowercase codepoint), so they render
+ * identically on every device and satisfy the CSP (same-origin images). Google's
+ * own *profile* illustrations are proprietary and can't be reused, so we ship
+ * this open, illustration-style gallery instead.
  */
 
 export const AVATAR_ILLUSTRATIONS: { id: string; label: string }[] = [

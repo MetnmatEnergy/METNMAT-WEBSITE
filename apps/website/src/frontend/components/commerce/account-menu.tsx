@@ -70,6 +70,17 @@ export function AccountMenu({ triggerClassName }: { triggerClassName?: string })
     };
   }, []);
 
+  // Reflect an avatar change made on the profile page instantly (same tab), so
+  // the header picture updates without a reload.
+  React.useEffect(() => {
+    function onAvatar(e: Event) {
+      const v = (e as CustomEvent<string>).detail;
+      setMe((m) => (m ? { ...m, avatar: v } : m));
+    }
+    window.addEventListener("mm:avatar-updated", onAvatar);
+    return () => window.removeEventListener("mm:avatar-updated", onAvatar);
+  }, []);
+
   async function signOut() {
     setSigningOut(true);
     try {

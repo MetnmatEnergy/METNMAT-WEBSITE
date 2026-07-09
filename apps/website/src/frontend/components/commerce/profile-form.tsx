@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Check, Copy, Pencil, X } from "lucide-react";
+import { Loader2, Check, Copy, Pencil, X, Camera } from "lucide-react";
 import { Card } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
 import { TextField, SelectField } from "@/frontend/components/ui/field";
 import { Avatar } from "@/frontend/components/commerce/avatar";
-import { AvatarPicker } from "@/frontend/components/commerce/avatar-picker";
+import { AvatarModal } from "@/frontend/components/commerce/avatar-modal";
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Role (optional)" },
@@ -37,7 +37,6 @@ const emptyFrom = (i: Initial) => ({
   company: i.company || "",
   gstin: i.gstin || "",
   role: i.role || "",
-  avatar: i.avatar || "",
 });
 
 /** Read-only "label + value" row shown in view mode. */
@@ -54,6 +53,9 @@ export function ProfileForm({ initial }: { initial: Initial }) {
   const router = useRouter();
   const [editing, setEditing] = React.useState(false);
   const [form, setForm] = React.useState(emptyFrom(initial));
+  // Avatar is independent of the form: it saves instantly from the picker modal.
+  const [avatar, setAvatar] = React.useState(initial.avatar || "");
+  const [avatarOpen, setAvatarOpen] = React.useState(false);
   const [nameError, setNameError] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
@@ -143,14 +145,24 @@ export function ProfileForm({ initial }: { initial: Initial }) {
       {/* Identity: avatar + permanent member id */}
       <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar
-            value={form.avatar}
-            name={displayName}
-            email={initial.email}
-            sizeClass="h-11 w-11"
-            textClass="text-lg"
-            className="shadow-sm"
-          />
+          <button
+            type="button"
+            onClick={() => setAvatarOpen(true)}
+            aria-label="Change profile picture"
+            className="group relative shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
+          >
+            <Avatar
+              value={avatar}
+              name={displayName}
+              email={initial.email}
+              sizeClass="h-14 w-14"
+              textClass="text-xl"
+              className="shadow-sm"
+            />
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-foreground text-surface shadow-sm transition-colors group-hover:bg-brand">
+              <Camera className="h-3 w-3" />
+            </span>
+          </button>
           <div className="min-w-0">
             {initial.userCode ? (
               <>
@@ -181,14 +193,6 @@ export function ProfileForm({ initial }: { initial: Initial }) {
 
       {editing ? (
         <form onSubmit={save} noValidate className="mt-5 grid gap-4">
-          <AvatarPicker
-            value={form.avatar}
-            name={displayName}
-            onChange={(v) => {
-              setForm((f) => ({ ...f, avatar: v }));
-              setMsg(null);
-            }}
-          />
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField label="Full name" value={form.name} onChange={set("name")} error={nameError} autoComplete="name" />
             <TextField
@@ -257,6 +261,17 @@ export function ProfileForm({ initial }: { initial: Initial }) {
           )}
         </div>
       )}
+
+      <AvatarModal
+        open={avatarOpen}
+        onOpenChange={setAvatarOpen}
+        value={avatar}
+        name={displayName}
+        onSaved={(v) => {
+          setAvatar(v);
+          router.refresh();
+        }}
+      />
     </Card>
   );
 }
