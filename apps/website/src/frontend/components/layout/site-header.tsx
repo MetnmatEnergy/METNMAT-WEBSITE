@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Search, User } from "lucide-react";
+import { Search } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
+import { AccountMenu } from "@/frontend/components/commerce/account-menu";
 import { Logo } from "@/frontend/components/layout/logo";
 import { NavLinks } from "@/frontend/components/layout/nav-links";
 import { MobileNav } from "@/frontend/components/layout/mobile-nav";
@@ -36,11 +37,10 @@ export async function SiteHeader() {
             <Search className="h-[18px] w-[18px]" />
           </Link>
 
-          {/* Account + wishlist — sm and up */}
+          {/* Account + wishlist — sm and up. The account icon opens a dropdown
+              (identity + quick links, or sign in) instead of a bare link. */}
           <span className="hidden items-center gap-1 sm:flex">
-            <Link href="/account" aria-label="Your account" className={iconLink}>
-              <User className="h-[18px] w-[18px]" />
-            </Link>
+            <AccountMenu triggerClassName={iconLink} />
             <WishlistBadgeButton />
           </span>
 
