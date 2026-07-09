@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { Loader2, Check, Copy, Pencil, X, Camera } from "lucide-react";
 import { Card } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
-import { TextField, SelectField } from "@/frontend/components/ui/field";
+import { TextField, SelectField, Label } from "@/frontend/components/ui/field";
 import { Avatar } from "@/frontend/components/commerce/avatar";
 import { AvatarModal } from "@/frontend/components/commerce/avatar-modal";
+import { CountryPicker } from "@/frontend/components/commerce/country-picker";
+import { parseStoredPhone, composePhone, isIndiaName } from "@/frontend/lib/countries";
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "Role (optional)" },
@@ -31,13 +33,19 @@ type Initial = {
   role?: string;
 };
 
-const emptyFrom = (i: Initial) => ({
-  name: i.name || "",
-  phone: i.phone || "",
-  company: i.company || "",
-  gstin: i.gstin || "",
-  role: i.role || "",
-});
+const emptyFrom = (i: Initial) => {
+  // Phone is edited as (country dial code) + local number, but stored as one
+  // joined string (e.g. "+91 9876543210"). Split it back apart for the editor.
+  const { country, local } = parseStoredPhone(i.phone);
+  return {
+    name: i.name || "",
+    phone: local,
+    country,
+    company: i.company || "",
+    gstin: i.gstin || "",
+    role: i.role || "",
+  };
+};
 
 /** Read-only "label + value" row shown in view mode. */
 function ViewRow({ label, value }: { label: string; value?: string }) {
@@ -67,6 +75,16 @@ export function ProfileForm({ initial }: { initial: Initial }) {
       if (k === "name") setNameError("");
       setMsg(null);
     };
+
+  const setCountry = (name: string) => {
+    setForm((f) => ({ ...f, country: name }));
+    setMsg(null);
+  };
+  // Keep only digits, spaces and dashes — the dialing code comes from the picker.
+  const setPhone = (v: string) => {
+    setForm((f) => ({ ...f, phone: v.replace(/[^\d\s-]/g, "") }));
+    setMsg(null);
+  };
 
   const displayName = (form.name || initial.name || initial.email || "").trim();
   const roleLabel = form.role ? ROLE_OPTIONS.find((r) => r.value === form.role)?.label : undefined;
@@ -108,7 +126,15 @@ export function ProfileForm({ initial }: { initial: Initial }) {
       const res = await fetch("/api/account/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, name: form.name.trim() }),
+        body: JSON.stringify({
+          name: form.name.trim(),
+          // Re-join the picker's country with the local number into one stored
+          // value (e.g. "+91 9876543210"); "" when no number was entered.
+          phone: composePhone(form.country, form.phone),
+          company: form.company,
+          gstin: form.gstin,
+          role: form.role,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data?.success) {
@@ -204,7 +230,29 @@ export function ProfileForm({ initial }: { initial: Initial }) {
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField label="Phone" value={form.phone} onChange={set("phone")} autoComplete="tel" inputMode="tel" />
+            <div className="grid gap-1.5">
+              <Label htmlFor="profile-phone">Phone</Label>
+              {/* Dial-code picker + local number so customers in any country can
+                  enter their phone (mirrors the checkout phone field). */}
+              <div className="flex items-stretch rounded-lg border border-input bg-surface transition-colors focus-within:border-brand focus-within:ring-2 focus-within:ring-ring/30">
+                <CountryPicker
+                  variant="compact"
+                  value={form.country}
+                  onChange={setCountry}
+                  ariaLabel="Country dialing code"
+                />
+                <input
+                  id="profile-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel-national"
+                  className="w-full bg-transparent px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                  placeholder={isIndiaName(form.country) ? "10-digit mobile / landline" : "Local phone number"}
+                  value={form.phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+            </div>
             <TextField
               label="Institution / Company"
               value={form.company}
@@ -249,7 +297,7 @@ export function ProfileForm({ initial }: { initial: Initial }) {
           <div className="grid gap-5 sm:grid-cols-2">
             <ViewRow label="Full name" value={form.name} />
             <ViewRow label="Email" value={initial.email} />
-            <ViewRow label="Phone" value={form.phone} />
+            <ViewRow label="Phone" value={composePhone(form.country, form.phone)} />
             <ViewRow label="Institution / Company" value={form.company} />
             <ViewRow label="Role" value={roleLabel} />
             <ViewRow label="GSTIN" value={form.gstin} />

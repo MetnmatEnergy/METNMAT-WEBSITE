@@ -230,3 +230,50 @@ export const flagFor = (iso2: string): string =>
   /^[A-Za-z]{2}$/.test(iso2)
     ? iso2.toUpperCase().replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)))
     : "";
+
+/**
+ * A few dial codes are shared by more than one country (US/Canada = +1,
+ * Russia/Kazakhstan = +7). When we only have the bare code to go on, resolve to
+ * the primary country rather than whichever happens to sort first alphabetically.
+ */
+const PRIMARY_BY_DIAL: Record<string, string> = { "1": "United States", "7": "Russia" };
+
+/**
+ * Split a stored phone string back into a country + local number for editing.
+ * Numbers are stored as "<dial> <local>" (e.g. "+91 9876543210"); we match the
+ * LONGEST dial-code prefix so specific NANP codes (+1268) beat the shared "+1".
+ * A value with no leading "+" (legacy data) is treated as a local Indian number —
+ * India is the storefront's default market.
+ */
+export function parseStoredPhone(stored?: string | null): { country: string; local: string } {
+  const raw = (stored ?? "").trim();
+  if (raw.startsWith("+")) {
+    const digits = raw.replace(/\D/g, "");
+    let best: Country | undefined;
+    let bestLen = 0;
+    for (const c of COUNTRIES) {
+      const code = c.dial.replace(/\D/g, "");
+      if (code && digits.startsWith(code) && code.length > bestLen) {
+        best = c;
+        bestLen = code.length;
+      }
+    }
+    if (best) {
+      const matched = digits.slice(0, bestLen);
+      const country = (PRIMARY_BY_DIAL[matched] && countryByName(PRIMARY_BY_DIAL[matched])) || best;
+      return { country: country.name, local: digits.slice(bestLen) };
+    }
+  }
+  return { country: "India", local: raw.replace(/^\+/, "").trim() };
+}
+
+/**
+ * Join a picker country + local number back into the stored form ("+91 9876543210").
+ * Returns "" when there's no local number, so we never persist a bare dial code.
+ */
+export function composePhone(country: string, local: string): string {
+  const trimmed = (local ?? "").trim();
+  if (!trimmed) return "";
+  const dial = dialFor(country);
+  return dial ? `${dial} ${trimmed}` : trimmed;
+}
