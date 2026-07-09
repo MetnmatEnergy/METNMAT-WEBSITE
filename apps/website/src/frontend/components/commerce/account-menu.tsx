@@ -30,11 +30,11 @@ import {
 type Me = { name?: string; email?: string; userCode?: string };
 
 const LINKS = [
-  { href: "/account", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/account/profile", label: "Profile", icon: UserRound },
   { href: "/account/orders", label: "Orders", icon: Package },
   { href: "/account/rfq", label: "My RFQs / Quotes", icon: FileText },
   { href: "/account/addresses", label: "Addresses", icon: MapPin },
-  { href: "/account/profile", label: "Profile", icon: UserRound },
+  { href: "/account", label: "Dashboard", icon: LayoutDashboard },
   { href: "/wishlist", label: "Wishlist", icon: Heart },
 ];
 

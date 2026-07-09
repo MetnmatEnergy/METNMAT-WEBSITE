@@ -6,11 +6,11 @@ import { LayoutDashboard, Package, FileText, MapPin, User, Heart, LogOut } from 
 import { cn } from "@/frontend/lib/utils";
 
 const links = [
-  { href: "/account", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/account/profile", label: "Profile", icon: User },
   { href: "/account/orders", label: "Orders", icon: Package },
   { href: "/account/rfq", label: "My RFQs / Quotes", icon: FileText },
   { href: "/account/addresses", label: "Addresses", icon: MapPin },
-  { href: "/account/profile", label: "Profile", icon: User },
+  { href: "/account", label: "Dashboard", icon: LayoutDashboard },
   { href: "/wishlist", label: "Wishlist", icon: Heart },
 ];
 
