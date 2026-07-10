@@ -305,10 +305,16 @@ export const Customers: CollectionConfig = {
             ).docs[0];
 
           let user = await findByEmail();
+          // True only when THIS request created the account — the website uses it
+          // to onboard a brand-new Google customer into choosing a password. A
+          // repeat Google sign-in, or a link onto an existing account, must not
+          // re-trigger that.
+          let created = false;
 
           if (!user) {
             // New Google account. Random password = valid account with no known
-            // local password; the user can set one later via /forgot.
+            // local password; `authProvider: "google"` marks it as password-less
+            // until the customer sets one (which flips it to "linked").
             try {
               user = await payload.create({
                 collection: "customers",
@@ -323,6 +329,7 @@ export const Customers: CollectionConfig = {
                   ...(avatarUrl ? { avatarUrl } : {}),
                 },
               });
+              created = true;
             } catch (createErr) {
               // A concurrent first login raced us to create this email (the auth
               // email field is unique). Re-find and link instead of 500-ing.
@@ -355,10 +362,77 @@ export const Customers: CollectionConfig = {
             secret: payload.secret,
             tokenExpiration: collectionConfig.auth.tokenExpiration,
           });
-          return Response.json({ token, exp });
+          return Response.json({ token, exp, created });
         } catch (e) {
           payload.logger.error(`[customers/oauth] ${(e as Error).message}`);
           return Response.json({ error: "OAuth login failed" }, { status: 500 });
+        }
+      },
+    },
+
+    /**
+     * Add a password to a Google-only account, so the customer can afterwards
+     * sign in EITHER with Google or with email + password (`authProvider` →
+     * "linked"). `authProvider` is a staff-only field, so the customer's own JWT
+     * cannot flip it — this runs with overrideAccess instead.
+     *
+     * Guarded by the same session-grade key as /oauth. The `authProvider ===
+     * "google"` precondition is load-bearing: it means the endpoint can only ever
+     * ADD a password where none was ever chosen. Without it, a leaked key would be
+     * an account-takeover primitive against every customer.
+     *
+     * The CALLER (website) is responsible for authenticating the customer and
+     * passing their own id — it never accepts an id from the browser.
+     */
+    {
+      path: "/set-password",
+      method: "post",
+      handler: async (req) => {
+        const { payload } = req;
+        const providedKey = req.headers.get("x-internal-key");
+        const dedicatedKey = process.env.CMS_OAUTH_KEY;
+        const keyOk = dedicatedKey
+          ? safeKeyEqual(providedKey, dedicatedKey)
+          : safeKeyEqual(providedKey, process.env.INTERNAL_API_KEY);
+        if (!keyOk) {
+          payload.logger.warn("[customers/set-password] unauthorized: x-internal-key missing/mismatched");
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        let body: { customerId?: string; password?: string };
+        try {
+          body = ((await req.json?.()) ?? {}) as typeof body;
+        } catch {
+          return Response.json({ error: "Invalid request" }, { status: 400 });
+        }
+        const customerId = String(body.customerId ?? "").trim();
+        const password = String(body.password ?? "");
+        if (!customerId || password.length < 8) {
+          return Response.json({ error: "Invalid request" }, { status: 400 });
+        }
+
+        try {
+          const user = await payload
+            .findByID({ collection: "customers", id: customerId, depth: 0, overrideAccess: true })
+            .catch(() => null);
+          if (!user) return Response.json({ error: "Not found" }, { status: 404 });
+
+          if ((user as { authProvider?: string }).authProvider !== "google") {
+            // Already has a password of their own — changing it must go through
+            // /api/account/password, which verifies the current one.
+            return Response.json({ error: "A password is already set." }, { status: 409 });
+          }
+
+          await payload.update({
+            collection: "customers",
+            id: customerId,
+            overrideAccess: true,
+            data: { password, authProvider: "linked" },
+          });
+          return Response.json({ success: true });
+        } catch (e) {
+          payload.logger.error(`[customers/set-password] ${(e as Error).message}`);
+          return Response.json({ error: "Couldn't set the password" }, { status: 500 });
         }
       },
     },

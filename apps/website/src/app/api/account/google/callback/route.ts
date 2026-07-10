@@ -76,13 +76,20 @@ export async function GET(req: Request): Promise<Response> {
       }),
       cache: "no-store",
     });
-    const data = (await r.json().catch(() => ({}))) as { token?: string; exp?: number };
+    const data = (await r.json().catch(() => ({}))) as { token?: string; exp?: number; created?: boolean };
     if (!r.ok || !data.token) {
       console.error(`[google/callback] CMS oauth mint failed status=${r.status}`);
       return fail("google");
     }
 
-    const res = finish(NextResponse.redirect(new URL(redirectTo, siteBase())));
+    // A brand-new Google account has no password of its own. Offer to set one, so
+    // the customer can later sign in either way — then carry on to where they were
+    // headed. Only on the FIRST sign-in; repeat logins go straight through.
+    const destination = data.created
+      ? `/set-password?next=${encodeURIComponent(redirectTo)}`
+      : redirectTo;
+
+    const res = finish(NextResponse.redirect(new URL(destination, siteBase())));
     const maxAge = data.exp ? Math.max(60, data.exp - Math.floor(Date.now() / 1000)) : undefined;
     res.cookies.set(CUSTOMER_COOKIE, data.token, cookieOptions(maxAge));
     return res;

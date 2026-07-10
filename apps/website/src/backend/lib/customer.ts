@@ -40,6 +40,12 @@ export type Customer = {
   gstin?: string;
   /** Self-selected audience role: student | phd | faculty | scientist | procurement | industry | other. */
   role?: string;
+  /**
+   * How they sign in. "google" means the account was created via Google and has
+   * NO password the customer chose (the CMS seeded a random one) — that's the
+   * signal to offer "set a password". "linked" = password + Google both work.
+   */
+  authProvider?: "local" | "google" | "linked";
   addresses?: Address[];
 };
 
