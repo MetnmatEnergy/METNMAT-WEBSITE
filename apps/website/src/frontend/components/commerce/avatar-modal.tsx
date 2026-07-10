@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ImageUp, Camera, Trash2, Loader2 } from "lucide-react";
 import { AVATAR_ILLUSTRATIONS } from "@/frontend/lib/avatar-presets";
+import { CameraCapture, cameraSupported } from "./camera-capture";
 import { Avatar } from "./avatar";
 import {
   Dialog,
@@ -56,17 +57,34 @@ export function AvatarModal({
 }) {
   const [saving, setSaving] = React.useState(false);
   const [err, setErr] = React.useState("");
+  const [mode, setMode] = React.useState<"picker" | "camera">("picker");
   const uploadRef = React.useRef<HTMLInputElement>(null);
   const cameraRef = React.useRef<HTMLInputElement>(null);
 
   // The modal stays mounted (Radix only toggles the portal), so clear any stale
-  // error/busy state each time it opens.
+  // error/busy state each time it opens — and never reopen straight into the
+  // camera, which would grab the webcam without the customer asking.
   React.useEffect(() => {
     if (open) {
       setErr("");
       setSaving(false);
+      setMode("picker");
+    } else {
+      // Unmounts CameraCapture, whose cleanup stops the stream.
+      setMode("picker");
     }
   }, [open]);
+
+  /**
+   * Prefer the in-page camera (works on laptops, tablets and phones alike). Where
+   * getUserMedia isn't available — an insecure context, or an old browser — fall
+   * back to the OS camera app via the `capture` file input.
+   */
+  function startCamera() {
+    setErr("");
+    if (cameraSupported()) setMode("camera");
+    else cameraRef.current?.click();
+  }
 
   async function save(next: string) {
     setSaving(true);
@@ -112,10 +130,21 @@ export function AvatarModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Profile picture</DialogTitle>
-          <DialogDescription>Pick an illustration or add your own — it updates everywhere.</DialogDescription>
+          <DialogTitle>{mode === "camera" ? "Take a picture" : "Profile picture"}</DialogTitle>
+          <DialogDescription>
+            {mode === "camera"
+              ? "Line yourself up, then capture. Nothing is uploaded until you choose “Use photo”."
+              : "Pick an illustration or add your own — it updates everywhere."}
+          </DialogDescription>
         </DialogHeader>
 
+        {mode === "camera" ? (
+          <>
+            <CameraCapture busy={saving} onCancel={() => setMode("picker")} onCapture={(uri) => void save(uri)} />
+            {err ? <p className="text-center text-xs text-brand">{err}</p> : null}
+          </>
+        ) : (
+          <>
         <div className="flex justify-center py-1">
           <Avatar value={value} name={name} sizeClass="h-20 w-20" textClass="text-3xl" className="shadow" />
         </div>
@@ -124,7 +153,7 @@ export function AvatarModal({
           <button type="button" onClick={() => uploadRef.current?.click()} disabled={saving} className={actionBtn}>
             <ImageUp className="h-4 w-4" /> Upload from device
           </button>
-          <button type="button" onClick={() => cameraRef.current?.click()} disabled={saving} className={actionBtn}>
+          <button type="button" onClick={startCamera} disabled={saving} className={actionBtn}>
             <Camera className="h-4 w-4" /> Take a picture
           </button>
           {value ? (
@@ -164,11 +193,13 @@ export function AvatarModal({
           </div>
         </div>
 
-        {saving ? (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
-          </p>
-        ) : null}
+            {saving ? (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
+              </p>
+            ) : null}
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

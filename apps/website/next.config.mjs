@@ -22,11 +22,19 @@ const CHATBOT_ORIGIN = process.env.NEXT_PUBLIC_CHATBOT_URL || "http://localhost:
 const RAZORPAY_SCRIPT = "https://checkout.razorpay.com";
 const RAZORPAY_CONNECT = "https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com";
 
+// Next's DEV server compiles with eval() (HMR / React Refresh). Without
+// 'unsafe-eval' the chunks download but never execute, so the page renders from
+// SSR HTML and NEVER hydrates — every button is inert and nothing interactive can
+// be tested locally. Production builds don't use eval, so this stays dev-only and
+// the shipped policy is unchanged.
+const DEV = process.env.NODE_ENV !== "production";
+const DEV_EVAL = DEV ? " 'unsafe-eval'" : "";
+
 // Content Security Policy. 'unsafe-inline' is required by the pre-paint theme
 // script and Next's inline runtime; harden to nonce-based CSP later.
 const ContentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${CHATBOT_ORIGIN} ${RAZORPAY_SCRIPT}`,
+  `script-src 'self' 'unsafe-inline'${DEV_EVAL} ${CHATBOT_ORIGIN} ${RAZORPAY_SCRIPT}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${CMS_ORIGIN} ${STORAGE_ORIGINS} ${UNSPLASH_ORIGIN} ${CHATBOT_ORIGIN}`,
   "font-src 'self' data:",
@@ -44,9 +52,12 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // geolocation=(self): the account address form's "Use my current location"
-  // button needs same-origin geolocation (the browser still prompts the user).
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self), browsing-topics=()" },
+  // Same-origin allow-lists — the browser STILL prompts the user in each case.
+  //  camera=(self):      the profile picture "Take a picture" webcam capture.
+  //                      Without this getUserMedia is rejected before any prompt.
+  //  geolocation=(self): the account address form's "Use my current location".
+  // microphone stays denied — nothing on the site records audio.
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(self), browsing-topics=()" },
   { key: "X-DNS-Prefetch-Control", value: "on" },
 ];
 
