@@ -573,7 +573,10 @@ const createParticles = (
       const alpha = data[index + 3];
 
       if (alpha > 0) {
-        const originalAlpha = alpha / 255 * (sampleRate / currentDPR);
+        // Full per-pixel opacity (anti-aliased edges preserved via `alpha/255`),
+        // so the reformed text is crisp and solid — matching the static fallback.
+        // The original DPR-based reduction washed the text out to a faded grey.
+        const originalAlpha = alpha / 255;
         const particle: Particle = {
           x,
           y,

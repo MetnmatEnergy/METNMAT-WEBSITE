@@ -55,11 +55,20 @@ export function Hero({
             />
           </Badge>
 
-          {/* Brand tagline as the headline — two-tone (accent line in the brand
-              gradient). Static, so nothing reserves extra vertical space. */}
+          {/* Brand tagline as the headline — one word per line (a stacked
+              wordmark), accent words in the brand gradient. Static, so nothing
+              reserves extra vertical space. */}
           <h1 className="mt-4 font-display text-5xl font-bold leading-[1.02] tracking-tight sm:mt-5 sm:text-6xl lg:text-7xl">
-            {hero.titleLead}
-            <span className="block bg-brand-text bg-clip-text text-transparent">{hero.titleAccent}</span>
+            {hero.titleLead.split(/\s+/).filter(Boolean).map((w, i) => (
+              <span key={`lead-${i}`} className="block">
+                {w}
+              </span>
+            ))}
+            {hero.titleAccent.split(/\s+/).filter(Boolean).map((w, i) => (
+              <span key={`accent-${i}`} className="block bg-brand-text bg-clip-text text-transparent">
+                {w}
+              </span>
+            ))}
           </h1>
 
           <p className="mt-5 max-w-xl text-base leading-relaxed text-foreground/70 sm:mt-6 sm:text-lg">
