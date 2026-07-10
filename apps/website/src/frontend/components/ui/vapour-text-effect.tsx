@@ -656,7 +656,9 @@ const updateParticles = (
         particle.x += particle.velocityX * deltaTime * 20;
         particle.y += particle.velocityY * deltaTime * 10;
 
-        const baseFadeRate = 0.25;
+        // Higher base rate → dispersing particles fade out quickly instead of
+        // lingering as a wide, unreadable "dust cloud", so the dissolve reads smooth.
+        const baseFadeRate = 0.6;
         const durationBasedFadeRate = baseFadeRate * (2000 / VAPORIZE_DURATION);
 
         particle.opacity = Math.max(0, particle.opacity - deltaTime * durationBasedFadeRate);

@@ -92,9 +92,11 @@ function VaporSlot({ stats, slot, style }: { stats: Stat[]; slot: number; style:
           color={style.color}
           alignment="left"
           direction="left-to-right"
-          spread={4}
-          density={6}
-          animation={{ vaporizeDuration: 1.6, fadeInDuration: 0.8, waitDuration: 1.6 }}
+          spread={2.5}
+          density={5}
+          // Number stays solid & readable most of the cycle (long wait), then a
+          // brief, gentle dissolve + smooth reform — pleasant, not a lingering scatter.
+          animation={{ vaporizeDuration: 1, fadeInDuration: 1, waitDuration: 3.4 }}
           onTextChange={setIdx}
           tag={Tag.P}
         />
