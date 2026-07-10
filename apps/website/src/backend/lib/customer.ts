@@ -13,12 +13,17 @@ export const CUSTOMER_COOKIE = "mm-customer";
 export type Address = {
   id?: string;
   label?: string;
+  name?: string;
+  phone?: string;
   line1?: string;
-  line2?: string;
+  line2?: string; // locality
+  landmark?: string;
+  altPhone?: string;
   city?: string;
   state?: string;
   pincode?: string;
   country?: string;
+  addressType?: "home" | "work" | "";
   isDefault?: boolean;
 };
 

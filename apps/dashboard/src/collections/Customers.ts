@@ -179,17 +179,46 @@ export const Customers: CollectionConfig = {
             { name: "isDefault", type: "checkbox", label: "Default", admin: { width: "40%" } },
           ],
         },
-        { name: "line1", type: "text", label: "Address line 1" },
-        { name: "line2", type: "text", label: "Address line 2" },
         {
           type: "row",
           fields: [
-            { name: "city", type: "text", admin: { width: "33%" } },
+            { name: "name", type: "text", label: "Recipient name", admin: { width: "50%" } },
+            { name: "phone", type: "text", label: "Mobile number", admin: { width: "50%" } },
+          ],
+        },
+        { name: "line1", type: "text", label: "Address (area & street)" },
+        { name: "line2", type: "text", label: "Locality" },
+        {
+          type: "row",
+          fields: [
+            { name: "city", type: "text", label: "City / District / Town", admin: { width: "33%" } },
             { name: "state", type: "text", admin: { width: "33%" } },
             { name: "pincode", type: "text", admin: { width: "34%" } },
           ],
         },
-        { name: "country", type: "text", defaultValue: "India" },
+        {
+          type: "row",
+          fields: [
+            { name: "landmark", type: "text", label: "Landmark", admin: { width: "50%" } },
+            { name: "altPhone", type: "text", label: "Alternate phone", admin: { width: "50%" } },
+          ],
+        },
+        {
+          type: "row",
+          fields: [
+            { name: "country", type: "text", defaultValue: "India", admin: { width: "50%" } },
+            {
+              name: "addressType",
+              type: "select",
+              label: "Address type",
+              options: [
+                { label: "Home", value: "home" },
+                { label: "Work", value: "work" },
+              ],
+              admin: { width: "50%" },
+            },
+          ],
+        },
       ],
     },
   ],

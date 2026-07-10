@@ -6,12 +6,17 @@ export const dynamic = "force-dynamic";
 
 const clean = (a: Address): Address => ({
   label: String(a?.label ?? "").trim(),
+  name: String(a?.name ?? "").trim(),
+  phone: String(a?.phone ?? "").trim(),
   line1: String(a?.line1 ?? "").trim(),
-  line2: String(a?.line2 ?? "").trim(),
+  line2: String(a?.line2 ?? "").trim(), // locality
+  landmark: String(a?.landmark ?? "").trim(),
+  altPhone: String(a?.altPhone ?? "").trim(),
   city: String(a?.city ?? "").trim(),
   state: String(a?.state ?? "").trim(),
   pincode: String(a?.pincode ?? "").trim(),
   country: String(a?.country ?? "India").trim() || "India",
+  addressType: a?.addressType === "home" || a?.addressType === "work" ? a.addressType : "",
   isDefault: !!a?.isDefault,
 });
 
