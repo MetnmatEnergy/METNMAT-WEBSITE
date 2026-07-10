@@ -41,6 +41,7 @@ export async function GET(req: Request): Promise<Response> {
       principalSubdivision?: string;
       postcode?: string;
       countryName?: string;
+      countryCode?: string;
     };
     return NextResponse.json({
       city: String(d?.city || d?.locality || "").trim(),
@@ -48,6 +49,7 @@ export async function GET(req: Request): Promise<Response> {
       pincode: String(d?.postcode || "").trim(),
       locality: String(d?.locality || "").trim(),
       country: String(d?.countryName || "").trim(),
+      countryCode: String(d?.countryCode || "").trim(),
     });
   } catch {
     return NextResponse.json({ error: "Lookup failed." }, { status: 502 });

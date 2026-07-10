@@ -41,10 +41,16 @@ export async function POST(req: Request): Promise<Response> {
   if (!Array.isArray(body?.addresses)) {
     return NextResponse.json({ error: "Invalid addresses." }, { status: 400 });
   }
-  // Keep only addresses with at least a line1; enforce a single default.
+  // Keep only addresses with at least a line1, then enforce EXACTLY one default:
+  // the first one flagged, or — when none is (the customer deleted or unchecked
+  // the default) — the first address. Checkout reads the default first, so a list
+  // with no default at all must never be persisted.
   let addresses = body.addresses.map(clean).filter((a) => a.line1);
-  const firstDefault = addresses.findIndex((a) => a.isDefault);
-  addresses = addresses.map((a, i) => ({ ...a, isDefault: i === firstDefault }));
+  if (addresses.length > 0) {
+    const flagged = addresses.findIndex((a) => a.isDefault);
+    const defaultIdx = flagged === -1 ? 0 : flagged;
+    addresses = addresses.map((a, i) => ({ ...a, isDefault: i === defaultIdx }));
+  }
 
   const updated = await patchCurrentCustomer({ addresses });
   if (!updated) {

@@ -211,15 +211,41 @@ export const COUNTRIES: Country[] = [
 ];
 
 const BY_NAME = new Map(COUNTRIES.map((c) => [c.name.toLowerCase(), c]));
+const BY_ISO2 = new Map(COUNTRIES.map((c) => [c.iso2.toLowerCase(), c]));
 
 /** Look up a country by its (case-insensitive) name. */
 export const countryByName = (name: string): Country | undefined =>
   BY_NAME.get(name.trim().toLowerCase());
 
+/**
+ * Look up a country by its ISO-3166 alpha-2 code (e.g. "IN" → India). Used to
+ * resolve the reverse-geocode result reliably — provider country *names* vary
+ * ("United States of America" vs our "United States"), but the code never does.
+ */
+export const countryByIso2 = (iso2?: string | null): Country | undefined =>
+  iso2 ? BY_ISO2.get(iso2.trim().toLowerCase()) : undefined;
+
 /** International dialing code for a country name (e.g. "India" → "+91"). */
 export const dialFor = (name: string): string => countryByName(name)?.dial ?? "";
 
 export const isIndiaName = (name: string): boolean => name.trim().toLowerCase() === "india";
+
+/** Just the digits of a phone/postal string. */
+export const digitsOf = (raw: string): string => (raw ?? "").replace(/\D/g, "");
+
+/** Indian mobile numbers are exactly 10 digits and start with 6–9. */
+export const INDIAN_MOBILE = /^[6-9]\d{9}$/;
+
+/**
+ * Coerce whatever a customer types or pastes ("+91 98765 43210", "098765 43210",
+ * "+919876543210") down to the bare 10-digit number an Indian address stores.
+ * Without this, pasting a number with its country code fails the 10-digit check.
+ */
+export function toIndianMobile(raw: string): string {
+  let d = digitsOf(raw).replace(/^0+/, "");
+  if (d.length > 10 && d.startsWith("91")) d = d.slice(2);
+  return d.slice(0, 10);
+}
 
 /**
  * Emoji flag for an ISO-3166 alpha-2 code (e.g. "IN" → 🇮🇳), built from the two

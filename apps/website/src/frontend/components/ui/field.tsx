@@ -126,18 +126,21 @@ export const SelectField = React.forwardRef<HTMLSelectElement, SelectFieldProps>
 ) {
   const autoId = React.useId();
   const selectId = id || autoId;
+  const errId = error ? `${selectId}-err` : undefined;
   return (
     <div className="grid gap-1.5">
       {label ? <Label htmlFor={selectId}>{label}</Label> : null}
       <select
         ref={ref}
         id={selectId}
-        className={cn(fieldClass, "cursor-pointer appearance-none bg-[right_0.75rem_center] pr-9", className)}
+        className={cn(fieldClass, "cursor-pointer appearance-none bg-[right_0.75rem_center] pr-9", error && "border-brand focus:border-brand", className)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={errId}
         {...props}
       >
         {children}
       </select>
-      {error ? <FieldError>{error}</FieldError> : hint ? (
+      {error ? <FieldError id={errId}>{error}</FieldError> : hint ? (
         <span className="text-xs text-muted-foreground">{hint}</span>
       ) : null}
     </div>

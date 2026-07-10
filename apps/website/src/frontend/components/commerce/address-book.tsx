@@ -5,7 +5,14 @@ import { Loader2, Plus, Trash2, Check, MapPin, Pencil, X, LocateFixed, Home, Bri
 import { Button } from "@/frontend/components/ui/button";
 import { TextField, SelectField, Label, FieldError, fieldClass } from "@/frontend/components/ui/field";
 import { CountryPicker } from "@/frontend/components/commerce/country-picker";
-import { isIndiaName } from "@/frontend/lib/countries";
+import {
+  isIndiaName,
+  countryByIso2,
+  countryByName,
+  digitsOf,
+  toIndianMobile,
+  INDIAN_MOBILE,
+} from "@/frontend/lib/countries";
 import { INDIAN_STATES, matchIndianState } from "@/frontend/lib/india-states";
 import { cn } from "@/frontend/lib/utils";
 
@@ -38,19 +45,37 @@ function AddressForm({
   value,
   forceDefault,
   saving,
+  serverError,
   onSave,
   onCancel,
 }: {
   value: Address;
   forceDefault: boolean;
   saving: boolean;
+  /** Failure from the last save attempt — shown next to the submit button. */
+  serverError?: string;
   onSave: (a: Address) => void;
   onCancel: () => void;
 }) {
-  const [f, setF] = React.useState<Address>({ ...value });
+  // Normalise legacy stored numbers ("+91 9876543210") to the bare 10 digits the
+  // India field expects — but only when that actually yields a valid mobile, so a
+  // genuinely odd value is left intact for validation to flag rather than mangled.
+  const [f, setF] = React.useState<Address>(() => {
+    const init = { ...value };
+    if (isIndiaName(init.country || "India")) {
+      const tidy = (v?: string) => {
+        const n = toIndianMobile(v || "");
+        return INDIAN_MOBILE.test(n) ? n : v || "";
+      };
+      init.phone = tidy(init.phone);
+      init.altPhone = tidy(init.altPhone);
+    }
+    return init;
+  });
   const [errs, setErrs] = React.useState<Record<string, string>>({});
   const [locating, setLocating] = React.useState(false);
   const [locMsg, setLocMsg] = React.useState("");
+  const [pinMsg, setPinMsg] = React.useState("");
   const lastPin = React.useRef<string>("");
 
   const india = isIndiaName(f.country || "India");
@@ -61,33 +86,57 @@ function AddressForm({
   };
 
   const setCountry = (name: string) => {
-    setF((p) => ({ ...p, country: name, state: isIndiaName(name) ? matchIndianState(p.state) : (p.state || "") }));
+    setPinMsg("");
+    setErrs((e) => ({ ...e, pincode: "", phone: "", altPhone: "", state: "" }));
+    setF((p) => {
+      const toIndia = isIndiaName(name);
+      return {
+        ...p,
+        country: name,
+        state: toIndia ? matchIndianState(p.state) : p.state || "",
+        // An India pincode is digits-only; a foreign postal code may be alphanumeric.
+        pincode: toIndia ? digitsOf(p.pincode || "").slice(0, 6) : p.pincode || "",
+      };
+    });
   };
 
-  // India pincode → city + state (only fills empty fields, so it never clobbers edits).
-  const lookupPincode = async (pin: string) => {
-    if (!india || !/^\d{6}$/.test(pin) || lastPin.current === pin) return;
-    lastPin.current = pin;
+  // India pincode → district (city) + state via India Post. Only fills fields the
+  // customer left empty, so it never clobbers what they typed.
+  const applyPincode = React.useCallback(async (pin: string): Promise<void> => {
     try {
       const res = await fetch(`/api/geocode/pincode?pin=${pin}`);
       const d = await res.json();
-      if (res.ok && d?.found) {
+      if (!res.ok) return; // rate-limited / upstream down — stay quiet, they can type it
+      if (d?.found) {
         setF((p) => ({
           ...p,
           city: p.city || String(d.city || ""),
           state: p.state || matchIndianState(d.state),
         }));
+        setPinMsg("");
+      } else {
+        setPinMsg("We couldn't find that pincode — please fill City and State below.");
       }
     } catch {
-      /* silent — user can type it manually */
+      /* silent — the customer can type city/state manually */
+    }
+  }, []);
+
+  const onPincode = (raw: string) => {
+    // India: 6 digits. Elsewhere postal codes are alphanumeric ("SW1A 1AA", "K1A 0B1").
+    const next = india
+      ? digitsOf(raw).slice(0, 6)
+      : raw.replace(/[^A-Za-z0-9 -]/g, "").toUpperCase().slice(0, 12);
+    set("pincode", next);
+    setPinMsg("");
+    if (india && next.length === 6 && lastPin.current !== next) {
+      lastPin.current = next;
+      void applyPincode(next);
     }
   };
 
-  const onPincode = (raw: string) => {
-    const digits = raw.replace(/[^\d]/g, "").slice(0, india ? 6 : 12);
-    set("pincode", digits);
-    if (india && digits.length === 6) void lookupPincode(digits);
-  };
+  const onPhone = (k: "phone" | "altPhone") => (raw: string) =>
+    set(k, india ? toIndianMobile(raw) : raw.replace(/[^\d\s+-]/g, "").slice(0, 20));
 
   const useMyLocation = () => {
     setLocMsg("");
@@ -102,17 +151,38 @@ function AddressForm({
           const res = await fetch(`/api/geocode/reverse?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`);
           const d = await res.json();
           if (res.ok) {
-            setF((p) => {
-              const isIn = isIndiaName(p.country || "India");
-              return {
-                ...p,
-                pincode: String(d.pincode || p.pincode || ""),
-                city: String(d.city || p.city || ""),
-                state: (isIn ? matchIndianState(d.state) : String(d.state || "")) || p.state || "",
-                line2: p.line2 || String(d.locality || ""),
-              };
-            });
-            setLocMsg("Filled from your location — please double-check the details.");
+            // Resolve the detected country to a canonical entry — ISO code is
+            // exact, the name is a fallback — then keep the current value if the
+            // provider gave us nothing usable. Setting this is what flips the form
+            // into the right mode (India → State dropdown + pincode autofill).
+            const detected = countryByIso2(d.countryCode)?.name || countryByName(String(d.country || ""))?.name || "";
+            const country = detected || f.country || "India";
+            const isIn = isIndiaName(country);
+            const pin = String(d.pincode || "");
+            const city = String(d.city || "");
+            const locality = String(d.locality || "");
+            setPinMsg("");
+            setF((p) => ({
+              ...p,
+              country,
+              pincode: pin || p.pincode || "",
+              city: city || p.city || "",
+              state: (isIn ? matchIndianState(d.state) : String(d.state || "")) || p.state || "",
+              // The provider often echoes the city back as the locality (Mumbai/Mumbai).
+              // Filling both with the same word looks broken — leave Locality for them.
+              line2: p.line2 || (locality && locality !== city ? locality : ""),
+            }));
+            // Reverse geocoding rarely returns a postcode in India; when it does,
+            // India Post gives the canonical district + state.
+            if (isIn && /^\d{6}$/.test(pin)) {
+              lastPin.current = pin;
+              await applyPincode(pin);
+            }
+            setLocMsg(
+              isIn && !pin
+                ? "Filled from your location — add your pincode to complete the address."
+                : "Filled from your location — please double-check the details.",
+            );
           } else {
             setLocMsg(d?.error || "Couldn't detect your location.");
           }
@@ -131,14 +201,37 @@ function AddressForm({
     );
   };
 
+  /** Comparable identity of a number, so "+91 98765 43210" and "9876543210" match. */
+  const phoneKey = (raw: string): string => (india ? toIndianMobile(raw) : digitsOf(raw));
+
+  /** Valid if it's a real Indian mobile (India) or 6–15 digits (elsewhere). */
+  const badPhone = (raw: string): boolean => {
+    if (india) return !INDIAN_MOBILE.test(toIndianMobile(raw));
+    const d = digitsOf(raw);
+    return d.length < 6 || d.length > 15;
+  };
+
   const validate = (): boolean => {
     const e: Record<string, string> = {};
     if (!f.name?.trim()) e.name = "Enter the recipient's name.";
-    const phone = (f.phone || "").replace(/\D/g, "");
-    if (!phone) e.phone = "Enter a mobile number.";
-    else if (india && phone.length !== 10) e.phone = "Enter a 10-digit mobile number.";
-    if (!f.pincode?.trim()) e.pincode = "Enter a pincode.";
-    else if (india && !/^\d{6}$/.test(f.pincode.trim())) e.pincode = "Enter a valid 6-digit pincode.";
+
+    if (!digitsOf(f.phone || "")) e.phone = "Enter a mobile number.";
+    else if (badPhone(f.phone || ""))
+      e.phone = india ? "Enter a valid 10-digit mobile number starting with 6–9." : "Enter a valid mobile number.";
+
+    // Alternate phone is optional — but if given it must be valid and not a copy.
+    const alt = (f.altPhone || "").trim();
+    if (alt) {
+      if (badPhone(alt)) e.altPhone = india ? "Enter a valid 10-digit mobile number." : "Enter a valid phone number.";
+      else if (phoneKey(alt) === phoneKey(f.phone || ""))
+        e.altPhone = "Alternate phone must be different from the mobile number.";
+    }
+
+    const pin = (f.pincode || "").trim();
+    if (!pin) e.pincode = india ? "Enter a pincode." : "Enter a postal code.";
+    else if (india && !/^\d{6}$/.test(pin)) e.pincode = "Enter a valid 6-digit pincode.";
+    else if (!india && !/^[A-Za-z0-9][A-Za-z0-9 -]{1,11}$/.test(pin)) e.pincode = "Enter a valid postal code.";
+
     if (!f.line2?.trim()) e.line2 = "Enter a locality.";
     if (!f.line1?.trim()) e.line1 = "Enter the address (area & street).";
     if (!f.city?.trim()) e.city = "Enter a city / district / town.";
@@ -150,10 +243,15 @@ function AddressForm({
   const submit = (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!validate()) return;
-    onSave({ ...f, isDefault: forceDefault ? true : !!f.isDefault });
+    // Store the canonical number, not whatever shape it was pasted in.
+    const store = (v?: string) => (india ? toIndianMobile(v || "") : (v || "").trim());
+    onSave({
+      ...f,
+      phone: store(f.phone),
+      altPhone: f.altPhone?.trim() ? store(f.altPhone) : "",
+      isDefault: forceDefault ? true : !!f.isDefault,
+    });
   };
-
-  const phoneClean = (v: string) => v.replace(/[^\d\s+-]/g, "");
 
   return (
     <form onSubmit={submit} noValidate className="rounded-2xl border border-border bg-surface p-4 sm:p-6">
@@ -173,7 +271,7 @@ function AddressForm({
         <TextField
           label="Mobile number"
           value={f.phone || ""}
-          onChange={(e) => set("phone", phoneClean(e.target.value))}
+          onChange={(e) => onPhone("phone")(e.target.value)}
           error={errs.phone}
           inputMode="tel"
           autoComplete="tel"
@@ -188,15 +286,16 @@ function AddressForm({
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <TextField
-          label="Pincode"
+          label={india ? "Pincode" : "ZIP / Postal code"}
           value={f.pincode || ""}
           onChange={(e) => onPincode(e.target.value)}
           error={errs.pincode}
-          inputMode="numeric"
+          hint={india ? pinMsg : undefined}
+          inputMode={india ? "numeric" : "text"}
           autoComplete="postal-code"
           placeholder={india ? "6-digit pincode" : "PIN / ZIP code"}
         />
-        <TextField label="Locality" value={f.line2 || ""} onChange={(e) => set("line2", e.target.value)} error={errs.line2} placeholder="e.g. Andheri West" />
+        <TextField label="Locality" value={f.line2 || ""} onChange={(e) => set("line2", e.target.value)} error={errs.line2} autoComplete="address-line2" placeholder="e.g. Andheri West" />
       </div>
 
       <div className="mt-4 grid gap-1.5">
@@ -207,6 +306,7 @@ function AddressForm({
           className={cn(fieldClass, errs.line1 && "border-brand focus:border-brand", "resize-y")}
           value={f.line1 || ""}
           onChange={(e) => set("line1", e.target.value)}
+          autoComplete="address-line1"
           aria-invalid={errs.line1 ? true : undefined}
         />
         {errs.line1 ? <FieldError>{errs.line1}</FieldError> : null}
@@ -234,8 +334,10 @@ function AddressForm({
           label="Alternate phone"
           labelHint="optional"
           value={f.altPhone || ""}
-          onChange={(e) => set("altPhone", phoneClean(e.target.value))}
+          onChange={(e) => onPhone("altPhone")(e.target.value)}
+          error={errs.altPhone}
           inputMode="tel"
+          autoComplete="tel"
         />
       </div>
 
@@ -266,6 +368,12 @@ function AddressForm({
           Make this my default address
         </label>
       )}
+
+      {serverError ? (
+        <p role="alert" className="mt-5 text-sm text-brand">
+          {serverError}
+        </p>
+      ) : null}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={saving}>
@@ -385,6 +493,7 @@ export function AddressBook({ initial }: { initial: Address[] }) {
   };
 
   const busy = editing !== null || saving;
+  const serverError = msg && !msg.ok ? msg.text : undefined;
 
   return (
     <div className="space-y-4">
@@ -400,8 +509,11 @@ export function AddressBook({ initial }: { initial: Address[] }) {
           <AddressForm
             key={`edit-${i}`}
             value={a}
-            forceDefault={addrs.length === 1}
+            // The only address, or the current default: keep it default. Moving the
+            // default is done deliberately via "Set as default" on another card.
+            forceDefault={addrs.length === 1 || !!a.isDefault}
             saving={saving}
+            serverError={serverError}
             onSave={onSave}
             onCancel={() => setEditing(null)}
           />
@@ -423,6 +535,7 @@ export function AddressBook({ initial }: { initial: Address[] }) {
           value={blankAddress(addrs.length === 0)}
           forceDefault={addrs.length === 0}
           saving={saving}
+          serverError={serverError}
           onSave={onSave}
           onCancel={() => setEditing(null)}
         />
@@ -431,7 +544,11 @@ export function AddressBook({ initial }: { initial: Address[] }) {
           <Button type="button" variant="outline" onClick={() => setEditing("new")}>
             <Plus className="h-4 w-4" /> Add a new address
           </Button>
-          {msg && <span className={`text-sm ${msg.ok ? "text-emerald-600" : "text-brand"}`}>{msg.text}</span>}
+          {msg && (
+            <span role="status" className={`text-sm ${msg.ok ? "text-emerald-600" : "text-brand"}`}>
+              {msg.text}
+            </span>
+          )}
         </div>
       ) : null}
     </div>

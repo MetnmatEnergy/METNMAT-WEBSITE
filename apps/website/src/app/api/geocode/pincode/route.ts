@@ -43,9 +43,13 @@ export async function GET(req: Request): Promise<Response> {
     if (entry?.Status !== "Success" || !po) {
       return NextResponse.json({ found: false });
     }
+    // India Post disambiguates districts that share a name across states by
+    // appending the state code — "Raigarh(MH)" (402104) vs Raigarh in
+    // Chhattisgarh. Strip it so it never lands verbatim in the City field.
+    const city = String(po.District || "").replace(/\s*\([A-Za-z]{2,3}\)\s*$/, "").trim();
     return NextResponse.json({
       found: true,
-      city: String(po.District || "").trim(),
+      city,
       state: String(po.State || "").trim(),
     });
   } catch {
