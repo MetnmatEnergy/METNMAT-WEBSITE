@@ -85,7 +85,7 @@ export async function ProductMosaic() {
   const colB = products.filter((_, i) => i % 2 === 1);
 
   return (
-    <div className="group relative h-[560px] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_8%,black_92%,transparent)] lg:h-[640px] xl:h-[700px]">
+    <div className="group absolute inset-0 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_8%,black_92%,transparent)]">
       <div className="grid grid-cols-2 gap-4">
         <Column items={colA.length ? colA : products} />
         <Column items={colB.length ? colB : products} reverse className="-mt-12" />

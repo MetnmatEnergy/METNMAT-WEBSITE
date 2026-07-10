@@ -44,7 +44,7 @@ export function Hero({
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.35] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
       <div className="bg-hero-glow pointer-events-none absolute inset-0" />
 
-      <Container className="relative grid items-start gap-8 pb-10 pt-6 sm:gap-10 sm:pt-8 lg:grid-cols-2 lg:gap-12 lg:pb-16 lg:pt-10">
+      <Container className="relative grid items-stretch gap-8 pb-10 pt-6 sm:gap-10 sm:pt-8 lg:grid-cols-2 lg:gap-12 lg:pb-12 lg:pt-10">
         {/* Left: copy */}
         <div className="animate-fade-up">
           <Badge variant="dot">
