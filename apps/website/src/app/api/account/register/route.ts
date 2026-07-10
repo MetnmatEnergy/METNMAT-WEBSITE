@@ -59,7 +59,10 @@ export async function POST(req: Request): Promise<Response> {
     const created = (await cr.json().catch(() => ({}))) as { doc?: { userCode?: string } };
     const userCode = created?.doc?.userCode ?? "";
 
-    // Auto sign-in.
+    // Auto sign-in. The account now exists either way, so a failure here must NOT
+    // be reported as a clean success — otherwise the UI says "you're all set",
+    // sends the customer to /account with no cookie, and they bounce to /login
+    // with no explanation. Tell the client whether a session was actually created.
     const lr = await fetch(`${CMS}/api/customers/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -67,11 +70,16 @@ export async function POST(req: Request): Promise<Response> {
       cache: "no-store",
     });
     const ld = (await lr.json().catch(() => ({}))) as { token?: string; exp?: number };
-    const res = NextResponse.json({ success: true, userCode });
-    if (lr.ok && ld?.token) {
-      const maxAge = ld.exp ? Math.max(60, ld.exp - Math.floor(Date.now() / 1000)) : undefined;
-      res.cookies.set(CUSTOMER_COOKIE, ld.token, cookieOptions(maxAge));
+    if (!lr.ok || !ld?.token) {
+      console.error(
+        `[account/register] account created (${userCode || "no code"}) but auto sign-in failed status=${lr.status}`
+      );
+      return NextResponse.json({ success: true, signedIn: false, userCode });
     }
+
+    const res = NextResponse.json({ success: true, signedIn: true, userCode });
+    const maxAge = ld.exp ? Math.max(60, ld.exp - Math.floor(Date.now() / 1000)) : undefined;
+    res.cookies.set(CUSTOMER_COOKIE, ld.token, cookieOptions(maxAge));
     return res;
   } catch {
     return NextResponse.json({ error: "Couldn't create your account right now. Please try again." }, { status: 502 });

@@ -56,21 +56,39 @@ export async function getCustomerToken(): Promise<string | null> {
   return jar.get(CUSTOMER_COOKIE)?.value || null;
 }
 
-/** The signed-in customer, or null. Safe (never throws). */
+/**
+ * The signed-in customer, or null. Safe (never throws).
+ *
+ * A null here signs the customer OUT (the account layout redirects to /login), so
+ * only an *authoritative* answer may return null. A CMS hiccup — a 5xx, a Cloud
+ * Run cold start, a dropped connection — is transient: retry once with a short
+ * backoff rather than throwing the customer back to the sign-in page. Payload's
+ * /me answers 200 with `{user: null}` for a bad or expired token, which IS
+ * authoritative and correctly falls through to null.
+ */
 export async function getCurrentCustomer(): Promise<Customer | null> {
   const token = await getCustomerToken();
   if (!token) return null;
-  try {
-    const res = await fetch(`${CMS}/api/customers/me`, {
-      headers: { Authorization: `JWT ${token}` },
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { user?: Customer | null };
-    return data?.user ?? null;
-  } catch {
-    return null;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 150));
+    try {
+      const res = await fetch(`${CMS}/api/customers/me`, {
+        headers: { Authorization: `JWT ${token}` },
+        cache: "no-store",
+      });
+      // Authoritative: the token was rejected, or accepted and answered.
+      if (res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { user?: Customer | null };
+        return data?.user ?? null;
+      }
+      if (res.status === 401 || res.status === 403) return null;
+      // Anything else (5xx, 429, 502 from a cold start) — transient, retry.
+    } catch {
+      // Network error — transient, retry.
+    }
   }
+  return null;
 }
 
 /** PATCH the current customer's own record (profile / addresses). */

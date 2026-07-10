@@ -106,7 +106,16 @@ function TrustPanel() {
 }
 
 /** Post-registration success — gives the assigned member code a real moment. */
-function CreatedPanel({ userCode, onContinue }: { userCode: string; onContinue: () => void }) {
+function CreatedPanel({
+  userCode,
+  signedIn,
+  onContinue,
+}: {
+  userCode: string;
+  /** False when the account was created but the auto sign-in didn't take. */
+  signedIn: boolean;
+  onContinue: () => void;
+}) {
   const [copied, setCopied] = React.useState(false);
   const copy = async () => {
     try {
@@ -122,10 +131,13 @@ function CreatedPanel({ userCode, onContinue }: { userCode: string; onContinue: 
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
         <Check className="h-6 w-6" />
       </div>
-      <h1 className="mt-4 font-display text-xl font-bold">You&apos;re all set</h1>
+      <h1 className="mt-4 font-display text-xl font-bold">
+        {signedIn ? "You're all set" : "Account created"}
+      </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Your account is ready. This is your permanent METNMAT member ID — keep it handy for quotes and
-        support.
+        {signedIn
+          ? "Your account is ready. This is your permanent METNMAT member ID — keep it handy for quotes and support."
+          : "Your account is ready, but we couldn't sign you in automatically. Please sign in to continue. This is your permanent METNMAT member ID — keep it handy for quotes and support."}
       </p>
       {userCode ? (
         <div className="mt-5 flex items-center justify-center gap-2">
@@ -143,7 +155,7 @@ function CreatedPanel({ userCode, onContinue }: { userCode: string; onContinue: 
         </div>
       ) : null}
       <Button onClick={onContinue} className="mt-6 w-full" size="lg">
-        Continue to your account
+        {signedIn ? "Continue to your account" : "Sign in to continue"}
       </Button>
     </div>
   );
@@ -162,7 +174,7 @@ export function AuthCard() {
   const [showPw, setShowPw] = React.useState(false);
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  const [created, setCreated] = React.useState<string | null>(null);
+  const [created, setCreated] = React.useState<{ userCode: string; signedIn: boolean } | null>(null);
 
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -222,12 +234,19 @@ export function AuthCard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = (await res.json().catch(() => ({}))) as { success?: boolean; userCode?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        signedIn?: boolean;
+        userCode?: string;
+        error?: string;
+      };
       if (res.ok && data?.success) {
         if (mode === "register") {
-          // Show the assigned member code before moving on.
+          // Show the assigned member code before moving on. `signedIn` tells us
+          // whether a session actually exists — if not, send them to sign in
+          // rather than bouncing off the account gate.
           setLoading(false);
-          setCreated(data.userCode || "");
+          setCreated({ userCode: data.userCode || "", signedIn: data.signedIn !== false });
           return;
         }
         router.push(redirectTo);
@@ -242,6 +261,14 @@ export function AuthCard() {
   }
 
   function continueAfterSignup() {
+    if (created && !created.signedIn) {
+      // No session was established — the account gate would just bounce them.
+      setCreated(null);
+      switchMode("login");
+      setForm((f) => ({ ...f, password: "" }));
+      setError("Your account was created. Please sign in to continue.");
+      return;
+    }
     router.push(redirectTo);
     router.refresh();
   }
@@ -257,7 +284,7 @@ export function AuthCard() {
       <div className="order-1 lg:order-2">
         <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm sm:p-8">
           {created !== null ? (
-            <CreatedPanel userCode={created} onContinue={continueAfterSignup} />
+            <CreatedPanel userCode={created.userCode} signedIn={created.signedIn} onContinue={continueAfterSignup} />
           ) : (
             <>
               {/* Tabs */}
