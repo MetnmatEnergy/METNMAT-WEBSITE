@@ -44,9 +44,10 @@ export type BlogPost = {
 
 /** Hero headline split so the last line can use the brand gradient. */
 export const hero = {
-  eyebrow: "Research. Design. Build. Scale.",
-  titleLead: "Turning materials science into",
-  titleAccent: "industrial advantage",
+  // Kicker rotates through KICKER_TERMS in hero.tsx; this CMS value is the lead one.
+  eyebrow: "Deep-tech materials R&D",
+  titleLead: "Research. Design.",
+  titleAccent: "Build. Scale.",
   subtitle:
     "METNMAT delivers end-to-end R&D, deep-technology development, and engineered systems across materials science, manufacturing, industrial processes, electrochemistry, sustainable technologies, and energy — from lab scale to pilot validation and industrial deployment.",
   primaryCta: { label: "Explore METNMAT", href: "/services" },

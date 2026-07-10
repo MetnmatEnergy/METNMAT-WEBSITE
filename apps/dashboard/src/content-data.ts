@@ -358,9 +358,9 @@ export const seedFaqs = [
 ];
 
 export const seedHomepage = {
-  eyebrow: "Research. Design. Build. Scale.",
-  titleLead: "Turning materials science into",
-  titleAccent: "industrial advantage",
+  eyebrow: "Deep-tech materials R&D",
+  titleLead: "Research. Design.",
+  titleAccent: "Build. Scale.",
   subtitle:
     "METNMAT delivers end-to-end R&D, deep-technology development, and engineered systems across materials science, manufacturing, industrial processes, electrochemistry, sustainable technologies, and energy — from lab scale to pilot validation and industrial deployment.",
   primaryCtaLabel: "Explore METNMAT",

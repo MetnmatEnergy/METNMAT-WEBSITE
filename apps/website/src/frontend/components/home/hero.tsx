@@ -21,6 +21,15 @@ const RESEARCH_BADGE_PHRASES = [
   "Published, peer-reviewed results",
 ];
 
+// Catchy kicker terms that cycle in the eyebrow pill. The first shown is the
+// CMS-editable hero.eyebrow; the rest are these.
+const KICKER_TERMS = [
+  "Lab to industrial scale",
+  "Research-grade engineering",
+  "Metallurgy · Materials · Energy",
+  "Engineered end-to-end",
+];
+
 export function Hero({
   hero = phHero,
   stats = phStats,
@@ -35,28 +44,22 @@ export function Hero({
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-[0.35] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
       <div className="bg-hero-glow pointer-events-none absolute inset-0" />
 
-      <Container className="relative grid items-start gap-8 pb-10 pt-8 sm:gap-10 sm:pt-10 lg:grid-cols-2 lg:gap-12 lg:pb-16 lg:pt-12">
+      <Container className="relative grid items-start gap-8 pb-10 pt-6 sm:gap-10 sm:pt-8 lg:grid-cols-2 lg:gap-12 lg:pb-16 lg:pt-10">
         {/* Left: copy */}
         <div className="animate-fade-up">
-          <Badge variant="dot">{hero.eyebrow}</Badge>
+          <Badge variant="dot">
+            <AnimatedTextCycle
+              words={[hero.eyebrow, ...KICKER_TERMS]}
+              interval={2600}
+              wrapperClassName="block whitespace-nowrap"
+            />
+          </Badge>
 
-          <h1 className="mt-5 font-display text-4xl font-bold leading-[1.07] tracking-tight sm:mt-6 sm:text-5xl lg:text-6xl xl:text-7xl">
+          {/* Brand tagline as the headline — two-tone (accent line in the brand
+              gradient). Static, so nothing reserves extra vertical space. */}
+          <h1 className="mt-4 font-display text-5xl font-bold leading-[1.02] tracking-tight sm:mt-5 sm:text-6xl lg:text-7xl">
             {hero.titleLead}
-            {/* Dynamic accent — deliberately smaller than the static headline so
-                it reads as a tagline and never overflows/clips on long phrases. */}
-            <span className="mt-2 block leading-[1.05]">
-              <AnimatedTextCycle
-                words={[
-                  hero.titleAccent,
-                  "cleaner",
-                  "stronger ",
-                  "Cheaper",
-                  "Impactful",
-                ]}
-                interval={2800}
-                className="bg-brand-text bg-clip-text text-transparent"
-              />
-            </span>
+            <span className="block bg-brand-text bg-clip-text text-transparent">{hero.titleAccent}</span>
           </h1>
 
           <p className="mt-5 max-w-xl text-base leading-relaxed text-foreground/70 sm:mt-6 sm:text-lg">

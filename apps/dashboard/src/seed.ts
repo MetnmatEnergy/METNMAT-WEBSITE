@@ -678,6 +678,35 @@ async function rebrandHomepageCopy(payload: Payload): Promise<void> {
 }
 
 /**
+ * One-shot (2026-07-09b): promote the "Research. Design. Build. Scale." tagline
+ * from the eyebrow up into the headline. The eyebrow becomes a (rotating) kicker
+ * term, and the tagline becomes titleLead + titleAccent. Exact-match only,
+ * reading the new values from seedHomepage, so staff edits are never overwritten.
+ */
+async function refineHeroHeadline(payload: Payload): Promise<void> {
+  const OLD_EYEBROW = "Research. Design. Build. Scale.";
+  const OLD_TITLE_LEAD = "Turning materials science into";
+  const OLD_TITLE_ACCENT = "industrial advantage";
+  try {
+    const hp = (await payload.findGlobal({ slug: "homepage" })) as {
+      eyebrow?: string;
+      titleLead?: string;
+      titleAccent?: string;
+    };
+    const data: Record<string, unknown> = {};
+    if (hp?.eyebrow === OLD_EYEBROW) data.eyebrow = seedHomepage.eyebrow;
+    if (hp?.titleLead === OLD_TITLE_LEAD) data.titleLead = seedHomepage.titleLead;
+    if (hp?.titleAccent === OLD_TITLE_ACCENT) data.titleAccent = seedHomepage.titleAccent;
+    if (Object.keys(data).length) {
+      await payload.updateGlobal({ slug: "homepage", data });
+      payload.logger.info(`[seed] hero headline: updated ${Object.keys(data).join(", ")}.`);
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] hero headline migration failed: ${(e as Error).message}`);
+  }
+}
+
+/**
  * Default the homepage "Featured case study" to the Microstructure Control &
  * Heat Treatment project (the case study with a cover image, so a real photo
  * shows on the home page). Sets the relationship while it's empty, and does a
@@ -1149,6 +1178,7 @@ export async function seed(payload: Payload): Promise<void> {
   // 6) Legacy copy fix-ups (exact-match, one-shot).
   await dropFirstFromLegacyCopy(payload);
   await rebrandHomepageCopy(payload);
+  await refineHeroHeadline(payload);
 
   // 7) Default the homepage featured case study (only while unset).
   await ensureHomepageFeaturedProject(payload);
