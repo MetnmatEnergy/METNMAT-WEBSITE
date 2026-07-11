@@ -45,7 +45,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Missing payment details." }, { status: 400 });
   }
 
-  const order = await findOrderByRazorpayId(razorpay_order_id);
+  const lookup = await findOrderByRazorpayId(razorpay_order_id);
+  if (!lookup.ok) {
+    // CMS hiccup — the payment may well be genuine; don't tell the buyer their
+    // order doesn't exist. The webhook is the authoritative backstop.
+    return NextResponse.json(
+      { ok: false, error: "We couldn't confirm your order right now — if you were charged, it will be confirmed automatically within a few minutes." },
+      { status: 503 }
+    );
+  }
+  const order = lookup.doc;
   if (!order) {
     return NextResponse.json({ ok: false, error: "Order not found." }, { status: 404 });
   }
@@ -74,9 +83,10 @@ export async function POST(req: Request) {
 
   const saved = await markOrderPaid(order.id, razorpay_payment_id);
 
-  // Confirmation emails (best-effort — never block the success response).
-  // Sent-once across this path AND the webhook (idempotent via emailedAt).
-  const emailed = await sendOrderConfirmation(order, razorpay_payment_id);
+  // Confirmation emails only once the paid status is actually recorded — the
+  // email must never outrun the stored truth. If the write failed, the webhook
+  // (which retries on 5xx) will mark it paid and send the email instead.
+  const emailed = saved ? await sendOrderConfirmation(order, razorpay_payment_id) : false;
 
   return NextResponse.json({
     ok: true,

@@ -18,6 +18,9 @@ export type OrderItemInput = {
   qty: number;
   unitPrice: number; // incl. GST, ₹
   lineTotal: number; // incl. GST, ₹
+  /** HSN/SAC code snapshotted at purchase — rendered on the GST invoice. */
+  hsnSac?: string;
+  countryOfOrigin?: string;
 };
 
 export type OrderInput = {
@@ -93,16 +96,40 @@ export async function createOrder(input: OrderInput): Promise<OrderDoc | null> {
   }
 }
 
+/**
+ * Result of an order lookup that must distinguish "the CMS answered: no such
+ * order" from "the CMS was unreachable". The webhook depends on this: a
+ * transient outage must produce a retryable 5xx, never a swallowed 200 —
+ * otherwise Razorpay stops redelivering and a captured payment is lost to a
+ * cold start.
+ */
+export type OrderLookup = { ok: true; doc: OrderDoc | null } | { ok: false };
+
 /** Find an order by its Razorpay order id (for payment verification). */
-export async function findOrderByRazorpayId(razorpayOrderId: string): Promise<OrderDoc | null> {
+export async function findOrderByRazorpayId(razorpayOrderId: string): Promise<OrderLookup> {
   try {
     const res = await fetch(
       `${CMS}/api/orders?limit=1&where[razorpayOrderId][equals]=${encodeURIComponent(razorpayOrderId)}`,
       { headers, cache: "no-store" }
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`[orders] lookup by razorpayOrderId failed (${res.status})`);
+      return { ok: false };
+    }
     const json = (await res.json()) as { docs?: OrderDoc[] };
-    return json?.docs?.[0] ?? null;
+    return { ok: true, doc: json?.docs?.[0] ?? null };
+  } catch (e) {
+    console.error("[orders] lookup by razorpayOrderId error:", e);
+    return { ok: false };
+  }
+}
+
+/** Re-read a single order (fresh doc — used to close the email-dedup race). */
+export async function getOrderById(id: string): Promise<OrderDoc | null> {
+  try {
+    const res = await fetch(`${CMS}/api/orders/${id}?depth=0`, { headers, cache: "no-store" });
+    if (!res.ok) return null;
+    return ((await res.json()) as OrderDoc) ?? null;
   } catch {
     return null;
   }
@@ -147,6 +174,22 @@ export async function markOrderFailed(id: string): Promise<void> {
   }
 }
 
+/** Mark an order refunded (driven by a signature-verified refund webhook). */
+export async function markOrderRefunded(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${CMS}/api/orders/${id}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ status: "refunded" }),
+    });
+    if (!res.ok) console.error(`[orders] mark-refunded failed (${res.status})`);
+    return res.ok;
+  } catch (e) {
+    console.error("[orders] mark-refunded error:", e);
+    return false;
+  }
+}
+
 /** Stamp the confirmation email as sent, so it's never re-sent. */
 async function markOrderEmailed(id: string): Promise<void> {
   try {
@@ -169,6 +212,11 @@ async function markOrderEmailed(id: string): Promise<void> {
  */
 export async function sendOrderConfirmation(order: OrderDoc, paymentId: string): Promise<boolean> {
   if (order.emailedAt) return false; // already sent
+  // The caller's doc may be stale (fetched before another path emailed). Re-read
+  // right before sending — verify and the webhook typically race seconds apart,
+  // so this closes almost the whole duplicate-email window.
+  const fresh = order.id ? await getOrderById(order.id) : null;
+  if (fresh?.emailedAt) return false;
   const ok = await sendOrderEmails({
     orderNumber: order.orderNumber,
     name: order.name,
@@ -183,7 +231,9 @@ export async function sendOrderConfirmation(order: OrderDoc, paymentId: string):
     gstAmount: order.gstAmount,
     total: order.total,
     razorpayPaymentId: paymentId,
-    address: [order.addressLine1, order.addressLine2, order.city, order.state, order.pincode]
+    // Country included — the same line goes to the fulfilment team's copy, and an
+    // international order without it reads as a domestic one.
+    address: [order.addressLine1, order.addressLine2, order.city, order.state, order.pincode, order.country]
       .filter(Boolean)
       .join(", "),
     displayCurrency: order.displayCurrency,
@@ -192,6 +242,37 @@ export async function sendOrderConfirmation(order: OrderDoc, paymentId: string):
   }).catch(() => false);
   if (ok && order.id) await markOrderEmailed(order.id);
   return ok;
+}
+
+/**
+ * Durable operations trace for payment anomalies (amount mismatch, stuck
+ * unpaid, refunds) — lands in the dashboard's IntegrationLogs where staff look,
+ * instead of dying in Cloud Run stdout. Best-effort. Uses the SHARED internal
+ * key: integration-logs accepts INTERNAL_API_KEY, not the order-scoped key.
+ */
+export async function recordIntegrationLog(input: {
+  status: "success" | "error";
+  summary: string;
+  error?: string;
+  payload?: unknown;
+}): Promise<void> {
+  try {
+    const res = await fetch(`${CMS}/api/integration-logs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-key": outboundKey("CMS_LOGS_KEY"),
+      },
+      body: JSON.stringify({ integration: "razorpay-webhook", ...input }),
+    });
+    if (!res.ok) {
+      console.error(
+        `[integration-logs] record REFUSED (${res.status}): ${(await res.text().catch(() => "")).slice(0, 200)}`
+      );
+    }
+  } catch (e) {
+    console.error("[integration-logs] record error:", e);
+  }
 }
 
 /** Append a payment gateway event to the immutable PaymentEvents log (best-effort). */

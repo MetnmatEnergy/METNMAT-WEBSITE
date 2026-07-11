@@ -194,7 +194,7 @@ function orderTable(input: OrderEmailInput): string {
   return `
   <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;border-radius:10px;overflow:hidden">
     ${itemRows}
-    <tr><td colspan="2" style="padding:10px 14px;color:#6b7280;font-size:13px">Includes GST (18%)</td>
+    <tr><td colspan="2" style="padding:10px 14px;color:#6b7280;font-size:13px">Includes GST</td>
         <td style="padding:10px 14px;color:#6b7280;font-size:13px;text-align:right">${inr(input.gstAmount)}</td></tr>
     <tr style="background:#fafafa"><td colspan="2" style="padding:12px 14px;color:#111827;font-weight:700;font-size:14px;border-top:1px solid #eee">Total paid (incl. GST)</td>
         <td style="padding:12px 14px;color:#111827;font-weight:700;font-size:15px;text-align:right;border-top:1px solid #eee">${inr(input.total)}${
@@ -211,6 +211,7 @@ function orderTable(input: OrderEmailInput): string {
   <p style="margin:14px 0 0;font-size:13px;color:#6b7280">
     Order <strong>${esc(input.orderNumber)}</strong> · Payment ID ${esc(input.razorpayPaymentId)}
     ${input.address ? `<br/>Ships to: ${esc(input.address)}` : ""}
+    <br/>Shipping is arranged separately — we&rsquo;ll confirm freight and dispatch details for your location.
   </p>`;
 }
 
@@ -261,6 +262,106 @@ export async function sendOrderEmails(input: OrderEmailInput): Promise<boolean> 
     );
     await send(notify, `💰 New paid order ${input.orderNumber} (${inr(input.total)})`, notifyHtml, input.email);
     return toCustomer;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Internal operations alert — payment anomalies that need a human the same day
+ * (amount mismatch, refund received, order stuck unpaid after capture). Goes to
+ * the notify inbox only; never to customers. Best-effort.
+ */
+export async function sendOpsAlert(subject: string, lines: string[]): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return false;
+  const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
+  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+  const body = `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;border-radius:10px;overflow:hidden">${lines
+    .map(
+      (l, i) =>
+        `<tr style="background:${i % 2 ? "#ffffff" : "#fafafa"}"><td style="padding:10px 14px;border-bottom:1px solid #eee;color:#111827;font-size:13px">${esc(l)}</td></tr>`
+    )
+    .join("")}</table>`;
+  const html = shell({
+    heading: subject,
+    intro: "Automated payment-operations alert from the website checkout.",
+    body,
+  });
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: notify, subject: `⚠️ ${subject}`, html }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// ── Shipment dispatched (tracking) ───────────────────────────────────────────
+
+export type ShipmentEmailInput = {
+  orderNumber: string;
+  name: string;
+  email: string;
+  carrier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  items?: { productName: string; qty: number }[];
+};
+
+/** "Your order has shipped" — carrier + tracking link. Best-effort. */
+export async function sendShipmentEmail(input: ShipmentEmailInput): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return false;
+  const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
+  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+  const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  const rows: string[] = [];
+  if (input.carrier) rows.push(`Carrier: ${input.carrier}`);
+  if (input.trackingNumber) rows.push(`Tracking number: ${input.trackingNumber}`);
+  const itemsLine = (input.items ?? [])
+    .map((it) => `${it.productName} × ${it.qty}`)
+    .join(", ");
+  if (itemsLine) rows.push(`Items: ${itemsLine}`);
+
+  const trackBtn = input.trackingUrl
+    ? `<p style="margin:18px 0 0"><a href="${esc(input.trackingUrl)}" style="background:#d81f26;color:#fff;padding:11px 20px;border-radius:999px;text-decoration:none;display:inline-block;font-weight:600">Track your shipment</a></p>`
+    : "";
+  const body = `
+    <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;border-radius:10px;overflow:hidden">${rows
+      .map(
+        (l, i) =>
+          `<tr style="background:${i % 2 ? "#ffffff" : "#fafafa"}"><td style="padding:10px 14px;border-bottom:1px solid #eee;color:#111827;font-size:13px">${esc(l)}</td></tr>`
+      )
+      .join("")}</table>
+    ${trackBtn}
+    <p style="margin:16px 0 0;font-size:13px;color:#6b7280">
+      You can also follow this order any time from
+      <a href="${site}/account/orders/${encodeURIComponent(input.orderNumber)}" style="color:#d81f26;font-weight:600;text-decoration:none">your account</a>.
+    </p>`;
+
+  const html = shell({
+    heading: `Your order ${esc(input.orderNumber)} has shipped 📦`,
+    intro: `Good news, ${esc(input.name)} — your METNMAT order is on its way.`,
+    body,
+  });
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from,
+        to: input.email,
+        subject: `Your order ${input.orderNumber} has shipped — METNMAT`,
+        html,
+        reply_to: notify,
+      }),
+    });
+    return res.ok;
   } catch {
     return false;
   }

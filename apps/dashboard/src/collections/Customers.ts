@@ -226,6 +226,33 @@ export const Customers: CollectionConfig = {
     // Mint the immutable MNM-U-YY code on create (both email + Google signup flow
     // through here); keep it unchangeable on every update. See customer-code.ts.
     beforeChange: [assignUserCode],
+    afterOperation: [
+      /**
+       * Completing a password reset proves the person can READ the account's
+       * email inbox — the same proof a verification link would give. Mark the
+       * email verified, which (on the website) unlocks guest-order history that
+       * is matched by email alone. Google sign-ins set this at create; this is
+       * the path for password accounts.
+       */
+      async ({ operation, result, req }) => {
+        if (operation === "resetPassword") {
+          const user = (result as { user?: { id?: string; emailVerified?: boolean } })?.user;
+          if (user?.id && !user.emailVerified) {
+            await req.payload
+              .update({
+                collection: "customers",
+                id: user.id,
+                data: { emailVerified: true },
+                overrideAccess: true, // emailVerified is a staff-only field
+              })
+              .catch((e) =>
+                req.payload.logger.warn(`[customers] could not mark emailVerified after reset: ${(e as Error).message}`),
+              );
+          }
+        }
+        return result;
+      },
+    ],
   },
   endpoints: [
     /**

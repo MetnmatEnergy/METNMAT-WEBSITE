@@ -7,7 +7,7 @@ import { Lock, Loader2, ShieldCheck, FileText, Check, HelpCircle, Truck, Package
 import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { useStore } from "@/frontend/components/commerce/store-provider";
-import { formatINR, inclGST, usdFor, lineUsdValue, GST_RATE } from "@/frontend/lib/catalog";
+import { formatINR, inclGST, usdFor, lineUsdValue, GST_RATE, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { site } from "@/frontend/lib/site";
 import { countryByName, dialFor, isIndiaName } from "@/frontend/lib/countries";
@@ -295,7 +295,7 @@ function requiredKeys(f: Form): string[] {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartLines, cartCount, clearCart, ready } = useStore();
+  const { cartLines, cartCount, clearCart, addToCart, ready } = useStore();
   const { money, currency, usdRate } = useCurrency();
   const [form, setForm] = React.useState<Form>(EMPTY);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -491,14 +491,33 @@ export default function CheckoutPage() {
 
       // Safety net: the server recomputes the total from LIVE CMS prices. If it
       // differs from what the customer just saw (a price changed since these
-      // items were added), never silently charge the new amount — stop and ask
-      // them to review. With MOQ/qty clamped identically client+server, the only
-      // cause of a mismatch is a genuine price change.
+      // items were added), never silently charge the new amount — refresh the
+      // stale cart snapshots to TODAY's catalog so the page shows the new total,
+      // then let them confirm with another click. Without the refresh this was a
+      // dead end: the cart could only ever re-show the old price.
       if (typeof data.total === "number" && data.total !== Math.round(subtotalIncl)) {
+        try {
+          const slugs = Array.from(new Set(cartLines.map((l) => l.slug)));
+          const rres = await fetch("/api/products/resolve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ slugs }),
+          });
+          const rdata = (await rres.json()) as { products?: Product[] };
+          const bySlug = new Map((rdata.products ?? []).map((p) => [p.slug, p]));
+          const lines = cartLines.map((l) => ({ slug: l.slug, qty: l.qty, size: l.size }));
+          clearCart();
+          for (const l of lines) {
+            const p = bySlug.get(l.slug);
+            if (p && p.price) addToCart(p, l.qty, l.size);
+          }
+        } catch {
+          /* refresh failed — the message below still explains the situation */
+        }
         setPayError(
-          `Prices changed since you added these items — the order total is now ${formatINR(
+          `Prices were updated since you added these items — the total is now ${formatINR(
             data.total
-          )} (charged in INR). Please review your cart and try again.`
+          )} (charged in INR). The amounts above now show the current prices; please review and press Pay again.`
         );
         setPaying(false);
         return;
@@ -791,8 +810,8 @@ export default function CheckoutPage() {
               <ShieldCheck className="h-5 w-5 shrink-0 text-brand" />
               <span>
                 <span className="font-semibold">Razorpay secure checkout</span> — UPI, cards,
-                netbanking &amp; wallets. International Visa/Mastercard &amp; PayPal accepted.
-                You&apos;ll be charged {formatINR(subtotalIncl)} (incl. GST)
+                netbanking &amp; wallets; the payment window shows the exact methods available
+                for your card and region. You&apos;ll be charged {formatINR(subtotalIncl)} (incl. GST)
                 {currency === "USD" ? <> — about {money(subtotalIncl)}</> : null}.
               </span>
             </div>
@@ -849,6 +868,10 @@ export default function CheckoutPage() {
                 <span>GST ({Math.round(GST_RATE * 100)}%)</span>
                 <span className="tabular-nums text-foreground">{money(gstAmount)}</span>
               </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Shipping</span>
+                <span className="text-right text-xs">Arranged separately — we&apos;ll confirm freight for your location</span>
+              </div>
               <div className="flex items-baseline justify-between border-t border-border pt-2.5">
                 <span className="font-semibold">Total</span>
                 <span className="font-display text-lg font-bold tabular-nums">{money(subtotalIncl, usdSubtotal)}</span>
@@ -877,6 +900,12 @@ export default function CheckoutPage() {
               {paying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
               {paying ? "Opening secure payment…" : `Pay ${money(subtotalIncl, usdSubtotal)}`}
             </Button>
+            <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
+              By placing this order you agree to our{" "}
+              <Link href="/terms" className="underline hover:text-foreground">Terms</Link>,{" "}
+              <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link> and{" "}
+              <Link href="/replacement-policy" className="underline hover:text-foreground">Replacement Policy</Link>.
+            </p>
             {currency === "USD" && (
               <p className="mt-2 text-center text-xs text-muted-foreground">
                 Charged in INR as <span className="font-semibold">{formatINR(subtotalIncl)}</span> —

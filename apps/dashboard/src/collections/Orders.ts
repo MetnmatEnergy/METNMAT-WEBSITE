@@ -149,6 +149,13 @@ export const Orders: CollectionConfig = {
             { name: "lineTotal", type: "number", required: true, admin: { width: "50%", description: "Incl. GST (₹)." } },
           ],
         },
+        {
+          type: "row",
+          fields: [
+            { name: "hsnSac", type: "text", label: "HSN / SAC", admin: { width: "50%", description: "Snapshotted at purchase — printed on the GST invoice." } },
+            { name: "countryOfOrigin", type: "text", admin: { width: "50%" } },
+          ],
+        },
       ],
     },
 
@@ -171,6 +178,17 @@ export const Orders: CollectionConfig = {
         { name: "razorpayPaymentId", type: "text", access: { update: fieldAccountsOrInternal }, admin: { readOnly: true } },
         { name: "paidAt", type: "date", access: { update: fieldAccountsOrInternal }, admin: { readOnly: true } },
         { name: "emailedAt", type: "date", access: { update: fieldAccountsOrInternal }, admin: { readOnly: true, description: "When the confirmation email was sent (set automatically)." } },
+      ],
+    },
+
+    // GST invoice identity — minted automatically the first time an order turns
+    // paid (sequential per financial year via the atomic Counters pattern), then
+    // immutable. Indexed, not unique: legacy paid orders predate the series.
+    {
+      type: "row",
+      fields: [
+        { name: "invoiceNumber", type: "text", index: true, admin: { width: "50%", readOnly: true, description: "Sequential GST invoice serial (INV-FFYY-000001), assigned on payment." } },
+        { name: "invoiceDate", type: "date", admin: { width: "50%", readOnly: true } },
       ],
     },
 

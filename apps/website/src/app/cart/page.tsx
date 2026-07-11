@@ -177,9 +177,9 @@ export default function CartPage() {
                 <dd className="font-semibold">{money(subtotalIncl, usdSubtotal)}</dd>
               </div>
               <p className="text-xs text-muted-foreground">Includes GST</p>
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Shipping</dt>
-                <dd className="text-muted-foreground">Calculated at checkout</dd>
+                <dd className="text-right text-xs text-muted-foreground">Arranged separately after payment</dd>
               </div>
             </dl>
             <div className="mt-4 grid gap-2">

@@ -32,17 +32,49 @@ function fmtDate(iso?: string): string {
     : "—";
 }
 
+/** The state our GST registration sits in — decides CGST+SGST vs IGST. */
+const SELLER_STATE = (process.env.COMPANY_GST_STATE || "West Bengal").toLowerCase();
+
 function invoiceHtml(order: FullOrder): string {
   const gstin = process.env.COMPANY_GSTIN;
   const cin = process.env.COMPANY_CIN;
   const total = order.total || 0;
   const gst = order.gstAmount || 0;
   const taxable = Math.max(0, total - gst);
-  const addr = [order.addressLine1, order.addressLine2, [order.city, order.state, order.pincode].filter(Boolean).join(", "), order.country]
+
+  const shipAddr = [order.addressLine1, order.addressLine2, [order.city, order.state, order.pincode].filter(Boolean).join(", "), order.country]
     .filter(Boolean)
     .map((l) => esc(l))
     .join("<br/>");
 
+  // Bill-To: the billing address captured at checkout. Mirrors shipping when
+  // "same as shipping" (create-order snapshots it either way; fall back for
+  // legacy orders that predate billing capture).
+  const hasBilling = Boolean(order.billingLine1 || order.billingCity);
+  const billName = order.businessName || order.billingName || order.name;
+  const billAddr = hasBilling
+    ? [order.billingLine1, order.billingLine2, [order.billingCity, order.billingState, order.billingPincode].filter(Boolean).join(", "), order.billingCountry]
+        .filter(Boolean)
+        .map((l) => esc(l))
+        .join("<br/>")
+    : shipAddr;
+
+  // Tax split (domestic only): intra-state supply = CGST + SGST halves,
+  // inter-state = IGST. International orders keep a single GST line until an
+  // export tax treatment is introduced.
+  const isIndia = /^india$/i.test((order.country || "India").trim());
+  const buyerState = (order.billingState || order.state || "").trim().toLowerCase();
+  const intraState = isIndia && !!buyerState && buyerState === SELLER_STATE;
+  const cgst = Math.round((gst / 2) * 100) / 100;
+  const sgst = Math.round((gst - cgst) * 100) / 100;
+  const taxRows = !isIndia
+    ? `<tr><td class="muted">GST (18%)</td><td style="text-align:right">${inr(gst)}</td></tr>`
+    : intraState
+      ? `<tr><td class="muted">CGST (9%)</td><td style="text-align:right">${inr(cgst)}</td></tr>
+         <tr><td class="muted">SGST (9%)</td><td style="text-align:right">${inr(sgst)}</td></tr>`
+      : `<tr><td class="muted">IGST (18%)</td><td style="text-align:right">${inr(gst)}</td></tr>`;
+
+  const anyHsn = (order.items ?? []).some((it) => it.hsnSac);
   const rows = (order.items ?? [])
     .map(
       (it, i) => `
@@ -51,6 +83,7 @@ function invoiceHtml(order: FullOrder): string {
         <td style="padding:9px 12px;border-bottom:1px solid #eee;color:#111827;font-size:13px">
           ${esc(it.productName)}${it.size ? ` · ${esc(it.size)}` : ""}${it.sku ? `<br/><span style="color:#9ca3af;font-size:11px">${esc(it.sku)}</span>` : ""}
         </td>
+        ${anyHsn ? `<td style="padding:9px 12px;border-bottom:1px solid #eee;color:#374151;font-size:12px;text-align:center">${esc(it.hsnSac || "—")}</td>` : ""}
         <td style="padding:9px 12px;border-bottom:1px solid #eee;color:#374151;font-size:13px;text-align:center">${esc(it.qty ?? 0)}</td>
         <td style="padding:9px 12px;border-bottom:1px solid #eee;color:#111827;font-size:13px;text-align:right">${inr(it.lineTotal || 0)}</td>
       </tr>`
@@ -110,16 +143,24 @@ function invoiceHtml(order: FullOrder): string {
     </div>
     <div class="col">
       <h2>Bill to</h2>
-      <div style="font-weight:600;font-size:13px">${esc(order.name)}</div>
-      <div class="muted sm">${addr || "—"}</div>
-      ${order.phone ? `<div class="muted sm">${esc(order.phone)}</div>` : ""}
+      <div style="font-weight:600;font-size:13px">${esc(billName)}</div>
+      ${order.businessName && order.billingName && order.businessName !== order.billingName ? `<div class="muted sm">Attn: ${esc(order.billingName)}</div>` : ""}
+      <div class="muted sm">${billAddr || "—"}</div>
       ${order.email ? `<div class="muted sm">${esc(order.email)}</div>` : ""}
-      ${order.gstin ? `<div class="muted sm">GSTIN: ${esc(order.gstin)}</div>` : ""}
+      ${order.gstin ? `<div class="sm" style="font-weight:600">GSTIN: ${esc(order.gstin)}</div>` : ""}
+    </div>
+    <div class="col">
+      <h2>Ship to</h2>
+      <div style="font-weight:600;font-size:13px">${esc(order.name)}</div>
+      <div class="muted sm">${shipAddr || "—"}</div>
+      ${order.phone ? `<div class="muted sm">${esc(order.phone)}</div>` : ""}
     </div>
     <div class="col" style="min-width:180px">
       <h2>Invoice</h2>
-      <div class="sm"><span class="muted">No.</span> <strong>${esc(order.orderNumber)}</strong></div>
-      <div class="sm"><span class="muted">Date:</span> ${fmtDate(order.paidAt || order.createdAt)}</div>
+      <div class="sm"><span class="muted">Invoice no.</span> <strong>${esc(order.invoiceNumber || order.orderNumber)}</strong></div>
+      <div class="sm"><span class="muted">Date:</span> ${fmtDate(order.invoiceDate || order.paidAt || order.createdAt)}</div>
+      <div class="sm"><span class="muted">Order no.</span> ${esc(order.orderNumber)}</div>
+      ${isIndia ? `<div class="sm"><span class="muted">Place of supply:</span> ${esc(order.billingState || order.state || "—")}</div>` : ""}
       ${order.razorpayPaymentId ? `<div class="sm muted">Payment ref: ${esc(order.razorpayPaymentId)}</div>` : ""}
       <div class="sm muted">Paid via Razorpay (INR)</div>
     </div>
@@ -130,6 +171,7 @@ function invoiceHtml(order: FullOrder): string {
       <thead><tr style="background:#fafafa">
         <th style="padding:9px 12px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px">#</th>
         <th style="padding:9px 12px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px">Description</th>
+        ${anyHsn ? `<th style="padding:9px 12px;text-align:center;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px">HSN/SAC</th>` : ""}
         <th style="padding:9px 12px;text-align:center;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px">Qty</th>
         <th style="padding:9px 12px;text-align:right;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px">Amount</th>
       </tr></thead>
@@ -140,7 +182,7 @@ function invoiceHtml(order: FullOrder): string {
   <div style="padding:8px 28px 24px">
     <table class="tot">
       <tr><td class="muted">Taxable value</td><td style="text-align:right">${inr(taxable)}</td></tr>
-      <tr><td class="muted">GST (18%)</td><td style="text-align:right">${inr(gst)}</td></tr>
+      ${taxRows}
       <tr><td style="font-weight:700;border-top:2px solid #111;padding-top:10px">Grand total (incl. GST)</td>
           <td style="font-weight:700;text-align:right;border-top:2px solid #111;padding-top:10px">${inr(total)}</td></tr>
     </table>
@@ -169,7 +211,11 @@ export async function GET(
   }
 
   // Owner-scoped: only the customer's own order resolves.
-  const order = await getCustomerOrder(customer.email, orderNumber);
+  const result = await getCustomerOrder(customer, orderNumber);
+  if (!result.ok) {
+    return new NextResponse("We couldn't load this invoice right now — please try again.", { status: 503 });
+  }
+  const order = result.order;
   if (!order) {
     return new NextResponse("Invoice not found.", { status: 404 });
   }

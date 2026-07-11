@@ -67,6 +67,10 @@ export async function createRazorpayOrder(opts: {
       currency: "INR",
       receipt: opts.receipt,
       notes: opts.notes ?? {},
+      // Enforce auto-capture per order rather than trusting the account-level
+      // setting: an authorized-but-uncaptured payment would otherwise satisfy the
+      // browser signature check while the money auto-reverses in 5 days.
+      payment_capture: 1,
     }),
   });
   if (!res.ok) {

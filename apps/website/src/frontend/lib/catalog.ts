@@ -56,6 +56,9 @@ export type Product = {
   images?: string[]; // CMS-managed gallery
   videoUrl?: string; // CMS-managed YouTube link, shown as a playable item in the gallery
   createdAt?: string; // CMS document creation date (ISO) — used for "Newest" sort
+  hsnSac?: string; // HSN/SAC code — snapshotted onto order items for the GST invoice
+  countryOfOrigin?: string;
+  productType?: string; // "in-stock" | "made-to-order" | "quote-only" | "discontinued"
 };
 
 export type Deal = { title: string; subtitle: string; href: string };
@@ -208,8 +211,14 @@ export function clampQty(product: Pick<Product, "moq">, qty: number): number {
   return Math.min(Math.max(q, moq), MAX_ORDER_QTY);
 }
 
-/** A product is "quote-only" (cannot be bought online) when it has no price. */
-export const isQuoteOnly = (product: Pick<Product, "price">): boolean => !product.price;
+/**
+ * A product cannot be bought online when it has no price, OR when staff marked
+ * it "quote-only"/"discontinued" in the CMS (productType) — a price alone must
+ * not make a discontinued item purchasable. ("in-stock"/"made-to-order" both
+ * remain buyable; made-to-order just ships on a longer lead time.)
+ */
+export const isQuoteOnly = (product: Pick<Product, "price" | "productType">): boolean =>
+  !product.price || product.productType === "quote-only" || product.productType === "discontinued";
 
 // ── Manual USD price (staff override) ─────────────────────────────────────────
 // `usdPrice` is the fixed USD a staff member sets for the BASE unit (GST-inclusive,

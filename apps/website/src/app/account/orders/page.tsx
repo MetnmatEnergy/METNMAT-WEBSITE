@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Package, ChevronRight } from "lucide-react";
+import { Package, ChevronRight, RefreshCw } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
 import { formatINR } from "@/frontend/lib/catalog";
 import { getCurrentCustomer, getCustomerOrders } from "@/backend/lib/customer";
@@ -16,9 +16,34 @@ const STATUS_STYLE: Record<string, string> = {
   refunded: "text-purple-600 bg-purple-500/10",
 };
 
+/** Honest customer-facing labels — "pending" reads like it's in hand; it isn't. */
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Payment incomplete",
+  paid: "Paid",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  failed: "Payment failed",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
+};
+
 export default async function OrdersPage() {
   const customer = await getCurrentCustomer();
-  const orders = await getCustomerOrders(customer?.email);
+  const result = await getCustomerOrders(customer);
+
+  // A CMS hiccup must not masquerade as "you have no orders".
+  if (!result.ok) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface p-12 text-center">
+        <RefreshCw className="mx-auto h-8 w-8 text-muted-foreground" />
+        <h2 className="mt-4 font-display text-lg font-semibold">We couldn&apos;t load your orders</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Something went wrong on our side — your orders are safe. Please refresh in a moment.
+        </p>
+      </div>
+    );
+  }
+  const orders = result.orders;
 
   if (orders.length === 0) {
     return (
@@ -50,8 +75,8 @@ export default async function OrdersPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-display font-semibold">{o.orderNumber || "Order"}</span>
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLE[status] || "bg-muted text-muted-foreground"}`}>
-                    {status}
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[status] || "bg-muted text-muted-foreground"}`}>
+                    {STATUS_LABEL[status] || status}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">

@@ -7,15 +7,16 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountDashboard() {
   const customer = await getCurrentCustomer();
-  const [orders, rfqs] = await Promise.all([
-    getCustomerOrders(customer?.email),
+  const [ordersResult, rfqs] = await Promise.all([
+    getCustomerOrders(customer),
     getCustomerEnquiries(customer?.email),
   ]);
+  const orderCount = ordersResult.ok ? ordersResult.orders.length : 0;
   const addressCount = customer?.addresses?.length ?? 0;
   const firstName = (customer?.name || "").split(" ")[0];
 
   const cards = [
-    { href: "/account/orders", icon: Package, title: "Orders", desc: "Track and reorder", count: orders.length },
+    { href: "/account/orders", icon: Package, title: "Orders", desc: "Track and reorder", count: orderCount },
     { href: "/account/rfq", icon: FileText, title: "RFQs / Quotes", desc: "Your quote requests", count: rfqs.length },
     { href: "/account/addresses", icon: MapPin, title: "Addresses", desc: "Shipping & billing", count: addressCount },
   ];

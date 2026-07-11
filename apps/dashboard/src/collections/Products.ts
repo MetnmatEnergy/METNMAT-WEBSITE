@@ -136,7 +136,19 @@ export const Products: CollectionConfig = {
         {
           type: "row",
           fields: [
-            { name: "gstRate", type: "number", defaultValue: 18, min: 0, max: 28, admin: { width: "33%", description: "GST %." } },
+            {
+              name: "gstRate",
+              type: "number",
+              defaultValue: 18,
+              min: 0,
+              max: 28,
+              admin: {
+                width: "33%",
+                readOnly: true,
+                description:
+                  "GST %. Currently applied SITE-WIDE at 18% — checkout does not yet honour per-product rates, so this field is locked to avoid promising what billing doesn't deliver.",
+              },
+            },
             { name: "hsnSac", type: "text", label: "HSN / SAC code", admin: { width: "33%" } },
             { name: "countryOfOrigin", type: "text", defaultValue: "India", admin: { width: "34%" } },
           ],

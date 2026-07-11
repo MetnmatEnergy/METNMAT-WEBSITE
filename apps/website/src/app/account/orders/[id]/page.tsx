@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Circle, Package, XCircle, FileText } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, Package, XCircle, FileText, Truck, RefreshCw, ExternalLink } from "lucide-react";
 import { Card } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
 import { ReorderButton } from "@/frontend/components/commerce/reorder-button";
 import { formatINR } from "@/frontend/lib/catalog";
-import { getCurrentCustomer, getCustomerOrder } from "@/backend/lib/customer";
+import { getCurrentCustomer, getCustomerOrder, getOrderShipments } from "@/backend/lib/customer";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,15 @@ const STATUS_STYLE: Record<string, string> = {
   cancelled: "text-muted-foreground bg-muted",
   refunded: "text-purple-600 bg-purple-500/10",
 };
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Payment incomplete",
+  paid: "Paid",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  failed: "Payment failed",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
+};
 const HALTED = new Set(["cancelled", "failed", "refunded"]);
 
 function fmtDate(iso?: string) {
@@ -31,13 +40,30 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const orderNumber = decodeURIComponent(id);
   const customer = await getCurrentCustomer();
-  const order = await getCustomerOrder(customer?.email, orderNumber);
+  const result = await getCustomerOrder(customer, orderNumber);
 
   const back = (
     <Link href="/account/orders" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
       <ArrowLeft className="h-4 w-4" /> Back to orders
     </Link>
   );
+
+  // A CMS hiccup must read as an error, not as "this order doesn't exist".
+  if (!result.ok) {
+    return (
+      <div className="space-y-6">
+        {back}
+        <div className="rounded-2xl border border-border bg-surface p-12 text-center">
+          <RefreshCw className="mx-auto h-8 w-8 text-muted-foreground" />
+          <h2 className="mt-4 font-display text-lg font-semibold">We couldn&apos;t load this order</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Something went wrong on our side — please refresh in a moment.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  const order = result.order;
 
   if (!order) {
     return (
@@ -58,6 +84,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const status = (order.status || "pending").toLowerCase();
   const halted = HALTED.has(status);
   const stage = STAGE[status] ?? 0;
+
+  // Real tracking (carrier / number / link) once fulfilment has dispatched it.
+  const shipments = ["shipped", "delivered"].includes(status) ? await getOrderShipments(order.id) : [];
+  const shipment = shipments[0];
+
+  const showBilling =
+    order.billingSameAsShipping === false && Boolean(order.billingLine1 || order.billingCity);
 
   return (
     <div className="space-y-6">
@@ -82,11 +115,25 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           {(order.items ?? []).some((it) => it.slug) && (
             <ReorderButton items={(order.items ?? []).map((it) => ({ slug: it.slug, qty: it.qty, size: it.size }))} />
           )}
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${STATUS_STYLE[status] || "bg-muted text-muted-foreground"}`}>
-            {status}
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLE[status] || "bg-muted text-muted-foreground"}`}>
+            {STATUS_LABEL[status] || status}
           </span>
         </div>
       </div>
+
+      {/* Payment-incomplete orders: say exactly where things stand. */}
+      {status === "pending" && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <p className="font-medium">This order&apos;s payment was not completed.</p>
+            <p className="mt-0.5 text-muted-foreground">
+              If you were charged, it will be confirmed automatically within a few minutes — otherwise you can
+              re-order the same items with the Reorder button.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tracking */}
       <Card>
@@ -95,26 +142,53 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div className="mt-4 flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-3 text-sm">
             <XCircle className="h-5 w-5 text-brand" />
             <span>
-              This order is <span className="font-medium capitalize">{status}</span>.{" "}
-              {status === "refunded" ? "A replacement may apply — see our policy." : "Contact support if you need help."}
+              This order is <span className="font-medium">{STATUS_LABEL[status] || status}</span>.{" "}
+              {status === "refunded" ? "The payment has been reversed to your original payment method." : "Contact support if you need help."}
             </span>
           </div>
         ) : (
-          <ol className="mt-5 space-y-4">
-            {STEPS.map((s, i) => {
-              const done = i <= stage;
-              return (
-                <li key={s} className="flex items-center gap-3 text-sm">
-                  {done ? (
-                    <CheckCircle2 className="h-5 w-5 text-brand" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground/40" />
-                  )}
-                  <span className={done ? "font-medium" : "text-muted-foreground"}>{s}</span>
-                </li>
-              );
-            })}
-          </ol>
+          <>
+            <ol className="mt-5 space-y-4">
+              {STEPS.map((s, i) => {
+                const done = i <= stage;
+                return (
+                  <li key={s} className="flex items-center gap-3 text-sm">
+                    {done ? (
+                      <CheckCircle2 className="h-5 w-5 text-brand" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-muted-foreground/40" />
+                    )}
+                    <span className={done ? "font-medium" : "text-muted-foreground"}>{s}</span>
+                  </li>
+                );
+              })}
+            </ol>
+            {shipment && (
+              <div className="mt-5 rounded-xl border border-border bg-muted/30 p-4">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Truck className="h-4 w-4 text-brand" />
+                  {shipment.carrier || "Courier"}
+                  {shipment.trackingNumber ? (
+                    <span className="font-mono text-xs text-muted-foreground">· {shipment.trackingNumber}</span>
+                  ) : null}
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {shipment.dispatchedAt && <span>Dispatched {fmtDate(shipment.dispatchedAt)}</span>}
+                  {shipment.deliveredAt && <span>Delivered {fmtDate(shipment.deliveredAt)}</span>}
+                </div>
+                {shipment.trackingUrl && (
+                  <a
+                    href={shipment.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
+                  >
+                    Track shipment <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+            )}
+          </>
         )}
       </Card>
 
@@ -140,10 +214,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <div className="flex justify-between text-muted-foreground"><dt>of which GST</dt><dd className="tabular-nums">{formatINR(order.gstAmount)}</dd></div>
           ) : null}
           <div className="flex justify-between border-t border-border pt-2 font-semibold"><dt>Total</dt><dd className="tabular-nums">{formatINR(order.total || 0)}</dd></div>
+          {order.displayCurrency === "USD" && order.totalUsdApprox ? (
+            <div className="flex justify-between text-xs text-muted-foreground"><dt>Approx. at purchase</dt><dd className="tabular-nums">≈ ${order.totalUsdApprox.toFixed(2)} USD (charged in INR)</dd></div>
+          ) : null}
         </dl>
       </Card>
 
-      {/* Shipping + payment */}
+      {/* Shipping + payment (+ billing when it differs) */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <h3 className="font-display font-semibold">Shipping address</h3>
@@ -161,10 +238,23 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div className="mt-3 space-y-1 text-sm text-muted-foreground">
             <p>Charged in INR via Razorpay.</p>
             {order.paidAt && <p>Paid on {fmtDate(order.paidAt)}.</p>}
+            {order.invoiceNumber && <p>Invoice no. {order.invoiceNumber}</p>}
             {order.razorpayPaymentId && <p className="break-all text-xs">Ref: {order.razorpayPaymentId}</p>}
             {order.gstin && <p>GSTIN: {order.gstin}</p>}
           </div>
         </Card>
+        {showBilling && (
+          <Card>
+            <h3 className="font-display font-semibold">Billing address</h3>
+            <address className="mt-3 text-sm not-italic text-muted-foreground">
+              <span className="block font-medium text-foreground/90">{order.businessName || order.billingName || order.name}</span>
+              {order.billingLine1 && <span className="block">{order.billingLine1}</span>}
+              {order.billingLine2 && <span className="block">{order.billingLine2}</span>}
+              <span className="block">{[order.billingCity, order.billingState, order.billingPincode].filter(Boolean).join(", ")}</span>
+              {order.billingCountry && <span className="block">{order.billingCountry}</span>}
+            </address>
+          </Card>
+        )}
       </div>
     </div>
   );

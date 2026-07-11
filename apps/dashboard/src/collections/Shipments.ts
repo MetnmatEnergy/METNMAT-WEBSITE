@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
-import { canManageInventory, isStaff, isAdmin } from "../access";
+import { canManageInventory, internalOrIsStaff, isAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
+import { syncOrderOnShipment } from "../hooks/shipment-sync";
 
 /**
  * Dispatch / shipment records for orders. Managed by Inventory + Operations.
@@ -14,7 +15,9 @@ export const Shipments: CollectionConfig = {
     description: "Dispatch & tracking for orders.",
   },
   access: {
-    read: isStaff,
+    // Staff, or the website server (internal key) — the account page shows the
+    // verified owner their tracking, fetched server-side.
+    read: internalOrIsStaff,
     create: canManageInventory,
     update: canManageInventory,
     delete: isAdmin,
@@ -66,7 +69,7 @@ export const Shipments: CollectionConfig = {
     { name: "notes", type: "textarea" },
   ],
   hooks: {
-    afterChange: [auditAfterChange],
+    afterChange: [auditAfterChange, syncOrderOnShipment],
     afterDelete: [auditAfterDelete],
   },
   timestamps: true,

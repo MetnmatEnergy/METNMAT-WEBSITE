@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProductBySlug, getUsdRate } from "@/frontend/lib/cms";
-import { unitPriceForQty, inclGST, gstPortionOf, clampQty, usdFor } from "@/frontend/lib/catalog";
+import { unitPriceForQty, inclGST, gstPortionOf, clampQty, usdFor, isQuoteOnly } from "@/frontend/lib/catalog";
 import { createRazorpayOrder, razorpayConfigured, razorpayKeyId } from "@/backend/lib/razorpay";
 import { createOrder, type OrderItemInput } from "@/backend/services/orders.service";
 import { getCurrentCustomer } from "@/backend/lib/customer";
@@ -71,9 +71,19 @@ export async function POST(req: Request) {
   }
 
   const name = body.customer?.name?.trim();
-  const email = body.customer?.email?.trim();
+  // Lowercased at the source: account emails are stored lowercase, and the whole
+  // owner-scoped order surface (history, detail, invoice) matches on exact email
+  // equality — a mixed-case checkout email would orphan the order from its owner.
+  const email = body.customer?.email?.trim().toLowerCase();
   if (!name || !email || !/^\S+@\S+\.\S+$/.test(email)) {
     return bad("Please provide your name and a valid email.");
+  }
+
+  // GSTIN goes on the tax invoice — validate the format server-side (15 chars:
+  // 2-digit state code + PAN + entity + Z + checksum char). Optional field.
+  const gstin = (body.gstin ?? "").trim().toUpperCase();
+  if (gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][A-Z0-9]Z[A-Z0-9]$/.test(gstin)) {
+    return bad("That GSTIN doesn't look valid — please check it (15 characters) or leave it blank.");
   }
 
   // Phone + shipping address are required server-side too (not just in the UI),
@@ -112,24 +122,36 @@ export async function POST(req: Request) {
   for (const i of items) {
     const product = await getProductBySlug(i.slug as string);
     if (!product) return bad(`Product not found: ${i.slug}`);
-    if (!product.price) {
-      return bad(`"${product.name}" is quote-only — please request a quote for it.`);
+    // No price, staff-marked quote-only, or discontinued — none are buyable
+    // online, regardless of any price the doc still carries.
+    if (isQuoteOnly(product)) {
+      return bad(`"${product.name}" is not available to buy online — please request a quote for it.`);
     }
     // Note: inStock === false is "made to order" — orderable with a longer lead
     // time (the storefront presents it that way). Truly unavailable items are set
     // quote-only (handled above) or unpublished (never reach here).
     // Same clamp the cart uses client-side → the charged qty equals the shown qty.
     const qty = clampQty(product, i.qty as number);
+    // `size` is client-supplied: keep it only when it matches a real size option
+    // for this SKU (it's a fulfilment instruction — junk must not reach staff).
+    const size =
+      i.size && (product.sizes ?? []).includes(i.size) ? i.size : undefined;
+    if (i.size && !size && (product.sizes ?? []).length > 0) {
+      return bad(`"${product.name}" doesn't come in "${i.size}" — please re-select the size.`);
+    }
     const unitIncl = inclGST(unitPriceForQty(product, qty));
     usdApprox += usdFor(product, unitIncl * qty) ?? (unitIncl * qty) / usdRate;
     orderItems.push({
       productName: product.name,
       slug: product.slug,
       sku: product.sku,
-      size: i.size,
+      size,
       qty,
       unitPrice: unitIncl,
       lineTotal: unitIncl * qty,
+      // Snapshotted for the GST invoice (HSN column) and export paperwork.
+      hsnSac: product.hsnSac,
+      countryOfOrigin: product.countryOfOrigin,
     });
   }
   const subtotal = orderItems.reduce((n, it) => n + it.lineTotal, 0);
@@ -200,7 +222,7 @@ export async function POST(req: Request) {
     state: body.address?.state,
     pincode: body.address?.pincode,
     country,
-    gstin: body.gstin,
+    gstin,
     businessName: body.businessName,
     billingSameAsShipping: billingSame,
     billingName: billing.name,

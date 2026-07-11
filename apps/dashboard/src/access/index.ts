@@ -123,6 +123,16 @@ export const isLoggedIn: Access = ({ req: { user } }) => !!user;
 export const isStaff: Access = ({ req: { user } }) =>
   !!user && (user as { collection?: string }).collection === "users";
 
+/**
+ * Staff, or the website server via the shared internal key. Used where the
+ * storefront needs a server-side read-back of operational data it shows to the
+ * verified owner (e.g. an order's shipment tracking on the account page).
+ */
+export const internalOrIsStaff: Access = (args) => {
+  if (safeKeyEqual(xKey(args), process.env.INTERNAL_API_KEY)) return true;
+  return isStaff(args);
+};
+
 export const isSuperAdmin: Access = ({ req: { user } }) =>
   hasRole(user as UserLike, "super-admin");
 
