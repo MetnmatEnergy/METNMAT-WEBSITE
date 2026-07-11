@@ -4,10 +4,11 @@ import React from "react";
 import { usePathname } from "next/navigation";
 
 /**
- * Sidebar quick-nav (Home / Analytics / View live site). Client component so it
- * can mark the active route, mirroring Payload's own nav highlight. Icons are
- * inline lucide-style strokes (currentColor) so they inherit hover/active/brand
- * colours from custom-admin.css — no emoji, no images.
+ * Sidebar quick-nav: Home, an expandable Analytics section (the nine analytics
+ * pages), and View live site. Client component so it can mark the active route
+ * and remember the expand state, mirroring Payload's own nav behaviour. Icons
+ * are inline lucide-style strokes (currentColor) so they inherit hover/active/
+ * brand colours from custom-admin.css — no emoji, no images.
  */
 
 const svgProps = {
@@ -44,6 +45,12 @@ const GlobeIcon = () => (
   </svg>
 );
 
+const ChevronIcon = ({ open }: { open: boolean }) => (
+  <svg {...svgProps} width={13} height={13} style={{ marginLeft: "auto", transition: "transform .15s ease", transform: open ? "rotate(90deg)" : "none" }}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+
 const ExtIcon = () => (
   <svg {...svgProps} width={13} height={13} className="mn-shortcut__ext">
     <path d="M7 7h10v10" />
@@ -51,23 +58,86 @@ const ExtIcon = () => (
   </svg>
 );
 
+const ANALYTICS_ITEMS: { slug: string; label: string }[] = [
+  { slug: "", label: "Highlights" },
+  { slug: "realtime", label: "Real-time" },
+  { slug: "traffic", label: "Traffic" },
+  { slug: "behavior", label: "Behavior" },
+  { slug: "marketing", label: "Marketing" },
+  { slug: "recordings", label: "Session Recordings" },
+  { slug: "insights", label: "Insights" },
+  { slug: "benchmarks", label: "Benchmarks" },
+  { slug: "reports", label: "All Reports" },
+];
+
+const K_EXPANDED = "mm-nav-analytics-open";
+
 export function NavShortcutsClient({ siteUrl }: { siteUrl: string }) {
   const pathname = usePathname() || "";
   const isHome = pathname === "/admin" || pathname === "/admin/";
-  const isAnalytics = pathname.startsWith("/admin/analytics");
+  const inAnalytics = pathname.startsWith("/admin/analytics");
+
+  const [open, setOpen] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      setOpen(inAnalytics || localStorage.getItem(K_EXPANDED) === "1");
+    } catch {
+      setOpen(inAnalytics);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const toggle = () => {
+    setOpen((o) => {
+      try {
+        localStorage.setItem(K_EXPANDED, o ? "0" : "1");
+      } catch {
+        /* ignore */
+      }
+      return !o;
+    });
+  };
+
+  const activeSub = (slug: string) => {
+    const p = pathname.replace(/\/$/, "");
+    return slug === "" ? p === "/admin/analytics" : p === `/admin/analytics/${slug}`;
+  };
 
   return (
     <nav className="mn-shortcuts" aria-label="Quick navigation">
       <a className={`mn-shortcut${isHome ? " is-active" : ""}`} href="/admin" aria-current={isHome ? "page" : undefined}>
         <HomeIcon /> Home
       </a>
-      <a
-        className={`mn-shortcut${isAnalytics ? " is-active" : ""}`}
-        href="/admin/analytics"
-        aria-current={isAnalytics ? "page" : undefined}
+
+      <button
+        type="button"
+        className={`mn-shortcut${inAnalytics && !open ? " is-active" : ""}`}
+        onClick={toggle}
+        aria-expanded={open}
+        aria-controls="mn-analytics-subnav"
+        style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "none", font: "inherit" }}
       >
         <AnalyticsIcon /> Analytics
-      </a>
+        <ChevronIcon open={open} />
+      </button>
+      {open && (
+        <div id="mn-analytics-subnav" style={{ display: "grid", gap: 1, paddingLeft: 14, borderLeft: "1px solid var(--theme-elevation-100)", marginLeft: 18 }}>
+          {ANALYTICS_ITEMS.map((i) => {
+            const active = activeSub(i.slug);
+            return (
+              <a
+                key={i.slug || "highlights"}
+                className={`mn-shortcut${active ? " is-active" : ""}`}
+                style={{ padding: "6px 10px", fontSize: 12.5 }}
+                href={`/admin/analytics${i.slug ? `/${i.slug}` : ""}`}
+                aria-current={active ? "page" : undefined}
+              >
+                {i.label}
+              </a>
+            );
+          })}
+        </div>
+      )}
+
       <a className="mn-shortcut mn-shortcut--live" href={siteUrl} target="_blank" rel="noopener noreferrer">
         <GlobeIcon /> View live site
         <ExtIcon />

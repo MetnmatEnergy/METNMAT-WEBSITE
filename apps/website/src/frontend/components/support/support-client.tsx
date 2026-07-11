@@ -1,5 +1,6 @@
 "use client";
 
+import { getTracker } from "@/frontend/lib/analytics/collector";
 import * as React from "react";
 import Link from "next/link";
 import {
@@ -163,7 +164,7 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
         body: JSON.stringify({ ...f, attachmentIds: files.map((x) => x.id) }),
       });
       const d = await res.json();
-      if (res.ok && d.ok) setDone(d.ticketNumber);
+      if (res.ok && d.ok) { setDone(d.ticketNumber); getTracker().track("form_submit", { meta: { form: "support" } }); }
       else setError(d.error || "Could not create your ticket. Please try again.");
     } catch {
       setError("Something went wrong. Please try again.");
@@ -195,7 +196,7 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
   }
 
   return (
-    <form onSubmit={submit} className="rounded-2xl border border-border bg-surface p-6 sm:p-7">
+    <form onSubmit={submit} className="rounded-2xl border border-border bg-surface p-6 sm:p-7" data-analytics-form="support">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="s-name" required>Your name</Label>

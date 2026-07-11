@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { draftMode } from "next/headers";
 import { ArrowLeft, Building2, Calendar, Tag } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
+import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
 import { Badge } from "@/frontend/components/ui/badge";
 import { ProjectCard } from "@/frontend/components/cards/project-card";
 import { CtaBand } from "@/frontend/components/home/cta";
@@ -61,6 +62,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<Pa
 
   return (
     <>
+      <AnalyticsEntity type="project" slug={project.slug} />
       <JsonLd
         data={{
           "@context": "https://schema.org",

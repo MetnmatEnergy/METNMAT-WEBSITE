@@ -1,5 +1,6 @@
 "use client";
 
+import { getTracker } from "@/frontend/lib/analytics/collector";
 import * as React from "react";
 import { Loader2, CheckCircle2, AlertCircle, Send } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
@@ -79,6 +80,7 @@ export function ContactForm() {
       });
       if (res.ok) {
         setStatus("success");
+        getTracker().track("form_submit", { meta: { form: "contact" } });
         form.reset();
         return;
       }
@@ -137,7 +139,7 @@ export function ContactForm() {
       : {};
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} className="grid gap-4" noValidate>
+    <form ref={formRef} onSubmit={onSubmit} className="grid gap-4" noValidate data-analytics-form="contact">
       {topError && (
         <div
           role="alert"

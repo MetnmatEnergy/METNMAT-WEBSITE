@@ -1,5 +1,6 @@
 "use client";
 
+import { getTracker } from "@/frontend/lib/analytics/collector";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -122,6 +123,7 @@ export function SearchBar({
         });
         const data = (await res.json()) as Results;
         setResults(data);
+        if (term.length >= 3) getTracker().track("search", { meta: { q: term.slice(0, 80) } });
         setActive(-1);
       } catch {
         /* aborted or offline — keep previous results */

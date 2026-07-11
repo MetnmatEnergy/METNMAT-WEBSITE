@@ -1,5 +1,6 @@
 "use client";
 
+import { getTracker } from "@/frontend/lib/analytics/collector";
 import * as React from "react";
 import { X, Check, Send, Loader2, Mail, Minus, Plus } from "lucide-react";
 import { useQuote } from "@/frontend/components/commerce/quote-provider";
@@ -126,6 +127,7 @@ export function QuoteDrawer() {
       setStatus("idle");
       closeQuote();
       setThankYou(true);
+      getTracker().track("form_submit", { meta: { form: "quote" } });
     } catch {
       setStatus("error");
     }
@@ -185,7 +187,7 @@ export function QuoteDrawer() {
             </div>
           )}
 
-          <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" noValidate data-analytics-form="quote">
             <p className="text-xs font-semibold uppercase tracking-wide text-brand-soft">
               Your requirement
             </p>

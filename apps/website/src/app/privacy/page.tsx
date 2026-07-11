@@ -37,6 +37,7 @@ export default function PrivacyPolicyPage() {
           <li><strong>Order &amp; billing details</strong> — shipping address, GSTIN/business name, and the items ordered. Card and bank details are entered directly with our payment partner and are never stored on our servers.</li>
           <li><strong>Enquiry &amp; support content</strong> — messages, specifications, and any files you upload for customization requests or support.</li>
           <li><strong>Technical &amp; usage data</strong> — IP address (used to detect your country for currency display), device/browser information, and basic analytics about how pages are used.</li>
+          <li><strong>First-party analytics</strong> — we measure site usage ourselves (pages viewed, how you arrived, device type) using a random identifier stored in your browser. This data stays on our own systems, is never shared with advertising or third-party analytics companies, and your IP address is not stored with it.</li>
         </ul>
       ),
     },

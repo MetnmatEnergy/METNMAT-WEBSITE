@@ -11,6 +11,7 @@ import { CatalogProductCard } from "@/frontend/components/commerce/catalog-produ
 import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 import { inclGST } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
+import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
 import {
   getProductBySlug,
   getCategoryBySlug,
@@ -63,6 +64,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
   return (
     <Container className="py-8">
+      <AnalyticsEntity type="product" slug={product.slug} />
       <JsonLd
         data={{
           "@context": "https://schema.org",

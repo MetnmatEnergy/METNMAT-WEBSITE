@@ -8,6 +8,7 @@ import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { useStore } from "@/frontend/components/commerce/store-provider";
 import { formatINR, inclGST, usdFor, lineUsdValue, GST_RATE, type Product } from "@/frontend/lib/catalog";
+import { getTracker } from "@/frontend/lib/analytics/collector";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { site } from "@/frontend/lib/site";
 import { countryByName, dialFor, isIndiaName } from "@/frontend/lib/countries";
@@ -565,6 +566,11 @@ export default function CheckoutPage() {
             });
             const vd = (await v.json()) as { ok: boolean; orderNumber?: string; error?: string };
             if (v.ok && vd.ok) {
+              // Client-side purchase moment (analytics only; the CMS `paidAt`
+              // remains the authoritative revenue record).
+              getTracker().track("purchase", {
+                meta: { order: vd.orderNumber ?? "", total: data.total ?? 0 },
+              });
               clearCart();
               router.push(`/checkout/success?order=${encodeURIComponent(vd.orderNumber ?? "")}`);
             } else {

@@ -30,12 +30,8 @@ import { default as default_e9bbfc64b681f35811f8025e010d8823 } from '../../../ad
 import { default as default_7c1a55be352b3f1b9b1733a61137e6fe } from '../../../admin/BeforeLogin'
 import { default as default_5bb2f6096a92e2f61cc9ec9ae0fca71e } from '../../../admin/PinLogin'
 import { default as default_a5a338611b4a2fc3303c9dc046438703 } from '../../../admin/NavLogo'
-import { default as default_navshortcuts_wixstyle_sidebar01 } from '../../../admin/NavShortcuts'
-import { default as default_analyticsview_wixstyle_charts01 } from '../../../admin/AnalyticsView'
-// GCS is enabled in PRODUCTION (env-gated) — its client upload handler must stay
-// in the committed import map even when a local dev run (GCS off) regenerates
-// this file without it. Re-add this import + map entry if a regen drops them.
-import { GcsClientUploadHandler as GcsClientUploadHandler_06e62ca02c7c441053a9b643e5545934 } from '@payloadcms/storage-gcs/client'
+import { default as default_8111ae29cf52208bf19d3f279ff19eeb } from '../../../admin/NavShortcuts'
+import { default as default_cdbd8f4edb65b040e69c1cb1b024ac33 } from '../../../admin/SiteAnalyticsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -72,8 +68,7 @@ export const importMap = {
   "/admin/BeforeLogin#default": default_7c1a55be352b3f1b9b1733a61137e6fe,
   "/admin/PinLogin#default": default_5bb2f6096a92e2f61cc9ec9ae0fca71e,
   "/admin/NavLogo#default": default_a5a338611b4a2fc3303c9dc046438703,
-  "/admin/NavShortcuts#default": default_navshortcuts_wixstyle_sidebar01,
-  "/admin/AnalyticsView#default": default_analyticsview_wixstyle_charts01,
-  "@payloadcms/storage-gcs/client#GcsClientUploadHandler": GcsClientUploadHandler_06e62ca02c7c441053a9b643e5545934,
+  "/admin/NavShortcuts#default": default_8111ae29cf52208bf19d3f279ff19eeb,
+  "/admin/SiteAnalyticsView#default": default_cdbd8f4edb65b040e69c1cb1b024ac33,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

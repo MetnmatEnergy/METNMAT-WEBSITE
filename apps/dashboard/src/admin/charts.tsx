@@ -305,6 +305,74 @@ export function HBars({
   );
 }
 
+/** Time-of-day × weekday heatmap (rows Sun–Sat, cols 0–23 IST). */
+export function Heatmap({ grid, ariaLabel = "Activity by time of day" }: { grid: number[][]; ariaLabel?: string }) {
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const max = Math.max(1, ...grid.flat());
+  const cell = 16;
+  const gap = 3;
+  const labelW = 34;
+  const w = labelW + 24 * (cell + gap);
+  const h = 7 * (cell + gap) + 18;
+  return (
+    <svg width="100%" viewBox={`0 0 ${w} ${h}`} role="img" aria-label={ariaLabel} style={{ display: "block" }}>
+      {grid.map((row, d) =>
+        row.map((v, hr) => (
+          <rect
+            key={`${d}-${hr}`}
+            x={labelW + hr * (cell + gap)}
+            y={d * (cell + gap)}
+            width={cell}
+            height={cell}
+            rx={3}
+            fill={v === 0 ? "var(--theme-elevation-100)" : BRAND}
+            opacity={v === 0 ? 1 : 0.25 + 0.75 * (v / max)}
+          >
+            <title>{`${days[d]} ${hr}:00 — ${v}`}</title>
+          </rect>
+        ))
+      )}
+      {days.map((label, d) => (
+        <text key={label} x={0} y={d * (cell + gap) + cell - 3} fontSize={10} fill="var(--theme-elevation-500)">
+          {label}
+        </text>
+      ))}
+      {[0, 6, 12, 18, 23].map((hr) => (
+        <text key={hr} x={labelW + hr * (cell + gap)} y={h - 4} fontSize={9} fill="var(--theme-elevation-500)">
+          {hr}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+/** Simple stage funnel with drop-off percentages. */
+export function Funnel({ stages }: { stages: { label: string; value: number }[] }) {
+  const max = Math.max(1, ...stages.map((s) => s.value));
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {stages.map((s, i) => {
+        const prev = i > 0 ? stages[i - 1].value : s.value;
+        const conv = prev > 0 ? Math.round((s.value / prev) * 100) : 0;
+        return (
+          <div key={s.label}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
+              <span style={{ fontWeight: 600 }}>{s.label}</span>
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                <strong>{s.value.toLocaleString("en-IN")}</strong>
+                {i > 0 && <span style={{ opacity: 0.55, marginLeft: 8 }}>{conv}% of previous</span>}
+              </span>
+            </div>
+            <div style={{ height: 10, borderRadius: 999, background: "var(--theme-elevation-100)", overflow: "hidden" }}>
+              <div style={{ width: `${(s.value / max) * 100}%`, height: "100%", borderRadius: 999, background: BRAND, opacity: 0.9 }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ChangeBadge({ change }: { change: { text: string; up: boolean } }) {
   const color = change.up ? SUCCESS : BRAND;
   return (

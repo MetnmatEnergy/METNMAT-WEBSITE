@@ -101,6 +101,11 @@ const nextConfig = {
         source: "/api/blog/:path*",
         headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
       },
+      // First-party analytics ingestion — never cacheable.
+      {
+        source: "/api/a/:path*",
+        headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
+      },
     ];
   },
 };

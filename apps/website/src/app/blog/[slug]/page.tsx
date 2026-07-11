@@ -16,6 +16,7 @@ import { TableOfContents } from "@/frontend/components/blog/toc";
 import { ReactionButtons } from "@/frontend/components/blog/reaction-buttons";
 import { ShareActions } from "@/frontend/components/blog/share-actions";
 import { ViewTracker } from "@/frontend/components/blog/view-tracker";
+import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
 import { extractToc } from "@/frontend/lib/blog-toc";
 import { site } from "@/frontend/lib/site";
 import {
@@ -137,6 +138,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
         ])}
       />
       {!preview && <ViewTracker articleId={article.id} />}
+      {!preview && <AnalyticsEntity type="blog" slug={article.slug} />}
 
       {preview && (
         <div className="bg-brand px-4 py-2 text-center text-sm font-semibold text-brand-foreground">

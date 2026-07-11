@@ -14,6 +14,7 @@ import { QuoteDrawer } from "@/frontend/components/commerce/quote-drawer";
 import { QuoteModal } from "@/frontend/components/commerce/quote-modal";
 import { ChatWidget } from "@/frontend/components/chat/chat-widget";
 import { ChatCartBridge } from "@/frontend/components/commerce/chat-cart-bridge";
+import { AnalyticsProvider } from "@/frontend/lib/analytics/provider";
 import { CartRail } from "@/frontend/components/commerce/cart-rail";
 import { CartToast } from "@/frontend/components/commerce/cart-toast";
 
@@ -124,6 +125,7 @@ export default async function RootLayout({
         <CartToast />
         <ChatWidget />
         <ChatCartBridge />
+        <AnalyticsProvider />
         </QuoteProvider>
         </StoreProvider>
         </CurrencyProvider>

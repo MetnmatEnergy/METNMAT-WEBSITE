@@ -42,6 +42,10 @@ import { Leads } from "./collections/Leads";
 import { Notifications } from "./collections/Notifications";
 import { IntegrationLogs } from "./collections/IntegrationLogs";
 import { Counters } from "./collections/Counters";
+import { AnalyticsEvents } from "./collections/AnalyticsEvents";
+import { AnalyticsSessions } from "./collections/AnalyticsSessions";
+import { AnalyticsDaily } from "./collections/AnalyticsDaily";
+import { ensureAnalyticsIndexes } from "./hooks/analytics-ingest";
 import { globals } from "./globals";
 import { seed } from "./seed";
 import { resendAdapter } from "./lib/email-adapter";
@@ -152,10 +156,13 @@ export default buildConfig({
       // top of the sidebar.
       beforeNavLinks: ["/admin/NavLogo", "/admin/NavShortcuts"],
       views: {
-        // Deep-dive business analytics (the sidebar "Analytics" shortcut).
+        // First-party analytics suite (Highlights/Real-time/Traffic/Behavior/
+        // Marketing/Recordings/Insights/Benchmarks/Reports + Business) — one
+        // prefix-mounted view; sub-sections route via params.segments.
         analytics: {
-          Component: "/admin/AnalyticsView",
+          Component: "/admin/SiteAnalyticsView",
           path: "/analytics",
+          exact: false,
         },
       },
     },
@@ -209,12 +216,17 @@ export default buildConfig({
     AuditLogs,
     IntegrationLogs,
     Counters,
+    AnalyticsEvents,
+    AnalyticsSessions,
+    AnalyticsDaily,
   ],
   globals,
   onInit: async (payload) => {
     assertProductionConfig(payload.logger);
     payload.logger.info(`[config] trusted origins (cors/csrf): ${trustedOrigins.join(", ") || "(none)"}`);
     await seed(payload);
+    // Raw-Mongo indexes Payload fields can't express (analytics TTL retention).
+    await ensureAnalyticsIndexes(payload);
   },
   editor: lexicalEditor(),
   // No first-party consumer uses GraphQL (website/admin/chatbot are REST/Mongo),

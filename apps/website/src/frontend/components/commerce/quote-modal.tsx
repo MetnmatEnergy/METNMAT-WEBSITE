@@ -1,5 +1,6 @@
 "use client";
 
+import { getTracker } from "@/frontend/lib/analytics/collector";
 import * as React from "react";
 import { X, Check, Send, Loader2, Mail, Minus, Plus } from "lucide-react";
 import { useQuote } from "@/frontend/components/commerce/quote-provider";
@@ -121,6 +122,7 @@ export function QuoteModal() {
       setStatus("idle");
       closeModal();
       setThankYou(true);
+      getTracker().track("form_submit", { meta: { form: "quote" } });
     } catch {
       setStatus("error");
     }
@@ -160,7 +162,7 @@ export function QuoteModal() {
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-5">
-              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" noValidate>
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" noValidate data-analytics-form="quote">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-brand-soft">

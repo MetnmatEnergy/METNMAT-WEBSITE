@@ -1,5 +1,6 @@
 "use client";
 
+import { getTracker } from "@/frontend/lib/analytics/collector";
 import * as React from "react";
 import { Loader2, CheckCircle2, AlertCircle, Send } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
@@ -45,6 +46,7 @@ export function QuoteForm() {
       });
       if (res.ok) {
         setStatus("success");
+        getTracker().track("form_submit", { meta: { form: "quote" } });
         form.reset();
         return;
       }
@@ -82,7 +84,7 @@ export function QuoteForm() {
   const sending = status === "sending";
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-4" noValidate>
+    <form onSubmit={onSubmit} className="grid gap-4" noValidate data-analytics-form="quote">
       {topError && (
         <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2.5 text-sm text-red-600">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
