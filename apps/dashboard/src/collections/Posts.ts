@@ -57,7 +57,7 @@ export const Posts: CollectionConfig = {
   slug: "posts",
   labels: { singular: "Blog Article", plural: "Blog Articles" },
   admin: {
-    group: "Website Content",
+    group: "Blog",
     useAsTitle: "title",
     defaultColumns: ["title", "workflowStatus", "publishedDate", "_status", "viewCount", "likeCount"],
     description:

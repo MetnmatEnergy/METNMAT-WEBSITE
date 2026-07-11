@@ -69,7 +69,7 @@ export const BlogReactions: CollectionConfig = {
   slug: "blog-reactions",
   labels: { singular: "Blog Reaction", plural: "Blog Reactions" },
   admin: {
-    group: "Website Content",
+    group: "Blog",
     description: "Like/Dislike rows (system-managed — do not edit by hand).",
     defaultColumns: ["article", "reaction", "createdAt"],
     hidden: ({ user }) => !user, // keep the sidebar tidy for non-logged-in states

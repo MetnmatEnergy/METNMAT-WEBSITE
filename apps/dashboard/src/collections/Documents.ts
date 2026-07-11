@@ -6,7 +6,7 @@ import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../h
 /** Document assets: brochures, technical datasheets, certificates, SDS. */
 export const Documents: CollectionConfig = {
   slug: "documents",
-  admin: { group: "Assets", useAsTitle: "title", description: "PDFs & documents." },
+  admin: { group: "Site & Mobile App", useAsTitle: "title", description: "PDFs & documents." },
   access: {
     read: publicRead,
     create: canManageAssets,

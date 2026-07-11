@@ -12,7 +12,7 @@ export const Clients: CollectionConfig = {
   slug: "clients",
   labels: { singular: "Client / Partner", plural: "Clients & Partners" },
   admin: {
-    group: "Website Content",
+    group: "Site & Mobile App",
     useAsTitle: "name",
     defaultColumns: ["name", "type", "order", "active"],
     description: "Partner & institution logos shown on the homepage.",

@@ -11,7 +11,7 @@ export const Team: CollectionConfig = {
   slug: "team",
   labels: { singular: "Team Member", plural: "Team" },
   admin: {
-    group: "Website Content",
+    group: "Site & Mobile App",
     useAsTitle: "name",
     defaultColumns: ["name", "role", "order", "active"],
     description: "Team members shown on the website's About page.",

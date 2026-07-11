@@ -11,7 +11,7 @@ export const ReturnRequests: CollectionConfig = {
   slug: "return-requests",
   labels: { singular: "Return / Replacement", plural: "Returns & Replacements" },
   admin: {
-    group: "Support",
+    group: "Sales",
     useAsTitle: "rmaNumber",
     defaultColumns: ["rmaNumber", "order", "action", "status", "createdAt"],
     description: "Return, replacement & refund requests.",

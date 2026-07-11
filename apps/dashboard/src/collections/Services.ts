@@ -10,7 +10,7 @@ import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../h
 export const Services: CollectionConfig = {
   slug: "services",
   admin: {
-    group: "Website Content",
+    group: "Site & Mobile App",
     useAsTitle: "title",
     defaultColumns: ["title", "order", "featured", "active"],
     description: "Services on the website's /services page and homepage.",

@@ -10,7 +10,7 @@ export const BlogSlugRedirects: CollectionConfig = {
   slug: "blog-slug-redirects",
   labels: { singular: "Blog Slug Redirect", plural: "Blog Slug Redirects" },
   admin: {
-    group: "Website Content",
+    group: "Blog",
     useAsTitle: "oldSlug",
     defaultColumns: ["oldSlug", "article", "createdAt"],
     description: "Automatic 301 redirects for renamed article URLs (system-managed).",

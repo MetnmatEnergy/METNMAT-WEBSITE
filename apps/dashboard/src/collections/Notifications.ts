@@ -8,7 +8,7 @@ import { isStaff, internalOrCanManageCatalog, isAdmin } from "../access";
 export const Notifications: CollectionConfig = {
   slug: "notifications",
   admin: {
-    group: "Administration",
+    group: "Inbox",
     useAsTitle: "title",
     defaultColumns: ["title", "type", "recipient", "read", "createdAt"],
     description: "Staff notifications.",

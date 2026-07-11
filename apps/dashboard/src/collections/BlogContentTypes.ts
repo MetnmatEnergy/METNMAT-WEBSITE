@@ -12,7 +12,7 @@ export const BlogContentTypes: CollectionConfig = {
   slug: "blog-content-types",
   labels: { singular: "Blog Content Type", plural: "Blog Content Types" },
   admin: {
-    group: "Website Content",
+    group: "Blog",
     useAsTitle: "name",
     defaultColumns: ["name", "slug", "isActive", "displayOrder"],
     description: "Article formats (Technical Article, Research Note, Case Study, …).",

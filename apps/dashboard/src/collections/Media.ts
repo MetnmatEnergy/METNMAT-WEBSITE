@@ -9,7 +9,7 @@ import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../h
  */
 export const Media: CollectionConfig = {
   slug: "media",
-  admin: { group: "Assets", useAsTitle: "filename", description: "Images & banners." },
+  admin: { group: "Site & Mobile App", useAsTitle: "filename", description: "Images & banners." },
   access: {
     read: publicRead,
     create: canManageAssets,

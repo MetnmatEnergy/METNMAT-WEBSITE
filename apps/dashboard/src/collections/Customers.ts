@@ -53,7 +53,7 @@ export const Customers: CollectionConfig = {
     },
   },
   admin: {
-    group: "Sales",
+    group: "Customers & Leads",
     useAsTitle: "email",
     defaultColumns: ["userCode", "name", "email", "phone", "company", "createdAt"],
     description: "Storefront customer accounts. Created when shoppers register on the website.",

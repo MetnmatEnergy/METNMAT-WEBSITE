@@ -3,10 +3,11 @@ import { canManageSettings, publicRead } from "../access";
 import { revalidateWebsiteGlobal } from "../hooks/revalidate";
 
 const settings = (
-  extra: Partial<GlobalConfig> = {}
+  extra: Partial<GlobalConfig> = {},
+  group = "Site & Mobile App"
 ): Pick<GlobalConfig, "access" | "admin" | "hooks"> => ({
   access: { read: publicRead, update: canManageSettings },
-  admin: { group: "Website Settings", ...(extra.admin ?? {}) },
+  admin: { group, ...(extra.admin ?? {}) },
   // Saving any setting pings the website so the change goes live immediately.
   hooks: { afterChange: [revalidateWebsiteGlobal] },
 });
@@ -84,7 +85,7 @@ export const Contact: GlobalConfig = {
 /** Social media links. */
 export const Social: GlobalConfig = {
   slug: "social",
-  ...settings(),
+  ...settings({}, "Marketing"),
   fields: [
     { name: "linkedin", type: "text" },
     { name: "youtube", type: "text" },
@@ -98,7 +99,7 @@ export const Social: GlobalConfig = {
 /** Global SEO defaults. */
 export const SEO: GlobalConfig = {
   slug: "seo",
-  ...settings(),
+  ...settings({}, "Marketing"),
   fields: [
     { name: "defaultTitle", type: "text" },
     { name: "titleTemplate", type: "text", admin: { description: "e.g. '%s · METNMAT'." } },
@@ -112,7 +113,7 @@ export const SEO: GlobalConfig = {
 export const Commerce: GlobalConfig = {
   slug: "commerce",
   label: "Commerce & Pricing",
-  ...settings(),
+  ...settings({}, "Sales"),
   fields: [
     {
       name: "usdExchangeRate",

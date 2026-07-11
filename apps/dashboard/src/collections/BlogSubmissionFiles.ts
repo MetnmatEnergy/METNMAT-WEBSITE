@@ -22,7 +22,7 @@ export const BlogSubmissionFiles: CollectionConfig = {
   slug: "blog-submission-files",
   labels: { singular: "Blog Submission File", plural: "Blog Submission Files" },
   admin: {
-    group: "Website Content",
+    group: "Blog",
     useAsTitle: "filename",
     defaultColumns: ["filename", "createdAt"],
     description: "Files attached to publication requests (private — staff only).",

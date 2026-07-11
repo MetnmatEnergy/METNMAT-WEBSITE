@@ -25,7 +25,7 @@ export const Projects: CollectionConfig = {
   slug: "projects",
   labels: { singular: "Project", plural: "Projects" },
   admin: {
-    group: "Website Content",
+    group: "Site & Mobile App",
     useAsTitle: "title",
     defaultColumns: ["title", "category", "order", "featured", "active"],
     description: "Case studies on the website's /projects page and per-project detail pages.",

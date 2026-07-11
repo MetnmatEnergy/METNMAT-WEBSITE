@@ -85,7 +85,7 @@ export const BlogSubmissions: CollectionConfig = {
   slug: "blog-submissions",
   labels: { singular: "Publication Request", plural: "Publication Requests" },
   admin: {
-    group: "Website Content",
+    group: "Blog",
     useAsTitle: "proposedTitle",
     defaultColumns: ["referenceNumber", "proposedTitle", "fullName", "status", "createdAt"],
     description:

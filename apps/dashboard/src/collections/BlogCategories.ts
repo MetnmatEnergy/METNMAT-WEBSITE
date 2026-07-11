@@ -12,7 +12,7 @@ export const BlogCategories: CollectionConfig = {
   slug: "blog-categories",
   labels: { singular: "Blog Category", plural: "Blog Categories" },
   admin: {
-    group: "Website Content",
+    group: "Blog",
     useAsTitle: "name",
     defaultColumns: ["name", "slug", "isActive", "displayOrder"],
     description: "Categories for blog articles (shown on cards and in the /blog filter).",

@@ -148,31 +148,51 @@ export default buildConfig({
       // PIN pad is the primary sign-in; the welcome line sits above it.
       beforeLogin: ["/admin/BeforeLogin", "/admin/PinLogin"],
       beforeDashboard: ["/admin/BeforeDashboard"],
-      // Full brand logo at the top of the sidebar.
-      beforeNavLinks: ["/admin/NavLogo"],
+      // Full brand logo + Wix-style Home/Analytics/live-site shortcuts at the
+      // top of the sidebar.
+      beforeNavLinks: ["/admin/NavLogo", "/admin/NavShortcuts"],
+      views: {
+        // Deep-dive business analytics (the sidebar "Analytics" shortcut).
+        analytics: {
+          Component: "/admin/AnalyticsView",
+          path: "/analytics",
+        },
+      },
     },
   },
-  // Sidebar group order follows this array: daily work first (Sales, Catalog),
-  // then site content, assets, and admin plumbing last.
+  // Sidebar group order follows first appearance in this array (Wix-style):
+  // Sales → Catalog → Site & Mobile App → Inbox → Customers & Leads → Blog →
+  // Operations → Administration. (Marketing holds only globals, so Payload
+  // appends it after the collection groups.)
   collections: [
+    // Sales
     Orders,
-    PaymentEvents,
     Invoices,
     Shipments,
+    PaymentEvents,
     Quotations,
-    Leads,
     Enquiries,
     EnquiryUploads,
-    Tickets,
     ReturnRequests,
-    Customers,
-    Tasks,
-    Notifications,
+    // Catalog
     Products,
-    StockLedger,
     Categories,
+    StockLedger,
+    // Site & Mobile App (website content + assets)
     Services,
     Projects,
+    Faqs,
+    Team,
+    Clients,
+    Media,
+    Documents,
+    // Inbox
+    Tickets,
+    Notifications,
+    // Customers & Leads
+    Customers,
+    Leads,
+    // Blog
     Posts,
     BlogCategories,
     BlogContentTypes,
@@ -181,11 +201,9 @@ export default buildConfig({
     BlogSubmissionFiles,
     BlogReactions,
     BlogSlugRedirects,
-    Faqs,
-    Team,
-    Clients,
-    Media,
-    Documents,
+    // Operations
+    Tasks,
+    // Administration
     Users,
     StaffRoles,
     AuditLogs,

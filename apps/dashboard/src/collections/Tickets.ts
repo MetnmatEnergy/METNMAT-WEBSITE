@@ -13,7 +13,7 @@ export const Tickets: CollectionConfig = {
   slug: "tickets",
   labels: { singular: "Support Ticket", plural: "Support Tickets" },
   admin: {
-    group: "Sales",
+    group: "Inbox",
     useAsTitle: "ticketNumber",
     defaultColumns: ["ticketNumber", "subject", "status", "priority", "name", "createdAt"],
     description: "Customer support tickets from the website.",

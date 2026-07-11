@@ -11,7 +11,7 @@ export const Faqs: CollectionConfig = {
   slug: "faqs",
   labels: { singular: "FAQ", plural: "FAQs" },
   admin: {
-    group: "Website Content",
+    group: "Site & Mobile App",
     useAsTitle: "question",
     defaultColumns: ["question", "category", "order", "active"],
     description: "Frequently asked questions shown on the website.",

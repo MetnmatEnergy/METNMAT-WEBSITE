@@ -9,7 +9,7 @@ import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 export const Leads: CollectionConfig = {
   slug: "leads",
   admin: {
-    group: "Sales",
+    group: "Customers & Leads",
     useAsTitle: "name",
     defaultColumns: ["name", "company", "source", "status", "createdAt"],
     description: "Top-of-funnel sales leads.",

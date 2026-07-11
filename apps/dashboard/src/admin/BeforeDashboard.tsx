@@ -1,48 +1,42 @@
 import React from "react";
+import { headers as nextHeaders } from "next/headers";
 import type { Payload } from "payload";
+import {
+  BRAND,
+  SUCCESS,
+  WARNING,
+  DANGER,
+  INFO,
+  ACCENT,
+  MUTED,
+  STATUS_COLOR,
+  PAID_STATUSES,
+  panel,
+  tint,
+  inr,
+  inrCompact,
+  pctChange,
+  monthKeys,
+  monthKeyOf,
+  timeAgo,
+  Sparkline,
+  BarChart,
+  Donut,
+  ChangeBadge,
+  EmptyHint,
+} from "./charts";
 
 /**
- * METNMAT Operations Dashboard — analytics control center shown at the top of
- * /admin. Real-data KPIs (revenue, orders, customers, enquiries) with
- * sparklines, a 12-month revenue chart, an order-status donut, recent orders,
- * top products, and quick links — all computed from the live database.
- * Server component; Payload injects the `payload` instance. No chart libs:
- * everything is hand-rendered SVG so the build stays lean.
+ * METNMAT control center — the Wix-style home shown at /admin. Personalised
+ * welcome + one-click actions, a "needs attention" strip, real-data KPIs with
+ * sparklines, revenue chart, order-status donut, recent orders, top products,
+ * and a live activity feed from the audit log. Server component; everything is
+ * computed from the live database — no invented numbers anywhere.
  */
 type Props = { payload?: Payload };
 
-const BRAND = "#d81f26";
-// Per-theme hues from custom-admin.css so pills/charts stay readable in BOTH
-// light and dark mode (raw dark-tuned hexes wash out on white surfaces).
-const SUCCESS = "var(--mn-success)";
-const WARNING = "var(--mn-warning)";
-const DANGER = "var(--mn-danger)";
-const INFO = "var(--mn-info)";
-const ACCENT = "var(--mn-accent)";
-const PURPLE = "var(--mn-purple)";
-const MUTED = "var(--mn-muted)";
-const STATUS_COLOR: Record<string, string> = {
-  paid: SUCCESS,
-  pending: WARNING,
-  shipped: INFO,
-  delivered: ACCENT,
-  failed: DANGER,
-  cancelled: MUTED,
-  refunded: PURPLE,
-};
-/** Soft tint of a status colour for pill backgrounds (works with CSS vars). */
-const tint = (color: string) => `color-mix(in srgb, ${color} 14%, transparent)`;
-const PAID_STATUSES = new Set(["paid", "shipped", "delivered"]);
-
-const panel: React.CSSProperties = {
-  background: "var(--theme-elevation-50)",
-  border: "1px solid var(--theme-elevation-100)",
-  borderRadius: 16,
-  padding: 20,
-};
-
-// ── Data helpers ──────────────────────────────────────────────────────────────
 type OrderDoc = {
+  id?: string;
   orderNumber?: string;
   name?: string;
   email?: string;
@@ -52,10 +46,20 @@ type OrderDoc = {
   items?: { productName?: string; qty?: number; lineTotal?: number }[];
 };
 
+type AuditDoc = {
+  action?: string;
+  collectionSlug?: string;
+  documentId?: string;
+  documentLabel?: string;
+  userEmail?: string;
+  createdAt?: string;
+};
+
 async function safeFind<T = Record<string, unknown>>(
   payload: Payload | undefined,
   collection: string,
-  limit = 500
+  limit = 500,
+  where?: Record<string, unknown>
 ): Promise<T[]> {
   if (!payload) return [];
   try {
@@ -64,6 +68,7 @@ async function safeFind<T = Record<string, unknown>>(
       limit,
       depth: 0,
       sort: "-createdAt",
+      ...(where ? { where: where as never } : {}),
     });
     return res.docs as T[];
   } catch {
@@ -71,183 +76,50 @@ async function safeFind<T = Record<string, unknown>>(
   }
 }
 
-async function safeCount(payload: Payload | undefined, collection: string): Promise<number> {
+async function safeCount(
+  payload: Payload | undefined,
+  collection: string,
+  where?: Record<string, unknown>
+): Promise<number> {
   if (!payload) return 0;
   try {
-    return (await payload.count({ collection: collection as never })).totalDocs;
+    return (
+      await payload.count({ collection: collection as never, ...(where ? { where: where as never } : {}) })
+    ).totalDocs;
   } catch {
     return 0;
   }
 }
 
-/** Build the last `n` month buckets ending with the current month. */
-function monthKeys(n: number): { key: string; label: string }[] {
-  const now = new Date();
-  const out: { key: string; label: string }[] = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    out.push({
-      key: `${d.getFullYear()}-${d.getMonth()}`,
-      label: d.toLocaleString("en-US", { month: "short" }),
-    });
-  }
-  return out;
-}
-
-function monthKeyOf(iso?: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${d.getMonth()}`;
-}
-
-const inr = (n: number) =>
-  "₹" + Math.round(n).toLocaleString("en-IN");
-const inrCompact = (n: number) => {
-  if (n >= 1e7) return "₹" + (n / 1e7).toFixed(2) + " Cr";
-  if (n >= 1e5) return "₹" + (n / 1e5).toFixed(2) + " L";
-  if (n >= 1e3) return "₹" + (n / 1e3).toFixed(1) + "k";
-  return "₹" + Math.round(n).toLocaleString("en-IN");
-};
-
-function pctChange(series: number[]): { text: string; up: boolean } {
-  if (series.length < 2) return { text: "—", up: true };
-  const last = series[series.length - 1];
-  const prev = series[series.length - 2];
-  if (prev === 0) return { text: last > 0 ? "New" : "—", up: last >= 0 };
-  const pct = ((last - prev) / prev) * 100;
-  return { text: `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`, up: pct >= 0 };
-}
-
-// ── SVG primitives ──────────────────────────────────────────────────────────
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const w = 120;
-  const h = 36;
-  const max = Math.max(...data, 1);
-  const min = Math.min(...data, 0);
-  const span = max - min || 1;
-  const step = data.length > 1 ? w / (data.length - 1) : w;
-  const pts = data.map((v, i) => `${i * step},${h - ((v - min) / span) * (h - 4) - 2}`).join(" ");
-  const areaPts = `0,${h} ${pts} ${w},${h}`;
-  // Sanitised: colours may be CSS var() strings, and url(#id) refs break on
-  // parentheses/spaces.
-  const id = `spk-${color.replace(/[^a-zA-Z0-9-]/g, "")}-${data.join("").length}`;
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }}>
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={areaPts} fill={`url(#${id})`} />
-      <polyline points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function BarChart({ months, values, color }: { months: string[]; values: number[]; color: string }) {
-  const w = 640;
-  const h = 220;
-  const padB = 24;
-  const padL = 6;
-  const max = Math.max(...values, 1);
-  const n = values.length;
-  const slot = (w - padL) / n;
-  const barW = Math.min(26, slot * 0.5);
-  return (
-    <svg width="100%" viewBox={`0 0 ${w} ${h}`} role="img" aria-label="Monthly revenue" style={{ display: "block" }}>
-      {[0.25, 0.5, 0.75, 1].map((g) => (
-        <line key={g} x1={padL} x2={w} y1={(h - padB) * (1 - g)} y2={(h - padB) * (1 - g)} stroke="var(--theme-elevation-100)" strokeWidth={1} />
-      ))}
-      {values.map((v, i) => {
-        const bh = ((h - padB) * v) / max;
-        const x = padL + i * slot + (slot - barW) / 2;
-        return (
-          <g key={i}>
-            <rect x={x} y={h - padB - bh} width={barW} height={Math.max(bh, 1)} rx={4} fill={color} opacity={0.92} />
-            <text x={x + barW / 2} y={h - 8} textAnchor="middle" fontSize={10} fill="var(--theme-elevation-500)">
-              {months[i]}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-function Donut({ segments }: { segments: { label: string; value: number; color: string }[] }) {
-  const total = segments.reduce((s, x) => s + x.value, 0);
-  const size = 180;
-  const r = 70;
-  const c = size / 2;
-  const circ = 2 * Math.PI * r;
-  let offset = 0;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={c} cy={c} r={r} fill="none" stroke="var(--theme-elevation-100)" strokeWidth={18} />
-      {total > 0 &&
-        segments.map((s, i) => {
-          const len = (s.value / total) * circ;
-          const el = (
-            <circle
-              key={i}
-              cx={c}
-              cy={c}
-              r={r}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={18}
-              strokeDasharray={`${len} ${circ - len}`}
-              strokeDashoffset={-offset}
-              transform={`rotate(-90 ${c} ${c})`}
-              strokeLinecap="butt"
-            />
-          );
-          offset += len;
-          return el;
-        })}
-      <text x={c} y={c - 4} textAnchor="middle" fontSize={26} fontWeight={800} fill="var(--theme-text)">
-        {total}
-      </text>
-      <text x={c} y={c + 16} textAnchor="middle" fontSize={11} fill="var(--theme-elevation-500)">
-        orders
-      </text>
-    </svg>
-  );
-}
-
-function ChangeBadge({ change }: { change: { text: string; up: boolean } }) {
-  const color = change.up ? SUCCESS : BRAND;
-  return (
-    <span style={{ color, fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}>
-      {change.text !== "—" && change.text !== "New" ? (change.up ? "▲" : "▼") : ""} {change.text}
-    </span>
-  );
-}
-
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export default async function BeforeDashboard({ payload }: Props) {
   const months = monthKeys(12);
-  const [orders, enquiries, productsCount, openTickets] = await Promise.all([
+
+  // Who's signed in — for the Wix-style personalised welcome.
+  let firstName = "";
+  try {
+    if (payload) {
+      const { user } = await payload.auth({ headers: await nextHeaders() });
+      firstName = String((user as { name?: string } | null)?.name || "").split(" ")[0] || "";
+    }
+  } catch {
+    /* greeting is optional */
+  }
+
+  const [orders, enquiries, audit, openTickets, newSubmissions, stockProducts] = await Promise.all([
     safeFind<OrderDoc>(payload, "orders"),
     safeFind<{ createdAt?: string }>(payload, "enquiries"),
-    safeCount(payload, "products"),
-    (async () => {
-      if (!payload) return 0;
-      try {
-        return (
-          await payload.count({
-            collection: "orders" as never,
-            where: { status: { in: ["paid", "pending"] } } as never,
-          })
-        ).totalDocs;
-      } catch {
-        return 0;
-      }
-    })(),
+    safeFind<AuditDoc>(payload, "audit-logs", 8),
+    safeCount(payload, "tickets", { status: { in: ["open", "in-progress", "waiting"] } }),
+    safeCount(payload, "blog-submissions", { status: { equals: "new" } }),
+    safeFind<{ id?: string; name?: string; stockQty?: number; lowStockThreshold?: number; productType?: string }>(
+      payload,
+      "products",
+      400
+    ),
   ]);
 
-  // Monthly aggregation
+  // ── Aggregations (12 months) ───────────────────────────────────────────────
   const revByMonth = new Map(months.map((m) => [m.key, 0]));
   const ordByMonth = new Map(months.map((m) => [m.key, 0]));
   const custByMonth = new Map<string, Set<string>>(months.map((m) => [m.key, new Set()]));
@@ -257,6 +129,7 @@ export default async function BeforeDashboard({ payload }: Props) {
   const customers = new Set<string>();
   let totalRevenue = 0;
   let paidCount = 0;
+  let pendingCount = 0;
 
   for (const o of orders) {
     const mk = monthKeyOf(o.createdAt);
@@ -266,6 +139,7 @@ export default async function BeforeDashboard({ payload }: Props) {
       if (custByMonth.has(mk)) custByMonth.get(mk)!.add(o.email.toLowerCase());
     }
     statusCounts.set(o.status || "pending", (statusCounts.get(o.status || "pending") || 0) + 1);
+    if (o.status === "pending") pendingCount += 1;
     if (PAID_STATUSES.has(o.status || "")) {
       const t = o.total || 0;
       totalRevenue += t;
@@ -289,15 +163,22 @@ export default async function BeforeDashboard({ payload }: Props) {
     if (e.createdAt && new Date(e.createdAt).getTime() >= weekAgo) newEnquiries += 1;
   }
 
+  const lowStock = stockProducts.filter(
+    (p) =>
+      (p.productType === "in-stock" || !p.productType) &&
+      typeof p.stockQty === "number" &&
+      p.stockQty <= (p.lowStockThreshold ?? 5)
+  );
+
   const revSeries = months.map((m) => revByMonth.get(m.key) || 0);
   const ordSeries = months.map((m) => ordByMonth.get(m.key) || 0);
-  const custSeries = months.map((m) => (custByMonth.get(m.key)?.size ?? 0));
+  const custSeries = months.map((m) => custByMonth.get(m.key)?.size ?? 0);
   const enqSeries = months.map((m) => enqByMonth.get(m.key) || 0);
   const monthLabels = months.map((m) => m.label);
 
   const kpis = [
     { label: "Total earnings", value: inrCompact(totalRevenue), sub: `${paidCount} paid orders`, series: revSeries, color: SUCCESS, change: pctChange(revSeries) },
-    { label: "Total orders", value: String(orders.length), sub: `${openTickets} need action`, series: ordSeries, color: BRAND, change: pctChange(ordSeries) },
+    { label: "Total orders", value: String(orders.length), sub: `${pendingCount} awaiting payment`, series: ordSeries, color: BRAND, change: pctChange(ordSeries) },
     { label: "Customers", value: String(customers.size), sub: "unique buyers", series: custSeries, color: INFO, change: pctChange(custSeries) },
     { label: "Enquiries (RFQ)", value: String(enquiries.length), sub: `${newEnquiries} new this week`, series: enqSeries, color: ACCENT, change: pctChange(enqSeries) },
   ];
@@ -312,13 +193,73 @@ export default async function BeforeDashboard({ payload }: Props) {
     .slice(0, 6);
 
   const recent = orders.slice(0, 6);
+  const site = (process.env.WEBSITE_URL || "https://www.metnmat.com").replace(/\/+$/, "");
+
+  // "Needs attention" — only real, actionable items; hidden entirely when clear.
+  const attention: { label: string; count: number; href: string; color: string }[] = [
+    { label: "orders awaiting payment", count: pendingCount, href: "/admin/collections/orders?where[status][equals]=pending", color: WARNING },
+    { label: "open support tickets", count: openTickets, href: "/admin/collections/tickets", color: DANGER },
+    { label: "new blog submissions", count: newSubmissions, href: "/admin/collections/blog-submissions?where[status][equals]=new", color: INFO },
+    { label: "products low on stock", count: lowStock.length, href: "/admin/collections/products", color: BRAND },
+  ].filter((a) => a.count > 0);
 
   return (
     <div style={{ marginBottom: 28 }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: 0.2 }}>Operations overview</h2>
-        <span style={{ fontSize: 12.5, opacity: 0.55 }}>Live data · edits go live on the website within a minute</span>
+      {/* Welcome + one-click actions */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: 0.2 }}>
+            Welcome back{firstName ? `, ${firstName}` : ""} 👋
+          </h2>
+          <span style={{ fontSize: 12.5, opacity: 0.55 }}>Live data · edits go live on the website within a minute</span>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <ActionButton href={site} external primary label="View live site ↗" />
+          <ActionButton href="/admin/globals/homepage" label="Edit homepage" />
+          <ActionButton href="/admin/collections/products/create" label="+ Add product" />
+          <ActionButton href="/admin/collections/posts/create" label="+ New article" />
+          <ActionButton href="/admin/analytics" label="Analytics →" />
+        </div>
       </div>
+
+      {/* Needs attention */}
+      {attention.length > 0 && (
+        <div
+          style={{
+            ...panel,
+            marginTop: 16,
+            padding: "12px 16px",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            alignItems: "center",
+          }}
+        >
+          <strong style={{ fontSize: 12.5, letterSpacing: 0.4, textTransform: "uppercase", opacity: 0.6 }}>
+            Needs attention
+          </strong>
+          {attention.map((a) => (
+            <a
+              key={a.label}
+              href={a.href}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                textDecoration: "none",
+                color: a.color,
+                background: tint(a.color),
+                borderRadius: 999,
+                padding: "5px 12px",
+                fontSize: 12.5,
+                fontWeight: 700,
+              }}
+            >
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>{a.count}</span> {a.label} →
+            </a>
+          ))}
+        </div>
+      )}
 
       {/* KPI cards */}
       <div style={{ display: "grid", gap: 14, marginTop: 16, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
@@ -350,7 +291,7 @@ export default async function BeforeDashboard({ payload }: Props) {
             <span style={{ fontSize: 11.5, opacity: 0.5 }}>Last 12 months · paid orders</span>
           </div>
           {orders.length > 0 ? (
-            <BarChart months={monthLabels} values={revSeries} color={BRAND} />
+            <BarChart months={monthLabels} values={revSeries} color={BRAND} ariaLabel="Monthly revenue" />
           ) : (
             <EmptyHint text="No orders yet. Paid orders from the website checkout will chart here." />
           )}
@@ -399,7 +340,15 @@ export default async function BeforeDashboard({ payload }: Props) {
               <tbody>
                 {recent.map((o, i) => (
                   <tr key={i} style={{ borderTop: "1px solid var(--theme-elevation-100)" }}>
-                    <td style={{ padding: "9px 4px", fontWeight: 600 }}>{o.orderNumber || "—"}</td>
+                    <td style={{ padding: "9px 4px", fontWeight: 600 }}>
+                      {o.id ? (
+                        <a href={`/admin/collections/orders/${o.id}`} style={{ color: "var(--theme-text)", textDecoration: "none" }}>
+                          {o.orderNumber || "—"}
+                        </a>
+                      ) : (
+                        o.orderNumber || "—"
+                      )}
+                    </td>
                     <td style={{ padding: "9px 4px", opacity: 0.85 }}>{o.name || "—"}</td>
                     <td style={{ padding: "9px 4px", fontVariantNumeric: "tabular-nums" }}>{inr(o.total || 0)}</td>
                     <td style={{ padding: "9px 4px" }}>
@@ -447,83 +396,144 @@ export default async function BeforeDashboard({ payload }: Props) {
         </div>
       </div>
 
-      <QuickLinks />
-    </div>
-  );
-}
+      {/* Activity feed + management shortcuts */}
+      <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "minmax(0, 1.7fr) minmax(0, 1fr)" }}>
+        <div style={panel}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontWeight: 700 }}>Activity feed</div>
+            <a href="/admin/collections/audit-logs" style={{ color: BRAND, fontSize: 12.5, textDecoration: "none" }}>Full audit trail →</a>
+          </div>
+          {audit.length > 0 ? (
+            <div style={{ display: "grid", gap: 2 }}>
+              {audit.map((a, i) => {
+                const verb = a.action === "create" ? "created" : a.action === "delete" ? "deleted" : "updated";
+                const target = a.documentLabel || a.documentId || "";
+                const href =
+                  a.collectionSlug && a.documentId && a.action !== "delete"
+                    ? `/admin/collections/${a.collectionSlug}/${a.documentId}`
+                    : a.collectionSlug
+                      ? `/admin/collections/${a.collectionSlug}`
+                      : "/admin/collections/audit-logs";
+                return (
+                  <a
+                    key={i}
+                    href={href}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "8px 6px",
+                      borderRadius: 8,
+                      textDecoration: "none",
+                      color: "var(--theme-text)",
+                      borderTop: i === 0 ? "none" : "1px solid var(--theme-elevation-100)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 999,
+                        flexShrink: 0,
+                        background: a.action === "create" ? SUCCESS : a.action === "delete" ? DANGER : INFO,
+                      }}
+                    />
+                    <span style={{ fontSize: 12.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                      <strong>{a.userEmail || "System"}</strong> {verb}{" "}
+                      <span style={{ opacity: 0.8 }}>{a.collectionSlug?.replace(/-/g, " ")}</span>
+                      {target ? <span style={{ opacity: 0.65 }}> · {target}</span> : null}
+                    </span>
+                    <span style={{ fontSize: 11, opacity: 0.5, whiteSpace: "nowrap" }}>{timeAgo(a.createdAt)}</span>
+                  </a>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyHint text="Staff edits will appear here as they happen." />
+          )}
+        </div>
 
-function EmptyHint({ text }: { text: string }) {
-  return (
-    <div style={{ fontSize: 13, opacity: 0.5, padding: "26px 4px", textAlign: "center" }}>{text}</div>
-  );
-}
-
-function QuickLinks() {
-  const groups: { title: string; links: { label: string; href: string; primary?: boolean }[] }[] = [
-    {
-      title: "Sales",
-      links: [
-        { label: "Orders", href: "/admin/collections/orders" },
-        { label: "Support tickets", href: "/admin/collections/tickets" },
-        { label: "Enquiries (RFQ)", href: "/admin/collections/enquiries" },
-      ],
-    },
-    {
-      title: "Shop catalog",
-      links: [
-        { label: "Products", href: "/admin/collections/products" },
-        { label: "Categories", href: "/admin/collections/categories" },
-        { label: "+ Add product", href: "/admin/collections/products/create", primary: true },
-      ],
-    },
-    {
-      title: "Website content",
-      links: [
-        { label: "Blog articles", href: "/admin/collections/posts" },
-        { label: "Publication requests", href: "/admin/collections/blog-submissions" },
-        { label: "Projects", href: "/admin/collections/projects" },
-        { label: "Services", href: "/admin/collections/services" },
-        { label: "Team", href: "/admin/collections/team" },
-        { label: "+ New article", href: "/admin/collections/posts/create", primary: true },
-      ],
-    },
-    {
-      title: "Site & administration",
-      links: [
-        { label: "Homepage", href: "/admin/globals/homepage" },
-        { label: "Navigation", href: "/admin/globals/navigation" },
-        { label: "Maintenance banner", href: "/admin/globals/maintenance" },
-        { label: "Staff roles", href: "/admin/collections/staff-roles" },
-        { label: "Staff users", href: "/admin/collections/users" },
-      ],
-    },
-  ];
-  return (
-    <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
-      {groups.map((g) => (
-        <div key={g.title} style={panel}>
-          <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 10 }}>{g.title}</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {g.links.map((l) => (
-              <a
-                key={l.href + l.label}
-                href={l.href}
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  color: l.primary ? "#fff" : "var(--theme-text)",
-                  background: l.primary ? BRAND : "var(--theme-elevation-100)",
-                  borderRadius: 999,
-                  padding: "6px 12px",
-                }}
-              >
-                {l.label}
-              </a>
+        <div style={panel}>
+          <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 10 }}>Manage</div>
+          <div style={{ display: "grid", gap: 12 }}>
+            {[
+              { title: "Sales", links: [
+                { label: "Orders", href: "/admin/collections/orders" },
+                { label: "Shipments", href: "/admin/collections/shipments" },
+                { label: "RFQs", href: "/admin/collections/enquiries" },
+              ] },
+              { title: "Site & Mobile App", links: [
+                { label: "Homepage", href: "/admin/globals/homepage" },
+                { label: "Navigation", href: "/admin/globals/navigation" },
+                { label: "Media", href: "/admin/collections/media" },
+              ] },
+              { title: "Marketing", links: [
+                { label: "SEO", href: "/admin/globals/seo" },
+                { label: "Social links", href: "/admin/globals/social" },
+                { label: "Blog", href: "/admin/collections/posts" },
+              ] },
+              { title: "Inbox", links: [
+                { label: "Support tickets", href: "/admin/collections/tickets" },
+                { label: "Notifications", href: "/admin/collections/notifications" },
+              ] },
+            ].map((g) => (
+              <div key={g.title}>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6, opacity: 0.55, marginBottom: 6 }}>{g.title}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {g.links.map((l) => (
+                    <a
+                      key={l.href}
+                      href={l.href}
+                      style={{
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                        color: "var(--theme-text)",
+                        background: "var(--theme-elevation-100)",
+                        borderRadius: 999,
+                        padding: "6px 12px",
+                      }}
+                    >
+                      {l.label}
+                    </a>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>
-      ))}
+      </div>
     </div>
+  );
+}
+
+function ActionButton({
+  href,
+  label,
+  primary,
+  external,
+}: {
+  href: string;
+  label: string;
+  primary?: boolean;
+  external?: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      style={{
+        fontSize: 12.5,
+        fontWeight: 700,
+        textDecoration: "none",
+        color: primary ? "#fff" : "var(--theme-text)",
+        background: primary ? BRAND : "var(--theme-elevation-100)",
+        borderRadius: 999,
+        padding: "8px 15px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </a>
   );
 }

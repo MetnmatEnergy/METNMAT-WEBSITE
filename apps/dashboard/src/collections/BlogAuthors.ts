@@ -13,7 +13,7 @@ export const BlogAuthors: CollectionConfig = {
   slug: "blog-authors",
   labels: { singular: "Blog Author", plural: "Blog Authors" },
   admin: {
-    group: "Website Content",
+    group: "Blog",
     useAsTitle: "name",
     defaultColumns: ["name", "organisation", "isMetnmatAuthor", "isActive"],
     description: "Article authors — METNMAT staff and external contributors.",
