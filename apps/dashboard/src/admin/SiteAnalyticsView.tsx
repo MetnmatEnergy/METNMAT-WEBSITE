@@ -2,7 +2,6 @@ import React from "react";
 import type { AdminViewServerProps } from "payload";
 import { DefaultTemplate } from "@payloadcms/next/templates";
 import { Gutter } from "@payloadcms/ui";
-import { redirect } from "next/navigation";
 import { resolveRange } from "./analytics/range";
 import { RangeBar, SectionTabs, SECTIONS } from "./analytics/ui";
 import {
@@ -27,12 +26,38 @@ import { BusinessAnalytics } from "./analytics/business";
  *
  * Auth: STAFF ONLY — checks user.collection === "users", because req.user can
  * also be a storefront customer (the customers auth collection has public
- * self-registration; a bare user check would admit shoppers).
+ * self-registration; a bare user check would admit shoppers). Renders an
+ * explicit sign-in panel instead of redirect(): Payload streams custom views,
+ * and a NEXT_REDIRECT thrown mid-stream surfaces as a blank page.
  */
 export default async function SiteAnalyticsView({ initPageResult, params, searchParams }: AdminViewServerProps) {
   const user = initPageResult?.req?.user as { collection?: string } | null | undefined;
-  if (!user) redirect("/admin/login");
-  if (user.collection !== "users") redirect("/admin/unauthorized");
+  if (!user || user.collection !== "users") {
+    return (
+      <Gutter>
+        <div style={{ maxWidth: 420, margin: "18vh auto 0", textAlign: "center" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Staff sign-in required</h1>
+          <p style={{ opacity: 0.7, marginBottom: 20 }}>
+            Analytics is available to METNMAT staff accounts only.
+          </p>
+          <a
+            href="/admin/login"
+            style={{
+              display: "inline-block",
+              padding: "10px 22px",
+              borderRadius: 8,
+              background: "#d81f26",
+              color: "#fff",
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            Go to sign in
+          </a>
+        </div>
+      </Gutter>
+    );
+  }
 
   const { payload } = initPageResult.req;
 
