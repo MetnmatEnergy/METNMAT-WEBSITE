@@ -26,40 +26,17 @@ import { BusinessAnalytics } from "./analytics/business";
  *
  * Auth: STAFF ONLY — checks user.collection === "users", because req.user can
  * also be a storefront customer (the customers auth collection has public
- * self-registration; a bare user check would admit shoppers). Renders an
- * explicit sign-in panel instead of redirect(): Payload streams custom views,
- * and a NEXT_REDIRECT thrown mid-stream surfaces as a blank page.
+ * self-registration; a bare user check would admit shoppers).
+ *
+ * BOTH branches render DefaultTemplate. A custom Payload view only mounts on the
+ * client when it renders the admin template — a bare <Gutter> (or a redirect())
+ * hydrates to an empty view slot, i.e. a blank page. So the signed-out state is
+ * a message rendered INSIDE the same shell, not a standalone panel.
  */
 export default async function SiteAnalyticsView({ initPageResult, params, searchParams }: AdminViewServerProps) {
-  const user = initPageResult?.req?.user as { collection?: string } | null | undefined;
-  if (!user || user.collection !== "users") {
-    return (
-      <Gutter>
-        <div style={{ maxWidth: 420, margin: "18vh auto 0", textAlign: "center" }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Staff sign-in required</h1>
-          <p style={{ opacity: 0.7, marginBottom: 20 }}>
-            Analytics is available to METNMAT staff accounts only.
-          </p>
-          <a
-            href="/admin/login"
-            style={{
-              display: "inline-block",
-              padding: "10px 22px",
-              borderRadius: 8,
-              background: "#d81f26",
-              color: "#fff",
-              fontWeight: 700,
-              textDecoration: "none",
-            }}
-          >
-            Go to sign in
-          </a>
-        </div>
-      </Gutter>
-    );
-  }
-
   const { payload } = initPageResult.req;
+  const user = initPageResult?.req?.user as { collection?: string } | null | undefined;
+  const isStaff = Boolean(user && user.collection === "users");
 
   const sp: Record<string, string | undefined> = {};
   for (const [k, v] of Object.entries(searchParams ?? {})) {
@@ -88,26 +65,49 @@ export default async function SiteAnalyticsView({ initPageResult, params, search
       visibleEntities={initPageResult.visibleEntities}
     >
       <Gutter>
-        <div style={{ paddingBottom: 48 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Analytics · {title}</h1>
-            <span style={{ fontSize: 12.5, opacity: 0.55 }}>First-party, privacy-light — every number from your own data</span>
+        {!isStaff ? (
+          <div style={{ maxWidth: 440, margin: "16vh auto 0", textAlign: "center" }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Staff sign-in required</h1>
+            <p style={{ opacity: 0.7, marginBottom: 20 }}>
+              Analytics is available to METNMAT staff accounts only. Please sign in to continue.
+            </p>
+            <a
+              href="/admin/login"
+              style={{
+                display: "inline-block",
+                padding: "10px 22px",
+                borderRadius: 8,
+                background: "#d81f26",
+                color: "#fff",
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              Go to sign in
+            </a>
           </div>
+        ) : (
+          <div style={{ paddingBottom: 48 }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+              <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Analytics · {title}</h1>
+              <span style={{ fontSize: 12.5, opacity: 0.55 }}>First-party, privacy-light — every number from your own data</span>
+            </div>
 
-          <SectionTabs active={active} range={range} />
-          {active !== "realtime" && active !== "recordings" && <RangeBar section={active} range={range} />}
+            <SectionTabs active={active} range={range} />
+            {active !== "realtime" && active !== "recordings" && <RangeBar section={active} range={range} />}
 
-          {active === "" && <Highlights {...ctx} />}
-          {active === "realtime" && <Realtime {...ctx} />}
-          {active === "traffic" && <Traffic {...ctx} />}
-          {active === "behavior" && <Behavior {...ctx} />}
-          {active === "marketing" && <Marketing {...ctx} />}
-          {active === "recordings" && <Recordings />}
-          {active === "insights" && <Insights {...ctx} />}
-          {active === "benchmarks" && <Benchmarks {...ctx} />}
-          {active === "reports" && <Reports {...ctx} />}
-          {active === "business" && <BusinessAnalytics payload={payload} />}
-        </div>
+            {active === "" && <Highlights {...ctx} />}
+            {active === "realtime" && <Realtime {...ctx} />}
+            {active === "traffic" && <Traffic {...ctx} />}
+            {active === "behavior" && <Behavior {...ctx} />}
+            {active === "marketing" && <Marketing {...ctx} />}
+            {active === "recordings" && <Recordings />}
+            {active === "insights" && <Insights {...ctx} />}
+            {active === "benchmarks" && <Benchmarks {...ctx} />}
+            {active === "reports" && <Reports {...ctx} />}
+            {active === "business" && <BusinessAnalytics payload={payload} />}
+          </div>
+        )}
       </Gutter>
     </DefaultTemplate>
   );
