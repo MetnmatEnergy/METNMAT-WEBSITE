@@ -9,6 +9,7 @@ import {
   getCurrentCustomer,
   getCustomerOrder,
   getOrderShipments,
+  getCommerceSettings,
   type FullOrder,
   type ShipmentDoc,
 } from "@/backend/lib/customer";
@@ -57,17 +58,50 @@ function fmtDateTime(iso?: string) {
 
 /**
  * Build the tracking timeline from what staff actually record in the CMS:
- * order.createdAt / paidAt, and the shipment's dispatchedAt / deliveredAt
- * (set on the Shipments record by fulfilment). Completed steps show their
- * real timestamp; future steps show "Pending"; a completed legacy step with
- * no recorded time shows no timestamp rather than a fake one.
+ * order.createdAt / paidAt, shipment dispatchedAt / deliveredAt (Shipments
+ * record), and the terminal timestamps the workflow hook stamps (failedAt /
+ * cancelledAt / refundedAt). Completed steps show their real timestamp; future
+ * steps show "Pending"; a completed legacy step with no recorded time shows no
+ * timestamp rather than a fake one. Terminal states end the bar with a red ✕
+ * step at the point the order actually stopped.
  */
 function buildTrackingSteps(order: FullOrder, shipment?: ShipmentDoc): OrderTrackingStep[] {
-  const stage = STAGE[(order.status || "pending").toLowerCase()] ?? 0;
+  const status = (order.status || "pending").toLowerCase();
+  const placed: OrderTrackingStep = {
+    name: "Order placed",
+    isCompleted: true,
+    timestamp: fmtDateTime(order.createdAt),
+  };
+  const paidStep = (done: boolean): OrderTrackingStep => ({
+    name: "Payment confirmed",
+    isCompleted: done,
+    timestamp: done ? fmtDateTime(order.paidAt) : "Pending",
+  });
+
+  if (status === "failed") {
+    return [placed, { name: "Payment failed", isCompleted: false, isError: true, timestamp: fmtDateTime(order.failedAt) }];
+  }
+  if (status === "cancelled") {
+    const steps: OrderTrackingStep[] = [placed];
+    if (order.paidAt) steps.push(paidStep(true));
+    else if (order.failedAt)
+      steps.push({ name: "Payment failed", isCompleted: false, isError: true, timestamp: fmtDateTime(order.failedAt) });
+    steps.push({ name: "Order cancelled", isCompleted: false, isError: true, timestamp: fmtDateTime(order.cancelledAt) });
+    return steps;
+  }
+  if (status === "refunded") {
+    const steps: OrderTrackingStep[] = [placed, paidStep(true)];
+    if (shipment?.dispatchedAt)
+      steps.push({ name: "Shipped", isCompleted: true, timestamp: fmtDateTime(shipment.dispatchedAt) });
+    steps.push({ name: "Refunded", isCompleted: false, isError: true, timestamp: fmtDateTime(order.refundedAt) });
+    return steps;
+  }
+
+  const stage = STAGE[status] ?? 0;
   const at = (done: boolean, iso?: string) => (done ? fmtDateTime(iso) : "Pending");
   return [
-    { name: "Order placed", isCompleted: true, timestamp: fmtDateTime(order.createdAt) },
-    { name: "Payment confirmed", isCompleted: stage >= 1, timestamp: at(stage >= 1, order.paidAt) },
+    placed,
+    paidStep(stage >= 1),
     { name: "Shipped", isCompleted: stage >= 2, timestamp: at(stage >= 2, shipment?.dispatchedAt) },
     { name: "Delivered", isCompleted: stage >= 3, timestamp: at(stage >= 3, shipment?.deliveredAt) },
   ];
@@ -130,6 +164,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const shipment = shipments[0];
   const trackingSteps = buildTrackingSteps(order, shipment);
 
+  // Staff-configured auto-cancel policy — quoted in the pending banner so the
+  // customer knows exactly what happens to an unpaid order.
+  const autoCancel =
+    status === "pending"
+      ? await getCommerceSettings()
+      : { autoCancelUnpaidOrders: false, autoCancelAfterHours: 24 };
+
   const showBilling =
     order.billingSameAsShipping === false && Boolean(order.billingLine1 || order.billingCity);
 
@@ -171,51 +212,52 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <p className="mt-0.5 text-muted-foreground">
               If you were charged, it will be confirmed automatically within a few minutes — otherwise you can
               re-order the same items with the Reorder button.
+              {autoCancel.autoCancelUnpaidOrders
+                ? ` Unpaid orders are cancelled automatically after ${autoCancel.autoCancelAfterHours} hour${autoCancel.autoCancelAfterHours === 1 ? "" : "s"}.`
+                : ""}
             </p>
           </div>
         </div>
       )}
 
-      {/* Tracking */}
+      {/* Tracking — the timeline always shows, including where a halted order
+          actually stopped (red ✕ step with its real timestamp). */}
       <Card>
         <h3 className="font-display font-semibold">Tracking</h3>
-        {halted ? (
-          <div className="mt-4 flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-3 text-sm">
-            <XCircle className="h-5 w-5 text-brand" />
-            <span>
-              This order is <span className="font-medium">{STATUS_LABEL[status] || status}</span>.{" "}
-              {status === "refunded" ? "The payment has been reversed to your original payment method." : "Contact support if you need help."}
-            </span>
-          </div>
-        ) : (
-          <>
-            <OrderTracking steps={trackingSteps} className="mt-5" />
-            {shipment && (
-              <div className="mt-5 rounded-xl border border-border bg-muted/30 p-4">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Truck className="h-4 w-4 text-brand" />
-                  {shipment.carrier || "Courier"}
-                  {shipment.trackingNumber ? (
-                    <span className="font-mono text-xs text-muted-foreground">· {shipment.trackingNumber}</span>
-                  ) : null}
-                </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  {shipment.dispatchedAt && <span>Dispatched {fmtDate(shipment.dispatchedAt)}</span>}
-                  {shipment.deliveredAt && <span>Delivered {fmtDate(shipment.deliveredAt)}</span>}
-                </div>
-                {shipment.trackingUrl && (
-                  <a
-                    href={shipment.trackingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
-                  >
-                    Track shipment <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                )}
-              </div>
+        <OrderTracking steps={trackingSteps} className="mt-5" />
+        {halted && (
+          <p className="mt-2 max-w-md rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            {status === "refunded"
+              ? "The payment has been reversed to your original payment method — banks typically take 5–7 working days to show it."
+              : status === "cancelled" && order.failedAt
+                ? "This order was cancelled because the payment wasn't completed. Nothing was charged — you can re-order the items any time."
+                : "This order was cancelled. If you have any questions, our support team can help."}
+          </p>
+        )}
+        {!halted && shipment && (
+          <div className="mt-5 max-w-md rounded-xl border border-border bg-muted/30 p-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Truck className="h-4 w-4 text-brand" />
+              {shipment.carrier || "Courier"}
+              {shipment.trackingNumber ? (
+                <span className="font-mono text-xs text-muted-foreground">· {shipment.trackingNumber}</span>
+              ) : null}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              {shipment.dispatchedAt && <span>Dispatched {fmtDate(shipment.dispatchedAt)}</span>}
+              {shipment.deliveredAt && <span>Delivered {fmtDate(shipment.deliveredAt)}</span>}
+            </div>
+            {shipment.trackingUrl && (
+              <a
+                href={shipment.trackingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-brand hover:underline"
+              >
+                Track shipment <ExternalLink className="h-3.5 w-3.5" />
+              </a>
             )}
-          </>
+          </div>
         )}
       </Card>
 

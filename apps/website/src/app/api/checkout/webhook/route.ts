@@ -147,6 +147,24 @@ export async function POST(req: Request) {
     if (order.status === "paid") {
       return NextResponse.json({ ok: true, idempotent: true }); // already reconciled
     }
+    if (order.status === "cancelled" || order.status === "refunded") {
+      // Money arrived for an order already in a terminal state (e.g. the
+      // auto-cancel window elapsed before a very late capture). cancelled→paid
+      // is an illegal transition by design — a human must refund or reinstate.
+      // Retrying wouldn't change anything, so ack — but page ops loudly.
+      await recordIntegrationLog({
+        status: "error",
+        summary: `${type}: payment captured for ${order.status.toUpperCase()} order ${order.orderNumber} — needs manual refund/reinstate`,
+        payload: { orderNumber: order.orderNumber, status: order.status, paymentId, capturedPaise },
+      });
+      await sendOpsAlert(`Payment captured for ${order.status} order ${order.orderNumber}`, [
+        `Order: ${order.orderNumber} (status: ${order.status})`,
+        `Captured: ₹${(capturedPaise / 100).toFixed(2)} — payment id ${paymentId || "—"}`,
+        "The customer HAS been charged after the order reached a terminal state.",
+        "Either refund the payment in the Razorpay dashboard, or have Accounts reinstate and fulfil the order.",
+      ]);
+      return NextResponse.json({ ok: true, flagged: "captured-after-terminal" });
+    }
     // Cross-check the captured amount against OUR server-computed total (paise).
     // A capture for the WRONG amount — or an event that omits the amount so we
     // cannot check — must never mark the order paid. Both leave a durable trace

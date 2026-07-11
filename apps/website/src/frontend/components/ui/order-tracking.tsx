@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle2, Circle } from "lucide-react";
+import { CheckCircle2, Circle, XCircle } from "lucide-react";
 import { cn } from "@/frontend/lib/utils";
 
 /**
@@ -22,6 +22,12 @@ export interface OrderTrackingStep {
   /** Human-formatted time, or "Pending" for steps not reached yet. */
   timestamp?: string;
   isCompleted: boolean;
+  /**
+   * Terminal failure step ("Payment failed", "Order cancelled", "Refunded") —
+   * rendered as a red ✕ instead of a checkmark. The connector leading into it
+   * is coloured, because the order genuinely REACHED this point.
+   */
+  isError?: boolean;
 }
 
 export interface OrderTrackingProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -37,7 +43,9 @@ const OrderTracking = React.forwardRef<HTMLDivElement, OrderTrackingProps>(
             {steps.map((step, index) => (
               <li key={index} className="flex">
                 <div className="flex flex-col items-center" aria-hidden>
-                  {step.isCompleted ? (
+                  {step.isError ? (
+                    <XCircle className="h-6 w-6 shrink-0 text-brand" />
+                  ) : step.isCompleted ? (
                     <CheckCircle2 className="h-6 w-6 shrink-0 text-brand" />
                   ) : (
                     <Circle className="h-6 w-6 shrink-0 text-muted-foreground/50" />
@@ -45,16 +53,24 @@ const OrderTracking = React.forwardRef<HTMLDivElement, OrderTrackingProps>(
                   {index < steps.length - 1 && (
                     <div
                       className={cn("w-[1.5px] grow", {
-                        "bg-brand": steps[index + 1].isCompleted,
-                        "bg-border": !steps[index + 1].isCompleted,
+                        "bg-brand": steps[index + 1].isCompleted || steps[index + 1].isError,
+                        "bg-border": !steps[index + 1].isCompleted && !steps[index + 1].isError,
                       })}
                     />
                   )}
                 </div>
                 <div className={cn("ml-3", index < steps.length - 1 && "pb-6")}>
-                  <p className={cn("text-sm font-medium", !step.isCompleted && "text-muted-foreground")}>
+                  <p
+                    className={cn(
+                      "text-sm font-medium",
+                      step.isError && "text-brand",
+                      !step.isCompleted && !step.isError && "text-muted-foreground",
+                    )}
+                  >
                     {step.name}
-                    <span className="sr-only">{step.isCompleted ? " — completed" : " — not yet"}</span>
+                    <span className="sr-only">
+                      {step.isError ? " — order stopped here" : step.isCompleted ? " — completed" : " — not yet"}
+                    </span>
                   </p>
                   {step.timestamp ? (
                     <p className="text-sm text-muted-foreground">{step.timestamp}</p>

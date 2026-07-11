@@ -74,6 +74,19 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
   const user = req.user as { roles?: Role[] } | null | undefined;
   const d = (data ?? {}) as Record<string, unknown>;
 
+  /**
+   * Stamp the moment a status is ENTERED (failed/cancelled/refunded) — these
+   * drive the customer's tracking timeline, so they must be set centrally no
+   * matter who transitions the order (webhook, auto-cancel sweep, or staff).
+   */
+  const stampTransition = (from: OrderStatus | undefined, to: OrderStatus) => {
+    if (to === from) return;
+    const now = new Date().toISOString();
+    if (to === "failed") d.failedAt = now;
+    if (to === "cancelled") d.cancelledAt = now;
+    if (to === "refunded") d.refundedAt = now;
+  };
+
   /** First transition into "paid" mints the immutable sequential invoice number. */
   const mintInvoiceIfNeeded = async (from: OrderStatus | undefined, to: OrderStatus) => {
     const existing = (originalDoc as { invoiceNumber?: string } | undefined)?.invoiceNumber;
@@ -100,6 +113,7 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
     if (!internal && PAYMENT_STATES.has(to) && !hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
       throw new Error(`Only Accounts/Admin can create an order in the "${to}" state.`);
     }
+    stampTransition(undefined, to);
     await mintInvoiceIfNeeded(undefined, to);
     return d;
   }
@@ -135,6 +149,7 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
     }
   }
 
+  stampTransition(from, to);
   await mintInvoiceIfNeeded(from, to);
 
   // Price snapshot is immutable except for Accounts/Admin/Super-admin (the

@@ -192,6 +192,18 @@ export const Orders: CollectionConfig = {
       ],
     },
 
+    // Terminal-transition timestamps — stamped automatically by the workflow
+    // hook whenever the status changes, shown on the customer's tracking
+    // timeline ("Payment failed", "Order cancelled", "Refunded" with real times).
+    {
+      type: "row",
+      fields: [
+        { name: "failedAt", type: "date", admin: { width: "33%", readOnly: true, description: "Set when payment last failed." } },
+        { name: "cancelledAt", type: "date", admin: { width: "33%", readOnly: true, description: "Set when the order was cancelled." } },
+        { name: "refundedAt", type: "date", admin: { width: "34%", readOnly: true, description: "Set when the refund was processed." } },
+      ],
+    },
+
     // What the customer saw (international orders are charged in INR but
     // browsed in USD — capture the context for support/invoicing).
     {

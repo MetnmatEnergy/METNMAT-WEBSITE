@@ -125,12 +125,90 @@ export async function patchCurrentCustomer(patch: Record<string, unknown>): Prom
 }
 
 type OrderDoc = {
+  id?: string;
   orderNumber?: string;
   status?: string;
   total?: number;
   createdAt?: string;
   items?: { productName?: string; qty?: number }[];
 };
+
+// ── Commerce settings (staff-controlled order behaviour) ─────────────────────
+
+export type CommerceSettings = {
+  /** Auto-cancel orders whose payment failed / never completed. */
+  autoCancelUnpaidOrders: boolean;
+  /** Grace period before the auto-cancel, in hours. */
+  autoCancelAfterHours: number;
+};
+
+let commerceCache: { at: number; value: CommerceSettings } | null = null;
+
+/**
+ * The CMS "Commerce & Pricing" global — staff control order auto-cancellation
+ * here. Cached for 60s per server instance (this is read on every account
+ * order view). Fails CLOSED: if the CMS can't be reached we do NOT auto-cancel
+ * anything (and couldn't PATCH anyway).
+ */
+export async function getCommerceSettings(): Promise<CommerceSettings> {
+  if (commerceCache && Date.now() - commerceCache.at < 60_000) return commerceCache.value;
+  try {
+    const res = await fetch(`${CMS}/api/globals/commerce`, { cache: "no-store" });
+    if (!res.ok) return { autoCancelUnpaidOrders: false, autoCancelAfterHours: 24 };
+    const g = (await res.json()) as { autoCancelUnpaidOrders?: boolean; autoCancelAfterHours?: number };
+    const value: CommerceSettings = {
+      autoCancelUnpaidOrders: g.autoCancelUnpaidOrders !== false,
+      autoCancelAfterHours: Math.max(1, Number(g.autoCancelAfterHours) || 24),
+    };
+    commerceCache = { at: Date.now(), value };
+    return value;
+  } catch {
+    return { autoCancelUnpaidOrders: false, autoCancelAfterHours: 24 };
+  }
+}
+
+/**
+ * Lazy auto-cancel sweep, run when a customer views their orders: any of THEIR
+ * orders still pending/failed past the staff-configured grace period becomes
+ * "cancelled" (both are legal transitions; the CMS workflow hook stamps
+ * cancelledAt). Scoped to the orders just fetched — this touches nobody else's
+ * data — and the very-late-capture race is covered by the webhook's
+ * captured-after-terminal ops alert. Returns the orders with fresh statuses.
+ */
+async function sweepStaleUnpaid<T extends { id?: string; status?: string; createdAt?: string }>(
+  orders: T[]
+): Promise<T[]> {
+  const stale = orders.filter((o) => o.id && (o.status === "pending" || o.status === "failed") && o.createdAt);
+  if (!stale.length) return orders;
+  const settings = await getCommerceSettings();
+  if (!settings.autoCancelUnpaidOrders) return orders;
+  const cutoff = Date.now() - settings.autoCancelAfterHours * 3_600_000;
+  const toCancel = new Set(
+    stale.filter((o) => new Date(o.createdAt as string).getTime() < cutoff).map((o) => o.id as string)
+  );
+  if (!toCancel.size) return orders;
+
+  const now = new Date().toISOString();
+  const cancelled = new Set<string>();
+  await Promise.all(
+    [...toCancel].map(async (id) => {
+      try {
+        const res = await fetch(`${CMS}/api/orders/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", "x-internal-key": INTERNAL },
+          body: JSON.stringify({ status: "cancelled" }),
+        });
+        if (res.ok) cancelled.add(id);
+      } catch {
+        /* transient — the next view retries */
+      }
+    })
+  );
+  if (!cancelled.size) return orders;
+  return orders.map((o) =>
+    o.id && cancelled.has(o.id) ? { ...o, status: "cancelled", cancelledAt: now } : o
+  );
+}
 
 export type FullOrder = {
   id?: string;
@@ -164,6 +242,10 @@ export type FullOrder = {
   razorpayPaymentId?: string;
   paidAt?: string;
   createdAt?: string;
+  /** Terminal-transition timestamps, stamped by the CMS workflow hook. */
+  failedAt?: string;
+  cancelledAt?: string;
+  refundedAt?: string;
   /** Sequential GST invoice serial, minted when the order first turned paid. */
   invoiceNumber?: string;
   invoiceDate?: string;
@@ -213,7 +295,10 @@ export async function getCustomerOrder(
     });
     if (!res.ok) return { ok: false };
     const data = (await res.json()) as { docs?: FullOrder[] };
-    return { ok: true, order: data?.docs?.[0] ?? null };
+    const doc = data?.docs?.[0] ?? null;
+    if (!doc) return { ok: true, order: null };
+    const [swept] = await sweepStaleUnpaid([doc]);
+    return { ok: true, order: swept };
   } catch {
     return { ok: false };
   }
@@ -250,7 +335,8 @@ export async function getCustomerOrders(customer: Customer | null | undefined): 
     );
     if (!res.ok) return { ok: false };
     const data = (await res.json()) as { docs?: OrderDoc[] };
-    return { ok: true, orders: data?.docs ?? [] };
+    const orders = await sweepStaleUnpaid(data?.docs ?? []);
+    return { ok: true, orders };
   } catch {
     return { ok: false };
   }

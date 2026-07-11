@@ -125,6 +125,33 @@ export const Commerce: GlobalConfig = {
           "₹ per 1 USD — used to SHOW prices in dollars to international visitors. Payments are still charged in INR. Update this periodically (e.g. weekly) to match the market rate.",
       },
     },
+    {
+      type: "collapsible",
+      label: "Order management",
+      fields: [
+        {
+          name: "autoCancelUnpaidOrders",
+          type: "checkbox",
+          defaultValue: true,
+          label: "Auto-cancel unpaid orders",
+          admin: {
+            description:
+              "When on, orders whose payment failed or was never completed are cancelled automatically after the grace period below. Staff can always cancel manually regardless.",
+          },
+        },
+        {
+          name: "autoCancelAfterHours",
+          type: "number",
+          defaultValue: 24,
+          min: 1,
+          max: 720,
+          admin: {
+            description:
+              "Grace period (hours) before an unpaid order is auto-cancelled. Don't set this too low — a failed first attempt can still be retried and captured on the same order.",
+          },
+        },
+      ],
+    },
   ],
 };
 
