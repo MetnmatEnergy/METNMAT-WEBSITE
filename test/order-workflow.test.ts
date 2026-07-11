@@ -1,12 +1,37 @@
 import { describe, it, expect } from "vitest";
 import { orderBeforeChange } from "../apps/dashboard/src/hooks/order-workflow";
 
-const call = (args: Record<string, unknown>) =>
-  (orderBeforeChange as unknown as (a: unknown) => Promise<unknown>)({
+/**
+ * Minimal stand-in for `req.payload.db` — Payload always provides this inside a
+ * real collection hook. The transition into "paid" mints a sequential invoice
+ * number via an atomic counter (`db.collections.counters.findOneAndUpdate` with
+ * `$inc`), so the mock returns an incrementing `seq`.
+ */
+const dbStub = () => {
+  let seq = 0;
+  return {
+    collections: {
+      counters: {
+        findOneAndUpdate: async () => ({ seq: ++seq }),
+      },
+    },
+  };
+};
+
+const call = (args: Record<string, unknown>) => {
+  const provided = (args.req as Record<string, unknown> | undefined) ?? {
+    headers: new Headers(),
+    user: { roles: ["sales"] },
+  };
+  // A real Payload hook always has req.payload; inject a db stub so the
+  // invoice-minting path has the counter model it needs.
+  const req = { payload: { db: dbStub() }, ...provided };
+  return (orderBeforeChange as unknown as (a: unknown) => Promise<unknown>)({
     operation: "update",
-    req: { headers: new Headers(), user: { roles: ["sales"] } },
     ...args,
+    req,
   });
+};
 
 describe("orderBeforeChange (payment integrity)", () => {
   it("blocks a sales user from marking an order paid", async () => {
@@ -21,14 +46,16 @@ describe("orderBeforeChange (payment integrity)", () => {
     ).rejects.toThrow(/Invalid order status/i);
   });
 
-  it("allows accounts to mark a pending order paid", async () => {
-    await expect(
-      call({
-        req: { headers: new Headers(), user: { roles: ["accounts"] } },
-        data: { status: "paid" },
-        originalDoc: { status: "pending" },
-      }),
-    ).resolves.toBeTruthy();
+  it("allows accounts to mark a pending order paid (and mints an invoice number)", async () => {
+    const result = (await call({
+      req: { headers: new Headers(), user: { roles: ["accounts"] } },
+      data: { status: "paid" },
+      originalDoc: { status: "pending" },
+    })) as { invoiceNumber?: string; invoiceDate?: string };
+    expect(result).toBeTruthy();
+    // First transition into "paid" assigns the sequential GST invoice serial.
+    expect(result.invoiceNumber).toMatch(/^INV-\d{4}-\d{6}$/);
+    expect(result.invoiceDate).toBeTruthy();
   });
 
   it("blocks a sales user from changing the order total", async () => {
@@ -37,11 +64,15 @@ describe("orderBeforeChange (payment integrity)", () => {
     ).rejects.toThrow(/total/i);
   });
 
-  it("lets the internal-key server transition freely (verified payment)", async () => {
+  it("lets the internal-key server transition freely (verified payment) and mints an invoice", async () => {
     process.env.INTERNAL_API_KEY = "test-internal-key";
     const headers = new Headers([["x-internal-key", "test-internal-key"]]);
-    await expect(
-      call({ req: { headers, user: null }, data: { status: "paid" }, originalDoc: { status: "pending" } }),
-    ).resolves.toBeTruthy();
+    const result = (await call({
+      req: { headers, user: null },
+      data: { status: "paid" },
+      originalDoc: { status: "pending" },
+    })) as { invoiceNumber?: string };
+    expect(result).toBeTruthy();
+    expect(result.invoiceNumber).toMatch(/^INV-\d{4}-\d{6}$/);
   });
 });
