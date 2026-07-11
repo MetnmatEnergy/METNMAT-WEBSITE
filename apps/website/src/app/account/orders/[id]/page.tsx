@@ -1,14 +1,20 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Circle, Package, XCircle, FileText, Truck, RefreshCw, ExternalLink } from "lucide-react";
+import { ArrowLeft, Package, XCircle, FileText, Truck, RefreshCw, ExternalLink } from "lucide-react";
 import { Card } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
+import { OrderTracking, type OrderTrackingStep } from "@/frontend/components/ui/order-tracking";
 import { ReorderButton } from "@/frontend/components/commerce/reorder-button";
 import { formatINR } from "@/frontend/lib/catalog";
-import { getCurrentCustomer, getCustomerOrder, getOrderShipments } from "@/backend/lib/customer";
+import {
+  getCurrentCustomer,
+  getCustomerOrder,
+  getOrderShipments,
+  type FullOrder,
+  type ShipmentDoc,
+} from "@/backend/lib/customer";
 
 export const dynamic = "force-dynamic";
 
-const STEPS = ["Order placed", "Payment confirmed", "Shipped", "Delivered"];
 const STAGE: Record<string, number> = { pending: 0, paid: 1, shipped: 2, delivered: 3 };
 const STATUS_STYLE: Record<string, string> = {
   paid: "text-emerald-600 bg-emerald-500/10",
@@ -34,6 +40,37 @@ function fmtDate(iso?: string) {
   return iso
     ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
     : "—";
+}
+
+function fmtDateTime(iso?: string) {
+  return iso
+    ? new Date(iso).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : undefined;
+}
+
+/**
+ * Build the tracking timeline from what staff actually record in the CMS:
+ * order.createdAt / paidAt, and the shipment's dispatchedAt / deliveredAt
+ * (set on the Shipments record by fulfilment). Completed steps show their
+ * real timestamp; future steps show "Pending"; a completed legacy step with
+ * no recorded time shows no timestamp rather than a fake one.
+ */
+function buildTrackingSteps(order: FullOrder, shipment?: ShipmentDoc): OrderTrackingStep[] {
+  const stage = STAGE[(order.status || "pending").toLowerCase()] ?? 0;
+  const at = (done: boolean, iso?: string) => (done ? fmtDateTime(iso) : "Pending");
+  return [
+    { name: "Order placed", isCompleted: true, timestamp: fmtDateTime(order.createdAt) },
+    { name: "Payment confirmed", isCompleted: stage >= 1, timestamp: at(stage >= 1, order.paidAt) },
+    { name: "Shipped", isCompleted: stage >= 2, timestamp: at(stage >= 2, shipment?.dispatchedAt) },
+    { name: "Delivered", isCompleted: stage >= 3, timestamp: at(stage >= 3, shipment?.deliveredAt) },
+  ];
 }
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -83,11 +120,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const status = (order.status || "pending").toLowerCase();
   const halted = HALTED.has(status);
-  const stage = STAGE[status] ?? 0;
 
-  // Real tracking (carrier / number / link) once fulfilment has dispatched it.
-  const shipments = ["shipped", "delivered"].includes(status) ? await getOrderShipments(order.id) : [];
+  // Real tracking (carrier / number / link / timestamps) from the Shipments
+  // records staff maintain in the CMS. Fetched from "paid" onwards so a
+  // pre-created shipment (carrier booked, awaiting pickup) already shows.
+  const shipments = ["paid", "shipped", "delivered"].includes(status)
+    ? await getOrderShipments(order.id)
+    : [];
   const shipment = shipments[0];
+  const trackingSteps = buildTrackingSteps(order, shipment);
 
   const showBilling =
     order.billingSameAsShipping === false && Boolean(order.billingLine1 || order.billingCity);
@@ -148,21 +189,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
         ) : (
           <>
-            <ol className="mt-5 space-y-4">
-              {STEPS.map((s, i) => {
-                const done = i <= stage;
-                return (
-                  <li key={s} className="flex items-center gap-3 text-sm">
-                    {done ? (
-                      <CheckCircle2 className="h-5 w-5 text-brand" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-muted-foreground/40" />
-                    )}
-                    <span className={done ? "font-medium" : "text-muted-foreground"}>{s}</span>
-                  </li>
-                );
-              })}
-            </ol>
+            <OrderTracking steps={trackingSteps} className="mt-5" />
             {shipment && (
               <div className="mt-5 rounded-xl border border-border bg-muted/30 p-4">
                 <div className="flex items-center gap-2 text-sm font-medium">
