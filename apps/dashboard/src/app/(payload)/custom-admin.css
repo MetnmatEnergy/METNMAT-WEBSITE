@@ -148,6 +148,54 @@ a, .nav__link:hover { color: var(--metnmat-brand); }
 
 :focus-visible { outline: 2px solid color-mix(in srgb, #d81f26 70%, transparent) !important; outline-offset: 1px; }
 
+/* ── Sidebar quick shortcuts (Home / Analytics / View live site) ─────────── */
+/* Rendered in beforeNavLinks (NavShortcuts). Styled to read as first-class
+   navigation — same rhythm as .nav__link — not decorative cards. Hover/active
+   live here because inline styles (server component) can't express them. */
+.mn-shortcuts {
+  display: grid;
+  gap: 1px;
+  padding: 2px 10px 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--theme-elevation-100);
+}
+.mn-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: var(--mn-radius-sm);
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--theme-elevation-700);
+  text-decoration: none;
+  transition: background .13s ease, color .13s ease;
+}
+.mn-shortcut svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  opacity: .72;
+  transition: opacity .13s ease;
+}
+.mn-shortcut:hover { background: var(--theme-elevation-100); color: var(--theme-elevation-1000); }
+.mn-shortcut:hover svg { opacity: 1; }
+/* Active route (set by NavShortcuts from the pathname): brand rail + tint,
+   mirroring Payload's own active nav item so it feels native. */
+.mn-shortcut.is-active {
+  color: var(--mn-active-text);
+  background: var(--mn-brand-tint);
+  box-shadow: inset 3px 0 0 0 var(--metnmat-brand);
+}
+.mn-shortcut.is-active svg { opacity: 1; }
+.mn-shortcut__ext { margin-left: auto; opacity: .4; }
+.mn-shortcut:hover .mn-shortcut__ext { opacity: .7; }
+/* View live site — the primary outward action, quiet brand accent. */
+.mn-shortcut--live { color: var(--metnmat-brand); font-weight: 600; }
+.mn-shortcut--live svg { opacity: .95; }
+.mn-shortcut--live:hover { background: var(--mn-brand-tint); color: var(--metnmat-brand); }
+.mn-shortcut--live .mn-shortcut__ext { color: var(--metnmat-brand); }
+
 /* ── Sidebar navigation ──────────────────────────────────────────────────── */
 .nav, .template-default__nav {
   background-color: var(--mn-nav-bg);
