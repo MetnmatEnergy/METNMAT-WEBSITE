@@ -493,7 +493,18 @@ export async function resolveBlogSlugRedirect(oldSlug: string): Promise<string |
     `/api/blog-slug-redirects?${qs}`,
   );
   const article = data?.docs?.[0]?.article;
-  return article && typeof article === "object" ? article.slug ?? null : null;
+  const targetSlug = article && typeof article === "object" ? article.slug ?? null : null;
+  if (!targetSlug) return null;
+  // Only 301 to a target that is STILL publicly visible — otherwise the old URL
+  // would 301 into a 404 (unpublished/archived/scheduled). Returning null lets
+  // the caller 404 the old URL directly.
+  const check = buildQueryString({
+    where: { and: [{ slug: { equals: targetSlug } }, ...publiclyVisible()] },
+    limit: 1,
+    depth: 0,
+  });
+  const visible = await fetchJson<ListResponse<{ slug?: string }>>(`/api/posts?${check}`);
+  return visible?.docs?.[0] ? targetSlug : null;
 }
 
 /** Related articles: shared category / tags / authors, excluding the article itself. */

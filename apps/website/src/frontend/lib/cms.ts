@@ -583,7 +583,7 @@ export const getUsdRate = cache(async function getUsdRate(): Promise<number> {
     try {
       const res = await fetch(
         `https://openexchangerates.org/api/latest.json?app_id=${appId}&symbols=INR`,
-        { next: { revalidate: 3600 } }
+        { next: { revalidate: 3600 }, signal: AbortSignal.timeout(2500) }
       );
       if (res.ok) {
         const j = (await res.json()) as { rates?: { INR?: number } };
@@ -598,6 +598,7 @@ export const getUsdRate = cache(async function getUsdRate(): Promise<number> {
   try {
     const res = await fetch("https://open.er-api.com/v6/latest/USD", {
       next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(2500),
     });
     if (res.ok) {
       const j = (await res.json()) as { rates?: { INR?: number } };

@@ -141,7 +141,9 @@ let pageStart = 0;
 let pagePath = "";
 let maxScroll = 0;
 
-function onScroll(): void {
+let scrollScheduled = false;
+function sampleScroll(): void {
+  scrollScheduled = false;
   const doc = document.documentElement;
   const total = doc.scrollHeight - window.innerHeight;
   if (total <= 0) {
@@ -150,6 +152,15 @@ function onScroll(): void {
   }
   const pct = Math.min(100, Math.round(((window.scrollY || doc.scrollTop) / total) * 100));
   if (pct > maxScroll) maxScroll = pct;
+}
+
+/** Throttle to one measurement per animation frame — the raw scroll event fires
+ *  dozens of times per gesture and each reads layout (scrollHeight/innerHeight),
+ *  which would thrash on long pages. */
+function onScroll(): void {
+  if (scrollScheduled) return;
+  scrollScheduled = true;
+  requestAnimationFrame(sampleScroll);
 }
 
 function recordLeave(): void {

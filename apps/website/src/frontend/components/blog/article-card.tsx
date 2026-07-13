@@ -7,7 +7,9 @@ export function formatArticleDate(iso: string): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  // Format in IST — articles are authored/scheduled in IST, so UTC formatting
+  // could render an evening publish as the previous day.
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 }
 
 const count = (n: number): string =>

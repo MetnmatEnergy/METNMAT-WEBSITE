@@ -35,14 +35,19 @@ export async function generateMetadata({
 }: {
   searchParams: Promise<SearchParams>;
 }): Promise<Metadata> {
-  const { page } = parseBlogQuery(await searchParams);
+  const query = parseBlogQuery(await searchParams);
+  const filtered = hasActiveFilters(query);
   return {
     ...baseMetadata,
+    // Filtered/faceted listings (category/tag/author/year/search) are thin,
+    // near-duplicate views — noindex them (still follow, so crawlers reach the
+    // articles) instead of self-canonicalising to a URL that drops the filter.
+    ...(filtered ? { robots: { index: false, follow: true } } : {}),
     alternates: {
       ...baseMetadata.alternates,
-      // Paginated pages canonicalise to themselves — pointing pages 2+ at
+      // Unfiltered pagination canonicalises to itself — pointing pages 2+ at
       // page 1 would tell crawlers to ignore everything beyond the first page.
-      ...(page > 1 ? { canonical: `/blog?page=${page}` } : {}),
+      ...(!filtered && query.page > 1 ? { canonical: `/blog?page=${query.page}` } : {}),
       types: { "application/rss+xml": "/blog/rss.xml" },
     },
   };
