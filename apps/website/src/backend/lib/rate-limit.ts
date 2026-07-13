@@ -77,9 +77,45 @@ export function rateLimit(key: string, limit = 5, windowMs = 60_000): Result {
   return memoryLimit(key, limit, windowMs);
 }
 
-/** Best-effort client IP from proxy headers. */
+/**
+ * TRUSTED PROXY HOPS — prod topology (verified 2026-07-13): all metnmat hosts
+ * resolve to one anycast IP behind a Google external Application Load Balancer,
+ * which APPENDS "<client-ip>, <lb-ip>" to X-Forwarded-For. So the LB's own IP
+ * is the rightmost token and the REAL client is second-from-right. Override via
+ * env if the LB address ever changes (comma-separated).
+ */
+const TRUSTED_PROXY_IPS = new Set(
+  (process.env.TRUSTED_PROXY_IPS || "35.201.95.137")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+);
+
+/** Normalize IPv4-mapped IPv6 ("::ffff:1.2.3.4" → "1.2.3.4"). */
+const normalizeIp = (s: string): string => (s.toLowerCase().startsWith("::ffff:") ? s.slice(7) : s);
+
+/**
+ * Best-effort client IP — used as the RATE-LIMIT KEY, so it must not be
+ * attacker-chosen. Strategy: strip OUR trusted proxy hops from the RIGHT of
+ * X-Forwarded-For, then take the rightmost remaining token — that's the
+ * connecting IP as recorded by Google's edge; everything further left is
+ * client-supplied junk. This is correct behind the external ALB (…, client, lb)
+ * AND on direct Cloud Run (…, client). The old leftmost read let callers rotate
+ * a fake header and reset every per-IP bucket; a naive rightmost read would key
+ * EVERYONE on the LB's constant IP (site-wide lockouts) — both audit findings.
+ */
 export function clientIp(request: Request): string {
   const fwd = request.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]!.trim();
+  if (fwd) {
+    const parts = fwd
+      .split(",")
+      .map((s) => normalizeIp(s.trim()))
+      .filter(Boolean);
+    while (parts.length > 1 && TRUSTED_PROXY_IPS.has(parts[parts.length - 1]!)) parts.pop();
+    const ip = parts[parts.length - 1];
+    if (ip) return ip;
+  }
+  // x-real-ip is client-forgeable when XFF is absent — unreachable behind
+  // Google's front ends (they always set XFF); effectively dev-only.
   return request.headers.get("x-real-ip") ?? "unknown";
 }

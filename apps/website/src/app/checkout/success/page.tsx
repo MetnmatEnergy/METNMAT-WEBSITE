@@ -29,9 +29,22 @@ export default async function CheckoutSuccessPage({
     getCurrentCustomer(),
   ]);
 
-  const paid = order?.status === "paid";
+  // Any post-payment status confirms the purchase — a buyer revisiting this
+  // page after staff mark the order shipped/delivered must not see an alarming
+  // "couldn't confirm" (refunded is also post-payment, but success copy would
+  // mislead there; those buyers get the not-confirmed branch's support links).
+  const paid = order?.status === "paid" || order?.status === "shipped" || order?.status === "delivered";
+  // Ownership mirrors ownerClause(): the ACCOUNT LINK on the order is always
+  // proof (the buyer was signed in when they placed it — covers unverified
+  // accounts seeing their own fresh purchase), while an EMAIL match alone
+  // requires a VERIFIED email — registration doesn't verify, so an unverified
+  // account matching a guest order's email must not unlock the address/items.
   const isOwner =
-    !!me?.email && !!order?.email && me.email.toLowerCase() === order.email.toLowerCase();
+    (!!me?.id && !!order?.customer && me.id === order.customer) ||
+    (!!me?.email &&
+      !!me?.emailVerified &&
+      !!order?.email &&
+      me.email.toLowerCase() === order.email.toLowerCase());
 
   // ── Not a confirmed paid order: never claim success ───────────────────────────
   if (!paid) {

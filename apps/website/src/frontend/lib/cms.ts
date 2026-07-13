@@ -653,6 +653,9 @@ export async function getSettings(): Promise<SiteSettings> {
       youtube: (social?.youtube as string) || "#",
       facebook: (social?.facebook as string) || "#",
       amazon: (social?.amazon as string) || "#",
+      // Empty (not "#") when unset so consumers can skip rendering them.
+      instagram: (social?.instagram as string) || "",
+      x: (social?.x as string) || "",
     },
     branding: {
       logoUrl: mediaUrl(branding?.logo as Media),

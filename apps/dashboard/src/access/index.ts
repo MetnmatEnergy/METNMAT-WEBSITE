@@ -163,9 +163,12 @@ export const canManageCatalog: Access = ({ req: { user } }) =>
 export const canManageSales: Access = ({ req: { user } }) =>
   legacyCatalogRoles(user) || hasArea(user, "sales");
 
-/** Orders: sales owns them, operations fulfils them. */
+/** Orders: sales owns them, operations fulfils them. Marketing deliberately
+ * excluded (least-privilege — orders carry customer PII and payment state;
+ * audit finding 2026-07-13). */
 export const canManageOrders: Access = ({ req: { user } }) =>
-  legacyCatalogRoles(user) || hasArea(user, "sales", "operations");
+  hasRole(user as UserLike, "super-admin", "admin", "operations-manager", "sales") ||
+  hasArea(user, "sales", "operations");
 
 /** Tickets: support owns them, sales sees customer context. */
 export const canManageTickets: Access = ({ req: { user } }) =>

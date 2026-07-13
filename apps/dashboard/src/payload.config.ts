@@ -87,6 +87,10 @@ function assertProductionConfig(logger: { warn: (m: string) => void }): void {
     PAYLOAD_SECRET: process.env.PAYLOAD_SECRET,
     MONGODB_URI: process.env.MONGODB_URI,
     PAYLOAD_PIN_PEPPER: process.env.PAYLOAD_PIN_PEPPER,
+    // Without the public origin, cors/csrf silently fall back to localhost and
+    // Payload rejects its own auth cookie on every admin write — with no boot
+    // signal (audit finding). Fail loud instead.
+    "CMS_URL (or NEXT_PUBLIC_SERVER_URL)": process.env.CMS_URL || process.env.NEXT_PUBLIC_SERVER_URL,
   };
   const missing = Object.entries(required)
     .filter(([, v]) => !v || !v.trim())

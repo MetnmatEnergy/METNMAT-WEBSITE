@@ -1,6 +1,7 @@
 import React from "react";
 import { headers as nextHeaders } from "next/headers";
 import type { Payload } from "payload";
+import { hasRoleOrArea } from "../access";
 import {
   BRAND,
   SUCCESS,
@@ -95,19 +96,29 @@ async function safeCount(
 export default async function BeforeDashboard({ payload }: Props) {
   const months = monthKeys(12);
 
-  // Who's signed in — for the Wix-style personalised welcome.
+  // Who's signed in — for the personalised welcome AND to scope what this home
+  // page fetches: the local API below bypasses collection access
+  // (overrideAccess defaults true), so without this gate content-only staff
+  // (e.g. marketing) would still see revenue/order data despite lacking
+  // canManageOrders (audit finding 2026-07-13).
   let firstName = "";
+  let canSeeSales = false;
   try {
     if (payload) {
       const { user } = await payload.auth({ headers: await nextHeaders() });
       firstName = String((user as { name?: string } | null)?.name || "").split(" ")[0] || "";
+      canSeeSales = hasRoleOrArea(
+        user,
+        ["super-admin", "admin", "operations-manager", "sales"],
+        ["sales", "operations"]
+      );
     }
   } catch {
-    /* greeting is optional */
+    /* greeting is optional; sales data stays hidden on auth failure */
   }
 
   const [orders, enquiries, audit, openTickets, newSubmissions, stockProducts] = await Promise.all([
-    safeFind<OrderDoc>(payload, "orders"),
+    canSeeSales ? safeFind<OrderDoc>(payload, "orders") : Promise.resolve<OrderDoc[]>([]),
     safeFind<{ createdAt?: string }>(payload, "enquiries"),
     safeFind<AuditDoc>(payload, "audit-logs", 8),
     safeCount(payload, "tickets", { status: { in: ["open", "in-progress", "waiting"] } }),

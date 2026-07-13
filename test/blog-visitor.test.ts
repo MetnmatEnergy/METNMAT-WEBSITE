@@ -24,7 +24,11 @@ describe("visitor tokens", () => {
     expect(verifyVisitorToken("abc")).toBeNull();
     expect(verifyVisitorToken("abc.def")).toBeNull();
     const token = mintVisitorToken();
-    expect(verifyVisitorToken(`x${token.slice(1)}`)).toBeNull();
+    // Flip the first character to a DIFFERENT one — `x${...}` was flaky: when
+    // the minted token already started with "x" the "forgery" was identical to
+    // the real token and verified successfully (~2% of runs).
+    const flipped = (token[0] === "x" ? "y" : "x") + token.slice(1);
+    expect(verifyVisitorToken(flipped)).toBeNull();
     expect(verifyVisitorToken("a".repeat(200))).toBeNull();
   });
 });

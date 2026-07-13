@@ -3,7 +3,6 @@ import { verifyPaymentSignature, razorpayConfigured } from "@/backend/lib/razorp
 import {
   findOrderByRazorpayId,
   markOrderPaid,
-  markOrderFailed,
   sendOrderConfirmation,
 } from "@/backend/services/orders.service";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
@@ -66,9 +65,12 @@ export async function POST(req: Request) {
   });
 
   if (!valid) {
-    // Only a PENDING order can be marked failed — a bad signature must never
-    // downgrade an order that was already verified paid.
-    if (order.status === "pending") await markOrderFailed(order.id);
+    // Do NOT mutate order state here: this endpoint is unauthenticated, so
+    // anyone who learns a pending razorpay_order_id could forge a bad signature
+    // and flip the order to failed before the buyer pays (griefing — audit
+    // finding). Genuine failures are recorded by the signed Razorpay webhook
+    // (payment.failed) and stale pending orders by the lazy sweep in
+    // customer.ts (sweepStaleUnpaid); a forged request here changes nothing.
     console.warn(`[checkout] INVALID signature for order ${order.orderNumber}`);
     return NextResponse.json(
       { ok: false, error: "Payment verification failed. If you were charged, contact us with your payment ID." },

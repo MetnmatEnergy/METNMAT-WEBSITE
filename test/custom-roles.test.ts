@@ -72,7 +72,9 @@ describe("legacy fixed-role behaviour is preserved verbatim", () => {
     expect(call(canManageSettings, marketing)).toBe(true);
     expect(call(canManageCatalog, marketing)).toBe(true);
     expect(call(canManageSales, marketing)).toBe(true);
-    expect(call(canManageOrders, marketing)).toBe(true);
+    // Deliberate least-privilege change (audit 2026-07-13): orders carry
+    // customer PII + payment state — marketing no longer manages them.
+    expect(call(canManageOrders, marketing)).toBe(false);
     expect(call(canManageTickets, marketing)).toBe(true);
     expect(call(canManageAccounts, marketing)).toBe(false);
   });

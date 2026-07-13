@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp as trustedClientIp } from "@/backend/lib/rate-limit";
 
 /**
  * GET /api/geo — resolves the visitor's country to pick the display currency
@@ -13,11 +14,23 @@ import { NextResponse } from "next/server";
  */
 export const dynamic = "force-dynamic";
 
+// Strict IPv4/IPv6 shape — the value is interpolated into an outbound URL, so
+// anything that isn't literally an IP is discarded (no path/query smuggling).
+const IP_RE = /^(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9a-fA-F:]{2,45})$/;
+
 function clientIp(req: Request): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  const ip = fwd?.split(",")[0]?.trim() ?? "";
+  // Shared trusted-proxy-aware resolution (strips the ALB hop; see rate-limit.ts).
+  const ip = trustedClientIp(req);
   // Loopback / private ranges are useless for geo — let the API use egress IP.
-  if (!ip || ip === "::1" || ip.startsWith("127.") || ip.startsWith("10.") || ip.startsWith("192.168.")) {
+  if (
+    !ip ||
+    ip === "unknown" ||
+    !IP_RE.test(ip) ||
+    ip === "::1" ||
+    ip.startsWith("127.") ||
+    ip.startsWith("10.") ||
+    ip.startsWith("192.168.")
+  ) {
     return "";
   }
   return ip;
@@ -35,7 +48,7 @@ export async function GET(req: Request) {
   if (!country) {
     try {
       const ip = clientIp(req);
-      const res = await fetch(`https://ipwho.is/${ip}?fields=success,country_code`, {
+      const res = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}?fields=success,country_code`, {
         signal: AbortSignal.timeout(2500),
         cache: "no-store",
       });

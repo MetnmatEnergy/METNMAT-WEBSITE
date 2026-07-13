@@ -214,6 +214,8 @@ export type FullOrder = {
   id?: string;
   orderNumber?: string;
   status?: string;
+  /** Linked customer account id (depth=0 relationship), when the buyer was signed in. */
+  customer?: string;
   name?: string;
   email?: string;
   phone?: string;

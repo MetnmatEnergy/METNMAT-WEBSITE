@@ -5,15 +5,41 @@ import { derivePassword, PIN_REGEX, checkLock, recordFailure, recordSuccess } fr
 export const dynamic = "force-dynamic";
 
 /**
+ * Trusted-proxy-aware client IP for the brute-force lock. The old leftmost
+ * X-Forwarded-For read let an attacker rotate a fake header per request and
+ * brute-force the 4-digit PIN into a staff session (audit finding). Prod
+ * topology (verified 2026-07-13): Google external ALB appends
+ * "<client-ip>, <lb-ip>", so strip OUR trusted hop(s) from the RIGHT and key on
+ * the rightmost remaining token — attacker-supplied values sit further left and
+ * are never reached. Mirrors clientIp() in the website's rate-limit.ts.
+ */
+const TRUSTED_PROXY_IPS = new Set(
+  (process.env.TRUSTED_PROXY_IPS || "35.201.95.137")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+);
+function lockKeyIp(req: Request): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  if (fwd) {
+    const parts = fwd
+      .split(",")
+      .map((s) => s.trim().toLowerCase().replace(/^::ffff:/, ""))
+      .filter(Boolean);
+    while (parts.length > 1 && TRUSTED_PROXY_IPS.has(parts[parts.length - 1]!)) parts.pop();
+    const ip = parts[parts.length - 1];
+    if (ip) return ip;
+  }
+  return req.headers.get("x-real-ip") || "local";
+}
+
+/**
  * 4-digit PIN sign-in. Looks up the staff account by PIN and logs in through
  * Payload's own login() (so we get its JWT + httpOnly cookie), then sets the
  * `payload-token` cookie the admin UI reads. Brute-force throttled by IP.
  */
 export async function POST(req: Request): Promise<Response> {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    "local";
+  const ip = lockKeyIp(req);
 
   const lock = checkLock(ip);
   if (lock.locked) {
