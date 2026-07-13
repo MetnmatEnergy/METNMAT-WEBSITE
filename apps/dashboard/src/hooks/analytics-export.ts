@@ -26,7 +26,9 @@ function daysBetween(from: string, to: string): string[] {
 
 function cell(v: unknown): string {
   let s = String(v ?? "");
-  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  // Defuse spreadsheet formula injection — include leading TAB (0x09) and CR
+  // (0x0D), which Excel also treats as formula-triggering, not just =+-@.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   if (/[",\n]/.test(s)) s = `"${s.replace(/"/g, '""')}"`;
   return s;
 }

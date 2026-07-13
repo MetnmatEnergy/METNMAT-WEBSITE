@@ -376,12 +376,18 @@ type EnquiryDoc = {
   createdAt?: string;
 };
 
-/** RFQ / customization enquiries for this email. */
-export async function getCustomerEnquiries(email?: string): Promise<EnquiryDoc[]> {
-  if (!email) return [];
+/** RFQ / customization enquiries for this customer. Enquiries are keyed only by
+ *  the email captured at RFQ time, so matching by email is only safe once the
+ *  account has PROVEN it owns that email (`emailVerified`) — registration has no
+ *  email verification, so without this gate anyone could register a victim's
+ *  email and read their RFQ history (specs, quantities, contact details). Mirrors
+ *  ownerClause() for orders. */
+export async function getCustomerEnquiries(customer?: Customer | null): Promise<EnquiryDoc[]> {
+  const emailLc = (customer?.email ?? "").toLowerCase();
+  if (!customer?.emailVerified || !emailLc) return [];
   try {
     const res = await fetch(
-      `${CMS}/api/enquiries?where[email][equals]=${encodeURIComponent(email)}&sort=-createdAt&limit=50&depth=0`,
+      `${CMS}/api/enquiries?where[email][equals]=${encodeURIComponent(emailLc)}&sort=-createdAt&limit=50&depth=0`,
       { headers: { "x-internal-key": INTERNAL }, cache: "no-store" }
     );
     if (!res.ok) return [];

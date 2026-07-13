@@ -9,7 +9,7 @@ export default async function AccountDashboard() {
   const customer = await getCurrentCustomer();
   const [ordersResult, rfqs] = await Promise.all([
     getCustomerOrders(customer),
-    getCustomerEnquiries(customer?.email),
+    getCustomerEnquiries(customer),
   ]);
   const orderCount = ordersResult.ok ? ordersResult.orders.length : 0;
   const addressCount = customer?.addresses?.length ?? 0;

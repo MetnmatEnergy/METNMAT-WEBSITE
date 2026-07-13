@@ -94,6 +94,17 @@ export async function ingestAnalyticsBatch(
     .slice(0, 25);
   if (events.length === 0) return { ok: true, events: 0 };
 
+  // Clamp client-supplied timestamps to a sane window before they drive day/
+  // session bucketing (defense-in-depth against rollup poisoning — the website
+  // collector already validates ~±1h, but this is the trust boundary for the
+  // internal key). Everything downstream reads the clamped value.
+  const MIN_TS = now - 14 * 86_400_000;
+  const MAX_TS = now + 5 * 60_000;
+  for (const e of events) {
+    const t = Number(e.ts);
+    e.ts = t < MIN_TS ? MIN_TS : t > MAX_TS ? MAX_TS : t;
+  }
+
   // ── 1. Raw events ───────────────────────────────────────────────────────────
   const eventDocs = events.map((e) => {
     const [entityType, entitySlug] = typeof e.entity === "string" ? e.entity.split(":") : [undefined, undefined];
@@ -197,19 +208,26 @@ export async function ingestAnalyticsBatch(
     bump(`byDevice.${safeKey(String(ns.device?.device || "desktop"))}`);
     if (ns.geo?.country) bump(`byCountry.${safeKey(String(ns.geo.country))}`);
   }
-  const daily = model(payload, "analytics-daily");
-  const dailyUpdate = {
-    $inc: inc,
-    $setOnInsert: { day, createdAt: new Date() },
-    $set: { updatedAt: new Date() },
-  };
-  try {
-    await daily.findOneAndUpdate({ day }, dailyUpdate, { upsert: true, setDefaultsOnInsert: true });
-  } catch (e) {
-    if ((e as { code?: number })?.code === 11000) {
-      await daily.findOneAndUpdate({ day }, dailyUpdate, { upsert: false });
-    } else {
-      throw e;
+  // A batch with no daily-counted events and no new session (e.g. a page_leave-
+  // only sendBeacon on unload) leaves inc empty. Mongo rejects `{ $inc: {} }`,
+  // which would 500 AFTER the raw events + session already persisted and make
+  // the collector's retry double-count. page_leave isn't a daily metric, so we
+  // simply skip the rollup when there's nothing to increment.
+  if (Object.keys(inc).length > 0) {
+    const daily = model(payload, "analytics-daily");
+    const dailyUpdate = {
+      $inc: inc,
+      $setOnInsert: { day, createdAt: new Date() },
+      $set: { updatedAt: new Date() },
+    };
+    try {
+      await daily.findOneAndUpdate({ day }, dailyUpdate, { upsert: true, setDefaultsOnInsert: true });
+    } catch (e) {
+      if ((e as { code?: number })?.code === 11000) {
+        await daily.findOneAndUpdate({ day }, dailyUpdate, { upsert: false });
+      } else {
+        throw e;
+      }
     }
   }
 

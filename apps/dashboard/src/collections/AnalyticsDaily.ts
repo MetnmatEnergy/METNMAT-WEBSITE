@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { isAdmin } from "../access";
+import { isAdmin, hasRole } from "../access";
 import { exportAnalyticsCsv } from "../hooks/analytics-export";
 
 /**
@@ -64,9 +64,16 @@ export const AnalyticsDaily: CollectionConfig = {
       path: "/export",
       method: "get",
       handler: async (req) => {
-        const user = req.user as { collection?: string } | null;
+        // Analytics is admin-only (the collections are read: isAdmin). This
+        // endpoint reads via the raw model layer, which bypasses collection
+        // access — so the role check here is the ONLY gate. collection==="users"
+        // rejects storefront-customer tokens; hasRole rejects non-admin staff.
+        const user = req.user as { collection?: string; roles?: string[] } | null;
         if (!user || user.collection !== "users") {
           return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        if (!hasRole(user as Parameters<typeof hasRole>[0], "super-admin", "admin")) {
+          return Response.json({ error: "Forbidden" }, { status: 403 });
         }
         try {
           const url = new URL(req.url ?? "http://x/");

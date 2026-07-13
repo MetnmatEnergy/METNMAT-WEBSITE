@@ -13,7 +13,7 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default async function RfqPage() {
   const customer = await getCurrentCustomer();
-  const rfqs = await getCustomerEnquiries(customer?.email);
+  const rfqs = await getCustomerEnquiries(customer);
 
   if (rfqs.length === 0) {
     return (

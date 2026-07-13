@@ -2,6 +2,7 @@ import React from "react";
 import type { AdminViewServerProps } from "payload";
 import { DefaultTemplate } from "@payloadcms/next/templates";
 import { Gutter } from "@payloadcms/ui";
+import { hasRole } from "../access";
 import { resolveRange } from "./analytics/range";
 import { RangeBar, SectionTabs, SECTIONS } from "./analytics/ui";
 import {
@@ -35,8 +36,12 @@ import { BusinessAnalytics } from "./analytics/business";
  */
 export default async function SiteAnalyticsView({ initPageResult, params, searchParams }: AdminViewServerProps) {
   const { payload } = initPageResult.req;
-  const user = initPageResult?.req?.user as { collection?: string } | null | undefined;
-  const isStaff = Boolean(user && user.collection === "users");
+  const user = initPageResult?.req?.user as { collection?: string; roles?: string[] } | null | undefined;
+  // Admin-only: the queries read via the raw model layer (bypassing the
+  // collections' read: isAdmin), so this role check is the real gate. Any staff
+  // role would otherwise see traffic/revenue/search data.
+  const signedInStaff = Boolean(user && user.collection === "users");
+  const isStaff = signedInStaff && hasRole(user as Parameters<typeof hasRole>[0], "super-admin", "admin");
 
   const sp: Record<string, string | undefined> = {};
   for (const [k, v] of Object.entries(searchParams ?? {})) {
@@ -67,24 +72,30 @@ export default async function SiteAnalyticsView({ initPageResult, params, search
       <Gutter>
         {!isStaff ? (
           <div style={{ maxWidth: 440, margin: "16vh auto 0", textAlign: "center" }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Staff sign-in required</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>
+              {signedInStaff ? "Administrator access required" : "Staff sign-in required"}
+            </h1>
             <p style={{ opacity: 0.7, marginBottom: 20 }}>
-              Analytics is available to METNMAT staff accounts only. Please sign in to continue.
+              {signedInStaff
+                ? "Analytics is restricted to administrators. Ask a super-admin if you need access."
+                : "Analytics is available to METNMAT staff accounts only. Please sign in to continue."}
             </p>
-            <a
-              href="/admin/login"
-              style={{
-                display: "inline-block",
-                padding: "10px 22px",
-                borderRadius: 8,
-                background: "#d81f26",
-                color: "#fff",
-                fontWeight: 700,
-                textDecoration: "none",
-              }}
-            >
-              Go to sign in
-            </a>
+            {!signedInStaff && (
+              <a
+                href="/admin/login"
+                style={{
+                  display: "inline-block",
+                  padding: "10px 22px",
+                  borderRadius: 8,
+                  background: "#d81f26",
+                  color: "#fff",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                Go to sign in
+              </a>
+            )}
           </div>
         ) : (
           <div style={{ paddingBottom: 48 }}>
