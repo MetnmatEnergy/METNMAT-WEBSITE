@@ -49,7 +49,18 @@ export const BlogAuthors: CollectionConfig = {
     {
       type: "row",
       fields: [
-        { name: "email", type: "email", admin: { width: "50%" } },
+        {
+          name: "email",
+          type: "email",
+          admin: { width: "50%" },
+          // BlogAuthors is publicRead; without this the email would ship in the
+          // public API even when showEmail is off. Staff always see it; the
+          // public API only exposes it when the author opted in.
+          access: {
+            read: ({ req: { user }, doc }) =>
+              (user as { collection?: string } | null)?.collection === "users" || doc?.showEmail === true,
+          },
+        },
         {
           name: "showEmail",
           type: "checkbox",

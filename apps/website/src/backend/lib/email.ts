@@ -151,8 +151,12 @@ export async function sendQuoteEmails(
       notify
     );
     // Internal copy to the team — replying reaches the customer.
-    await send(notify, `New customization request from ${input.name}`, notifyHtml, input.email);
-    return toCustomer;
+    const toTeam = await send(notify, `New customization request from ${input.name}`, notifyHtml, input.email);
+    // Success if EITHER side was reached: the point is that the lead isn't lost.
+    // Reporting failure when only the customer confirmation bounced would make
+    // the contact fallback 502 (and the customer retry) even though the team
+    // already has the enquiry.
+    return toCustomer || toTeam;
   } catch {
     return false;
   }

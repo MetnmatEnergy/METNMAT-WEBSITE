@@ -164,10 +164,17 @@ function CreatedPanel({
 type Form = { name: string; email: string; password: string; phone: string; company: string; role: string };
 type FieldErrors = Partial<Record<keyof Form, string>>;
 
+/** Same-origin relative path only — blocks open-redirect via ?redirect=https://evil.com
+ *  (mirrors safeNext in set-password/reset). */
+function safeRedirect(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) return "/account";
+  return raw;
+}
+
 export function AuthCard() {
   const router = useRouter();
   const params = useSearchParams();
-  const redirectTo = params.get("redirect") || "/account";
+  const redirectTo = safeRedirect(params.get("redirect"));
   const [mode, setMode] = React.useState<"login" | "register">("login");
   const [form, setForm] = React.useState<Form>({ name: "", email: "", password: "", phone: "", company: "", role: "" });
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});

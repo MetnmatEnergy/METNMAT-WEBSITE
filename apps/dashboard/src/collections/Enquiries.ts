@@ -66,7 +66,7 @@ export const Enquiries: CollectionConfig = {
       type: "row",
       fields: [
         { name: "name", type: "text", required: true },
-        { name: "email", type: "email", required: true },
+        { name: "email", type: "email", required: true, index: true },
       ],
     },
     {

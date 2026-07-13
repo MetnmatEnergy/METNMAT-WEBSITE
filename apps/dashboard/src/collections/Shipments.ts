@@ -23,7 +23,7 @@ export const Shipments: CollectionConfig = {
     delete: isAdmin,
   },
   fields: [
-    { name: "order", type: "relationship", relationTo: "orders", required: true },
+    { name: "order", type: "relationship", relationTo: "orders", required: true, index: true },
     {
       type: "row",
       fields: [

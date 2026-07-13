@@ -58,6 +58,32 @@ async function ensureCategory(
   ids[c.slug] = String(doc.id);
 }
 
+/**
+ * Seed a global ONLY when it has never been populated — gated on one or more key
+ * fields, seeding only when ALL of them are empty. Once staff (or the first
+ * boot) set any gate field, later boots leave the whole global untouched, so
+ * admin edits to company/contact/social/seo are never reverted. Passing several
+ * fields (e.g. all social URLs) prevents clearing a single field from
+ * re-seeding the rest.
+ */
+async function seedGlobalIfUnset(
+  payload: Payload,
+  slug: "company" | "contact" | "social" | "seo",
+  keyFields: string[],
+  data: Record<string, unknown>
+): Promise<void> {
+  try {
+    const current = (await payload.findGlobal({ slug })) as Record<string, unknown> | null;
+    const anySet = keyFields.some((f) => {
+      const v = current?.[f];
+      return v !== undefined && v !== null && v !== "";
+    });
+    if (!anySet) await payload.updateGlobal({ slug, data });
+  } catch (e) {
+    payload.logger.warn(`[seed] global ${slug} seed-if-unset failed: ${(e as Error).message}`);
+  }
+}
+
 /** Delete docs in a collection whose slug is NOT in the keep-set. */
 async function pruneStale(
   payload: Payload,
@@ -1127,50 +1153,66 @@ export async function seed(payload: Payload): Promise<void> {
   const catSlugs = new Set(seedCategories.map((c) => c.slug));
   const prodSlugs = new Set(seedProducts.map((p) => p.slug));
 
-  // 1) Remove placeholder/stale products first (they reference categories).
-  await pruneStale(payload, "products", prodSlugs);
+  // CATALOG OWNERSHIP = CMS STAFF (decision 2026-07-13). Boot must NEVER delete
+  // or overwrite staff-managed data. So: prune only when EXPLICITLY opted in
+  // (SEED_PRUNE_PLACEHOLDERS=true — a deliberate one-off, never on normal boot),
+  // products are create-if-missing only, and the four settings globals seed only
+  // when unset. catalog-data.ts is initial seed data, not a live source of truth.
+  const allowPrune = process.env.SEED_PRUNE_PLACEHOLDERS === "true";
+
+  // 1) (Opt-in only) remove placeholder products first (they reference categories).
+  if (allowPrune) await pruneStale(payload, "products", prodSlugs);
 
   // 2) Upsert categories (parents before children so parent ids resolve).
   const ids: Record<string, string> = {};
   for (const c of seedCategories.filter((c) => !c.parentSlug)) await ensureCategory(payload, c, ids);
   for (const c of seedCategories.filter((c) => c.parentSlug)) await ensureCategory(payload, c, ids);
 
-  // 3) Remove stale categories (now that no products reference them).
-  await pruneStale(payload, "categories", catSlugs);
+  // 3) (Opt-in only) remove stale categories (now that no products reference them).
+  if (allowPrune) await pruneStale(payload, "categories", catSlugs);
 
-  // 4) Upsert catalog products — update existing by slug (so new SKUs/specs/
-  //    descriptions sync), create missing. Existing images are preserved
-  //    because the `images` field is not included in the update payload.
+  // 4) Create catalog products that don't exist yet — NEVER update existing ones,
+  //    so staff edits to price/stock/featured/specs/images persist across boots.
   let created = 0;
-  let updated = 0;
+  let skipped = 0;
   for (const p of seedProducts) {
-    const categoryId = ids[p.categorySlug];
-    if (!categoryId) {
-      payload.logger.warn(`[seed] product ${p.slug} has unknown category ${p.categorySlug} — skipped.`);
-      continue;
-    }
-    const data = {
-      name: p.name, slug: p.slug, brand: p.brand, sku: p.sku, category: categoryId,
-      price: p.price, mrp: p.mrp, unit: p.unit, moq: p.moq,
-      inStock: p.inStock, featured: p.featured, badges: p.badges ?? [], priceTiers: p.priceTiers ?? [],
-      sizes: (p.sizes ?? []).map((label) => ({ label })),
-      specs: p.specs, shortDesc: p.shortDesc, _status: "published" as const,
-    };
-    const found = await payload.find({ collection: "products", where: { slug: { equals: p.slug } }, limit: 1 });
-    if (found.docs[0]) {
-      await payload.update({ collection: "products", id: found.docs[0].id, data });
-      updated++;
-    } else {
-      await payload.create({ collection: "products", data });
+    // Per-product guard: a transient error on one product logs and continues
+    // instead of aborting the whole seed (and, since seed is awaited in onInit,
+    // the container boot).
+    try {
+      const found = await payload.find({ collection: "products", where: { slug: { equals: p.slug } }, limit: 1, depth: 0 });
+      if (found.docs[0]) {
+        skipped++;
+        continue; // staff-owned — do not overwrite
+      }
+      const categoryId = ids[p.categorySlug];
+      if (!categoryId) {
+        payload.logger.warn(`[seed] product ${p.slug} has unknown category ${p.categorySlug} — skipped.`);
+        continue;
+      }
+      await payload.create({
+        collection: "products",
+        data: {
+          name: p.name, slug: p.slug, brand: p.brand, sku: p.sku, category: categoryId,
+          price: p.price, mrp: p.mrp, unit: p.unit, moq: p.moq,
+          inStock: p.inStock, featured: p.featured, badges: p.badges ?? [], priceTiers: p.priceTiers ?? [],
+          sizes: (p.sizes ?? []).map((label) => ({ label })),
+          specs: p.specs, shortDesc: p.shortDesc, _status: "published" as const,
+        },
+      });
       created++;
+    } catch (e) {
+      payload.logger.warn(`[seed] product ${p.slug} create failed: ${(e as Error).message}`);
     }
   }
-  payload.logger.info(`[seed] Products: ${created} created, ${updated} updated.`);
+  payload.logger.info(`[seed] Products: ${created} created, ${skipped} kept (staff-owned).`);
 
-  await payload.updateGlobal({ slug: "company", data: { name: "METNMAT", legalName: "METNMAT INNOVATIONS PRIVATE LIMITED", tagline: "Research. Design. Build. Scale.", description: "METNMAT supplies electrochemistry lab equipment — electrodes, membranes, cells, reactors, equipment and accessories — and turnkey materials R&D from prototype to industrial scale.", foundedYear: 2018 } });
-  await payload.updateGlobal({ slug: "contact", data: { email: "contact@metnmat.com", email2: "mk@metnmat.com", phone: "+91 78726 86501", whatsapp: "+91 78726 86501", shippingNote: "Shipping across India & worldwide · ISO-aligned R&D", addresses: [{ label: "West Bengal", line: "Howrah, West Bengal, India" }] } });
-  await payload.updateGlobal({ slug: "social", data: { linkedin: "https://in.linkedin.com/company/metnmat", youtube: "https://www.youtube.com/@metnmatresearchinnovations628", facebook: "https://www.facebook.com/metnmat", amazon: "https://www.amazon.in/l/27943762031?ie=UTF8&marketplaceID=A21TJRUUN4KGV&me=AV4YEPJ3X45CF" } });
-  await payload.updateGlobal({ slug: "seo", data: { defaultTitle: "METNMAT — Electrochemical Systems | Reference Electrodes | metnmat.com", titleTemplate: "%s · METNMAT", description: "Electrodes, membranes, electrochemical cells, reactors & lab equipment for research — plus turnkey materials R&D." } });
+  // Settings globals: seed only when unset so staff edits are never reverted
+  // (gate on a key field of each global — set on first-ever boot, preserved after).
+  await seedGlobalIfUnset(payload, "company", ["name", "legalName", "tagline"], { name: "METNMAT", legalName: "METNMAT INNOVATIONS PRIVATE LIMITED", tagline: "Research. Design. Build. Scale.", description: "METNMAT supplies electrochemistry lab equipment — electrodes, membranes, cells, reactors, equipment and accessories — and turnkey materials R&D from prototype to industrial scale.", foundedYear: 2018 });
+  await seedGlobalIfUnset(payload, "contact", ["email", "phone"], { email: "contact@metnmat.com", email2: "mk@metnmat.com", phone: "+91 78726 86501", whatsapp: "+91 78726 86501", shippingNote: "Shipping across India & worldwide · ISO-aligned R&D" });
+  await seedGlobalIfUnset(payload, "social", ["linkedin", "youtube", "facebook", "amazon"], { linkedin: "https://in.linkedin.com/company/metnmat", youtube: "https://www.youtube.com/@metnmatresearchinnovations628", facebook: "https://www.facebook.com/metnmat", amazon: "https://www.amazon.in/l/27943762031?ie=UTF8&marketplaceID=A21TJRUUN4KGV&me=AV4YEPJ3X45CF" });
+  await seedGlobalIfUnset(payload, "seo", ["defaultTitle", "description"], { defaultTitle: "METNMAT — Electrochemical Systems | Reference Electrodes | metnmat.com", titleTemplate: "%s · METNMAT", description: "Electrodes, membranes, electrochemical cells, reactors & lab equipment for research — plus turnkey materials R&D." });
 
   // 5) Seed website content (services / projects / posts / faqs + homepage/nav).
   await seedContent(payload);

@@ -52,7 +52,7 @@ export const Orders: CollectionConfig = {
       type: "row",
       fields: [
         { name: "name", type: "text", required: true },
-        { name: "email", type: "email", required: true },
+        { name: "email", type: "email", required: true, index: true },
       ],
     },
     {
@@ -225,6 +225,7 @@ export const Orders: CollectionConfig = {
       name: "customer",
       type: "relationship",
       relationTo: "customers",
+      index: true, // account order-history queries filter on this
       admin: {
         position: "sidebar",
         description: "Linked storefront account, if the buyer was logged in. Guest orders have none.",

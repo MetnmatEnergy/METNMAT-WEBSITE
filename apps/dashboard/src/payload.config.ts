@@ -228,9 +228,20 @@ export default buildConfig({
   onInit: async (payload) => {
     assertProductionConfig(payload.logger);
     payload.logger.info(`[config] trusted origins (cors/csrf): ${trustedOrigins.join(", ") || "(none)"}`);
-    await seed(payload);
-    // Raw-Mongo indexes Payload fields can't express (analytics TTL retention).
-    await ensureAnalyticsIndexes(payload);
+    // Seeding must never take the CMS down: a transient DB error during seed
+    // should log and let the admin/API still boot (it degrades to whatever data
+    // is already there) rather than crash-loop the container.
+    try {
+      await seed(payload);
+    } catch (e) {
+      payload.logger.error(`[config] seed() failed (continuing boot): ${(e as Error).message}`);
+    }
+    try {
+      // Raw-Mongo indexes Payload fields can't express (analytics TTL retention).
+      await ensureAnalyticsIndexes(payload);
+    } catch (e) {
+      payload.logger.error(`[config] ensureAnalyticsIndexes failed (continuing boot): ${(e as Error).message}`);
+    }
   },
   editor: lexicalEditor(),
   // No first-party consumer uses GraphQL (website/admin/chatbot are REST/Mongo),

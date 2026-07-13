@@ -14,12 +14,27 @@ const toPostalAddress = (a: (typeof site.addresses)[number]) => ({
 });
 const postalAddress = toPostalAddress(primaryOffice);
 
+/**
+ * Escape a JSON string for safe embedding in a <script> block. JSON.stringify
+ * does NOT escape `<`, `>`, `&` or the JS line separators, so CMS-derived values
+ * (product names, blog titles) containing `</script>` could break out of the
+ * tag — a stored-XSS vector. Escaping to \uXXXX keeps the JSON valid.
+ */
+function safeJsonLd(data: Record<string, unknown>): string {
+  return JSON.stringify(data)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
 /** Injects JSON-LD structured data (Organization by default). */
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(data) }}
     />
   );
 }

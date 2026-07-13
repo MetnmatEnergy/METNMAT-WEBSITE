@@ -135,6 +135,19 @@ export async function POST(request: Request) {
   // Save the enquiry, linking the uploaded files, then email everyone.
   const saved = await createEnquiry(enquiry);
   const emailed = await sendQuoteEmails(enquiry, emailAttachments);
+  // If BOTH the CMS save and the email failed, the RFQ is lost — don't return
+  // success (the client branches only on res.ok). Surface an error so the
+  // customer can retry instead of believing the request was received.
+  if (!saved && !emailed) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "We couldn't submit your request right now. Please try again, or email us directly at contact@metnmat.com.",
+      },
+      { status: 502 }
+    );
+  }
   return NextResponse.json(
     { ok: true, saved, emailed, attachments: attachmentIds.length, stored: attachmentIds.length },
     { status: 201 }
