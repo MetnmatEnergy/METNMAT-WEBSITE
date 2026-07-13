@@ -32,6 +32,13 @@ import { default as default_5bb2f6096a92e2f61cc9ec9ae0fca71e } from '../../../ad
 import { default as default_a5a338611b4a2fc3303c9dc046438703 } from '../../../admin/NavLogo'
 import { default as default_8111ae29cf52208bf19d3f279ff19eeb } from '../../../admin/NavShortcuts'
 import { default as default_cdbd8f4edb65b040e69c1cb1b024ac33 } from '../../../admin/SiteAnalyticsView'
+// GCS is enabled in PRODUCTION (env-gated) — its client upload handler must stay
+// in the committed import map even when a local dev run (GCS off) regenerates
+// this file without it. WITHOUT this entry the whole admin renders BLANK on prod
+// (the storage-gcs plugin registers a ROOT admin provider referencing this key;
+// a missing importMap entry makes that provider unresolvable and blanks /admin +
+// /admin/login). Re-add this import + map entry if a regen/dev run drops them.
+import { GcsClientUploadHandler as GcsClientUploadHandler_06e62ca02c7c441053a9b643e5545934 } from '@payloadcms/storage-gcs/client'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -70,5 +77,6 @@ export const importMap = {
   "/admin/NavLogo#default": default_a5a338611b4a2fc3303c9dc046438703,
   "/admin/NavShortcuts#default": default_8111ae29cf52208bf19d3f279ff19eeb,
   "/admin/SiteAnalyticsView#default": default_cdbd8f4edb65b040e69c1cb1b024ac33,
+  "@payloadcms/storage-gcs/client#GcsClientUploadHandler": GcsClientUploadHandler_06e62ca02c7c441053a9b643e5545934,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }
