@@ -54,6 +54,7 @@ type InBatch = {
   vid?: string;
   sid?: string;
   events?: InEvent[];
+  geo?: { country?: string; region?: string; city?: string };
   newSession?: {
     landing?: string;
     attribution?: {
@@ -133,6 +134,14 @@ export async function ingestAnalyticsBatch(
   const purchase = events.find((e) => e.type === "purchase");
 
   const ns = body.newSession;
+  // Batch-level geo backfills sessions that started before the provider was
+  // enabled. Fall back to the original newSession location for old senders.
+  const geo = body.geo ?? ns?.geo;
+  const geoFields = {
+    ...(geo?.country ? { country: String(geo.country).slice(0, 60) } : {}),
+    ...(geo?.region ? { region: String(geo.region).slice(0, 80) } : {}),
+    ...(geo?.city ? { city: String(geo.city).slice(0, 80) } : {}),
+  };
   const setOnInsert: Record<string, unknown> = {
     sid,
     vid,
@@ -150,9 +159,6 @@ export async function ingestAnalyticsBatch(
     device: String(ns?.device?.device || "desktop"),
     browser: String(ns?.device?.browser || "Other").slice(0, 40),
     os: String(ns?.device?.os || "Other").slice(0, 40),
-    country: String(ns?.geo?.country || "").slice(0, 60),
-    region: String(ns?.geo?.region || "").slice(0, 80),
-    city: String(ns?.geo?.city || "").slice(0, 80),
     createdAt: new Date(),
   };
   const sessionUpdate: Record<string, unknown> = {
@@ -160,6 +166,7 @@ export async function ingestAnalyticsBatch(
     $set: {
       lastAt: new Date(lastTs),
       updatedAt: new Date(),
+      ...geoFields,
       ...(lastView ? { exitPath: String(lastView.path).slice(0, 300) } : {}),
       ...(enquirySubmit ? { convertedEnquiry: true } : {}),
       ...(purchase
@@ -206,7 +213,7 @@ export async function ingestAnalyticsBatch(
     bump("sessions");
     bump(`bySource.${safeKey(String(ns.attribution?.source || "direct"))}`);
     bump(`byDevice.${safeKey(String(ns.device?.device || "desktop"))}`);
-    if (ns.geo?.country) bump(`byCountry.${safeKey(String(ns.geo.country))}`);
+    if (geo?.country) bump(`byCountry.${safeKey(String(geo.country))}`);
   }
   // A batch with no daily-counted events and no new session (e.g. a page_leave-
   // only sendBeacon on unload) leaves inc empty. Mongo rejects `{ $inc: {} }`,

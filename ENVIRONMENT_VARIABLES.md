@@ -71,6 +71,10 @@ Consolidated reference for all three services. **Never commit real secrets.** Pe
 
 `MONGODB_URI` (Atlas user password) · `GROQ_API_KEY` · `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` · `RESEND_API_KEY` · `Meta_WA_accessToken` (+ FB/IG tokens) · `JWT_SECRET` · `PAYLOAD_SECRET` · `PAYLOAD_PIN_PEPPER` · `INTERNAL_API_KEY` · Supabase S3 access key (in `.env.supabase.bak`).
 
+## Analytics geography
+
+`ANALYTICS_GEO_TOKEN` is an optional, website-only server secret for IPinfo Lite country enrichment. Existing active sessions are enriched on their next event after it is enabled; visitor IP addresses are used transiently and never persisted.
+
 ## Generating strong secrets
 
 ```bash

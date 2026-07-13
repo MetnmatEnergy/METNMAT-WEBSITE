@@ -23,6 +23,12 @@ export type IngestBatch = {
   vid: string;
   sid: string;
   events: CollectedEvent[];
+  /**
+   * Batch-level enrichment lets a session that began before geo was enabled
+   * acquire its country on the next analytics event. `newSession.geo` remains
+   * populated for compatibility with the original ingestion contract.
+   */
+  geo?: Geo;
   newSession?: {
     landing: string;
     attribution: Attribution;
@@ -36,8 +42,17 @@ const geoCache = new Map<string, { at: number; geo: Geo | null }>();
 const GEO_TTL_MS = 60 * 60 * 1000;
 const GEO_CACHE_MAX = 500;
 
+function geoToken(): string {
+  return (process.env.ANALYTICS_GEO_TOKEN || "").trim();
+}
+
+/** Non-secret feature status used by the health endpoint and CMS dashboard. */
+export function geoAnalyticsConfigured(): boolean {
+  return Boolean(geoToken());
+}
+
 export async function lookupGeo(ip: string | undefined): Promise<Geo | undefined> {
-  const token = process.env.ANALYTICS_GEO_TOKEN;
+  const token = geoToken();
   if (!token || !ip || ip === "unknown") return undefined;
   const cached = geoCache.get(ip);
   if (cached && Date.now() - cached.at < GEO_TTL_MS) return cached.geo ?? undefined;
@@ -45,8 +60,13 @@ export async function lookupGeo(ip: string | undefined): Promise<Geo | undefined
     // ipinfo "lite" endpoint: country-level, Bearer auth (token never in the URL).
     // Returns { country_code: "IN", country: "India", continent, asn, … } — no
     // region/city on this tier. We store the readable full country name.
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
     const res = await fetch(`https://api.ipinfo.io/lite/${encodeURIComponent(ip)}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Required when the IPinfo token is restricted to the website domain.
+        ...(siteUrl ? { Referer: `${siteUrl}/` } : {}),
+      },
       signal: AbortSignal.timeout(1500),
       cache: "no-store",
     });
@@ -55,6 +75,7 @@ export async function lookupGeo(ip: string | undefined): Promise<Geo | undefined
     const geo: Geo = {
       ...(d.country ? { country: d.country } : d.country_code ? { country: d.country_code } : {}),
     };
+    if (!geo.country) return undefined;
     if (geoCache.size >= GEO_CACHE_MAX) geoCache.clear();
     geoCache.set(ip, { at: Date.now(), geo });
     return geo;

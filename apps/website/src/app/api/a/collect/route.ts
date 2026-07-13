@@ -114,6 +114,12 @@ export async function POST(req: Request): Promise<Response> {
 
   const batch: IngestBatch = { vid, sid, events };
 
+  // Resolve geo for every accepted batch, not only at session birth. This
+  // backfills active sessions after ANALYTICS_GEO_TOKEN is enabled; the
+  // per-instance cache keeps repeat activity from causing repeat provider calls.
+  const geo = await lookupGeo(clientIp(req));
+  if (geo) batch.geo = geo;
+
   if (body.newSession && typeof body.newSession === "object") {
     const ns = body.newSession;
     const landing = sanitizePath(ns.landing) || events[0].path;
@@ -128,7 +134,6 @@ export async function POST(req: Request): Promise<Response> {
       utmContent: typeof utm.content === "string" ? utm.content.slice(0, 100) : undefined,
     });
     const device = parseUserAgent(ua);
-    const geo = await lookupGeo(clientIp(req)); // transient; undefined without token
     batch.newSession = { landing, attribution, device, ...(geo ? { geo } : {}) };
   }
 

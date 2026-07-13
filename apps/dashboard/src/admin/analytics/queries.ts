@@ -171,6 +171,26 @@ export async function sessionStats(payload: Payload, days: string[]): Promise<Se
 
 export type Dim = { key: string; sessions: number; enquiries?: number; purchases?: number; revenue?: number };
 
+export type GeoProviderStatus = "configured" | "disabled" | "unknown";
+
+/** Read the website's non-secret health flag; the token lives there, not here. */
+export async function geoProviderStatus(): Promise<GeoProviderStatus> {
+  const website = (process.env.WEBSITE_URL || "https://www.metnmat.com").replace(/\/+$/, "");
+  try {
+    const res = await fetch(`${website}/api/health`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!res.ok) return "unknown";
+    const data = (await res.json()) as { features?: { analyticsGeo?: boolean } };
+    if (data.features?.analyticsGeo === true) return "configured";
+    if (data.features?.analyticsGeo === false) return "disabled";
+    return "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 /** Sessions grouped by an arbitrary session dimension, with conversions. */
 export async function sessionsBy(
   payload: Payload,

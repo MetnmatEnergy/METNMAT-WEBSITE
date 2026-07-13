@@ -38,6 +38,7 @@ import {
   recentEvents,
   firstEventDay,
   rangeToWindow,
+  geoProviderStatus,
 } from "./queries";
 import { KpiCard, Panel, RangeBar, DataNotice, href } from "./ui";
 import { AutoRefresh } from "./AutoRefresh";
@@ -246,7 +247,7 @@ export async function Realtime({ payload }: Ctx) {
 // ── Traffic ───────────────────────────────────────────────────────────────────
 
 export async function Traffic({ payload, range }: Ctx) {
-  const [rows, stats, prevStats, bySource, byChannel, aiChannels, byCountry, byBrowser, byOs, landing, exits] = await Promise.all([
+  const [rows, stats, prevStats, bySource, byChannel, aiChannels, byCountry, byBrowser, byOs, landing, exits, geoStatus] = await Promise.all([
     rollupsFor(payload, range.days),
     sessionStats(payload, range.days),
     sessionStats(payload, range.compareDays),
@@ -258,10 +259,10 @@ export async function Traffic({ payload, range }: Ctx) {
     sessionsBy(payload, range.days, "os", 8),
     pagesBy(payload, range.days, "entryPath", 10),
     pagesBy(payload, range.days, "exitPath", 10),
+    geoProviderStatus(),
   ]);
   const cur = sumRollups(rows);
   const newVisitors = Math.max(0, stats.visitors - stats.returningVisitors);
-  const geoConfigured = byCountry.length > 0;
 
   return (
     <>
@@ -317,8 +318,20 @@ export async function Traffic({ payload, range }: Ctx) {
 
       <div style={grid2}>
         <Panel title="Geography (sessions by country)">
-          {geoConfigured ? (
+          {byCountry.length > 0 ? (
             <HBars rows={byCountry.map((c) => ({ label: c.key, value: c.sessions, display: String(c.sessions) }))} color={BRAND} valueLabel="sessions" />
+          ) : geoStatus === "configured" ? (
+            <div style={{ fontSize: 13, opacity: 0.65, padding: "18px 4px", lineHeight: 1.6 }}>
+              <strong>IPinfo Lite is connected.</strong>
+              <br />
+              Country data will appear as visitors generate activity. Existing active sessions are enriched on their next event.
+            </div>
+          ) : geoStatus === "unknown" ? (
+            <div style={{ fontSize: 13, opacity: 0.65, padding: "18px 4px", lineHeight: 1.6 }}>
+              <strong>No country data in this range yet.</strong>
+              <br />
+              The dashboard could not verify the website&apos;s geo-provider status. Check website health and recent ingestion.
+            </div>
           ) : (
             <div style={{ fontSize: 13, opacity: 0.65, padding: "18px 4px", lineHeight: 1.6 }}>
               <strong>Geography is not configured.</strong>
