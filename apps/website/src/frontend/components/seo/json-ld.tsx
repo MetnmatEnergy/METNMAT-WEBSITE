@@ -44,15 +44,30 @@ export const organizationJsonLd = {
   // Dual-typed: Organization for brand/knowledge-panel signals, LocalBusiness
   // so the geo/address/opening-hours drive local search (GEO).
   "@type": ["Organization", "LocalBusiness"],
+  // Stable @id so the emissions on / and /about dedupe to ONE entity.
+  "@id": `${site.url}/#organization`,
+  // Canonical legal name everywhere (product seller, blog/project publisher use
+  // site.legalName too — keep them in sync). Real name variants only, including
+  // the heavily-used public display name so answer engines reconcile it.
   name: site.legalName,
-  alternateName: site.name,
+  alternateName: [site.name, "METNMAT Innovations", "METNMAT Research & Innovations", "Metnmat"],
   url: site.url,
   logo: `${site.url}/icon-512.png`,
   image: `${site.url}/opengraph-image`,
   description: site.description,
+  slogan: site.tagline,
   email: [site.contact.email, site.contact.email2],
   telephone: site.contact.phone,
   foundingDate: "2018",
+  foundingLocation: {
+    "@type": "Place",
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: primaryOffice.locality,
+      addressRegion: primaryOffice.region,
+      addressCountry: primaryOffice.country,
+    },
+  },
   areaServed: ["IN", "Worldwide"],
   geo: {
     "@type": "GeoCoordinates",

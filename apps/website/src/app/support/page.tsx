@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Support — Raise & track a ticket",
   description:
     "Get help with your METNMAT order. Raise a support ticket for order issues, product quality, shipping, payments or technical questions — and track its status any time.",
+  alternates: { canonical: "/support" },
 };
 
 export default function SupportPage() {

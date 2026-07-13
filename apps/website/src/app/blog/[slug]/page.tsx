@@ -119,11 +119,12 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
           ...(a.organisation ? { affiliation: { "@type": "Organization", name: a.organisation } } : {}),
           ...(a.orcidUrl ? { sameAs: a.orcidUrl } : {}),
         }))
-      : { "@type": "Organization", name: "METNMAT Research & Innovations" },
+      : { "@type": "Organization", name: site.legalName },
     publisher: {
       "@type": "Organization",
-      name: "METNMAT Research & Innovations",
+      name: site.legalName,
       url: site.url,
+      logo: { "@type": "ImageObject", url: `${site.url}/icon-512.png` },
     },
   };
 

@@ -144,8 +144,12 @@ export async function POST(req: Request) {
   }
 
   if ((type === "payment.captured" || type === "order.paid") && order) {
-    if (order.status === "paid") {
-      return NextResponse.json({ ok: true, idempotent: true }); // already reconciled
+    // Already reconciled — paid OR anything downstream of it (staff moved it to
+    // shipped/delivered). A redelivered payment.captured for such an order must
+    // ack, not fall through to the amount-check/markOrderPaid block, which would
+    // fail the paid→shipped transition and make Razorpay retry for 24h.
+    if (order.status === "paid" || order.status === "shipped" || order.status === "delivered") {
+      return NextResponse.json({ ok: true, idempotent: true });
     }
     if (order.status === "cancelled" || order.status === "refunded") {
       // Money arrived for an order already in a terminal state (e.g. the

@@ -9,7 +9,7 @@ import { ProductGallery } from "@/frontend/components/commerce/product-gallery";
 import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
-import { inclGST } from "@/frontend/lib/catalog";
+import { inclGST, isQuoteOnly } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
 import {
@@ -30,7 +30,7 @@ export async function generateMetadata({
   if (!product) {
     return { title: "Product", alternates: { canonical: `/shop/p/${slug}` } };
   }
-  const title = `${product.name} — ${product.brand}`;
+  const title = product.brand ? `${product.name} — ${product.brand}` : product.name;
   return {
     title,
     description: product.shortDesc,
@@ -76,18 +76,21 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           brand: { "@type": "Brand", name: product.brand },
           description: product.shortDesc,
           ...(product.imageUrl ? { image: product.imageUrl } : {}),
-          // Only emit an Offer for items with an online price — a quote-only item
-          // has no price, and an Offer without one is invalid. The price must be
-          // GST-inclusive to match what the page shows.
-          ...(product.price
+          // Only emit a buyable Offer for genuinely purchasable items. A
+          // quote-only/discontinued product shows "Price on request" on the
+          // page, so advertising a concrete price + InStock in structured data
+          // would mislead SERP rich results. Availability tracks productType.
+          ...(!isQuoteOnly(product) && product.price
             ? {
                 offers: {
                   "@type": "Offer",
                   priceCurrency: "INR",
                   price: inclGST(product.price),
+                  // (Discontinued/quote-only items never reach here — isQuoteOnly
+                  // gates the whole Offer block off — so it's just in/out of stock.)
                   availability: product.inStock
                     ? "https://schema.org/InStock"
-                    : "https://schema.org/PreOrder",
+                    : "https://schema.org/OutOfStock",
                   itemCondition: "https://schema.org/NewCondition",
                   url: `${site.url}/shop/p/${product.slug}`,
                   seller: { "@type": "Organization", name: site.legalName },

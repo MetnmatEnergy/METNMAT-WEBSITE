@@ -10,7 +10,7 @@ import { Badge } from "@/frontend/components/ui/badge";
 import { ProjectCard } from "@/frontend/components/cards/project-card";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { RichText, hasRichText } from "@/frontend/components/blog/rich-text";
-import { JsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 import { getProjects, getProjectFull } from "@/frontend/lib/cms";
 import { pageMetadata } from "@/frontend/lib/seo";
 import { site } from "@/frontend/lib/site";
@@ -73,9 +73,21 @@ export default async function ProjectDetailPage({ params }: { params: Promise<Pa
           about: project.category,
           url: `${site.url}/projects/${project.slug}`,
           ...(project.year ? { dateCreated: String(project.year) } : {}),
-          publisher: { "@type": "Organization", name: "METNMAT", url: site.url },
+          publisher: {
+            "@type": "Organization",
+            name: site.legalName,
+            url: site.url,
+            logo: { "@type": "ImageObject", url: `${site.url}/icon-512.png` },
+          },
           ...(project.coverUrl ? { image: project.coverUrl } : {}),
         }}
+      />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Projects", path: "/projects" },
+          { name: project.title, path: `/projects/${project.slug}` },
+        ])}
       />
 
       {/* Header */}

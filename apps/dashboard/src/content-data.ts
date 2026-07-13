@@ -350,7 +350,7 @@ What has changed is the character of the effort. The field is shifting from sere
 ];
 
 export const seedFaqs = [
-  { question: "What does METNMAT Research & Innovations do?", answer: "METNMAT is India's private metallurgy & materials R&D company. We deliver customized turnkey solutions — from lab-scale prototype to full industrial scale — across product and process development, applied research, benchmarking, heat treatment and simulation." },
+  { question: "What does METNMAT Research & Innovations do?", answer: "METNMAT is a deep-tech metallurgy, materials-science and electrochemistry R&D company based in Howrah, West Bengal. We deliver customized turnkey solutions — from lab-scale prototype to full industrial scale — across product and process development, applied research, benchmarking, heat treatment and simulation, and we supply research-grade electrochemistry lab equipment." },
   { question: "What products can I buy from METNMAT?", answer: "Our shop offers lab-grade electrochemistry equipment: electrodes (reference, counter and working), ion-exchange membranes (PEM, AEM, bipolar and cation), electrochemical cells & reactors, lab equipment (peristaltic pumps, MEA fabrication presses, specialised research setups) and accessories — with bulk B2B pricing and GST invoicing." },
   { question: "Do you ship across India and worldwide?", answer: "Yes. We ship across India and worldwide, with a GST invoice provided on every order." },
   { question: "Can I request a customized product?", answer: "Yes. Use the 'Request for Customization' option on any product to share your design, size, material and quantity — you can also attach PDFs or photos — and our team will get back to you with a quote." },

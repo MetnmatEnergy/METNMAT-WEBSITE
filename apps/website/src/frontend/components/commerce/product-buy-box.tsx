@@ -29,9 +29,10 @@ export function ProductBuyBox({ product }: { product: Product }) {
     ...(hasSizes && size ? { size } : {}),
   };
 
+  const madeToOrder = product.productType === "made-to-order";
   const stock = (
-    <p className={`mt-1 text-sm ${product.inStock ? "text-emerald-500" : "text-amber-500"}`}>
-      {product.inStock ? "In stock" : "Made to order"} · {product.leadTime}
+    <p className={`mt-1 text-sm ${product.inStock && !madeToOrder ? "text-emerald-500" : "text-amber-500"}`}>
+      {madeToOrder ? "Made to order" : product.inStock ? "In stock" : "Made to order"} · {product.leadTime}
     </p>
   );
 

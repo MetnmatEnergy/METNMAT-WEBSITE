@@ -84,7 +84,12 @@ type CmsProduct = {
   hsnSac?: string;
   countryOfOrigin?: string;
   productType?: string;
+  documents?: (CmsDocument | string)[];
 };
+
+/** A product-attached document (datasheet / SDS / certificate). Only ones the
+ *  staff flagged `public` are exposed on the storefront. */
+type CmsDocument = { id?: string; title?: string; filename?: string; url?: string; public?: boolean };
 
 function mapProduct(d: CmsProduct): Product {
   const imgs = (d.images ?? []).map((i) => mediaUrl(i.image)).filter(Boolean) as string[];
@@ -107,7 +112,16 @@ function mapProduct(d: CmsProduct): Product {
     shortDesc: d.shortDesc ?? "",
     sizes: (d.sizes ?? []).map((s) => s.label?.trim()).filter(Boolean) as string[],
     specs: d.specs ?? [],
-    datasheets: [],
+    // Only PUBLIC documents surface as downloadable datasheets. Private docs
+    // (invoices/quotations also live in the Documents collection) come back from
+    // the public API as bare IDs, so the object+public===true filter drops them.
+    datasheets: (d.documents ?? [])
+      .filter((doc): doc is CmsDocument => typeof doc === "object" && doc !== null && doc.public === true)
+      .map((doc) => ({
+        label: doc.title?.trim() || doc.filename || "Datasheet (PDF)",
+        href: doc.url ? (doc.url.startsWith("http") ? doc.url : `${CMS}${doc.url}`) : "",
+      }))
+      .filter((sheet) => sheet.href),
     badges: d.badges ?? [],
     imageUrl: imgs[0],
     images: imgs,

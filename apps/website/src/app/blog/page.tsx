@@ -84,7 +84,12 @@ export default async function BlogPage({
           description:
             "Technical articles, research notes, engineering guides, case studies and industrial insights from METNMAT and contributing researchers.",
           url: `${site.url}/blog`,
-          publisher: { "@type": "Organization", name: "METNMAT Research & Innovations", url: site.url },
+          publisher: {
+            "@type": "Organization",
+            name: site.legalName,
+            url: site.url,
+            logo: { "@type": "ImageObject", url: `${site.url}/icon-512.png` },
+          },
         }}
       />
       <JsonLd data={breadcrumbJsonLd([{ name: "Home", path: "/" }, { name: "Blog", path: "/blog" }])} />

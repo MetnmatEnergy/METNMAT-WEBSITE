@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "How METNMAT Research & Innovations collects, uses, shares, and protects your personal data, and the rights you have over it.",
+  alternates: { canonical: "/privacy" },
 };
 
 const LAST_UPDATED = "13 June 2026";

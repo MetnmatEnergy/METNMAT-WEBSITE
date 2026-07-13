@@ -27,6 +27,7 @@ import { ProcessOrbit } from "@/frontend/components/about/process-orbit";
 import { AnimatedShaderBackground } from "@/frontend/components/ui/animated-shader-background";
 import { getHomepage, getTeam } from "@/frontend/lib/cms";
 import { pageMetadata } from "@/frontend/lib/seo";
+import { JsonLd, organizationJsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 
 export const metadata: Metadata = pageMetadata({
   title: "About",
@@ -64,6 +65,15 @@ export default async function AboutPage() {
 
   return (
     <>
+      {/* GEO/SEO: the canonical "who we are" page should carry the Organization
+          entity + a breadcrumb so answer engines anchor METNMAT here. */}
+      <JsonLd data={organizationJsonLd} />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "About", path: "/about" },
+        ])}
+      />
       {/* ───────────── Hero ───────────── */}
       <section className="relative overflow-hidden border-b border-border">
         {/* Brand WebGL plasma (recolored red/dark), dimmed under a scrim for legibility */}

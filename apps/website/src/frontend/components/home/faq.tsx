@@ -8,7 +8,7 @@ import { JsonLd, faqJsonLd } from "@/frontend/components/seo/json-ld";
 const DEFAULT_FAQS = [
   {
     q: "What does METNMAT Research & Innovations do?",
-    a: "METNMAT is India's private metallurgy & materials R&D company. We deliver customized turnkey solutions — from lab-scale prototype to full industrial scale — across product and process development, applied research, benchmarking, heat treatment and simulation.",
+    a: "METNMAT is a deep-tech metallurgy, materials-science and electrochemistry R&D company based in Howrah, West Bengal. We deliver customized turnkey solutions — from lab-scale prototype to full industrial scale — across product and process development, applied research, benchmarking, heat treatment and simulation, and we supply research-grade electrochemistry lab equipment.",
   },
   {
     q: "What products can I buy from METNMAT?",

@@ -7,6 +7,7 @@ import { QuoteForm } from "@/frontend/components/commerce/quote-form";
 export const metadata: Metadata = {
   title: "Get a Quote",
   description: "Request a quote for R&D services or products.",
+  alternates: { canonical: "/quote" },
 };
 
 export default function QuotePage() {

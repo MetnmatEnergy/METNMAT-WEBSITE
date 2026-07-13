@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Terms of Service",
   description:
     "The terms governing use of the METNMAT Research & Innovations website, catalog, quotes, and online orders.",
+  alternates: { canonical: "/terms" },
 };
 
 const LAST_UPDATED = "13 June 2026";

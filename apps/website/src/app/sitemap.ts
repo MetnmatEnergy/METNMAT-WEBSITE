@@ -7,7 +7,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // No "/search" here — robots.ts disallows it, and a sitemap must not list
   // URLs crawlers are told to skip.
   const staticRoutes = Array.from(
-    new Set(["/quote", "/blog/submit", ...mainNav.map((n) => n.href)]),
+    new Set([
+      "/quote",
+      "/blog/submit",
+      "/shop/all",
+      "/support",
+      "/privacy",
+      "/terms",
+      "/replacement-policy",
+      ...mainNav.map((n) => n.href),
+    ]),
   );
 
   // Live catalog + article pages from the CMS so search engines & AI crawlers
@@ -34,6 +43,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     ...products.map((p) => ({
       url: `${site.url}/shop/p/${p.slug}`,
+      ...(p.createdAt ? { lastModified: p.createdAt } : {}),
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),

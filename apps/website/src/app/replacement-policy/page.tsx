@@ -18,6 +18,7 @@ export const metadata: Metadata = {
   title: "Replacement Policy",
   description:
     "METNMAT operates a no-refund, replacement-only policy. Eligible items can be replaced within 7 days of delivery when they arrive damaged, defective, or incorrect.",
+  alternates: { canonical: "/replacement-policy" },
 };
 
 const LAST_UPDATED = "13 June 2026";
