@@ -42,8 +42,7 @@ import {
 } from "./queries";
 import { KpiCard, Panel, RangeBar, DataNotice, href } from "./ui";
 import { AutoRefresh } from "./AutoRefresh";
-import { WorldLiveMap, type LivePoint } from "./world-map";
-import { centroidFor } from "./world-geo";
+import { WorldLiveMap, type LiveCountry } from "./world-map";
 
 /**
  * The nine analytics sections. Every number is real: rollups/sessions/raw
@@ -185,20 +184,16 @@ export async function Realtime({ payload }: Ctx) {
     geoProviderStatus(),
   ]);
 
-  // Aggregate active visitors to country centroids for the live map.
-  const byCountry = new Map<string, { count: number; lat: number; lng: number }>();
+  // Aggregate active visitors per resolved country for the live map (the map
+  // component handles centroid lookup; unknown-but-named countries still get
+  // listed in its legend).
+  const byCountry = new Map<string, number>();
   let unlocated = 0;
   for (const s of active) {
-    const c = centroidFor(s.country);
-    if (!c) {
-      unlocated += 1;
-      continue;
-    }
-    const prev = byCountry.get(s.country as string);
-    if (prev) prev.count += 1;
-    else byCountry.set(s.country as string, { count: 1, lat: c[0], lng: c[1] });
+    if (s.country) byCountry.set(s.country, (byCountry.get(s.country) ?? 0) + 1);
+    else unlocated += 1;
   }
-  const points: LivePoint[] = [...byCountry.entries()].map(([country, v]) => ({ country, ...v }));
+  const liveCountries: LiveCountry[] = [...byCountry.entries()].map(([country, count]) => ({ country, count }));
   const verb = (e: { type: string; path: string; entityType?: string; entitySlug?: string; meta?: Record<string, unknown> }) => {
     switch (e.type) {
       case "page_view":
@@ -224,7 +219,7 @@ export async function Realtime({ payload }: Ctx) {
       <AutoRefresh seconds={12} />
       <div style={{ marginTop: 14 }}>
         <Panel title="Live visitor map" action={<span style={{ fontSize: 11.5, opacity: 0.5 }}>last 5 min · refreshes every 12s</span>}>
-          <WorldLiveMap points={points} unlocated={unlocated} configured={geoStatus !== "disabled"} />
+          <WorldLiveMap countries={liveCountries} unlocated={unlocated} configured={geoStatus !== "disabled"} />
         </Panel>
       </div>
       <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.4fr)" }}>

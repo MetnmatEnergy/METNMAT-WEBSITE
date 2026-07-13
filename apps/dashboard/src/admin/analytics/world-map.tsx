@@ -1,65 +1,79 @@
 import React from "react";
-import { projectEquirect } from "./world-geo";
-import { LAND_XY } from "./world-land";
+import { centroidFor, projectEquirect } from "./world-geo";
+import { WorldLandLayer } from "./world-land-layer";
 
 /**
  * Live world map for the Real-time panel. Hand-rolled equirectangular SVG (no
- * map library): a dense dotted landmass (LAND_XY, generated from public-domain
- * Natural Earth data) on a deep-navy "ocean", with a glowing, pulsing brand
- * marker for each ACTIVE visitor's country (SMIL — the Realtime view already
- * refreshes every 12s, so no client JS). Country-level, matching the ipinfo
- * "lite" data: markers sit at country centroids, never faked to a city.
+ * map library): a dotted landmass from public-domain Natural Earth data
+ * (WorldLandLayer — client chunk, so the geometry isn't re-sent on the 12s
+ * refresh) on a deep-navy "ocean", with a glowing, pulsing brand marker for
+ * each ACTIVE visitor's country and a ranked legend linking to the Geography
+ * report. Country-level, matching the ipinfo "lite" data: markers sit at
+ * country centroids, never faked to a city.
  *
- * The panel renders its own fixed dark palette (a deliberate "live-ops" widget)
- * so it looks identical in the admin's light and dark themes.
+ * Honesty rules: countries we can't place on the map are still LISTED in the
+ * legend (marked "not on map"), and visitors with no resolved country are
+ * counted in a footnote — nothing is silently dropped. Pulse animations are
+ * disabled for prefers-reduced-motion users. The panel keeps its own fixed
+ * dark palette (a deliberate "live-ops" widget) in both admin themes.
  */
 
-export type LivePoint = { country: string; count: number; lat: number; lng: number };
+export type LiveCountry = { country: string; count: number };
 
 const W = 1000;
 const H = 500;
 
-type Placed = LivePoint & { x: number; y: number; cw: number; lx: number; ly: number };
+type Placed = LiveCountry & { x: number; y: number; cw: number; lx: number; ly: number };
 
-// Greedy label layout: project each marker, then place its label above/below so
-// labels for nearby countries (UK/Germany, UAE/India) don't overlap.
-function layoutLabels(points: LivePoint[]): Placed[] {
-  const placed: { x1: number; y1: number; x2: number; y2: number }[] = [];
+// Greedy label layout: place each label above/below its marker so labels for
+// nearby countries (UK/Germany, UAE/India) never overlap.
+function layoutLabels(points: (LiveCountry & { x: number; y: number })[]): Placed[] {
+  const taken: { x1: number; y1: number; x2: number; y2: number }[] = [];
   const out: Placed[] = [];
-  const withXY = points
-    .map((p) => {
-      const [x, y] = projectEquirect(p.lat, p.lng, W, H);
-      return { ...p, x, y };
-    })
-    .sort((a, b) => a.x - b.x);
-  for (const p of withXY) {
+  for (const p of [...points].sort((a, b) => a.x - b.x)) {
     const cw = p.country.length * 6.4 + 18;
     const lx = Math.max(cw / 2 + 6, Math.min(W - cw / 2 - 6, p.x));
     const candidates = [p.y - 18, p.y + 18, p.y - 36, p.y + 36, p.y - 54, p.y + 54];
     let ly = candidates[0];
     for (const cand of candidates) {
       const box = { x1: lx - cw / 2, y1: cand - 9, x2: lx + cw / 2, y2: cand + 9 };
-      const clash = placed.some((b) => !(box.x2 < b.x1 || box.x1 > b.x2 || box.y2 < b.y1 || box.y1 > b.y2));
+      const clash = taken.some((b) => !(box.x2 < b.x1 || box.x1 > b.x2 || box.y2 < b.y1 || box.y1 > b.y2));
       ly = cand;
       if (!clash) break;
     }
-    placed.push({ x1: lx - cw / 2, y1: ly - 9, x2: lx + cw / 2, y2: ly + 9 });
+    taken.push({ x1: lx - cw / 2, y1: ly - 9, x2: lx + cw / 2, y2: ly + 9 });
     out.push({ ...p, cw, lx, ly });
   }
   return out;
 }
 
+/** "12:04:32 IST" — server render time; the 12s auto-refresh keeps it honest. */
+function istClock(): string {
+  return new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(11, 19) + " IST";
+}
+
 export function WorldLiveMap({
-  points,
+  countries,
   unlocated = 0,
   configured = true,
 }: {
-  points: LivePoint[];
+  /** Active-visitor counts per resolved country name (ipinfo naming). */
+  countries: LiveCountry[];
+  /** Active visitors whose country hasn't been resolved. */
   unlocated?: number;
   configured?: boolean;
 }) {
-  const total = points.reduce((n, p) => n + p.count, 0);
-  const placed = layoutLabels(points);
+  const ranked = [...countries].sort((a, b) => b.count - a.count);
+  const mappable: (LiveCountry & { x: number; y: number })[] = [];
+  for (const c of ranked) {
+    const cent = centroidFor(c.country);
+    if (cent) {
+      const [x, y] = projectEquirect(cent[0], cent[1], W, H);
+      mappable.push({ ...c, x, y });
+    }
+  }
+  const placed = layoutLabels(mappable);
+  const total = ranked.reduce((n, p) => n + p.count, 0) + unlocated;
 
   return (
     <div>
@@ -67,17 +81,28 @@ export function WorldLiveMap({
         <div style={{ fontSize: 13, fontWeight: 700 }}>
           {total > 0 ? (
             <>
-              <span style={{ color: "#ff2b33" }}>●</span> {total} live visitor{total === 1 ? "" : "s"} in {points.length}{" "}
-              countr{points.length === 1 ? "y" : "ies"}
+              <span style={{ color: "#ff2b33" }}>●</span> {total} live visitor{total === 1 ? "" : "s"}
+              {ranked.length > 0 && (
+                <span style={{ fontWeight: 500, opacity: 0.75 }}>
+                  {" "}
+                  in {ranked.length} countr{ranked.length === 1 ? "y" : "ies"}
+                </span>
+              )}
             </>
           ) : (
-            "No located visitors right now"
+            "Listening for live visitors…"
           )}
         </div>
-        <span style={{ fontSize: 11, opacity: 0.5 }}>country-level · live</span>
+        <span style={{ fontSize: 11, opacity: 0.5 }}>country-level · as of {istClock()}</span>
       </div>
 
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="World map of active visitors" style={{ display: "block", borderRadius: 12 }}>
+        <title>World map of active visitors</title>
+        <desc>
+          {total > 0
+            ? `${total} active visitors: ${ranked.map((c) => `${c.country} ${c.count}`).join(", ")}${unlocated ? `, ${unlocated} unlocated` : ""}`
+            : "No active visitors right now"}
+        </desc>
         <defs>
           <radialGradient id="mm-ocean" cx="50%" cy="44%" r="78%">
             <stop offset="0%" stopColor="#17294a" />
@@ -87,6 +112,7 @@ export function WorldLiveMap({
           <filter id="mm-glow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="4.5" />
           </filter>
+          <style>{`@media (prefers-reduced-motion: reduce) { .mm-ping { display: none } }`}</style>
         </defs>
 
         <rect width={W} height={H} fill="url(#mm-ocean)" />
@@ -103,21 +129,14 @@ export function WorldLiveMap({
           })}
         </g>
 
-        {/* dotted landmass (public-domain Natural Earth) */}
-        <g fill="#4a6ea0" opacity={0.85}>
-          {(() => {
-            const els: React.ReactNode[] = [];
-            for (let i = 0; i < LAND_XY.length; i += 2) els.push(<circle key={i} cx={LAND_XY[i]} cy={LAND_XY[i + 1]} r={1.5} />);
-            return els;
-          })()}
-        </g>
+        <WorldLandLayer />
 
         {/* active visitors */}
         {placed.map((p) => (
           <g key={p.country}>
             <title>{`${p.country} — ${p.count} active visitor${p.count === 1 ? "" : "s"}`}</title>
             <circle cx={p.x} cy={p.y} r={12} fill="#ff3b40" opacity={0.55} filter="url(#mm-glow)" />
-            <circle cx={p.x} cy={p.y} r={6} fill="none" stroke="#ff595e" strokeWidth={1.6}>
+            <circle className="mm-ping" cx={p.x} cy={p.y} r={6} fill="none" stroke="#ff595e" strokeWidth={1.6}>
               <animate attributeName="r" values="6;28" dur="2.6s" repeatCount="indefinite" />
               <animate attributeName="opacity" values="0.75;0" dur="2.6s" repeatCount="indefinite" />
             </circle>
@@ -139,18 +158,50 @@ export function WorldLiveMap({
         <rect width={W} height={H} fill="none" stroke="#ffffff" strokeOpacity={0.07} rx={12} />
       </svg>
 
-      {(unlocated > 0 || !configured) && (
-        <div style={{ fontSize: 11.5, opacity: 0.6, marginTop: 8, lineHeight: 1.5 }}>
-          {!configured ? (
-            <>
-              Geography isn’t configured yet — set <code>ANALYTICS_GEO_TOKEN</code> on the website to place visitors on the map.
-            </>
-          ) : (
-            <>
-              {unlocated} active visitor{unlocated === 1 ? "" : "s"} not shown (country not yet resolved). Markers are
-              country-level; upgrade ipinfo to City tier for pinpoint locations.
-            </>
+      {/* Ranked legend — every active country, including any we can't place. */}
+      {(ranked.length > 0 || unlocated > 0 || !configured) && (
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+          {ranked.map((c) => {
+            const onMap = mappable.some((m) => m.country === c.country);
+            return (
+              <span
+                key={c.country}
+                title={onMap ? undefined : "No map position for this country name — shown here so it isn't hidden."}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                  border: "1px solid var(--theme-elevation-150)",
+                  background: "var(--theme-elevation-50)",
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: "#ff2b33" }} />
+                {c.country}
+                <span style={{ opacity: 0.55 }}>×{c.count}</span>
+                {!onMap && <span style={{ opacity: 0.5, fontWeight: 500 }}>(not on map)</span>}
+              </span>
+            );
+          })}
+          {unlocated > 0 && (
+            <span style={{ fontSize: 11.5, opacity: 0.6 }}>
+              +{unlocated} not yet located
+            </span>
           )}
+          {!configured && (
+            <span style={{ fontSize: 11.5, opacity: 0.6 }}>
+              Geography isn’t configured — set <code>ANALYTICS_GEO_TOKEN</code> on the website.
+            </span>
+          )}
+          <a
+            href="/admin/analytics/traffic?range=today&compare=none"
+            style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 600, color: "var(--metnmat-brand, #d81f26)", textDecoration: "none" }}
+          >
+            Geography report →
+          </a>
         </div>
       )}
     </div>
