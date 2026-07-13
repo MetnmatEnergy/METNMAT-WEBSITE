@@ -6,10 +6,10 @@
  * must never make the public site slower or flakier than it already is.
  *
  * Geo enrichment is OPTIONAL and transient: when ANALYTICS_GEO_TOKEN (ipinfo)
- * is set, the visitor IP is used for ONE coarse lookup (country/region/city)
- * and immediately discarded — the IP itself is never stored nor forwarded.
- * Without the token, geography simply stays empty (honest empty-state in the
- * dashboard) — we never guess.
+ * is set, the visitor IP is used for ONE coarse COUNTRY-level lookup (ipinfo
+ * "lite" tier) and immediately discarded — the IP itself is never stored nor
+ * forwarded. Without the token, geography simply stays empty (honest empty-state
+ * in the dashboard) — we never guess.
  */
 import { outboundKey } from "@/backend/lib/internal-key";
 import type { Attribution, DeviceInfo } from "@/frontend/lib/analytics/attribution";
@@ -42,16 +42,18 @@ export async function lookupGeo(ip: string | undefined): Promise<Geo | undefined
   const cached = geoCache.get(ip);
   if (cached && Date.now() - cached.at < GEO_TTL_MS) return cached.geo ?? undefined;
   try {
-    const res = await fetch(`https://ipinfo.io/${encodeURIComponent(ip)}/json?token=${token}`, {
+    // ipinfo "lite" endpoint: country-level, Bearer auth (token never in the URL).
+    // Returns { country_code: "IN", country: "India", continent, asn, … } — no
+    // region/city on this tier. We store the readable full country name.
+    const res = await fetch(`https://api.ipinfo.io/lite/${encodeURIComponent(ip)}`, {
+      headers: { Authorization: `Bearer ${token}` },
       signal: AbortSignal.timeout(1500),
       cache: "no-store",
     });
     if (!res.ok) return undefined;
-    const d = (await res.json()) as { country?: string; region?: string; city?: string };
+    const d = (await res.json()) as { country?: string; country_code?: string };
     const geo: Geo = {
-      ...(d.country ? { country: d.country } : {}),
-      ...(d.region ? { region: d.region } : {}),
-      ...(d.city ? { city: d.city } : {}),
+      ...(d.country ? { country: d.country } : d.country_code ? { country: d.country_code } : {}),
     };
     if (geoCache.size >= GEO_CACHE_MAX) geoCache.clear();
     geoCache.set(ip, { at: Date.now(), geo });

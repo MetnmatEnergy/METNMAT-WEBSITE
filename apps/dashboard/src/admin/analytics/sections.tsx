@@ -324,7 +324,7 @@ export async function Traffic({ payload, range }: Ctx) {
               <strong>Geography is not configured.</strong>
               <br />
               Set <code>ANALYTICS_GEO_TOKEN</code> (ipinfo.io token) on the website service to resolve coarse
-              country/region/city at ingestion. IPs are used transiently and never stored.
+              country at ingestion. IPs are used transiently and never stored.
             </div>
           )}
         </Panel>
