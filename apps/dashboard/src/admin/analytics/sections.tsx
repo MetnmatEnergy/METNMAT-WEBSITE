@@ -1196,76 +1196,93 @@ export async function Benchmarks({ payload }: Ctx) {
 // ── All Reports ───────────────────────────────────────────────────────────────
 
 export function Reports({ range }: Ctx) {
-  const groups: { title: string; items: { label: string; href: string }[] }[] = [
-    {
-      title: "Traffic",
-      items: [
-        { label: "Traffic overview", href: href("traffic", range) },
-        { label: "Sources & channels", href: href("traffic", range) },
-        { label: "AI referral traffic", href: href("traffic", range) },
-        { label: "Geography", href: href("traffic", range) },
-        { label: "Landing & exit pages", href: href("traffic", range) },
-      ],
-    },
-    {
-      title: "Behavior",
-      items: [
-        { label: "Pages & drill-down", href: href("behavior", range) },
-        { label: "Products / projects / blog", href: href("behavior", range) },
-        { label: "CTAs & outbound clicks", href: href("behavior", range) },
-        { label: "Forms funnel", href: href("behavior", range) },
-        { label: "Internal search terms", href: href("behavior", range) },
-      ],
-    },
-    {
-      title: "Marketing",
-      items: [
-        { label: "UTM campaigns", href: href("marketing", range) },
-        { label: "Search Console (connect)", href: href("marketing", range) },
-      ],
-    },
-    {
-      title: "Commerce & Conversions",
-      items: [
-        { label: "Business analytics (orders, revenue, RFQs)", href: "/admin/analytics" },
-        { label: "Orders", href: "/admin/collections/orders" },
-        { label: "Enquiries (RFQ)", href: "/admin/collections/enquiries" },
-        { label: "Quotations", href: "/admin/collections/quotations" },
-      ],
-    },
+  // Each interactive report links to a DISTINCT destination (the old list had 12
+  // of 16 links pointing at the same 3 pages). Range/compare carry through so a
+  // report opens on the same period the user is viewing.
+  const reports: { label: string; desc: string; href: string }[] = [
+    { label: "Traffic & geography", desc: "Sessions, sources, channels, AI referrals, landing/exit pages, world map.", href: href("traffic", range) },
+    { label: "Behavior & content", desc: "Pages, products/projects/blog, CTAs, forms funnel, search, device mix.", href: href("behavior", range) },
+    { label: "Marketing & channels", desc: "Channel buckets, referring domains, UTM campaigns, enquiry rate by source.", href: href("marketing", range) },
+    { label: "Session journeys", desc: "Per-session event timelines — how individual visits actually unfolded.", href: href("recordings", range) },
+    { label: "Insights", desc: "Evidence-based, severity-ranked signals with a recommended action.", href: href("insights", range) },
+    { label: "Benchmarks", desc: "Current performance vs your own history (internal baselines).", href: href("benchmarks", range) },
+    { label: "Business (orders, revenue, RFQs)", desc: "Authoritative commerce analytics from the Orders/Enquiries records.", href: href("business", range) },
+    { label: "Real-time", desc: "Live visitors on the map + the last few minutes of activity.", href: href("realtime", range) },
   ];
+  const records = [
+    { label: "Orders", href: "/admin/collections/orders" },
+    { label: "Enquiries (RFQ)", href: "/admin/collections/enquiries" },
+    { label: "Quotations", href: "/admin/collections/quotations" },
+  ];
+
   const from = range.days[0];
   const to = range.days[range.days.length - 1];
+  const ex = (type: string) => `/api/analytics-daily/export?type=${type}&from=${from}&to=${to}`;
   const exports = [
-    { label: "Daily rollups (CSV)", href: `/api/analytics-daily/export?type=daily&from=${from}&to=${to}` },
-    { label: "Sessions (CSV)", href: `/api/analytics-daily/export?type=sessions&from=${from}&to=${to}` },
-    { label: "Top pages (CSV)", href: `/api/analytics-daily/export?type=pages&from=${from}&to=${to}` },
-    { label: "Search terms (CSV)", href: `/api/analytics-daily/export?type=searches&from=${from}&to=${to}` },
+    { label: "Daily rollups", type: "daily" },
+    { label: "Traffic by channel", type: "channels" },
+    { label: "Referring domains", type: "referrers" },
+    { label: "UTM campaigns", type: "campaigns" },
+    { label: "Top pages", type: "pages" },
+    { label: "Landing pages", type: "landing" },
+    { label: "Geography (country)", type: "geography" },
+    { label: "Device mix", type: "devices" },
+    { label: "Search terms", type: "searches" },
   ];
+
   return (
     <>
+      <SectionIntro>
+        The reporting workspace — jump to any analysis for the current period, open the underlying business
+        records, or export a report as CSV. Every export honours the selected date range above and opens in
+        Excel/Sheets cleanly (UTF-8, quoted). Order/revenue columns are marked client-observed where they
+        aren&rsquo;t the authoritative Orders figures.
+      </SectionIntro>
+
       <div style={grid2}>
-        {groups.map((g) => (
-          <Panel key={g.title} title={g.title}>
-            <div style={{ display: "grid", gap: 8 }}>
-              {g.items.map((i) => (
-                <a key={i.label} href={i.href} style={{ fontSize: 13, color: "var(--theme-text)", textDecoration: "none", borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 6 }}>
-                  {i.label} <span style={{ color: BRAND }}>→</span>
-                </a>
-              ))}
-            </div>
-          </Panel>
-        ))}
-        <Panel title="CSV exports (current range)">
-          <div style={{ display: "grid", gap: 8 }}>
-            {exports.map((e) => (
-              <a key={e.label} href={e.href} style={{ fontSize: 13, color: "var(--theme-text)", textDecoration: "none", borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 6 }}>
-                ⬇ {e.label}
+        <Panel title="Interactive reports">
+          <div style={{ display: "grid", gap: 10 }}>
+            {reports.map((r) => (
+              <a key={r.label} href={r.href} style={{ display: "block", textDecoration: "none", color: "var(--theme-text)", borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 9 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{r.label} <span style={{ color: BRAND }}>→</span></div>
+                <div style={{ fontSize: 11.5, opacity: 0.6, marginTop: 2 }}>{r.desc}</div>
               </a>
             ))}
           </div>
         </Panel>
+
+        <div style={{ display: "grid", gap: 14, alignContent: "start" }}>
+          <Panel title="CSV exports (current range)">
+            <div style={{ fontSize: 11.5, opacity: 0.55, marginBottom: 8 }}>
+              {from} → {to}. Each file reflects this exact window.
+            </div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {exports.map((e) => (
+                <a key={e.type} href={ex(e.type)} style={{ fontSize: 13, color: "var(--theme-text)", textDecoration: "none", borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 6 }}>
+                  ⬇ {e.label} <span style={{ opacity: 0.4 }}>.csv</span>
+                </a>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="Business records">
+            <div style={{ display: "grid", gap: 8 }}>
+              {records.map((r) => (
+                <a key={r.label} href={r.href} style={{ fontSize: 13, color: "var(--theme-text)", textDecoration: "none", borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 6 }}>
+                  {r.label} <span style={{ color: BRAND }}>→</span>
+                </a>
+              ))}
+            </div>
+          </Panel>
+        </div>
       </div>
+
+      <p style={{ fontSize: 11.5, opacity: 0.5, marginTop: 14, lineHeight: 1.6, maxWidth: 820 }}>
+        To segment further, open a report above and use its own breakdowns (channel, device, source, page).
+        Deeper cross-filtered exports (e.g. sessions by country <em>and</em> device) aren&rsquo;t generated yet —
+        rather than ship a filter that silently ignores some dimensions, the exports cover one dimension each,
+        accurately.
+      </p>
     </>
   );
 }

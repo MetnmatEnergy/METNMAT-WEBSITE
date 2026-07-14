@@ -81,11 +81,16 @@ export const AnalyticsDaily: CollectionConfig = {
           const from = url.searchParams.get("from") ?? "";
           const to = url.searchParams.get("to") ?? "";
           const csv = await exportAnalyticsCsv(req.payload, type, from, to);
-          if (csv === null) return Response.json({ error: "Unknown report type" }, { status: 400 });
+          if (csv === null) return Response.json({ error: "Invalid report type or date range" }, { status: 400 });
+          // Build the download filename from SANITISED params (raw query values
+          // must never reach a Content-Disposition header, where a quote/newline
+          // could inject header content or a misleading name).
+          const safe = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 40) || "report";
+          const filename = `metnmat-analytics-${safe(type)}-${safe(from)}-${safe(to)}.csv`;
           return new Response(csv, {
             headers: {
               "Content-Type": "text/csv; charset=utf-8",
-              "Content-Disposition": `attachment; filename="metnmat-analytics-${type}-${from}-${to}.csv"`,
+              "Content-Disposition": `attachment; filename="${filename}"`,
               "Cache-Control": "no-store",
             },
           });
