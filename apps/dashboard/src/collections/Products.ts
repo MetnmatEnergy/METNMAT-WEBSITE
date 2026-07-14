@@ -10,6 +10,11 @@ export const Products: CollectionConfig = {
     group: "Catalog",
     useAsTitle: "name",
     defaultColumns: ["name", "brand", "category", "price", "inStock"],
+    // "Preview" button → the live storefront page for this product.
+    preview: (doc) =>
+      doc?.slug
+        ? `${(process.env.WEBSITE_URL || "https://www.metnmat.com").replace(/\/+$/, "")}/shop/p/${doc.slug}`
+        : null,
   },
   access: {
     read: publicRead,
@@ -120,8 +125,17 @@ export const Products: CollectionConfig = {
     {
       type: "row",
       fields: [
-        { name: "inStock", type: "checkbox", defaultValue: true, admin: { width: "33%" } },
-        { name: "featured", type: "checkbox", defaultValue: false, admin: { width: "33%" } },
+        {
+          name: "inStock",
+          type: "checkbox",
+          defaultValue: true,
+          admin: {
+            width: "33%",
+            description:
+              "Storefront availability — this is the flag the website's In-stock/Made-to-order label reads. Independent of the on-hand quantity in 'Tax, stock & fulfilment'.",
+          },
+        },
+        { name: "featured", type: "checkbox", defaultValue: false, admin: { width: "33%", description: "Show in the homepage 'Featured' row." } },
         { name: "rating", type: "number", min: 0, max: 5, admin: { width: "34%" } },
       ],
     },
@@ -157,6 +171,10 @@ export const Products: CollectionConfig = {
           name: "productType",
           type: "select",
           defaultValue: "in-stock",
+          admin: {
+            description:
+              "Controls the storefront CTA. In stock / Made to order = buyable (Add to cart). Quote only / Discontinued = enquiry-only: no Buy button, no price shown, no purchase Offer in SEO data.",
+          },
           options: [
             { label: "In stock", value: "in-stock" },
             { label: "Made to order", value: "made-to-order" },
@@ -167,7 +185,7 @@ export const Products: CollectionConfig = {
         {
           type: "row",
           fields: [
-            { name: "stockQty", type: "number", min: 0, admin: { width: "33%", description: "On-hand quantity." } },
+            { name: "stockQty", type: "number", min: 0, admin: { width: "33%", description: "On-hand quantity (internal/informational — does NOT itself hide the Buy button; use the In-stock toggle above for that)." } },
             { name: "reservedStock", type: "number", min: 0, defaultValue: 0, admin: { width: "33%" } },
             { name: "lowStockThreshold", type: "number", min: 0, defaultValue: 5, admin: { width: "34%" } },
           ],

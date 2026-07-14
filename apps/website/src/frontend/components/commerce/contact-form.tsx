@@ -58,6 +58,7 @@ export function ContactForm() {
       phone: String(fd.get("phone") ?? "").trim(),
       company: String(fd.get("company") ?? "").trim(),
       message: String(fd.get("message") ?? "").trim(),
+      hp_company_url: String(fd.get("hp_company_url") ?? ""), // honeypot (see below)
     };
 
     // Validate client-side first — instant feedback, and avoids a round-trip.
@@ -140,6 +141,15 @@ export function ContactForm() {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="grid gap-4" noValidate data-analytics-form="contact">
+      {/* Honeypot: hidden from humans + assistive tech; bots fill it and are rejected server-side. */}
+      <input
+        type="text"
+        name="hp_company_url"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute left-[-9999px] h-0 w-0 opacity-0"
+      />
       {topError && (
         <div
           role="alert"

@@ -24,6 +24,13 @@ export function validateEnquiry(
   const fields: Record<string, string> = {};
   const body = (input ?? {}) as Record<string, unknown>;
 
+  // Honeypot: a hidden field real visitors never see or fill. Bots fill every
+  // input, so any value here is spam — reject before validation. The field name
+  // is deliberately non-standard so browser autofill won't populate it.
+  if (String(body.hp_company_url ?? "").trim() !== "") {
+    return { success: false, fields: { _rejected: "invalid submission" } };
+  }
+
   const name = String(body.name ?? "").trim();
   const email = String(body.email ?? "").trim();
   const message = String(body.message ?? "").trim();

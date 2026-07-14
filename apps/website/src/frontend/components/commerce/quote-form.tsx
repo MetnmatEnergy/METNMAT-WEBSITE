@@ -36,6 +36,7 @@ export function QuoteForm() {
       company: String(fd.get("company") ?? "").trim(),
       // The API validates on `message`; fold the category in so staff see it.
       message: category ? `Quote for: ${category}\n\n${details}` : details,
+      hp_company_url: String(fd.get("hp_company_url") ?? ""), // honeypot (see hidden field)
     };
 
     try {
@@ -85,6 +86,15 @@ export function QuoteForm() {
 
   return (
     <form onSubmit={onSubmit} className="grid gap-4" noValidate data-analytics-form="quote">
+      {/* Honeypot: hidden from humans + assistive tech; bots fill it and are rejected server-side. */}
+      <input
+        type="text"
+        name="hp_company_url"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute left-[-9999px] h-0 w-0 opacity-0"
+      />
       {topError && (
         <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2.5 text-sm text-red-600">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
