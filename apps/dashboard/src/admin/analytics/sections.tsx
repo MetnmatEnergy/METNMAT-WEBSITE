@@ -1046,71 +1046,150 @@ export async function Insights({ payload, range }: Ctx) {
 export async function Benchmarks({ payload }: Ctx) {
   const now = Date.now();
   const DAY = 86_400_000;
-  const windows: { label: string; days: string[]; prevDays: string[] }[] = [];
-  const mk = (label: string, curFrom: number, curTo: number, prevFrom: number, prevTo: number) => {
-    const build = (a: number, b: number) => {
-      const out: string[] = [];
-      for (let t = a; t <= b; t += DAY) out.push(new Date(t + 5.5 * 3600_000).toISOString().slice(0, 10));
-      return out;
-    };
-    windows.push({ label, days: build(curFrom, curTo), prevDays: build(prevFrom, prevTo) });
+  const firstDay = await firstEventDay(payload);
+
+  // Complete-day history (never the in-progress day): every window ends
+  // YESTERDAY so the current period isn't a partial day compared against
+  // complete ones — the bias that made all three old windows drift down.
+  const dayStr = (epoch: number) => istDayOf(epoch);
+  const yEpoch = now - DAY;
+  const allDays: string[] = [];
+  if (firstDay) {
+    for (let e = yEpoch; ; e -= DAY) {
+      const d = dayStr(e);
+      if (d < firstDay) break;
+      allDays.unshift(d);
+      if (allDays.length > 800) break;
+    }
+  }
+  const histDays = allDays.length;
+
+  if (!firstDay || histDays < 2) {
+    return (
+      <>
+        <SectionIntro>
+          How current performance compares against your own history — internal baselines only, never invented
+          industry numbers. Uses fixed complete-day windows and ignores the date selector above.
+        </SectionIntro>
+        <div style={{ ...panel, marginTop: 14 }}>
+          <EmptyHint text="Not enough history yet for benchmarks. They begin once the site has a couple of complete days of analytics, and unlock longer windows (30 / 90 / 365 days) as history accumulates." />
+        </div>
+      </>
+    );
+  }
+
+  // N complete days ending at endEpoch's day, clamped to the first day of data.
+  const windowDays = (len: number, endEpoch: number): string[] => {
+    const out: string[] = [];
+    for (let i = len - 1; i >= 0; i--) {
+      const d = dayStr(endEpoch - i * DAY);
+      if (firstDay && d >= firstDay && d <= allDays[allDays.length - 1]) out.push(d);
+    }
+    return out;
   };
-  mk("Last 30 days vs previous 30", now - 29 * DAY, now, now - 59 * DAY, now - 30 * DAY);
-  mk("Last 90 days vs previous 90", now - 89 * DAY, now, now - 179 * DAY, now - 90 * DAY);
-  mk("Last 12 months vs previous 12", now - 364 * DAY, now, now - 729 * DAY, now - 365 * DAY);
+
+  // Only show a window we can actually fill (≥60% of its length in real days),
+  // so a site with 10 days of data doesn't render three identical rows with a
+  // fake "New" on every cell.
+  const candidates = [
+    { label: "Last 7 days", len: 7 },
+    { label: "Last 30 days", len: 30 },
+    { label: "Last 90 days", len: 90 },
+    { label: "Last 12 months", len: 365 },
+  ];
+  const shown = candidates.filter((c) => histDays >= Math.ceil(c.len * 0.6));
+  if (shown.length === 0) shown.push({ label: `History so far (${histDays} day${histDays === 1 ? "" : "s"})`, len: histDays });
 
   const rows = await Promise.all(
-    windows.map(async (w) => {
-      const [cur, prev] = await Promise.all([rollupsFor(payload, w.days), rollupsFor(payload, w.prevDays)]);
-      return { label: w.label, cur: sumRollups(cur), prev: sumRollups(prev) };
+    shown.map(async (w) => {
+      const curDays = windowDays(w.len, yEpoch);
+      const prevDays = windowDays(w.len, yEpoch - w.len * DAY);
+      const [cr, pr, cs, ps] = await Promise.all([
+        rollupsFor(payload, curDays),
+        rollupsFor(payload, prevDays),
+        sessionStats(payload, curDays),
+        sessionStats(payload, prevDays),
+      ]);
+      // A like-for-like comparison needs the prior window mostly covered by real
+      // history; otherwise we show the value as a baseline, never a bogus "New".
+      const hasPrev = prevDays.length >= Math.ceil(w.len * 0.6);
+      return { label: w.label, cur: sumRollups(cr), prev: sumRollups(pr), cs, ps, hasPrev, curLen: curDays.length, len: w.len };
     })
   );
 
-  const metrics: { label: string; pick: (t: ReturnType<typeof sumRollups>) => number; fmt?: (n: number) => string }[] = [
-    { label: "Sessions", pick: (t) => t.sessions },
-    { label: "Page views", pick: (t) => t.pageViews },
-    { label: "Form submissions", pick: (t) => t.formSubmits },
-    { label: "Purchases (events)", pick: (t) => t.purchases },
-    { label: "Purchase value", pick: (t) => t.purchaseTotal, fmt: inrCompact },
+  type Row = (typeof rows)[number];
+  const metrics: { label: string; cur: (r: Row) => number; prev: (r: Row) => number; fmt?: (n: number) => string; rate?: boolean }[] = [
+    { label: "Sessions", cur: (r) => r.cs.sessions, prev: (r) => r.ps.sessions },
+    { label: "Unique visitors", cur: (r) => r.cs.visitors, prev: (r) => r.ps.visitors },
+    { label: "Page views", cur: (r) => r.cur.pageViews, prev: (r) => r.prev.pageViews },
+    { label: "Enquiries", cur: (r) => r.cs.enquiryConversions, prev: (r) => r.ps.enquiryConversions },
+    {
+      label: "Enquiry rate",
+      cur: (r) => (r.cs.sessions > 0 ? (r.cs.enquiryConversions / r.cs.sessions) * 100 : 0),
+      prev: (r) => (r.ps.sessions > 0 ? (r.ps.enquiryConversions / r.ps.sessions) * 100 : 0),
+      fmt: (n) => `${n.toFixed(1)}%`,
+      rate: true,
+    },
   ];
 
   return (
-    <div style={{ ...panel, marginTop: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
-        <div style={{ fontWeight: 700 }}>Internal historical benchmarks</div>
-        <span style={{ fontSize: 11.5, opacity: 0.5 }}>your own history — no invented industry numbers</span>
-      </div>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 560 }}>
-          <thead>
-            <tr style={{ textAlign: "left", opacity: 0.55, fontSize: 11, textTransform: "uppercase" }}>
-              <th style={{ padding: "6px 4px" }}>Window</th>
-              {metrics.map((m) => (
-                <th key={m.label} style={{ padding: "6px 4px", textAlign: "right" }}>{m.label}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.label} style={{ borderTop: "1px solid var(--theme-elevation-100)" }}>
-                <td style={{ padding: "9px 4px", fontWeight: 600 }}>{r.label}</td>
-                {metrics.map((m) => {
-                  const c = m.pick(r.cur);
-                  const p = m.pick(r.prev);
-                  const d = delta(c, p);
-                  return (
-                    <td key={m.label} style={{ padding: "9px 4px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
-                      <strong>{m.fmt ? m.fmt(c) : c.toLocaleString("en-IN")}</strong>{" "}
-                      <span style={{ fontSize: 11, color: d.up ? SUCCESS : BRAND }}>{d.text}</span>
-                    </td>
-                  );
-                })}
+    <>
+      <SectionIntro>
+        How current performance compares against your own history — <strong>internal baselines only</strong>, no
+        invented industry numbers. Each window compares the trailing period against the equal period before it,
+        using complete days only. Windows unlock as history accumulates.
+      </SectionIntro>
+
+      <div style={{ ...panel, marginTop: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
+          <div style={{ fontWeight: 700 }}>Internal historical benchmarks</div>
+          <span style={{ fontSize: 11.5, opacity: 0.5 }}>{histDays} days of history since {firstDay} · complete days only</span>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 620 }}>
+            <thead>
+              <tr style={{ textAlign: "left", opacity: 0.55, fontSize: 11, textTransform: "uppercase" }}>
+                <th style={{ padding: "6px 4px" }}>Window</th>
+                {metrics.map((m) => (
+                  <th key={m.label} style={{ padding: "6px 4px", textAlign: "right" }}>{m.label}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.label} style={{ borderTop: "1px solid var(--theme-elevation-100)" }}>
+                  <td style={{ padding: "9px 4px", fontWeight: 600 }}>
+                    {r.label}
+                    {r.curLen < r.len && <span style={{ fontSize: 10.5, opacity: 0.5, fontWeight: 400 }}> · {r.curLen}d of data</span>}
+                  </td>
+                  {metrics.map((m) => {
+                    const c = m.cur(r);
+                    const p = m.prev(r);
+                    const d = delta(c, p);
+                    return (
+                      <td key={m.label} style={{ padding: "9px 4px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                        <strong>{m.fmt ? m.fmt(c) : Math.round(c).toLocaleString("en-IN")}</strong>{" "}
+                        {r.hasPrev ? (
+                          <span style={{ fontSize: 11, color: d.up ? SUCCESS : BRAND }}>{d.text}</span>
+                        ) : (
+                          <span style={{ fontSize: 11, opacity: 0.4 }} title="Not enough prior history for a like-for-like comparison">baseline</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p style={{ fontSize: 11.5, opacity: 0.5, marginTop: 12, lineHeight: 1.6 }}>
+          Each metric shows the trailing-window total (or rate) with its change versus the equal period before it.
+          &ldquo;baseline&rdquo; means there isn&rsquo;t enough earlier history for a fair comparison yet — never a
+          fabricated jump. Revenue benchmarking lives on Highlights (authoritative Orders records); purchase events
+          here are client-observed and under-count webhook-paid orders, so they are deliberately not benchmarked.
+        </p>
       </div>
-    </div>
+    </>
   );
 }
 
