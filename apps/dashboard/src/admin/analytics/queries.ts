@@ -18,6 +18,10 @@ type AggModel = {
   countDocuments?: (q: Record<string, unknown>) => Promise<number>;
 };
 
+/** A single session's duration is clamped to this ceiling (2h) before it feeds
+ *  any average — guards against clock-skew negatives and stale-tab spans. */
+const MAX_SESSION_SEC = 2 * 60 * 60;
+
 const model = (payload: Payload, slug: string): AggModel =>
   (payload.db as unknown as { collections: Record<string, AggModel> }).collections[slug];
 
@@ -26,7 +30,11 @@ async function agg<T>(payload: Payload, slug: string, pipeline: Record<string, u
     const res = model(payload, slug).aggregate(pipeline);
     const rows = "exec" in res && typeof res.exec === "function" ? await res.exec() : await (res as Promise<unknown[]>);
     return rows as T[];
-  } catch {
+  } catch (e) {
+    // Fail SAFE (a broken panel must never crash the admin), but never fail
+    // SILENT: a swallowed error here renders as a legitimate-looking zero, which
+    // is a lie. Log it so ops can tell "no traffic" apart from "query failed".
+    payload.logger?.error?.(`[analytics] aggregate on "${slug}" failed: ${(e as Error)?.message ?? e}`);
     return [];
   }
 }
@@ -131,8 +139,6 @@ export async function sessionStats(payload: Payload, days: string[]): Promise<Se
     pv: number;
     enq: number;
     pur: number;
-    vids: string[];
-    multi: number;
   }>(payload, "analytics-sessions", [
     { $match: { day: { $in: days } } },
     {
@@ -140,27 +146,40 @@ export async function sessionStats(payload: Payload, days: string[]): Promise<Se
         _id: null,
         sessions: { $sum: 1 },
         bounces: { $sum: { $cond: [{ $lte: ["$pageViews", 1] }, 1, 0] } },
-        dur: { $sum: { $divide: [{ $subtract: ["$lastAt", "$startedAt"] }, 1000] } },
+        // Clamp each session's duration to [0, MAX_SESSION_SEC] BEFORE summing:
+        // lastAt<startedAt (clock skew / out-of-order beacons) yields negatives,
+        // and a stale tab can produce absurdly long spans — either makes the
+        // "avg session duration" KPI indefensible.
+        dur: {
+          $sum: {
+            $min: [
+              MAX_SESSION_SEC,
+              { $max: [0, { $divide: [{ $subtract: ["$lastAt", "$startedAt"] }, 1000] }] },
+            ],
+          },
+        },
         pv: { $sum: "$pageViews" },
         enq: { $sum: { $cond: ["$convertedEnquiry", 1, 0] } },
         pur: { $sum: { $cond: ["$convertedPurchase", 1, 0] } },
-        vids: { $addToSet: "$vid" },
       },
     },
   ]);
   const r = rows[0];
   if (!r) return zero;
-  // Returning = visitors with 2+ sessions inside the window.
-  const rep = await agg<{ _id: string; n: number }>(payload, "analytics-sessions", [
+  // Distinct + returning visitors in ONE bounded pass: group by vid first (so the
+  // working set is one row per visitor, never a single unbounded $addToSet array
+  // that can breach the 16MB aggregation limit and fail the whole query), then
+  // count. Returning = a visitor with 2+ sessions inside the window.
+  const vis = await agg<{ _id: null; visitors: number; returning: number }>(payload, "analytics-sessions", [
     { $match: { day: { $in: days } } },
     { $group: { _id: "$vid", n: { $sum: 1 } } },
-    { $match: { n: { $gte: 2 } } },
-    { $count: "n" },
+    { $group: { _id: null, visitors: { $sum: 1 }, returning: { $sum: { $cond: [{ $gte: ["$n", 2] }, 1, 0] } } } },
   ]);
+  const v = vis[0];
   return {
     sessions: r.sessions,
-    visitors: r.vids?.length ?? 0,
-    returningVisitors: (rep[0] as unknown as { n?: number })?.n ?? 0,
+    visitors: v?.visitors ?? 0,
+    returningVisitors: v?.returning ?? 0,
     bounces: r.bounces,
     totalDurationSec: Math.max(0, Math.round(r.dur || 0)),
     totalPageViews: r.pv,
@@ -255,13 +274,18 @@ export async function pagesBy(
 
 export async function topPages(payload: Payload, days: string[], limit = 12) {
   if (days.length === 0) return [];
-  const rows = await agg<{ _id: string; views: number; visitors: string[] }>(payload, "analytics-events", [
+  // Distinct visitors per path WITHOUT an unbounded $addToSet (which, on a busy
+  // range, builds a per-path array of every visitor id and can breach the 16MB
+  // aggregation limit — failing the whole query, which then renders as zero
+  // views). Group by {path,vid} first, then roll up: views sum, visitors count.
+  const rows = await agg<{ _id: string; views: number; visitors: number }>(payload, "analytics-events", [
     { $match: { day: { $in: days }, type: "page_view" } },
-    { $group: { _id: "$path", views: { $sum: 1 }, visitors: { $addToSet: "$vid" } } },
+    { $group: { _id: { path: "$path", vid: "$vid" }, views: { $sum: 1 } } },
+    { $group: { _id: "$_id.path", views: { $sum: "$views" }, visitors: { $sum: 1 } } },
     { $sort: { views: -1 } },
     { $limit: limit },
   ]);
-  return rows.map((r) => ({ path: String(r._id), views: r.views, visitors: r.visitors?.length ?? 0 }));
+  return rows.map((r) => ({ path: String(r._id), views: r.views, visitors: r.visitors }));
 }
 
 export async function topEntities(payload: Payload, days: string[], entityType: string, limit = 10) {
@@ -353,29 +377,32 @@ export async function viewsHeatmap(payload: Payload, days: string[]): Promise<nu
 /** Per-page drill-down (Behavior). */
 export async function pageDetail(payload: Payload, days: string[], path: string) {
   if (days.length === 0) return null;
-  const rows = await agg<{ _id: string; views: number; visitors: string[]; dwell: number; scroll: number; leaves: number }>(
-    payload,
-    "analytics-events",
-    [
+  // Two bounded aggregations instead of one $addToSet of every visitor id.
+  const [metricRows, visRows] = await Promise.all([
+    agg<{ _id: string; views: number; dwell: number; scroll: number; leaves: number }>(payload, "analytics-events", [
       { $match: { day: { $in: days }, path } },
       {
         $group: {
           _id: "$path",
           views: { $sum: { $cond: [{ $eq: ["$type", "page_view"] }, 1, 0] } },
-          visitors: { $addToSet: "$vid" },
           leaves: { $sum: { $cond: [{ $eq: ["$type", "page_leave"] }, 1, 0] } },
           dwell: { $sum: { $cond: [{ $eq: ["$type", "page_leave"] }, { $ifNull: ["$meta.dwell", 0] }, 0] } },
           scroll: { $sum: { $cond: [{ $eq: ["$type", "page_leave"] }, { $ifNull: ["$meta.scroll", 0] }, 0] } },
         },
       },
-    ]
-  );
-  const r = rows[0];
+    ]),
+    agg<{ _id: null; visitors: number }>(payload, "analytics-events", [
+      { $match: { day: { $in: days }, path, type: "page_view" } },
+      { $group: { _id: "$vid" } },
+      { $group: { _id: null, visitors: { $sum: 1 } } },
+    ]),
+  ]);
+  const r = metricRows[0];
   if (!r) return null;
   return {
     path,
     views: r.views,
-    visitors: r.visitors?.length ?? 0,
+    visitors: visRows[0]?.visitors ?? 0,
     avgDwellSec: r.leaves > 0 ? Math.round(r.dwell / r.leaves) : 0,
     avgScrollPct: r.leaves > 0 ? Math.round(r.scroll / r.leaves) : 0,
   };
@@ -428,13 +455,18 @@ export async function realtimeSnapshot(payload: Payload, minutes = 5) {
 /** Recent activity feed entries (real-time page). */
 export async function recentEvents(payload: Payload, limit = 25) {
   try {
+    // Bound the scan by createdAt (the TTL-indexed field realtimeSnapshot uses)
+    // so this "recent activity" feed is an indexed range read, not the full
+    // collection scan that a bare find({}).sort({ts:-1}) forced every 12s.
+    const since = new Date(Date.now() - 6 * 60 * 60 * 1000);
     const rows = await model(payload, "analytics-events")
-      .find({}, { _id: 0, type: 1, path: 1, ts: 1, entityType: 1, entitySlug: 1, meta: 1 })
+      .find({ createdAt: { $gte: since } }, { _id: 0, type: 1, path: 1, ts: 1, entityType: 1, entitySlug: 1, meta: 1 })
       .sort({ ts: -1 })
       .limit(limit)
       .lean();
     return rows as { type: string; path: string; ts: Date; entityType?: string; entitySlug?: string; meta?: Record<string, unknown> }[];
-  } catch {
+  } catch (e) {
+    payload.logger?.error?.(`[analytics] recentEvents failed: ${(e as Error)?.message ?? e}`);
     return [];
   }
 }
