@@ -28,6 +28,8 @@ export const AnalyticsSessions: CollectionConfig = {
     { fields: ["day", "source"] },
     { fields: ["day", "country"] },
     { fields: ["vid", "day"] },
+    // Session-journey explorer: day-range list sorted by start time.
+    { fields: ["day", "startedAt"] },
   ],
   fields: [
     {

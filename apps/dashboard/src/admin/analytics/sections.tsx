@@ -36,9 +36,13 @@ import {
   pageDetail,
   realtimeSnapshot,
   recentEvents,
+  sessionList,
+  sessionTimeline,
   firstEventDay,
   rangeToWindow,
   geoProviderStatus,
+  type SessionRow,
+  type TimelineEvent,
 } from "./queries";
 import { KpiCard, Panel, RangeBar, DataNotice, SectionIntro, href } from "./ui";
 import { AutoRefresh } from "./AutoRefresh";
@@ -712,27 +716,164 @@ export async function Marketing({ payload, range }: Ctx) {
 
 // ── Session Recordings ────────────────────────────────────────────────────────
 
-export function Recordings() {
+// Event types we can render on a journey, with a short human label + accent.
+const EVENT_META: Record<string, { label: string; color: string }> = {
+  page_view: { label: "Viewed page", color: INFO },
+  page_leave: { label: "Left page", color: MUTED },
+  cta_click: { label: "Clicked CTA", color: SUCCESS },
+  outbound_click: { label: "Left to external site", color: MUTED },
+  form_start: { label: "Started a form", color: ACCENT },
+  form_submit: { label: "Submitted a form", color: BRAND },
+  search: { label: "Used site search", color: INFO },
+  purchase: { label: "Completed a purchase", color: BRAND },
+};
+
+/**
+ * A privacy-safe view of one event's detail. We render only NON-identifying
+ * fields: the CTA label, the outbound host, the form NAME, dwell/scroll. The
+ * raw search term (meta.q) and anything not whitelisted is deliberately omitted
+ * — a per-session timeline must not tie free text a visitor typed to their journey.
+ */
+function eventDetail(ev: TimelineEvent): string {
+  const m = ev.meta ?? {};
+  const clip = (v: unknown) => String(v ?? "").slice(0, 60);
+  if (ev.type === "search") return "search term hidden for privacy";
+  if (ev.type === "cta_click" && m.label) return clip(m.label);
+  if (ev.type === "outbound_click" && m.to) return `→ ${clip(m.to)}`;
+  if (ev.type === "form_start" || ev.type === "form_submit") return m.form ? `${clip(m.form)} form` : "";
+  if (ev.type === "page_leave") {
+    const bits: string[] = [];
+    if (typeof m.dwell === "number") bits.push(`${Math.round(m.dwell)}s on page`);
+    if (typeof m.scroll === "number") bits.push(`${Math.round(m.scroll)}% scrolled`);
+    return bits.join(" · ");
+  }
+  if (ev.entityType && ev.entitySlug) return `${ev.entityType}: ${clip(ev.entitySlug)}`;
+  return "";
+}
+
+const istTime = (d: string | Date | undefined) =>
+  d ? new Date(d).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Kolkata" }) : "—";
+const istDateTime = (d: string | Date | undefined) =>
+  d ? new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" }) : "—";
+
+function sessionDurationSec(s: SessionRow): number {
+  if (!s.startedAt || !s.lastAt) return 0;
+  const d = (new Date(s.lastAt).getTime() - new Date(s.startedAt).getTime()) / 1000;
+  return d > 0 && d < 2 * 3600 ? Math.round(d) : Math.max(0, Math.min(2 * 3600, Math.round(d)));
+}
+
+export async function Recordings({ payload, range, searchParams }: Ctx) {
+  const focusSid = typeof searchParams.sid === "string" && /^[\w-]{6,64}$/.test(searchParams.sid) ? searchParams.sid : null;
+  const [sessions, detail] = await Promise.all([
+    sessionList(payload, range.days, 80),
+    focusSid ? sessionTimeline(payload, focusSid) : Promise.resolve(null),
+  ]);
+
+  const outcome = (s: SessionRow) =>
+    s.convertedPurchase ? { text: "Order placed", color: BRAND } : s.convertedEnquiry ? { text: "Enquiry", color: SUCCESS } : null;
+
   return (
-    <div style={{ ...panel, marginTop: 14, maxWidth: 720 }}>
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>Session recordings are not enabled</div>
-      <div style={{ fontSize: 13, opacity: 0.75, lineHeight: 1.7 }}>
-        <p style={{ margin: 0 }}>
-          Recording visitor sessions (DOM replay) is deliberately <strong>off</strong>. Enabling it is a privacy and
-          cost decision, not just a feature toggle:
-        </p>
-        <ul style={{ margin: "10px 0 0 18px", padding: 0 }}>
-          <li>Consent: replay goes beyond the “basic usage analytics” the privacy policy currently discloses — it would need explicit consent UX.</li>
-          <li>Masking: passwords, OTPs, payment fields, emails, phone numbers and message content must be masked at capture time, never after.</li>
-          <li>Storage: replay payloads are orders of magnitude larger than events — MongoDB is the wrong store; GCS with a strict retention window would be required.</li>
-          <li>Retention & access: recordings need their own retention clock and admin-only, audited access.</li>
-        </ul>
-        <p style={{ marginTop: 10 }}>
-          If recordings become a requirement, the recommendation is a masked, consent-gated, first-party rrweb pipeline
-          into GCS with 30-day retention — scoped and reviewed as its own project.
+    <>
+      <SectionIntro>
+        A truthful <strong>session-journey viewer</strong> — the real sequence of pages and actions in each
+        visit, reconstructed from first-party events. This is <em>not</em> DOM/screen replay (none is captured);
+        it never shows a visitor&rsquo;s identity, typed search terms, or form contents.
+      </SectionIntro>
+
+      {detail?.session && (
+        <div style={{ ...panel, marginTop: 14, borderColor: BRAND }}>
+          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+            <div style={{ fontWeight: 700 }}>Session journey · {focusSid?.slice(0, 8)}…</div>
+            <a href={href("recordings", range)} style={{ fontSize: 12.5, color: BRAND, textDecoration: "none" }}>← back to all sessions</a>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 18, fontSize: 12.5, opacity: 0.85, marginBottom: 14 }}>
+            <span><strong>{istDateTime(detail.session.startedAt)}</strong> start</span>
+            <span><strong>{fmtDur(sessionDurationSec(detail.session))}</strong> duration</span>
+            <span>{detail.session.country || "Unknown"}</span>
+            <span>{[detail.session.device, detail.session.browser, detail.session.os].filter(Boolean).join(" · ") || "—"}</span>
+            <span>{channelLabel(detail.session.source || "")}{detail.session.channel ? ` (${detail.session.channel})` : ""}</span>
+            {outcome(detail.session) && <span style={{ color: outcome(detail.session)!.color, fontWeight: 700 }}>● {outcome(detail.session)!.text}</span>}
+          </div>
+          {detail.events.length > 0 ? (
+            <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 0 }}>
+              {detail.events.map((ev, i) => {
+                const meta = EVENT_META[ev.type] ?? { label: ev.type, color: MUTED };
+                const dtl = eventDetail(ev);
+                return (
+                  <li key={i} style={{ display: "grid", gridTemplateColumns: "62px 12px 1fr", gap: 10, alignItems: "start", paddingBottom: 12 }}>
+                    <span style={{ fontSize: 11.5, opacity: 0.55, fontVariantNumeric: "tabular-nums", textAlign: "right", paddingTop: 1 }}>{istTime(ev.ts)}</span>
+                    <span style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+                      <span style={{ width: 9, height: 9, borderRadius: 999, background: meta.color, marginTop: 3 }} />
+                      {i < detail.events.length - 1 && <span style={{ position: "absolute", top: 12, width: 2, height: "100%", background: "var(--theme-elevation-150)" }} />}
+                    </span>
+                    <span style={{ fontSize: 12.5 }}>
+                      <span style={{ fontWeight: 600 }}>{meta.label}</span>
+                      {ev.path && <span style={{ opacity: 0.6 }}> · {ev.path}</span>}
+                      {dtl && <span style={{ opacity: 0.5 }}> · {dtl}</span>}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            <EmptyHint text="This session's individual events have aged out of the 180-day raw-event retention window; the summary above is preserved." />
+          )}
+        </div>
+      )}
+
+      <div style={{ ...panel, marginTop: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontWeight: 700 }}>Sessions in this period</div>
+          <span style={{ fontSize: 11.5, opacity: 0.5 }}>most recent {sessions.length} · newest first</span>
+        </div>
+        {sessions.length > 0 ? (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 720 }}>
+              <thead>
+                <tr style={{ textAlign: "left", opacity: 0.55, fontSize: 11, textTransform: "uppercase" }}>
+                  <th style={{ padding: "6px 4px" }}>Start</th>
+                  <th style={{ padding: "6px 4px" }}>Location</th>
+                  <th style={{ padding: "6px 4px" }}>Device</th>
+                  <th style={{ padding: "6px 4px" }}>Journey</th>
+                  <th style={{ padding: "6px 4px", textAlign: "right" }}>Pages</th>
+                  <th style={{ padding: "6px 4px" }}>Source</th>
+                  <th style={{ padding: "6px 4px" }}>Outcome</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.map((s) => {
+                  const o = outcome(s);
+                  return (
+                    <tr key={s.sid} style={{ borderTop: "1px solid var(--theme-elevation-100)" }}>
+                      <td style={{ padding: "8px 4px", whiteSpace: "nowrap" }}>
+                        <a href={href("recordings", range, { sid: s.sid })} style={{ color: "var(--theme-text)", textDecoration: "none", fontWeight: 600 }}>
+                          {istDateTime(s.startedAt)}
+                        </a>
+                      </td>
+                      <td style={{ padding: "8px 4px" }}>{s.country || "—"}</td>
+                      <td style={{ padding: "8px 4px", opacity: 0.8 }}>{[s.device, s.browser].filter(Boolean).join(" · ") || "—"}</td>
+                      <td style={{ padding: "8px 4px", opacity: 0.8, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {s.entryPath || "—"}{s.exitPath && s.exitPath !== s.entryPath ? ` → ${s.exitPath}` : ""}
+                      </td>
+                      <td style={{ padding: "8px 4px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.pageViews ?? 0}</td>
+                      <td style={{ padding: "8px 4px", opacity: 0.8 }}>{channelLabel(s.source || "")}</td>
+                      <td style={{ padding: "8px 4px" }}>{o ? <span style={{ color: o.color, fontWeight: 700 }}>{o.text}</span> : <span style={{ opacity: 0.35 }}>—</span>}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyHint text="No sessions recorded in this period yet. Sessions appear here as visitors browse the site." />
+        )}
+        <p style={{ fontSize: 11.5, opacity: 0.5, marginTop: 12, lineHeight: 1.6 }}>
+          Journeys are reconstructed from first-party events (page views, clicks, forms, search — never keystrokes,
+          form values or screen contents). Full DOM/screen replay is intentionally not captured. Identifiers shown
+          are random per-session ids, not people.
         </p>
       </div>
-    </div>
+    </>
   );
 }
 

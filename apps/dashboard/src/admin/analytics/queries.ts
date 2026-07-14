@@ -471,6 +471,89 @@ export async function recentEvents(payload: Payload, limit = 25) {
   }
 }
 
+// ── Session-journey explorer (analytics-sessions + analytics-events) ─────────
+// A TRUTHFUL journey viewer built from the events we actually store — NOT DOM
+// replay (there is no replay infrastructure). Privacy-safe: identity fields
+// (vid, orderNumber) are never selected; the raw search term (meta.q) is masked
+// by the renderer, not here.
+
+export type SessionRow = {
+  sid: string;
+  startedAt?: string | Date;
+  lastAt?: string | Date;
+  entryPath?: string;
+  exitPath?: string;
+  pageViews?: number;
+  events?: number;
+  source?: string;
+  channel?: string;
+  device?: string;
+  browser?: string;
+  os?: string;
+  country?: string;
+  utmCampaign?: string;
+  convertedEnquiry?: boolean;
+  convertedPurchase?: boolean;
+};
+
+const SESSION_PROJECTION = {
+  _id: 0, sid: 1, startedAt: 1, lastAt: 1, entryPath: 1, exitPath: 1, pageViews: 1, events: 1,
+  source: 1, channel: 1, device: 1, browser: 1, os: 1, country: 1, utmCampaign: 1,
+  convertedEnquiry: 1, convertedPurchase: 1,
+} as const;
+
+/** Recent sessions in the range, newest first — the explorer's master list. */
+export async function sessionList(payload: Payload, days: string[], limit = 60): Promise<SessionRow[]> {
+  if (days.length === 0) return [];
+  try {
+    const rows = await model(payload, "analytics-sessions")
+      .find({ day: { $in: days } }, SESSION_PROJECTION as unknown as Record<string, unknown>)
+      .sort({ startedAt: -1 })
+      .limit(limit)
+      .lean();
+    return rows as SessionRow[];
+  } catch (e) {
+    payload.logger?.error?.(`[analytics] sessionList failed: ${(e as Error)?.message ?? e}`);
+    return [];
+  }
+}
+
+export type TimelineEvent = {
+  type: string;
+  ts?: string | Date;
+  path?: string;
+  entityType?: string;
+  entitySlug?: string;
+  meta?: Record<string, unknown>;
+};
+
+/** One session's header + its ordered event timeline (matched by sid only, so
+ *  cross-midnight sessions are complete). Never filtered by day. */
+export async function sessionTimeline(
+  payload: Payload,
+  sid: string,
+  limit = 250,
+): Promise<{ session: SessionRow | null; events: TimelineEvent[] }> {
+  try {
+    const [sessRows, evRows] = await Promise.all([
+      model(payload, "analytics-sessions")
+        .find({ sid }, SESSION_PROJECTION as unknown as Record<string, unknown>)
+        .sort({ startedAt: -1 })
+        .limit(1)
+        .lean(),
+      model(payload, "analytics-events")
+        .find({ sid }, { _id: 0, type: 1, ts: 1, path: 1, entityType: 1, entitySlug: 1, meta: 1 })
+        .sort({ ts: 1 })
+        .limit(limit)
+        .lean(),
+    ]);
+    return { session: (sessRows[0] as SessionRow) ?? null, events: evRows as TimelineEvent[] };
+  } catch (e) {
+    payload.logger?.error?.(`[analytics] sessionTimeline failed: ${(e as Error)?.message ?? e}`);
+    return { session: null, events: [] };
+  }
+}
+
 // ── First-party data start (labelling honesty) ───────────────────────────────
 
 export async function firstEventDay(payload: Payload): Promise<string | null> {

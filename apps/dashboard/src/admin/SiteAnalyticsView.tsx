@@ -112,7 +112,7 @@ export default async function SiteAnalyticsView({ initPageResult, params, search
             {active === "traffic" && <Traffic {...ctx} />}
             {active === "behavior" && <Behavior {...ctx} />}
             {active === "marketing" && <Marketing {...ctx} />}
-            {active === "recordings" && <Recordings />}
+            {active === "recordings" && <Recordings {...ctx} />}
             {active === "insights" && <Insights {...ctx} />}
             {active === "benchmarks" && <Benchmarks {...ctx} />}
             {active === "reports" && <Reports {...ctx} />}
