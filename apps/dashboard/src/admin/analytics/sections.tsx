@@ -18,7 +18,7 @@ import {
   EmptyHint,
 } from "../charts";
 import type { ResolvedRange } from "./range";
-import { delta } from "./range";
+import { delta, istDayOf } from "./range";
 import {
   rollupsFor,
   sumRollups,
@@ -879,70 +879,165 @@ export async function Recordings({ payload, range, searchParams }: Ctx) {
 
 // ── Insights (rule-based; labelled honestly) ─────────────────────────────────
 
+type Severity = "critical" | "warning" | "opportunity" | "positive" | "informational";
+type Insight = { severity: Severity; finding: string; why: string; metric: string; action: string };
+
+const SEV: Record<Severity, { label: string; color: string; rank: number }> = {
+  critical: { label: "Critical", color: BRAND, rank: 0 },
+  warning: { label: "Warning", color: ACCENT, rank: 1 },
+  opportunity: { label: "Opportunity", color: INFO, rank: 2 },
+  positive: { label: "Positive", color: SUCCESS, rank: 3 },
+  informational: { label: "Info", color: MUTED, rank: 4 },
+};
+
 export async function Insights({ payload, range }: Ctx) {
-  const [rows, prevRows, stats, prevStats, pages, bySource] = await Promise.all([
-    rollupsFor(payload, range.days),
-    rollupsFor(payload, range.compareDays),
-    sessionStats(payload, range.days),
-    sessionStats(payload, range.compareDays),
-    pagesBy(payload, range.days, "entryPath", 20),
-    sessionsBy(payload, range.days, "source", 10),
+  // Compare COMPLETE days only. If the range's last day is the in-progress IST
+  // day, drop it (and the aligned last comparison day) so a partial "today"
+  // never manufactures a false "decline" — the single biggest source of bogus
+  // insights. Point-in-time (non-comparison) rules still use the full range.
+  const todayIST = istDayOf(Date.now());
+  const partial = range.days.length > 0 && range.days[range.days.length - 1] === todayIST;
+  const curDays = partial && range.days.length > 1 ? range.days.slice(0, -1) : range.days;
+  const cmpDays = partial && range.compareDays.length > 1 ? range.compareDays.slice(0, -1) : range.compareDays;
+  const comparing = range.compare !== "none" && cmpDays.length > 0;
+
+  const [rows, prevRows, stats, prevStats, pages, bySource, prevBySource, devices] = await Promise.all([
+    rollupsFor(payload, curDays),
+    rollupsFor(payload, cmpDays),
+    sessionStats(payload, curDays),
+    sessionStats(payload, cmpDays),
+    pagesBy(payload, curDays, "entryPath", 25),
+    sessionsBy(payload, curDays, "source", 10),
+    comparing ? sessionsBy(payload, cmpDays, "source", 10) : Promise.resolve([]),
+    sessionsBy(payload, curDays, "device", 6),
   ]);
   const cur = sumRollups(rows);
   const prev = sumRollups(prevRows);
 
-  const insights: { text: string; tone: "up" | "down" | "flat" }[] = [];
-  const add = (text: string, tone: "up" | "down" | "flat" = "flat") => insights.push({ text, tone });
+  // Minimum-sample guards — nothing fires on noise. A rate/trend needs enough
+  // sessions to be meaningful; a page needs enough traffic to be worth flagging.
+  const MIN = 20;
+  const MIN_PAGE = 8;
+  const pct = (n: number) => `${(Math.abs(n) * 100).toFixed(1)}%`;
+  const out: Insight[] = [];
+  const push = (i: Insight) => out.push(i);
 
-  if (range.compare !== "none" && prev.sessions > 0) {
-    const d = delta(cur.sessions, prev.sessions);
-    if (Math.abs(d.abs) >= Math.max(3, prev.sessions * 0.1)) {
-      add(`Traffic ${d.abs > 0 ? "increased" : "decreased"} ${d.text.replace("+", "")} vs the comparison period (${cur.sessions} vs ${prev.sessions} sessions).`, d.abs > 0 ? "up" : "down");
-    }
+  // 1. Traffic trend (complete-day, min sample) — no double negatives.
+  if (comparing && prev.sessions >= MIN) {
+    const ch = (cur.sessions - prev.sessions) / prev.sessions;
+    if (ch <= -0.4)
+      push({ severity: "critical", finding: `Traffic fell sharply — ${pct(ch)} fewer sessions than the previous period.`, why: "A large drop in reach usually signals a broken referrer, lost ranking, or a tracking regression.", metric: `${cur.sessions} vs ${prev.sessions} sessions (complete days)`, action: "Open Marketing → Channels to see which source dropped; confirm the site and tracking are healthy." });
+    else if (ch <= -0.15)
+      push({ severity: "warning", finding: `Traffic is down ${pct(ch)} versus the previous period.`, why: "A sustained decline shrinks the top of the enquiry funnel.", metric: `${cur.sessions} vs ${prev.sessions} sessions`, action: "Compare channels period-over-period to isolate the source." });
+    else if (ch >= 0.2)
+      push({ severity: "positive", finding: `Traffic grew ${pct(ch)} versus the previous period.`, why: "More qualified reach means more enquiry potential.", metric: `${cur.sessions} vs ${prev.sessions} sessions`, action: "Check whether the growing channel also converts (Marketing → Channels)." });
   }
-  if (stats.sessions >= 10 && prevStats.sessions >= 10) {
-    const br = stats.bounces / stats.sessions;
-    const pbr = prevStats.bounces / prevStats.sessions;
-    if (Math.abs(br - pbr) >= 0.08) {
-      add(`Bounce rate moved from ${(pbr * 100).toFixed(0)}% to ${(br * 100).toFixed(0)}%.`, br < pbr ? "up" : "down");
-    }
+
+  // 2. Enquiry rate change (named denominator, min sample both sides).
+  if (comparing && stats.sessions >= MIN && prevStats.sessions >= MIN) {
+    const r = stats.enquiryConversions / stats.sessions;
+    const pr = prevStats.enquiryConversions / prevStats.sessions;
+    if (pr > 0 && (r - pr) / pr <= -0.2)
+      push({ severity: "warning", finding: `Enquiry rate fell from ${(pr * 100).toFixed(1)}% to ${(r * 100).toFixed(1)}%.`, why: "Fewer visitors are converting — a content/CTA problem, not a traffic one.", metric: `${stats.enquiryConversions}/${stats.sessions} vs ${prevStats.enquiryConversions}/${prevStats.sessions} (enquiries ÷ sessions)`, action: "Review the highest-traffic landing pages' CTAs (flagged below)." });
+    else if (r > pr && (pr === 0 || (r - pr) / pr >= 0.2))
+      push({ severity: "positive", finding: `Enquiry rate rose to ${(r * 100).toFixed(1)}%.`, why: "More of the same traffic is turning into enquiries.", metric: `${stats.enquiryConversions}/${stats.sessions} vs ${prevStats.enquiryConversions}/${prevStats.sessions}`, action: "Note what changed on the converting pages and repeat it elsewhere." });
   }
-  const bestSource = [...bySource].sort((a, b) => (b.enquiries ?? 0) - (a.enquiries ?? 0))[0];
-  if (bestSource && (bestSource.enquiries ?? 0) > 0) {
-    add(`“${bestSource.key}” traffic generated the most enquiries in this range (${bestSource.enquiries}).`, "up");
+
+  // 3. Mobile-vs-desktop conversion gap (both need a real sample).
+  const mob = devices.find((d) => d.key === "mobile");
+  const desk = devices.find((d) => d.key === "desktop");
+  if (mob && desk && mob.sessions >= MIN && desk.sessions >= MIN) {
+    const mr = (mob.enquiries ?? 0) / mob.sessions;
+    const dr = (desk.enquiries ?? 0) / desk.sessions;
+    if (dr > 0 && mr < dr * 0.5)
+      push({ severity: "warning", finding: `Mobile converts far worse than desktop (${(mr * 100).toFixed(1)}% vs ${(dr * 100).toFixed(1)}% enquiry rate).`, why: "A mobile form/UX issue is likely costing enquiries from a large share of visitors.", metric: `mobile ${mob.enquiries ?? 0}/${mob.sessions}, desktop ${desk.enquiries ?? 0}/${desk.sessions}`, action: "Test the quote/contact forms on a real phone — tap targets, input types, validation." });
   }
+
+  // 4. High-traffic, zero-enquiry landing pages (opportunity).
+  for (const p of pages.filter((p) => p.sessions >= MIN_PAGE && p.enquiries === 0).slice(0, 3))
+    push({ severity: "opportunity", finding: `“${p.path}” drew ${p.sessions} sessions but zero enquiries.`, why: "High interest with no conversion is the cheapest place to add enquiries.", metric: `${p.sessions} sessions · 0 enquiries · ${p.bounces} bounced`, action: "Add or strengthen a clear enquiry CTA on this page." });
+
+  // 5. A channel sending traffic but converting nobody (opportunity).
+  const dead = bySource.filter((s) => s.key && s.key !== "direct" && s.sessions >= MIN && (s.enquiries ?? 0) === 0).sort((a, b) => b.sessions - a.sessions)[0];
+  if (dead)
+    push({ severity: "opportunity", finding: `${channelLabel(dead.key)} sent ${dead.sessions} sessions but produced no enquiries.`, why: "Traffic from a channel that never converts is mistargeted or landing on the wrong page.", metric: `${dead.sessions} sessions · 0 enquiries`, action: "Check where this channel lands and whether the visitor intent matches the page." });
+
+  // 6. Organic search trend (needs previous split + sample).
+  if (comparing) {
+    const org = bySource.find((s) => s.key === "organic")?.sessions ?? 0;
+    const porg = prevBySource.find((s) => s.key === "organic")?.sessions ?? 0;
+    if (porg >= MIN && (org - porg) / porg >= 0.25)
+      push({ severity: "positive", finding: `Organic search grew ${pct((org - porg) / porg)}.`, why: "Compounding organic traffic is the most durable, lowest-cost channel.", metric: `${org} vs ${porg} organic sessions`, action: "Reinforce the ranking pages — see Behavior → most visited." });
+    else if (porg >= MIN && (org - porg) / porg <= -0.25)
+      push({ severity: "warning", finding: `Organic search fell ${pct((org - porg) / porg)}.`, why: "Losing organic reach is expensive to rebuild.", metric: `${org} vs ${porg} organic sessions`, action: "Check for de-indexed pages, ranking losses, or a technical SEO regression." });
+  }
+
+  // 7. Best converting channel (positive; ≥2 enquiries so it isn't a 1-off tautology).
+  const best = [...bySource].sort((a, b) => (b.enquiries ?? 0) - (a.enquiries ?? 0))[0];
+  if (best && (best.enquiries ?? 0) >= 2)
+    push({ severity: "positive", finding: `${channelLabel(best.key)} is your best-converting channel this period.`, why: "Knowing what already works tells you where to invest.", metric: `${best.enquiries} enquiries from ${best.sessions} sessions`, action: "Put more effort into the channel that already converts." });
+
+  // 8. Form abandonment (min sample; the dedup caveat can't cause a false positive here).
+  if (cur.formStarts >= 10 && cur.formSubmits < cur.formStarts * 0.5)
+    push({ severity: "warning", finding: `Only ${cur.formSubmits} of ${cur.formStarts} form starts were completed.`, why: "People are trying to reach you and abandoning mid-form.", metric: `${((cur.formSubmits / cur.formStarts) * 100).toFixed(0)}% completion`, action: "Shorten the form / cut required fields; check for validation friction." });
+
+  // 9. AI-assistant traffic (informational — an emerging discovery channel).
   const ai = bySource.find((s) => s.key === "ai");
-  if (ai && ai.sessions > 0) add(`${ai.sessions} session${ai.sessions === 1 ? "" : "s"} arrived from AI platforms (referrer or UTM evidence).`, "up");
-  const highTrafficNoConv = pages.filter((p) => p.sessions >= 5 && p.enquiries === 0).slice(0, 3);
-  for (const p of highTrafficNoConv) {
-    add(`“${p.path}” lands ${p.sessions} sessions but produced no enquiries — worth reviewing its CTA.`, "down");
-  }
-  if (cur.formStarts > 0 && cur.formSubmits < cur.formStarts * 0.5) {
-    add(`Form abandonment is high: ${cur.formStarts} starts → ${cur.formSubmits} submissions.`, "down");
-  }
-  if (cur.searches > 0) add(`${cur.searches} internal searches — the Behavior tab lists the exact terms.`, "flat");
+  if (ai && ai.sessions > 0)
+    push({ severity: "informational", finding: `${ai.sessions} session${ai.sessions === 1 ? "" : "s"} arrived from AI assistants.`, why: "AI answer engines are a growing discovery channel worth tracking.", metric: `${ai.sessions} AI-referred sessions`, action: "Keep llms.txt and structured data describing METNMAT accurately (GEO)." });
+
+  const insights = out.sort((a, b) => SEV[a.severity].rank - SEV[b.severity].rank).slice(0, 10);
+  const enoughData = stats.sessions >= 5;
 
   return (
-    <div style={{ ...panel, marginTop: 14, maxWidth: 860 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontWeight: 700 }}>Automated insights</div>
-        <span style={{ fontSize: 11.5, opacity: 0.5 }}>deterministic rules over your data — not AI-generated</span>
+    <>
+      <SectionIntro>
+        Evidence-based, deterministic signals computed from your own analytics — <strong>never AI-generated
+        conclusions</strong>. Each is traceable to a real metric and a period, guarded by a minimum sample so
+        noise doesn&rsquo;t manufacture alarms. Comparisons use complete days only.
+      </SectionIntro>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "12px 0 2px" }}>
+        {(Object.keys(SEV) as Severity[]).map((s) => (
+          <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, opacity: 0.75 }}>
+            <span style={{ width: 9, height: 9, borderRadius: 2, background: SEV[s].color }} />
+            {SEV[s].label}
+          </span>
+        ))}
       </div>
-      {insights.length > 0 ? (
-        <div style={{ display: "grid", gap: 10 }}>
-          {insights.map((i, n) => (
-            <div key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 10 }}>
-              <span style={{ color: i.tone === "up" ? SUCCESS : i.tone === "down" ? BRAND : MUTED, fontWeight: 800 }}>
-                {i.tone === "up" ? "▲" : i.tone === "down" ? "▼" : "—"}
-              </span>
-              <span>{i.text}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <EmptyHint text="Insights appear once there is enough data in the selected range to say something meaningful." />
-      )}
-    </div>
+
+      <div style={{ ...panel, marginTop: 12 }}>
+        {insights.length > 0 ? (
+          <div style={{ display: "grid", gap: 12 }}>
+            {insights.map((i, n) => (
+              <div key={n} style={{ display: "grid", gridTemplateColumns: "4px 1fr", gap: 12, borderBottom: n < insights.length - 1 ? "1px solid var(--theme-elevation-100)" : "none", paddingBottom: 12 }}>
+                <div style={{ background: SEV[i.severity].color, borderRadius: 2 }} />
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: SEV[i.severity].color }}>{SEV[i.severity].label}</span>
+                    <span style={{ fontSize: 13.5, fontWeight: 700 }}>{i.finding}</span>
+                  </div>
+                  <div style={{ fontSize: 12.5, opacity: 0.7, lineHeight: 1.5 }}>{i.why}</div>
+                  <div style={{ fontSize: 11.5, opacity: 0.55, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>Evidence: {i.metric}</div>
+                  <div style={{ fontSize: 12.5, marginTop: 5 }}>
+                    <span style={{ color: BRAND, fontWeight: 700 }}>Do: </span>
+                    <span style={{ opacity: 0.9 }}>{i.action}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyHint
+            text={
+              enoughData
+                ? "Nothing notable this period — metrics are within their normal range, which is itself a good sign."
+                : "Not enough data in this range yet to say anything with confidence. Insights need a minimum sample before they fire (guarding against false alarms)."
+            }
+          />
+        )}
+      </div>
+    </>
   );
 }
 
