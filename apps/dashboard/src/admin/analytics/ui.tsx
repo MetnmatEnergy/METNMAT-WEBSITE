@@ -180,6 +180,16 @@ export function SectionTabs({ active, range }: { active: string; range: Resolved
   );
 }
 
+/** One-line business purpose under a section heading — tells staff what
+ *  question this page answers before they read a single chart. */
+export function SectionIntro({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ fontSize: 12.5, lineHeight: 1.5, opacity: 0.6, margin: "12px 0 0", maxWidth: 760 }}>
+      {children}
+    </p>
+  );
+}
+
 export function Panel({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div style={panel}>

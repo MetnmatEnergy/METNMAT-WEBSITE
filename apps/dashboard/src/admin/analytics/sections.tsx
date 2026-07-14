@@ -40,7 +40,7 @@ import {
   rangeToWindow,
   geoProviderStatus,
 } from "./queries";
-import { KpiCard, Panel, RangeBar, DataNotice, href } from "./ui";
+import { KpiCard, Panel, RangeBar, DataNotice, SectionIntro, href } from "./ui";
 import { AutoRefresh } from "./AutoRefresh";
 import { WorldLiveMap, type LiveCountry } from "./world-map";
 
@@ -413,7 +413,12 @@ export async function Traffic({ payload, range }: Ctx) {
 
 export async function Behavior({ payload, range, searchParams }: Ctx) {
   const focusPath = typeof searchParams.path === "string" && searchParams.path.startsWith("/") ? searchParams.path : null;
-  const [pages, products, projects, blogs, ctas, outbound, searches, funnel, heat, detail] = await Promise.all([
+  const [stats, prevStats, devices, browsers, oses, pages, products, projects, blogs, ctas, outbound, searches, funnel, heat, detail] = await Promise.all([
+    sessionStats(payload, range.days),
+    sessionStats(payload, range.compareDays),
+    sessionsBy(payload, range.days, "device", 6),
+    sessionsBy(payload, range.days, "browser", 8),
+    sessionsBy(payload, range.days, "os", 8),
     topPages(payload, range.days, 12),
     topEntities(payload, range.days, "product", 8),
     topEntities(payload, range.days, "project", 8),
@@ -426,8 +431,35 @@ export async function Behavior({ payload, range, searchParams }: Ctx) {
     focusPath ? pageDetail(payload, range.days, focusPath) : Promise.resolve(null),
   ]);
 
+  // Engagement KPIs — derived from real session fields, framed so "up is good"
+  // (engaged % rather than bounce %, so the shared change badge reads correctly).
+  const engaged = stats.sessions - stats.bounces;
+  const prevEngaged = prevStats.sessions - prevStats.bounces;
+  const avgEng = stats.sessions > 0 ? stats.totalDurationSec / stats.sessions : 0;
+  const prevAvgEng = prevStats.sessions > 0 ? prevStats.totalDurationSec / prevStats.sessions : 0;
+  const perSession = stats.sessions > 0 ? stats.totalPageViews / stats.sessions : 0;
+  const prevPerSession = prevStats.sessions > 0 ? prevStats.totalPageViews / prevStats.sessions : 0;
+  const engPct = stats.sessions > 0 ? (engaged / stats.sessions) * 100 : 0;
+  const prevEngPct = prevStats.sessions > 0 ? (prevEngaged / prevStats.sessions) * 100 : 0;
+
+  const dimRows = (rows: typeof devices) =>
+    rows.map((r) => ({ label: r.key, value: r.sessions, display: String(r.sessions) }));
+
   return (
     <>
+      <SectionIntro>
+        How visitors actually use the website — engagement depth, the pages and content they reach, the
+        actions they take, and the devices they use. Every number is a real first-party event; percentages
+        compare against the {range.compare === "none" ? "selected period" : "previous period"}.
+      </SectionIntro>
+
+      <div style={kpiGrid}>
+        <KpiCard label="Sessions" value={String(stats.sessions)} current={stats.sessions} previous={prevStats.sessions} compare={range.compare} color={SUCCESS} sub={`${stats.visitors} unique visitors`} />
+        <KpiCard label="Avg engagement time" value={fmtDur(Math.round(avgEng))} current={Math.round(avgEng)} previous={Math.round(prevAvgEng)} compare={range.compare} color={INFO} sub="active time per session" />
+        <KpiCard label="Pages / session" value={perSession.toFixed(1)} current={Math.round(perSession * 100)} previous={Math.round(prevPerSession * 100)} compare={range.compare} color={ACCENT} sub={`${stats.totalPageViews} page views`} />
+        <KpiCard label="Engaged sessions" value={`${engPct.toFixed(0)}%`} current={Math.round(engPct * 10)} previous={Math.round(prevEngPct * 10)} compare={range.compare} color={BRAND} sub={`${engaged} of ${stats.sessions} saw 2+ pages`} />
+      </div>
+
       {detail && (
         <div style={{ ...panel, marginTop: 14, borderColor: BRAND }}>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Page drill-down · {detail.path}</div>
@@ -497,6 +529,18 @@ export async function Behavior({ payload, range, searchParams }: Ctx) {
         </Panel>
         <Panel title="Outbound clicks">
           {outbound.length > 0 ? <HBars rows={outbound.map((o) => ({ label: o.host, value: o.n, display: String(o.n) }))} color={MUTED} valueLabel="clicks" /> : <EmptyHint text="External destinations visitors leave to." />}
+        </Panel>
+      </div>
+
+      <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+        <Panel title="Device">
+          {devices.length > 0 ? <HBars rows={dimRows(devices)} color={BRAND} valueLabel="sessions" /> : <EmptyHint text="Device mix (mobile / desktop / tablet) ranks here." />}
+        </Panel>
+        <Panel title="Browser">
+          {browsers.length > 0 ? <HBars rows={dimRows(browsers)} color={INFO} valueLabel="sessions" /> : <EmptyHint text="Browser mix ranks here." />}
+        </Panel>
+        <Panel title="Operating system">
+          {oses.length > 0 ? <HBars rows={dimRows(oses)} color={ACCENT} valueLabel="sessions" /> : <EmptyHint text="OS mix ranks here." />}
         </Panel>
       </div>
 
