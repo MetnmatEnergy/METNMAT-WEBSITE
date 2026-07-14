@@ -1,8 +1,24 @@
-import { getFieldsToSign, jwtSign, type CollectionConfig } from "payload";
+import { getFieldsToSign, jwtSign, type CollectionConfig, type CollectionBeforeChangeHook } from "payload";
 import { randomBytes } from "crypto";
 import { isAdmin } from "../access";
 import { safeKeyEqual } from "../lib/internal-key";
 import { assignUserCode } from "../hooks/customer-code";
+
+/**
+ * Bump `sessionsValidFrom` whenever the password changes, so any JWT minted
+ * BEFORE this instant is treated as signed-out (enforced fail-open in the
+ * website's getCurrentCustomer). A customer-initiated change and a staff-set
+ * password both flow through here with `data.password` set. The forgot-password
+ * RESET operation is handled internally by Payload and does NOT surface
+ * `data.password` here — that path is stamped in the afterOperation hook below.
+ */
+const stampSessionsOnPasswordChange: CollectionBeforeChangeHook = ({ data }) => {
+  const d = data as Record<string, unknown>;
+  if (typeof d?.password === "string" && d.password.length > 0) {
+    d.sessionsValidFrom = Date.now();
+  }
+  return data;
+};
 
 /**
  * Field access for server-managed sign-in fields. `admin.readOnly` only hides a
@@ -144,6 +160,16 @@ export const Customers: CollectionConfig = {
       ],
     },
     {
+      // Epoch ms; JWTs issued BEFORE this are treated as signed-out. Bumped on
+      // every password change (below) so old sessions on other devices stop
+      // working — closes "a stolen token survives a password change". System-set
+      // only (the hook writes it; clients can't); readable so /me returns it.
+      name: "sessionsValidFrom",
+      type: "number",
+      access: { create: () => false, update: () => false },
+      admin: { readOnly: true, hidden: true },
+    },
+    {
       name: "googleId",
       type: "text",
       index: true,
@@ -225,7 +251,7 @@ export const Customers: CollectionConfig = {
   hooks: {
     // Mint the immutable MNM-U-YY code on create (both email + Google signup flow
     // through here); keep it unchangeable on every update. See customer-code.ts.
-    beforeChange: [assignUserCode],
+    beforeChange: [assignUserCode, stampSessionsOnPasswordChange],
     afterOperation: [
       /**
        * Completing a password reset proves the person can READ the account's
@@ -237,16 +263,23 @@ export const Customers: CollectionConfig = {
       async ({ operation, result, req }) => {
         if (operation === "resetPassword") {
           const user = (result as { user?: { id?: string; emailVerified?: boolean } })?.user;
-          if (user?.id && !user.emailVerified) {
+          if (user?.id) {
+            // Always bump sessionsValidFrom on a reset so OTHER devices' old
+            // tokens (incl. an attacker's) stop working; also mark the email
+            // verified (reset proves inbox access) if it wasn't already. The
+            // token resetPassword just returned is minted AFTER this bump, so
+            // the person resetting stays signed in (see getCurrentCustomer skew).
+            const data: Record<string, unknown> = { sessionsValidFrom: Date.now() };
+            if (!user.emailVerified) data.emailVerified = true;
             await req.payload
               .update({
                 collection: "customers",
                 id: user.id,
-                data: { emailVerified: true },
-                overrideAccess: true, // emailVerified is a staff-only field
+                data,
+                overrideAccess: true, // sessionsValidFrom + emailVerified are system-set fields
               })
               .catch((e) =>
-                req.payload.logger.warn(`[customers] could not mark emailVerified after reset: ${(e as Error).message}`),
+                req.payload.logger.warn(`[customers] post-reset update failed: ${(e as Error).message}`),
               );
           }
         }

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getCurrentCustomer, patchCurrentCustomer } from "@/backend/lib/customer";
+import {
+  getCurrentCustomer,
+  patchCurrentCustomer,
+  CUSTOMER_COOKIE,
+  cookieOptions,
+} from "@/backend/lib/customer";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
@@ -65,5 +70,28 @@ export async function POST(req: Request): Promise<Response> {
       { status: 502 }
     );
   }
-  return NextResponse.json({ success: true });
+
+  // The change bumped this account's `sessionsValidFrom`, so the token in THIS
+  // browser's cookie (minted before the change) is now invalid too. Re-login
+  // with the new password to mint a fresh token and refresh the cookie — the
+  // current device stays signed in while every OTHER device is signed out.
+  // Best-effort: the password IS changed regardless; if the refresh fails the
+  // user simply re-signs in with the new password (never a lockout).
+  const res = NextResponse.json({ success: true });
+  try {
+    const lr2 = await fetch(`${CMS}/api/customers/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: me.email, password: next }),
+      cache: "no-store",
+    });
+    const data = (await lr2.json().catch(() => ({}))) as { token?: string; exp?: number };
+    if (lr2.ok && data?.token) {
+      const maxAge = data.exp ? Math.max(60, data.exp - Math.floor(Date.now() / 1000)) : undefined;
+      res.cookies.set(CUSTOMER_COOKIE, data.token, cookieOptions(maxAge));
+    }
+  } catch {
+    /* refresh is best-effort — password already changed */
+  }
+  return res;
 }

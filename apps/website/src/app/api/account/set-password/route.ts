@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { getCurrentCustomer } from "@/backend/lib/customer";
+import {
+  getCurrentCustomer,
+  CUSTOMER_COOKIE,
+  cookieOptions,
+} from "@/backend/lib/customer";
 import { outboundKey } from "@/backend/lib/internal-key";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
@@ -76,7 +80,29 @@ export async function POST(req: Request): Promise<Response> {
         { status: 502 }
       );
     }
-    return NextResponse.json({ success: true });
+    // Setting the password bumped this account's `sessionsValidFrom`, which
+    // invalidates the Google-login token currently in the cookie. Re-login with
+    // the just-set password to mint a fresh token and refresh the cookie, so the
+    // customer stays signed in on this device (mirrors the change-password route).
+    // Best-effort: the password IS set regardless; a failed refresh just means
+    // they sign in again with Google or the new password (never a lockout).
+    const res = NextResponse.json({ success: true });
+    try {
+      const lr = await fetch(`${CMS}/api/customers/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: me.email, password }),
+        cache: "no-store",
+      });
+      const data = (await lr.json().catch(() => ({}))) as { token?: string; exp?: number };
+      if (lr.ok && data?.token) {
+        const maxAge = data.exp ? Math.max(60, data.exp - Math.floor(Date.now() / 1000)) : undefined;
+        res.cookies.set(CUSTOMER_COOKIE, data.token, cookieOptions(maxAge));
+      }
+    } catch {
+      /* refresh is best-effort — password already set */
+    }
+    return res;
   } catch {
     return NextResponse.json(
       { error: "Couldn't set your password right now. Please try again." },

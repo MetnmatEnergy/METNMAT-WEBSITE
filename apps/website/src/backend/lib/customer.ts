@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { tokenNotBeforeReset } from "./session-validity";
 
 /**
  * Customer session helpers. The website holds the customer's Payload JWT in an
@@ -53,6 +54,13 @@ export type Customer = {
    * buyer's address and read their orders and invoices.
    */
   emailVerified?: boolean;
+  /**
+   * Epoch ms of this customer's last password change. Any JWT issued before it
+   * is treated as signed-out (enforced fail-open in getCurrentCustomer), so a
+   * stolen/old token stops working the moment the password is changed. Absent on
+   * accounts that have never changed a password — those behave exactly as before.
+   */
+  sessionsValidFrom?: number;
   addresses?: Address[];
 };
 
@@ -93,7 +101,11 @@ export async function getCurrentCustomer(): Promise<Customer | null> {
       // Authoritative: the token was rejected, or accepted and answered.
       if (res.ok) {
         const data = (await res.json().catch(() => ({}))) as { user?: Customer | null };
-        return data?.user ?? null;
+        const user = data?.user ?? null;
+        // Token predates this account's last password change → treat as signed
+        // out (a password change invalidates sessions on other devices).
+        if (user && !tokenNotBeforeReset(token, user.sessionsValidFrom)) return null;
+        return user;
       }
       if (res.status === 401 || res.status === 403) return null;
       // Anything else (5xx, 429, 502 from a cold start) — transient, retry.
