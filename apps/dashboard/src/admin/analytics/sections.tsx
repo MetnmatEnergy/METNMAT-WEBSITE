@@ -555,13 +555,72 @@ export async function Behavior({ payload, range, searchParams }: Ctx) {
 
 // ── Marketing ─────────────────────────────────────────────────────────────────
 
+// Explicit, honest channel buckets. `source` on every session is already one of
+// these — direct/organic/ai/social/email/paid/referral — so we never invent a
+// classification; an unrecognised/empty value is labelled Unattributed, never
+// silently folded into Direct.
+const CHANNEL_LABELS: Record<string, string> = {
+  direct: "Direct",
+  organic: "Organic search",
+  ai: "AI platforms",
+  social: "Social",
+  email: "Email",
+  paid: "Paid",
+  referral: "Referral",
+};
+const channelLabel = (key: string) => CHANNEL_LABELS[key] ?? (key ? key : "Unattributed");
+
 export async function Marketing({ payload, range }: Ctx) {
-  const [campaigns, sources, mediums, ai] = await Promise.all([
+  const [stats, prevStats, channels, referrers, campaigns, sources, mediums, ai] = await Promise.all([
+    sessionStats(payload, range.days),
+    sessionStats(payload, range.compareDays),
+    sessionsBy(payload, range.days, "source", 10),
+    sessionsBy(payload, range.days, "referrerDomain", 12, { referrerDomain: { $ne: "" } }),
     sessionsBy(payload, range.days, "utmCampaign", 12, { utmCampaign: { $ne: "" } }),
     sessionsBy(payload, range.days, "utmSource", 12, { utmSource: { $ne: "" } }),
     sessionsBy(payload, range.days, "utmMedium", 12, { utmMedium: { $ne: "" } }),
     sessionsBy(payload, range.days, "channel", 8, { source: "ai" }),
   ]);
+
+  const enqRate = stats.sessions > 0 ? (stats.enquiryConversions / stats.sessions) * 100 : 0;
+  const prevEnqRate = prevStats.sessions > 0 ? (prevStats.enquiryConversions / prevStats.sessions) * 100 : 0;
+  const attributed = channels.filter((c) => c.key && c.key !== "direct").reduce((n, c) => n + c.sessions, 0);
+  const attributedPct = stats.sessions > 0 ? (attributed / stats.sessions) * 100 : 0;
+  const topChannel = [...channels].sort((a, b) => b.sessions - a.sessions)[0];
+
+  // Conversion table with a NAMED denominator: "Enq. rate" = enquiries ÷ sessions
+  // (an enquiry is a real form submission). Order/revenue are intentionally NOT
+  // shown per channel here — purchase attribution is browser-observed and
+  // under-counts webhook-paid orders (a known limitation), so it would mislead.
+  const convTable = (rows: typeof channels, head: string, labeller: (k: string) => string) => (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, minWidth: 340 }}>
+        <thead>
+          <tr style={{ textAlign: "left", opacity: 0.55, fontSize: 11, textTransform: "uppercase" }}>
+            <th style={{ padding: "6px 4px" }}>{head}</th>
+            <th style={{ padding: "6px 4px", textAlign: "right" }}>Sessions</th>
+            <th style={{ padding: "6px 4px", textAlign: "right" }}>Enquiries</th>
+            <th style={{ padding: "6px 4px", textAlign: "right" }} title="Enquiries ÷ sessions">Enq. rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((c) => {
+            const rate = c.sessions > 0 ? ((c.enquiries ?? 0) / c.sessions) * 100 : 0;
+            return (
+              <tr key={c.key} style={{ borderTop: "1px solid var(--theme-elevation-100)" }}>
+                <td style={{ padding: "8px 4px", fontWeight: 600 }}>{labeller(c.key)}</td>
+                <td style={{ padding: "8px 4px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{c.sessions}</td>
+                <td style={{ padding: "8px 4px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{c.enquiries ?? 0}</td>
+                <td style={{ padding: "8px 4px", textAlign: "right", fontVariantNumeric: "tabular-nums", opacity: (c.enquiries ?? 0) > 0 ? 1 : 0.4 }}>
+                  {(c.enquiries ?? 0) > 0 ? `${rate.toFixed(1)}%` : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 
   const campaignTable = (rows: typeof campaigns, title: string) => (
     <Panel title={title}>
@@ -596,7 +655,35 @@ export async function Marketing({ payload, range }: Ctx) {
 
   return (
     <>
-      <div style={{ marginTop: 14 }}>{campaignTable(campaigns, "Campaign performance (utm_campaign)")}</div>
+      <SectionIntro>
+        Where traffic comes from and which channels produce business outcomes. Channel is first-touch per
+        session, from real referrer + UTM evidence only — traffic we can&rsquo;t attribute is labelled
+        Unattributed, never guessed. Order/revenue attribution is browser-observed and under-counts
+        webhook-paid orders, so channel performance is measured by enquiries.
+      </SectionIntro>
+
+      <div style={kpiGrid}>
+        <KpiCard label="Sessions" value={String(stats.sessions)} current={stats.sessions} previous={prevStats.sessions} compare={range.compare} color={SUCCESS} sub={`${stats.visitors} unique visitors`} />
+        <KpiCard label="Enquiries" value={String(stats.enquiryConversions)} current={stats.enquiryConversions} previous={prevStats.enquiryConversions} compare={range.compare} color={ACCENT} sub="form submissions in session" />
+        <KpiCard label="Enquiry rate" value={`${enqRate.toFixed(1)}%`} current={Math.round(enqRate * 10)} previous={Math.round(prevEnqRate * 10)} compare={range.compare} color={BRAND} sub="enquiries ÷ sessions" />
+        <KpiCard label="Attributed traffic" value={`${attributedPct.toFixed(0)}%`} current={Math.round(attributedPct * 10)} previous={0} compare="none" sub={topChannel ? `top channel: ${channelLabel(topChannel.key)}` : "non-direct sessions"} />
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <Panel title="Channels">
+          {channels.length > 0 ? convTable(channels, "Channel", channelLabel) : <EmptyHint text="Traffic channels rank here once sessions arrive." />}
+        </Panel>
+      </div>
+
+      <div style={grid2}>
+        <Panel title="Referring domains">
+          {referrers.length > 0 ? convTable(referrers, "Domain", (k) => k) : <EmptyHint text="External sites that link visitors to metnmat.com rank here." />}
+        </Panel>
+        <Panel title="Campaign performance (utm_campaign)">
+          {campaigns.length > 0 ? convTable(campaigns, "Campaign", (k) => k) : <EmptyHint text="Tag links with utm_campaign and results attribute here." />}
+        </Panel>
+      </div>
+
       <div style={grid2}>
         {campaignTable(sources, "Source performance (utm_source)")}
         {campaignTable(mediums, "Medium performance (utm_medium)")}
