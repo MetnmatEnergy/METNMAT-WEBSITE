@@ -60,6 +60,27 @@ describe("classifyTraffic", () => {
     expect(classifyTraffic({ referrer: "https://lnkd.in/abc", selfHost: SELF }).source).toBe("social");
     expect(classifyTraffic({ referrer: "https://t.co/xyz", selfHost: SELF }).channel).toBe("x");
     expect(classifyTraffic({ referrer: "https://wa.me/919999", selfHost: SELF }).channel).toBe("whatsapp");
+    expect(classifyTraffic({ referrer: "https://www.reddit.com/r/x", selfHost: SELF }).channel).toBe("reddit");
+  });
+
+  // Regression: pattern matching must respect hostname boundaries. The old
+  // `domain.includes("t.co")` mislabelled every host CONTAINING that substring
+  // as "x"/social — silently corrupting METNMAT's most important industrial and
+  // research referrers. These must classify as plain referral, never social.
+  it("does NOT mistake substring hosts for social platforms (t.co boundary bug)", () => {
+    for (const host of ["indiamart.com", "thomasnet.com", "sciencedirect.com", "myt.com"]) {
+      const a = classifyTraffic({ referrer: `https://www.${host}/page`, selfHost: SELF });
+      expect(a.source, host).toBe("referral");
+      expect(a.channel, host).toBe(host);
+    }
+  });
+
+  it("label-prefix patterns respect boundaries (notlinkedin.com is not linkedin)", () => {
+    const a = classifyTraffic({ referrer: "https://notlinkedin.com/x", selfHost: SELF });
+    expect(a.source).toBe("referral");
+    expect(a.channel).toBe("notlinkedin.com");
+    // …but a real subdomain of a search engine still classifies as organic.
+    expect(classifyTraffic({ referrer: "https://news.google.com/", selfHost: SELF }).channel).toBe("google");
   });
 
   it("unknown external domain → referral with domain as channel", () => {

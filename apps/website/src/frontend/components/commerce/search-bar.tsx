@@ -85,6 +85,10 @@ export function SearchBar({
   const inputRef = React.useRef<HTMLInputElement>(null);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = React.useRef<AbortController | null>(null);
+  // Analytics tracks the SETTLED query (see the dedicated effect below), not
+  // every keystroke — otherwise "electrode" logs as ele/elec/electr/… prefixes.
+  const searchTrackRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTrackedRef = React.useRef<string>("");
 
   const h = compact ? "h-10" : "h-11";
 
@@ -123,7 +127,6 @@ export function SearchBar({
         });
         const data = (await res.json()) as Results;
         setResults(data);
-        if (term.length >= 3) getTracker().track("search", { meta: { q: term.slice(0, 80) } });
         setActive(-1);
       } catch {
         /* aborted or offline — keep previous results */
@@ -135,6 +138,25 @@ export function SearchBar({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [q, scopeQS]);
+
+  // Track the query the visitor actually SETTLED on, not each keystroke. A long
+  // idle timer resets on every change, so only the final term (after the visitor
+  // stops typing for ~1.1s) is recorded, and never the same term twice in a row.
+  // Result: the Behavior "internal searches" report ranks real queries, not the
+  // prefixes typed on the way there.
+  React.useEffect(() => {
+    const term = q.trim();
+    if (searchTrackRef.current) clearTimeout(searchTrackRef.current);
+    if (term.length < 3) return;
+    searchTrackRef.current = setTimeout(() => {
+      if (term === lastTrackedRef.current) return;
+      lastTrackedRef.current = term;
+      getTracker().track("search", { meta: { q: term.slice(0, 80) } });
+    }, 1100);
+    return () => {
+      if (searchTrackRef.current) clearTimeout(searchTrackRef.current);
+    };
+  }, [q]);
 
   // Close on outside click.
   React.useEffect(() => {

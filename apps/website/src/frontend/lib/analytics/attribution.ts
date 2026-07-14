@@ -84,9 +84,31 @@ export function referrerDomain(referrer: string | null | undefined): string {
   }
 }
 
+/**
+ * Does `domain` match a classifier pattern on a HOSTNAME boundary?
+ *
+ *  - A pattern ending in "." (e.g. "google.") is a label-prefix: it matches the
+ *    registrable domain whose first label is that name — google.com, google.co.in,
+ *    news.google.com — but never "notgoogle.com".
+ *  - Any other pattern is a full domain (e.g. "t.co", "reddit.com") and matches
+ *    only that domain or a subdomain of it — t.co and sub.t.co, but NOT reddit.com.
+ *
+ * The previous implementation used a bare `domain.includes(needle)`, which made
+ * the short pattern "t.co" match ANY host containing that substring — so
+ * reddit.com, indiamart.com, thomasnet.com and sciencedirect.com (exactly the
+ * industrial/research referrers that matter to METNMAT) were all silently
+ * mislabelled as "x"/social. Matching on a dot boundary fixes that class of bug.
+ */
+function hostMatches(domain: string, pattern: string): boolean {
+  if (pattern.endsWith(".")) {
+    return domain.startsWith(pattern) || domain.includes(`.${pattern}`);
+  }
+  return domain === pattern || domain.endsWith(`.${pattern}`);
+}
+
 function matchMap(domain: string, map: Record<string, string>): string | undefined {
   for (const [needle, label] of Object.entries(map)) {
-    if (domain === needle || domain.endsWith(needle) || domain.includes(needle)) return label;
+    if (hostMatches(domain, needle)) return label;
   }
   return undefined;
 }
