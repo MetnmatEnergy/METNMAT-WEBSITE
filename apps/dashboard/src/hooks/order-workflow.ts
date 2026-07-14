@@ -96,6 +96,29 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
       return;
     }
     if (to === "paid" && from !== "paid") {
+      // Idempotency guard: two concurrent paid-transitions on the SAME order (a
+      // redelivered webhook racing a staff save) each start from a stale
+      // originalDoc with no invoice. Re-read the order's CURRENT invoiceNumber
+      // immediately before bumping the counter — if another transaction already
+      // minted, reuse it rather than consuming a second sequence (which would
+      // burn a serial and leave a gap in the GST Rule-46 consecutive sequence).
+      const oid = (originalDoc as { id?: string | number } | undefined)?.id;
+      if (oid != null) {
+        try {
+          const fresh = (await req.payload.findByID({
+            collection: "orders",
+            id: oid,
+            depth: 0,
+            overrideAccess: true,
+          })) as { invoiceNumber?: string } | null;
+          if (fresh?.invoiceNumber) {
+            d.invoiceNumber = fresh.invoiceNumber;
+            return;
+          }
+        } catch {
+          /* fall through to mint — never block a paid transition on a read */
+        }
+      }
       const fy = fyLabel();
       const seq = await bumpCounter(countersModel(req.payload.db), `order-invoice-${fy}`);
       d.invoiceNumber = formatInvoiceNumber(fy, seq);

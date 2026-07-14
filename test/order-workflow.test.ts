@@ -58,6 +58,23 @@ describe("orderBeforeChange (payment integrity)", () => {
     expect(result.invoiceDate).toBeTruthy();
   });
 
+  it("reuses an already-minted invoice number (idempotency — no burned GST serial)", async () => {
+    // Simulate a concurrent paid-transition: originalDoc is stale (no invoice),
+    // but a re-read finds the order was already minted by the racing write.
+    const db = dbStub();
+    const result = (await call({
+      req: {
+        headers: new Headers(),
+        user: { roles: ["accounts"] },
+        payload: { db, findByID: async () => ({ invoiceNumber: "INV-2526-000042" }) },
+      },
+      data: { status: "paid" },
+      originalDoc: { id: "order-1", status: "pending" },
+    })) as { invoiceNumber?: string };
+    // Reuses the existing serial rather than bumping the counter for a new one.
+    expect(result.invoiceNumber).toBe("INV-2526-000042");
+  });
+
   it("blocks a sales user from changing the order total", async () => {
     await expect(
       call({ data: { status: "pending", total: 999 }, originalDoc: { status: "pending", total: 100 } }),
