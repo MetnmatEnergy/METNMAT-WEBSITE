@@ -3,13 +3,15 @@ import { centroidFor, projectEquirect } from "./world-geo";
 import { WorldLandLayer } from "./world-land-layer";
 
 /**
- * Live world map for the Real-time panel. Hand-rolled equirectangular SVG (no
- * map library): a dotted landmass from public-domain Natural Earth data
- * (WorldLandLayer — client chunk, so the geometry isn't re-sent on the 12s
- * refresh) on a deep-navy "ocean", with a glowing, pulsing brand marker for
- * each ACTIVE visitor's country and a ranked legend linking to the Geography
- * report. Country-level, matching the ipinfo "lite" data: markers sit at
- * country centroids, never faked to a city.
+ * Live world map for the Real-time panel. Equirectangular SVG (no runtime map
+ * library): real filled Natural Earth country geography with coastlines and
+ * interior borders (WorldLandLayer — a client chunk, so the geometry isn't
+ * re-sent on the 12s refresh) on a deep-navy "ocean", with a glowing, pulsing
+ * brand marker for each ACTIVE visitor's country and a ranked legend linking to
+ * the Geography report. The land is pixel-aligned to the marker projection
+ * (both use the same Plate Carrée mapping — see scripts/gen-world-vector.mjs).
+ * Country-level, matching the ipinfo "lite" data: markers sit at country
+ * centroids, never faked to a city.
  *
  * Honesty rules: countries we can't place on the map are still LISTED in the
  * legend (marked "not on map"), and visitors with no resolved country are
@@ -109,6 +111,10 @@ export function WorldLiveMap({
             <stop offset="58%" stopColor="#0d1b32" />
             <stop offset="100%" stopColor="#070f1d" />
           </radialGradient>
+          <linearGradient id="mm-land" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2b4a7c" />
+            <stop offset="100%" stopColor="#1b3057" />
+          </linearGradient>
           <filter id="mm-glow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="4.5" />
           </filter>
