@@ -56,6 +56,7 @@ export type Product = {
   images?: string[]; // CMS-managed gallery
   videoUrl?: string; // CMS-managed YouTube link, shown as a playable item in the gallery
   createdAt?: string; // CMS document creation date (ISO) — used for "Newest" sort
+  updatedAt?: string; // CMS last-edit date (ISO) — used for sitemap lastModified
   hsnSac?: string; // HSN/SAC code — snapshotted onto order items for the GST invoice
   countryOfOrigin?: string;
   productType?: string; // "in-stock" | "made-to-order" | "quote-only" | "discontinued"

@@ -13,7 +13,7 @@ export async function ProductsPreview() {
           <SectionHeading
             eyebrow="Shop"
             title="High Quality Research Grade Products"
-            description="Featured items from the catalog. Replace with real products or wire to the API."
+            description="Research-grade electrodes, ion-exchange membranes, electrochemical cells and lab equipment — with bulk B2B pricing and GST invoicing."
           />
           <Button href="/shop" variant="outline" size="sm">
             Visit shop

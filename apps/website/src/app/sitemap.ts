@@ -43,7 +43,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     ...products.map((p) => ({
       url: `${site.url}/shop/p/${p.slug}`,
-      ...(p.createdAt ? { lastModified: p.createdAt } : {}),
+      // Prefer the last EDIT date (price/stock/spec/image changes) over creation
+      // so a re-crawl is signalled when staff update a product.
+      ...(p.updatedAt || p.createdAt ? { lastModified: p.updatedAt || p.createdAt } : {}),
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),

@@ -31,6 +31,9 @@ export default async function ShopHomePage() {
           <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
             METNMAT Store
           </h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+            Research-grade electrochemistry &amp; lab equipment — electrodes, membranes, cells, reactors and accessories.
+          </p>
         </Container>
       </section>
 

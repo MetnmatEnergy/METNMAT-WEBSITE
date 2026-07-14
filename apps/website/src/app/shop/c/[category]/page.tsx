@@ -19,6 +19,7 @@ import {
   getAllCategories,
 } from "@/frontend/lib/cms";
 import { parseShopQuery, shopFacets, applyShopQuery, hasActiveFilters } from "@/frontend/lib/shop-query";
+import { pageMetadata } from "@/frontend/lib/seo";
 
 type Params = { category: string };
 type Search = Record<string, string | string[] | undefined>;
@@ -30,11 +31,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { category } = await params;
   const cat = await getCategoryBySlug(category);
-  return {
+  return pageMetadata({
     title: cat ? `${cat.name} — Shop` : "Category",
-    description: cat?.blurb,
-    alternates: { canonical: `/shop/c/${category}` },
-  };
+    description:
+      cat?.blurb ||
+      `Browse ${cat?.name ?? "research-grade"} products at METNMAT — lab-grade electrochemistry equipment with GST invoicing and shipping across India & worldwide.`,
+    path: `/shop/c/${category}`,
+  });
 }
 
 export default async function CategoryPage({

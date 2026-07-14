@@ -122,6 +122,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
       : { "@type": "Organization", name: site.legalName },
     publisher: {
       "@type": "Organization",
+      "@id": `${site.url}/#organization`,
       name: site.legalName,
       url: site.url,
       logo: { "@type": "ImageObject", url: `${site.url}/icon-512.png` },

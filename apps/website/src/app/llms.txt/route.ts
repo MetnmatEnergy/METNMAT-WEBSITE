@@ -23,7 +23,9 @@ const body = `# ${site.legalName} (${site.name})
 
 Key facts:
 
-- Founded: 2018
+- Founded: 2018, by IIT Kharagpur alumni
+- Disciplines: metallurgy, materials science and electrochemistry R&D
+- Applications: water & AEM/PEM electrolysis, CO₂ reduction, fuel cells, hydrogen and water-splitting, corrosion and materials testing
 ${addressLines}
 - HQ map: ${office.mapsUrl}
 - Email: ${site.contact.email}, ${site.contact.email2}

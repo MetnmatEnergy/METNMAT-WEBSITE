@@ -15,6 +15,23 @@ const toPostalAddress = (a: (typeof site.addresses)[number]) => ({
 const postalAddress = toPostalAddress(primaryOffice);
 
 /**
+ * Richer Organization description for GEO — the single most load-bearing
+ * machine-readable sentence an AI/knowledge-panel reads to summarise the entity.
+ * site.description is a terse one-liner that drops the electrochemistry-equipment
+ * business, applications and geography; this expands it using ONLY facts already
+ * published on the site (CMS company description, About, catalog, offices). No
+ * new claims. site.description stays as-is for other callers.
+ */
+const orgDescription =
+  "METNMAT Innovations is a materials, metallurgy and electrochemistry R&D company. " +
+  "It supplies research-grade electrochemistry lab equipment — electrodes, reference electrodes, " +
+  "ion-exchange membranes, and electrochemical cells and reactors — and delivers turnkey materials " +
+  "and metallurgy R&D from lab-scale prototype through pilot to full industrial scale. " +
+  `Headquartered in ${primaryOffice.locality}, ${primaryOffice.region}, India, with offices in ` +
+  `${site.addresses.slice(1).map((a) => a.locality).join(" and ")}; ships across India and worldwide. ` +
+  "Founded by IIT Kharagpur alumni.";
+
+/**
  * Escape a JSON string for safe embedding in a <script> block. JSON.stringify
  * does NOT escape `<`, `>`, `&` or the JS line separators, so CMS-derived values
  * (product names, blog titles) containing `</script>` could break out of the
@@ -54,7 +71,7 @@ export const organizationJsonLd = {
   url: site.url,
   logo: `${site.url}/icon-512.png`,
   image: `${site.url}/opengraph-image`,
-  description: site.description,
+  description: orgDescription,
   slogan: site.tagline,
   email: [site.contact.email, site.contact.email2],
   telephone: site.contact.phone,
@@ -83,13 +100,25 @@ export const organizationJsonLd = {
       closes: "18:30",
     },
   ],
+  // Declared competencies for GEO — every item is a discipline or product line
+  // the site itself documents (catalog, About, Services, FAQ, blog). Factual
+  // capability list, not keyword stuffing.
   knowsAbout: [
     "Metallurgy",
     "Materials science",
     "Electrochemistry",
+    "Reference electrodes",
+    "Ion-exchange membranes",
+    "Electrochemical cells and reactors",
+    "Fuel cells",
+    "Water electrolysis",
+    "CO2 reduction",
+    "Catalyst development",
     "Heat treatment",
-    "Copper alloys",
-    "R&D",
+    "Alloy and composite development",
+    "Materials characterization",
+    "Process development from lab to industrial scale",
+    "Research and development",
   ],
   address: postalAddress,
   // All offices as Places; only the HQ carries geo + the canonical map link.

@@ -81,6 +81,7 @@ type CmsProduct = {
   images?: { image?: Media }[];
   videoUrl?: string;
   createdAt?: string;
+  updatedAt?: string;
   hsnSac?: string;
   countryOfOrigin?: string;
   productType?: string;
@@ -127,6 +128,7 @@ function mapProduct(d: CmsProduct): Product {
     images: imgs,
     videoUrl: d.videoUrl?.trim() || undefined,
     createdAt: d.createdAt,
+    updatedAt: d.updatedAt,
     hsnSac: d.hsnSac?.trim() || undefined,
     countryOfOrigin: d.countryOfOrigin?.trim() || undefined,
     productType: d.productType?.trim() || undefined,

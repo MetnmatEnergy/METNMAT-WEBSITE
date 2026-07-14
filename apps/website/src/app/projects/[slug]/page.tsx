@@ -32,6 +32,9 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     title: project.seoTitle || project.title,
     description: project.metaDescription || project.summary,
     path: `/projects/${slug}`,
+    // Case studies are the most share-worthy pages — use the real cover so a
+    // shared link shows the project's own image, not the generic OG card.
+    ...(project.coverUrl ? { image: project.coverUrl, imageAlt: project.coverAlt || project.title } : {}),
   });
   // Staff can point the canonical at the original source when this case study
   // canonically lives elsewhere (CMS → SEO → externalUrl).
@@ -75,6 +78,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<Pa
           ...(project.year ? { dateCreated: String(project.year) } : {}),
           publisher: {
             "@type": "Organization",
+            "@id": `${site.url}/#organization`,
             name: site.legalName,
             url: site.url,
             logo: { "@type": "ImageObject", url: `${site.url}/icon-512.png` },

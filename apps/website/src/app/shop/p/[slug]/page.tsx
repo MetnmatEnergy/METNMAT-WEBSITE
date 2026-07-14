@@ -70,11 +70,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           "@context": "https://schema.org",
           "@type": "Product",
           name: product.name,
-          sku: product.sku,
-          mpn: product.sku,
-          category: category?.name,
-          brand: { "@type": "Brand", name: product.brand },
-          description: product.shortDesc,
+          // Emit optional fields only when present — the CMS mapper defaults
+          // brand/sku/shortDesc to "", and shipping empty Brand/description/sku
+          // nodes is invalid structured data that search engines flag.
+          ...(product.sku ? { sku: product.sku, mpn: product.sku } : {}),
+          ...(category?.name ? { category: category.name } : {}),
+          ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
+          ...(product.shortDesc ? { description: product.shortDesc } : {}),
           ...(product.imageUrl ? { image: product.imageUrl } : {}),
           // Only emit a buyable Offer for genuinely purchasable items. A
           // quote-only/discontinued product shows "Price on request" on the
@@ -93,7 +95,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     : "https://schema.org/OutOfStock",
                   itemCondition: "https://schema.org/NewCondition",
                   url: `${site.url}/shop/p/${product.slug}`,
-                  seller: { "@type": "Organization", name: site.legalName },
+                  seller: { "@type": "Organization", "@id": `${site.url}/#organization`, name: site.legalName },
                 },
               }
             : {}),
