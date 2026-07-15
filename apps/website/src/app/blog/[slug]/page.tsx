@@ -225,7 +225,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
                     href={`https://doi.org/${encodeURIComponent(article.doi)}`}
                     target="_blank"
                     rel="noopener noreferrer nofollow"
-                    className="text-brand underline underline-offset-4 hover:text-brand-soft"
+                    className="break-all text-brand underline underline-offset-4 hover:text-brand-soft"
                   >
                     doi:{article.doi}
                   </a>

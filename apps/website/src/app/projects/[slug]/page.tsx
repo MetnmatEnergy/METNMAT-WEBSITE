@@ -104,7 +104,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<Pa
             <span aria-hidden>/</span>
             <Link href="/projects" className="hover:text-foreground">Projects</Link>
             <span aria-hidden>/</span>
-            <span className="truncate text-foreground">{project.title}</span>
+            <span className="min-w-0 truncate text-foreground">{project.title}</span>
           </nav>
 
           {project.category && (

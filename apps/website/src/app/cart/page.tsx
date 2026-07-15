@@ -71,7 +71,7 @@ export default function CartPage() {
             <div key={line.key} className="flex gap-4 p-4">
               <Link
                 href={`/shop/p/${line.slug}`}
-                className="block h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-border bg-white"
+                className="block h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-white sm:h-24 sm:w-24"
               >
                 {line.product.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -87,13 +87,13 @@ export default function CartPage() {
                   </span>
                 )}
               </Link>
-              <div className="flex flex-1 flex-col">
+              <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex justify-between gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-xs uppercase tracking-wide text-muted-foreground">
                       {line.product.brand}
                     </span>
-                    <Link href={`/shop/p/${line.slug}`} className="block font-medium hover:text-brand">
+                    <Link href={`/shop/p/${line.slug}`} className="block break-words font-medium hover:text-brand">
                       {line.product.name}
                     </Link>
                     {line.size && (
@@ -121,7 +121,7 @@ export default function CartPage() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   {money(inclGST(line.unitPrice), usdFor(line.product, inclGST(line.unitPrice)))} / {line.product.unit} · incl. GST
                 </p>
-                <div className="mt-auto flex items-center justify-between pt-3">
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
                   <QuantityStepper
                     value={line.qty}
                     min={line.product.moq}

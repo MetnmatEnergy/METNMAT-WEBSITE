@@ -66,6 +66,11 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
     text-rendering: optimizeLegibility;
+    /* Absolute guarantee of no accidental horizontal scroll on any device — an
+       off-screen drawer/menu or a stray wide element can never rubber-band the
+       page sideways (a real iOS Safari failure mode). `clip` (not `hidden`)
+       keeps the sticky header + scroll-padding anchor navigation working. */
+    overflow-x: clip;
   }
 
   /* Faster, more deliberate taps on touch devices (removes 300ms delay). */

@@ -43,7 +43,7 @@ export function MobileNav({ items = mainNav }: { items?: NavItem[] }) {
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="group relative z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-muted active:scale-95"
+        className="group relative z-50 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-muted active:scale-95"
       >
         <svg
           className="pointer-events-none"

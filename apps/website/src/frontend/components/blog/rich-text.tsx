@@ -226,7 +226,7 @@ export function RichText({ content }: { content: unknown }) {
   if (!root?.children?.length) return null;
   const ctx: Ctx = { headingIds: new Set(), figureCount: { n: 0 }, tableCount: { n: 0 } };
   return (
-    <div className="space-y-4 text-base leading-relaxed text-muted-foreground [&_h2]:text-2xl [&_h3]:text-xl [&_h4]:text-lg">
+    <div className="space-y-4 break-words text-base leading-relaxed text-muted-foreground [&_a]:break-words [&_code]:break-all [&_h2]:text-2xl [&_h3]:text-xl [&_h4]:text-lg">
       {renderNodes(root.children, ctx)}
     </div>
   );

@@ -46,7 +46,7 @@ export function Pagination({ current = 1, total = 1 }: { current?: number; total
   };
 
   return (
-    <nav aria-label="Pagination" className="flex items-center justify-center gap-1">
+    <nav aria-label="Pagination" className="flex flex-wrap items-center justify-center gap-1">
       {arrow("prev", current <= 1)}
       {pages.map((p) => (
         <Link
