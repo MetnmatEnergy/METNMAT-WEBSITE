@@ -14,24 +14,65 @@ export function MobileNav({ items = mainNav }: { items?: NavItem[] }) {
   const [open, setOpen] = React.useState(false);
   const { openModal } = useQuote();
   const pathname = usePathname();
+  const toggleRef = React.useRef<HTMLButtonElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
 
   // Close on route change.
   React.useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  // Native-feel: lock body scroll + close on Escape while open.
+  // Native-feel: lock body scroll + close on Escape while open. A11y: move focus
+  // into the panel, trap Tab within it, and restore focus to the toggle on close
+  // (keyboard / screen-reader users). Extends the same effect/handler so the
+  // existing Escape + route-change close logic is untouched.
   React.useEffect(() => {
     if (!open) return;
+    const panel = panelRef.current;
+    const restoreTo = toggleRef.current;
+
+    const focusables = () =>
+      panel
+        ? Array.from(
+            panel.querySelectorAll<HTMLElement>(
+              'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            )
+          ).filter((el) => el.tabIndex >= 0 && el.offsetParent !== null)
+        : [];
+
+    // Move focus into the panel (first link) on open.
+    focusables()[0]?.focus();
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !panel) return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const inPanel = panel.contains(document.activeElement);
+      if (e.shiftKey) {
+        if (!inPanel || document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (!inPanel || document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
+
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
+      // Restore focus to the toggle on close.
+      restoreTo?.focus();
     };
   }, [open]);
 
@@ -39,6 +80,7 @@ export function MobileNav({ items = mainNav }: { items?: NavItem[] }) {
     <div className="lg:hidden">
       {/* Animated hamburger ⇄ X (top-right corner of the header). */}
       <button
+        ref={toggleRef}
         type="button"
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
@@ -83,7 +125,13 @@ export function MobileNav({ items = mainNav }: { items?: NavItem[] }) {
             className="fixed inset-0 top-14 z-40 cursor-default bg-black/40 backdrop-blur-sm"
           />
           {/* Panel */}
-          <div className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b border-border bg-background p-4 shadow-xl">
+          <div
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+            className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b border-border bg-background p-4 shadow-xl"
+          >
             <nav className="flex flex-col gap-1">
               {items.map((item) => {
                 const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);

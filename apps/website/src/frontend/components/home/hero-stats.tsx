@@ -20,7 +20,12 @@ const NUMBER_CLASS =
   "font-display text-2xl font-bold leading-none tracking-tight tabular-nums sm:text-3xl lg:text-4xl";
 const LABEL_CLASS = "text-xs leading-snug text-muted-foreground";
 const NUM_STAGE = "h-8 sm:h-9 lg:h-11"; // fixed number height → no jump as particles fly
-const LABEL_STAGE = "mt-2 h-9"; // fixed label height (fits the canvas line / a 2-line static label)
+// Canvas slot keeps a fixed height so the <canvas> bitmap has a definite size.
+const LABEL_STAGE = "mt-2 h-9";
+// Static fallback (phones / reduced-motion / SSR): min-height, not a hard height,
+// so a long label that wraps to 3 lines in a narrow phone column grows the box
+// instead of clipping against the band's bottom border. Tops stay aligned.
+const LABEL_STAGE_STATIC = "mt-2 min-h-[2.25rem]"; // 2.25rem === h-9
 
 // Number + label vaporize on the SAME timing so, having mounted together, they
 // advance in lockstep and a slot always shows the matching number↔label pair.
@@ -136,7 +141,7 @@ function StaticSlot({ stats, slot, step }: { stats: Stat[]; slot: number; step: 
       <div className={`flex items-center ${NUM_STAGE}`}>
         <span className={NUMBER_CLASS}>{s.value}</span>
       </div>
-      <div className={LABEL_STAGE}>
+      <div className={LABEL_STAGE_STATIC}>
         <span className={LABEL_CLASS}>{s.label}</span>
       </div>
     </div>

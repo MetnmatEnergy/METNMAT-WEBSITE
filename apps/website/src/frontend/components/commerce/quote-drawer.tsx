@@ -26,6 +26,7 @@ export function QuoteDrawer() {
   const [qty, setQty] = React.useState(1);
   const [attachments, setAttachments] = React.useState<UploadItem[]>([]);
   const formRef = React.useRef<HTMLFormElement>(null);
+  const asideRef = React.useRef<HTMLElement>(null);
 
   const uploading = attachments.some((a) => a.status === "uploading");
 
@@ -38,6 +39,12 @@ export function QuoteDrawer() {
       formRef.current?.reset();
     }
   }, [open, product]);
+
+  // Move focus into the drawer on open so a screen reader announces the dialog
+  // instead of leaving focus on the (now off-screen) trigger control.
+  React.useEffect(() => {
+    if (open) asideRef.current?.focus();
+  }, [open]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -144,11 +151,13 @@ export function QuoteDrawer() {
         aria-hidden
       />
       <aside
+        ref={asideRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="Request for Customization"
         className={cn(
-          "fixed right-0 top-0 z-[95] flex h-dvh w-full max-w-md flex-col rounded-l-3xl border-l-4 border-brand bg-background shadow-2xl transition-transform duration-300",
+          "fixed right-0 top-0 z-[95] flex h-dvh w-full max-w-md flex-col rounded-l-3xl border-l-4 border-brand bg-background shadow-2xl outline-none transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
@@ -315,7 +324,7 @@ export function QuoteDrawer() {
               <input name="name" className={field} placeholder="Your name" />
               {errors.name && <p className="mt-1 text-xs text-brand">{errors.name}</p>}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelCls}>Mobile number *</label>
                 <input name="mobile" className={field} placeholder="+91 …" inputMode="tel" />

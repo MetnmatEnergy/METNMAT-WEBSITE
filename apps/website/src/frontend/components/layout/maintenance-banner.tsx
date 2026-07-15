@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Mail, Phone, Wrench } from "lucide-react";
+import { Container } from "@/frontend/components/ui/container";
 import { getMaintenance, getSettings } from "@/frontend/lib/cms";
 
 /**
@@ -19,7 +20,7 @@ export async function MaintenanceBanner() {
       aria-live="polite"
       className="relative z-[60] border-b border-amber-500/30 bg-amber-500/10 print:hidden"
     >
-      <div className="mx-auto flex max-w-7xl flex-col items-center gap-x-6 gap-y-1 px-4 py-2.5 text-center text-sm sm:flex-row sm:justify-center sm:text-left">
+      <Container className="flex flex-col items-center gap-x-6 gap-y-1 py-2.5 text-center text-sm sm:flex-row sm:justify-center sm:text-left">
         <p className="flex items-start gap-2 font-medium text-amber-700 dark:text-amber-300 sm:items-center">
           <Wrench aria-hidden className="mt-0.5 h-4 w-4 shrink-0 sm:mt-0" />
           <span>{notice.message}</span>
@@ -55,7 +56,7 @@ export async function MaintenanceBanner() {
             )}
           </p>
         )}
-      </div>
+      </Container>
     </div>
   );
 }

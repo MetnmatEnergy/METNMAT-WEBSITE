@@ -6,7 +6,7 @@ import { PageHero } from "@/frontend/components/layout/page-hero";
 import { ServiceCardStack, type ServiceStackItem } from "@/frontend/components/ui/service-card-stack";
 import CardFanCarousel, { type CardItem } from "@/frontend/components/ui/card-fan-carousel";
 import { CtaBand } from "@/frontend/components/home/cta";
-import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, organizationJsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 import { getServices } from "@/frontend/lib/cms";
 import { SERVICE_IMAGES } from "@/frontend/lib/service-images";
 import { SERVICE_DETAILS } from "@/frontend/lib/service-details";
@@ -71,16 +71,27 @@ export default async function ServicesPage() {
     };
   });
 
+  // Type each item as a schema.org Service PROVIDED BY the organization (not a
+  // bare ListItem) so answer engines can ground "what services does METNMAT
+  // offer / does METNMAT do heat treatment" against the #organization entity.
+  // Uses only real CMS title/summary + the on-page anchor — no price/rating/
+  // duration (services are quote-based), so nothing is invented.
   const servicesJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: "METNMAT services",
+    name: `${site.legalName} services`,
     itemListElement: services.map((s, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      name: s.title,
-      description: s.summary,
-      url: `${site.url}/services#${s.slug}`,
+      item: {
+        "@type": "Service",
+        name: s.title,
+        ...(s.summary ? { description: s.summary } : {}),
+        serviceType: s.title,
+        url: `${site.url}/services#${s.slug}`,
+        provider: { "@id": `${site.url}/#organization` },
+        areaServed: ["IN", "Worldwide"],
+      },
     })),
   };
 
@@ -92,6 +103,9 @@ export default async function ServicesPage() {
           { name: "Services", path: "/services" },
         ])}
       />
+      {/* Emit the org node here so each Service's provider {@id:#organization}
+          resolves; deduped by @id (same as /, /about, /contact). */}
+      <JsonLd data={organizationJsonLd} />
       <JsonLd data={servicesJsonLd} />
       <PageHero
         eyebrow="Services"

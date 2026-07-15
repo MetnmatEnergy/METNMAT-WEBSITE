@@ -25,6 +25,7 @@ export function QuoteModal() {
   const [qty, setQty] = React.useState(1);
   const [attachments, setAttachments] = React.useState<UploadItem[]>([]);
   const formRef = React.useRef<HTMLFormElement>(null);
+  const dialogRef = React.useRef<HTMLDivElement>(null);
 
   const uploading = attachments.some((a) => a.status === "uploading");
 
@@ -36,6 +37,13 @@ export function QuoteModal() {
       setAttachments([]);
       formRef.current?.reset();
     }
+  }, [modalOpen]);
+
+  // Move focus onto the dialog when it opens so a screen reader announces
+  // "Get a Quote, dialog" — otherwise focus is left on whatever triggered it
+  // (e.g. the mobile-nav toggle, which is then hidden behind this overlay).
+  React.useEffect(() => {
+    if (modalOpen) dialogRef.current?.focus();
   }, [modalOpen]);
 
   React.useEffect(() => {
@@ -138,10 +146,12 @@ export function QuoteModal() {
           onClick={closeModal}
         >
           <div
+            ref={dialogRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-label="Get a Quote"
-            className="relative flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl"
+            className="relative flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
