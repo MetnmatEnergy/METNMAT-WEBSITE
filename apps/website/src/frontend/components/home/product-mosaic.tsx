@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { getFeaturedProducts } from "@/frontend/lib/cms";
 import type { Product } from "@/frontend/lib/catalog";
@@ -15,12 +16,18 @@ function MosaicCard({ product }: { product: Product }) {
       className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-colors hover:border-brand/40"
     >
       {product.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={product.imageUrl}
-          alt={product.name}
-          className="aspect-[4/3] w-full object-cover"
-        />
+        // next/image → responsive srcset + optimisation + native lazy-load.
+        // This mosaic is a decorative, duplicated auto-scroller, so lazy (the
+        // default) is correct — it must not compete with the hero's LCP.
+        <div className="relative aspect-[4/3] w-full overflow-hidden">
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            sizes="(max-width: 1024px) 40vw, 220px"
+            className="object-cover"
+          />
+        </div>
       ) : (
         <MediaPlaceholder className="aspect-[4/3]" label={product.brand || "METNMAT"} />
       )}

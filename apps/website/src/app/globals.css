@@ -49,6 +49,13 @@
     --border: 240 6% 88%;
     --input: 240 6% 88%;
     --ring: 357 74% 49%;
+
+    /* WCAG AA on light backgrounds. The dark-theme --brand-soft (357 74% 60%)
+       has good contrast on the dark surface but only ~3.8:1 on white — and
+       ~3.3:1 on the bg-brand/10 chips — so small text set in text-brand-soft
+       fails AA in light mode. Darken it here (light only) to ~4.8:1 on white /
+       ~4.6:1 on the chips. Same brand hue/saturation, no dark-mode change. */
+    --brand-soft: 357 74% 47%;
   }
 
   * {

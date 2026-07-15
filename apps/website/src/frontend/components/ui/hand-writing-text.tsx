@@ -56,21 +56,24 @@ function HandWrittenTitle({ title = "Hand Written", subtitle }: HandWrittenTitle
             className="opacity-90"
           />
         </motion.svg>
+        {/* The hero h1 is the page's LCP element. `initial={false}` renders it at
+            its final (visible) state in the SSR HTML — so it paints instantly and
+            stays visible with JS disabled — instead of shipping opacity:0 and only
+            revealing after hydration + a 1.3s delay. The decorative circle above
+            still draws itself in. */}
         <motion.h1
           className="relative z-10 font-display text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl"
-          initial={{ opacity: 0, y: reduce ? 0 : 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: reduce ? 0 : 0.5, duration: reduce ? 0 : 0.8 }}
+          initial={false}
         >
           {title}
         </motion.h1>
       </div>
       {subtitle && (
+        // Real hero copy — render it visible in the SSR HTML (no-JS resilient,
+        // no hydration-gated reveal) rather than starting at opacity:0.
         <motion.p
           className="mt-5 max-w-xl text-base leading-relaxed text-foreground/70 sm:text-lg"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: reduce ? 0 : 1, duration: reduce ? 0 : 0.8 }}
+          initial={false}
         >
           {subtitle}
         </motion.p>
