@@ -35,6 +35,13 @@ const EVENT_TYPES = new Set([
   "form_start",
   "form_submit",
   "search",
+  // Commerce-intent funnel — stored as raw events so add-to-cart → checkout-start
+  // → purchase (and payment failures) become derivable. This CMS-side whitelist
+  // must ship BEFORE the website starts emitting them (unknown types are dropped
+  // silently), so it is deployed on its own first.
+  "add_to_cart",
+  "checkout_start",
+  "payment_failed",
   "purchase",
 ]);
 
