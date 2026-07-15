@@ -18,7 +18,7 @@ import {
   EmptyHint,
 } from "../charts";
 import type { ResolvedRange } from "./range";
-import { delta, istDayOf } from "./range";
+import { delta, istDayOf, istDayStart } from "./range";
 import {
   rollupsFor,
   sumRollups,
@@ -106,6 +106,34 @@ export async function Highlights({ payload, range }: Ctx) {
   const paid = orders.filter((o) => ["paid", "shipped", "delivered"].includes(o.status || ""));
   const revenue = paid.reduce((n, o) => n + (o.total || 0), 0);
 
+  // Business outcomes for the COMPARISON period, so Orders/Enquiries/Revenue show
+  // a real trend (not the old hard-coded previous=0). Only when comparing.
+  const comparing = range.compare !== "none" && range.compareDays.length > 0;
+  const cmpFrom = comparing ? new Date(istDayStart(range.compareDays[0])) : null;
+  const cmpTo = comparing ? new Date(istDayStart(range.compareDays[range.compareDays.length - 1]) + 86_400_000 - 1) : null;
+  const [prevOrdersRes, prevEnquiriesRes] =
+    comparing && cmpFrom && cmpTo
+      ? await Promise.all([
+          payload
+            .find({
+              collection: "orders" as never,
+              where: { and: [{ createdAt: { greater_than_equal: cmpFrom.toISOString() } }, { createdAt: { less_than_equal: cmpTo.toISOString() } }] } as never,
+              limit: 1000,
+              depth: 0,
+            })
+            .catch(() => ({ docs: [] as unknown[] })),
+          payload
+            .count({
+              collection: "enquiries" as never,
+              where: { and: [{ createdAt: { greater_than_equal: cmpFrom.toISOString() } }, { createdAt: { less_than_equal: cmpTo.toISOString() } }] } as never,
+            })
+            .catch(() => ({ totalDocs: 0 })),
+        ])
+      : [{ docs: [] as unknown[] }, { totalDocs: 0 }];
+  const prevOrders = prevOrdersRes.docs as { status?: string; total?: number }[];
+  const prevRevenue = prevOrders.filter((o) => ["paid", "shipped", "delivered"].includes(o.status || "")).reduce((n, o) => n + (o.total || 0), 0);
+  const bizCompare = comparing ? range.compare : "none";
+
   const sources = Object.entries(cur.bySource)
     .sort((a, b) => b[1] - a[1])
     .map(([key, sessions]) => ({ label: key, value: sessions, display: String(sessions) }));
@@ -124,9 +152,9 @@ export async function Highlights({ payload, range }: Ctx) {
         <KpiCard label="Site sessions" value={String(cur.sessions)} current={cur.sessions} previous={prev.sessions} compare={range.compare} series={seriesFrom(rows, range.days, (r) => r.sessions ?? 0)} color={SUCCESS} sub={`${stats.visitors} unique visitors`} />
         <KpiCard label="Page views" value={String(cur.pageViews)} current={cur.pageViews} previous={prev.pageViews} compare={range.compare} series={seriesFrom(rows, range.days, (r) => r.pageViews ?? 0)} color={INFO} sub={stats.sessions > 0 ? `${(stats.totalPageViews / stats.sessions).toFixed(1)} pages / session` : undefined} />
         <KpiCard label="Form submissions" value={String(cur.formSubmits)} current={cur.formSubmits} previous={prev.formSubmits} compare={range.compare} series={seriesFrom(rows, range.days, (r) => r.formSubmits ?? 0)} color={ACCENT} sub="quote · contact · support" />
-        <KpiCard label="Enquiries (RFQ)" value={String(enquiriesRes.totalDocs)} current={enquiriesRes.totalDocs} previous={0} compare="none" sub="business records, full history" />
-        <KpiCard label="Orders" value={String(orders.length)} current={orders.length} previous={0} compare="none" sub={`${paid.length} paid`} />
-        <KpiCard label="Revenue" value={inrCompact(revenue)} current={revenue} previous={0} compare="none" sub="paid orders in range (Orders collection)" />
+        <KpiCard label="Enquiries (RFQ)" value={String(enquiriesRes.totalDocs)} current={enquiriesRes.totalDocs} previous={prevEnquiriesRes.totalDocs} compare={bizCompare} color={ACCENT} sub="RFQ records in this period" />
+        <KpiCard label="Orders" value={String(orders.length)} current={orders.length} previous={prevOrders.length} compare={bizCompare} color={SUCCESS} sub={`${paid.length} paid`} />
+        <KpiCard label="Revenue" value={inrCompact(revenue)} current={revenue} previous={prevRevenue} compare={bizCompare} color={BRAND} sub="paid orders in range (Orders collection)" />
       </div>
 
       <div className="mn-a-split" style={{ display: "grid", gap: 14, marginTop: 14 }}>
