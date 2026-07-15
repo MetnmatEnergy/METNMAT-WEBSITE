@@ -34,13 +34,20 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
 export function Button({ className, variant, size, href, ...props }: ButtonProps) {
   const classes = cn(buttonVariants({ variant, size }), className);
   if (href) {
+    // Forward passthrough props (data-track, aria-*, title, id…) to the anchor
+    // too — previously only onClick/children survived, so a data-track on a link
+    // Button was silently dropped and never reached the analytics click listener.
+    const { children, onClick, ...rest } = props;
     return (
       <Link
         href={href}
         className={classes}
-        onClick={props.onClick as React.MouseEventHandler<HTMLAnchorElement> | undefined}
+        onClick={onClick as React.MouseEventHandler<HTMLAnchorElement> | undefined}
+        // rest is typed for a button; the passthrough we care about (data-*,
+        // aria-*, title, id) is valid on an anchor. Cast to satisfy Link's props.
+        {...(rest as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
       >
-        {props.children}
+        {children}
       </Link>
     );
   }

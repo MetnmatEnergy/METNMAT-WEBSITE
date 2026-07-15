@@ -36,7 +36,7 @@ export function CtaBand() {
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <GetQuoteButton label="Get a Quote" size="lg" withArrow />
-              <Button href="/contact" variant="outline" size="lg">
+              <Button href="/contact" variant="outline" size="lg" data-track="contact-us-home">
                 Contact us
               </Button>
             </div>

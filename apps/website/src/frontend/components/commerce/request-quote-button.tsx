@@ -23,6 +23,7 @@ export function RequestQuoteButton({
   return (
     <button
       type="button"
+      data-track="request-quote-product"
       onClick={() => openQuote(product)}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors active:scale-[0.98]",
@@ -58,6 +59,7 @@ export function GetQuoteButton({
   return (
     <button
       type="button"
+      data-track="get-a-quote"
       onClick={() => openModal()}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-full bg-brand font-semibold text-brand-foreground transition-colors hover:bg-brand/90",
