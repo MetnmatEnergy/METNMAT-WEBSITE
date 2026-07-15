@@ -9,7 +9,6 @@ export async function TopBar() {
   const settings = await getSettings();
   const email = settings.contact.email || site.contact.email;
   const phone = settings.contact.phone || site.contact.phone;
-  const shipping = settings.contact.shippingNote || site.contact.shipping;
   const social = {
     linkedin: settings.social.linkedin && settings.social.linkedin !== "#" ? settings.social.linkedin : site.social.linkedin,
     youtube: settings.social.youtube && settings.social.youtube !== "#" ? settings.social.youtube : site.social.youtube,
@@ -36,7 +35,6 @@ export async function TopBar() {
           </a>
         </div>
         <div className="flex items-center gap-5">
-          <span>{shipping}</span>
           <span className="flex items-center gap-3">
             <a
               href={social.linkedin}
