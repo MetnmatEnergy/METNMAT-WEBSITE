@@ -10,23 +10,14 @@ import { site } from "@/frontend/lib/site";
 export function Logo() {
   return (
     <Link href="/" className="flex items-center" aria-label={`${site.name} home`}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/logo-metnmat.png"
-        alt=""
+      {/* One theme-adaptive lockup as a background-image: the browser only fetches
+          the variant whose selector matches the applied theme class (set before
+          paint), so we load ONE logo instead of downloading both PNGs on every
+          page. aspect-[656/194] keeps the exact intrinsic ratio at h-8 / sm:h-9.
+          Decorative — the Link carries the accessible name. */}
+      <span
         aria-hidden
-        className="h-8 w-auto sm:h-9 dark:hidden"
-        width={656}
-        height={194}
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/logo-metnmat-dark.png"
-        alt=""
-        aria-hidden
-        className="hidden h-8 w-auto sm:h-9 dark:block"
-        width={656}
-        height={194}
+        className="block h-8 sm:h-9 aspect-[656/194] bg-[url('/logo-metnmat.png')] bg-contain bg-left bg-no-repeat dark:bg-[url('/logo-metnmat-dark.png')]"
       />
     </Link>
   );

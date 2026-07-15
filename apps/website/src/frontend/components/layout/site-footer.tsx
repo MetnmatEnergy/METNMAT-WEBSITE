@@ -48,21 +48,13 @@ export async function SiteFooter() {
           {/* --- Branding --- */}
           <div className="max-w-sm">
             <span className="inline-flex items-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo-metnmat.png"
-                alt={`${legalName} logo`}
-                className="h-9 w-auto dark:hidden"
-                width={656}
-                height={194}
-              />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo-metnmat-dark.png"
-                alt={`${legalName} logo`}
-                className="hidden h-9 w-auto dark:block"
-                width={656}
-                height={194}
+              {/* Single theme-adaptive lockup (background-image) so only the
+                  active-theme PNG downloads, not both. role/aria-label keep the
+                  accessible name the two <img alt> tags carried. */}
+              <span
+                role="img"
+                aria-label={`${legalName} logo`}
+                className="block h-9 aspect-[656/194] bg-[url('/logo-metnmat.png')] bg-contain bg-left bg-no-repeat dark:bg-[url('/logo-metnmat-dark.png')]"
               />
             </span>
             <p className="mt-4 text-sm font-medium text-foreground/90">{tagline}.</p>
