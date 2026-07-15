@@ -24,7 +24,11 @@ export function ChatWidget() {
     <Script
       src={`${CHATBOT_URL}/widget.js`}
       data-site-key="metnmat-main"
-      strategy="afterInteractive"
+      // The chat bubble is non-critical UI. lazyOnload defers this ~350 KiB
+      // third-party script to browser idle, AFTER the page has loaded, so it no
+      // longer competes with the LCP image, fonts and hydration. The bubble
+      // appears a moment later — the right trade for a support widget.
+      strategy="lazyOnload"
     />
   );
 }

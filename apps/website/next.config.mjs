@@ -73,6 +73,12 @@ const nextConfig = {
   // Transpile the shared TS workspace package.
   transpilePackages: ["@metnmat/types"],
   images: {
+    // Optimized images are keyed by (src, width, quality) and our sources have
+    // stable URLs, so cache them for a year. The default is 60s, which made the
+    // shop hero banner (the LCP element) a `_next/image` cache MISS on Lighthouse
+    // — Next re-encoded it on demand every time, inflating LCP to ~7s. A long TTL
+    // serves it from cache with a long browser Cache-Control instead.
+    minimumCacheTTL: 31536000,
     // CMS/dashboard media host + Supabase storage, for any next/image usage.
     // The CMS host is derived from NEXT_PUBLIC_CMS_URL so production media
     // (e.g. https://admin.metnmat.com) isn't blocked — falls back to localhost.
@@ -89,6 +95,15 @@ const nextConfig = {
   async headers() {
     return [
       { source: "/(.*)", headers: securityHeaders },
+      // Long-cache static media & fonts in /public (banners, logos, favicon,
+      // icons, web fonts). Next serves these with `max-age=0` by default, so
+      // they were re-downloaded on every visit (Lighthouse "cache-insight",
+      // ~282 KiB). They ship with stable filenames, so immutable is safe — bust
+      // by shipping a NEW filename, never by editing a file in place.
+      {
+        source: "/(.*)\\.(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|ttf|otf)",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
       // Auth endpoints set Set-Cookie (session + OAuth handshake); never let any
       // shared cache store these responses.
       {
