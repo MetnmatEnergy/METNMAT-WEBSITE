@@ -155,6 +155,24 @@ export async function getAllProducts(): Promise<Product[]> {
   return (data?.docs ?? []).map(mapProduct);
 }
 
+/**
+ * Lightweight product list for the sitemap: slug + timestamps only, `depth=0` so
+ * NO relationships/media are populated. The full getAllProducts (depth=1,
+ * limit=500) is heavy enough to time out against a cold CMS during a build — when
+ * it does, the sitemap's `.catch(() => [])` silently drops EVERY product URL.
+ * This query is cheap and reliable, so product pages always make the sitemap.
+ */
+export async function getProductSitemapEntries(): Promise<
+  { slug: string; updatedAt?: string; createdAt?: string }[]
+> {
+  const data = await api<{ docs: { slug?: string; updatedAt?: string; createdAt?: string }[] }>(
+    "/api/products?depth=0&limit=1000&sort=-createdAt"
+  );
+  return (data?.docs ?? [])
+    .filter((d): d is { slug: string; updatedAt?: string; createdAt?: string } => Boolean(d.slug))
+    .map((d) => ({ slug: d.slug, updatedAt: d.updatedAt, createdAt: d.createdAt }));
+}
+
 export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
   const data = await api<{ docs: CmsProduct[] }>(
     `/api/products?depth=1&limit=${limit}&where[featured][equals]=true`

@@ -1,7 +1,13 @@
 import type { MetadataRoute } from "next";
 import { site, mainNav } from "@/frontend/lib/site";
-import { getAllProducts, getAllCategories, getProjects } from "@/frontend/lib/cms";
+import { getProductSitemapEntries, getAllCategories, getProjects } from "@/frontend/lib/cms";
 import { listBlogArticlesForFeed } from "@/frontend/lib/blog";
+
+// Regenerate at runtime (ISR) rather than pinning the build-time snapshot. The
+// CMS can be cold/slow during a Cloud Build, which was silently dropping the
+// whole product list (and project lastmods) from the sitemap; at runtime the CMS
+// is warm and every fetch succeeds, so the sitemap self-heals within the window.
+export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // No "/search" here — robots.ts disallows it, and a sitemap must not list
@@ -24,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // appear (the CMS only exposes public articles and the feed helper also
   // excludes noIndex).
   const [products, categories, articles, projects] = await Promise.all([
-    getAllProducts().catch(() => []),
+    getProductSitemapEntries().catch(() => []),
     getAllCategories().catch(() => []),
     listBlogArticlesForFeed(500).catch(() => []),
     getProjects().catch(() => []),
