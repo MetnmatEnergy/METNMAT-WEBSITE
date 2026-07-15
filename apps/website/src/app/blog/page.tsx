@@ -91,10 +91,25 @@ export default async function BlogPage({
           url: `${site.url}/blog`,
           publisher: {
             "@type": "Organization",
+            "@id": `${site.url}/#organization`,
             name: site.legalName,
             url: site.url,
             logo: { "@type": "ImageObject", url: `${site.url}/icon-512.png` },
           },
+          // Enumerate the articles shown on this page (real, already-fetched
+          // BlogArticleCard fields) so the listing itself is item-level
+          // structured data, mirroring /projects and the shop listings.
+          ...(listing.articles.length
+            ? {
+                blogPost: listing.articles.map((a) => ({
+                  "@type": "BlogPosting",
+                  headline: a.title,
+                  url: `${site.url}/blog/${a.slug}`,
+                  ...(a.date ? { datePublished: a.date } : {}),
+                  ...(a.coverUrl ? { image: a.coverUrl } : {}),
+                })),
+              }
+            : {}),
         }}
       />
       <JsonLd data={breadcrumbJsonLd([{ name: "Home", path: "/" }, { name: "Blog", path: "/blog" }])} />

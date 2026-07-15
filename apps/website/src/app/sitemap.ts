@@ -38,6 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     ...categories.map((c) => ({
       url: `${site.url}/shop/c/${c.slug}`,
+      ...(c.updatedAt ? { lastModified: c.updatedAt } : {}),
       changeFrequency: "weekly" as const,
       priority: 0.6,
     })),

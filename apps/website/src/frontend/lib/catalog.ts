@@ -17,6 +17,7 @@ export type Category = {
   parent?: string; // parent category slug (omit for top-level departments)
   blurb?: string;
   imageUrl?: string; // CMS-managed category image
+  updatedAt?: string; // CMS last-edit date (ISO) — used for sitemap lastModified
 };
 
 export type PriceTier = { minQty: number; price: number };

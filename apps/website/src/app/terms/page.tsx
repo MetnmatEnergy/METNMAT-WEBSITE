@@ -1,15 +1,15 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/frontend/lib/seo";
 import { Container } from "@/frontend/components/ui/container";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { Button } from "@/frontend/components/ui/button";
 import { site } from "@/frontend/lib/site";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Terms of Service",
   description:
     "The terms governing use of the METNMAT Research & Innovations website, catalog, quotes, and online orders.",
-  alternates: { canonical: "/terms" },
-};
+  path: "/terms",
+});
 
 const LAST_UPDATED = "13 June 2026";
 

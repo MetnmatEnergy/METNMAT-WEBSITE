@@ -8,17 +8,23 @@ import { cn } from "@/frontend/lib/utils";
 const TABS = ["Description", "Specifications", "Documents", "Shipping & Returns"] as const;
 type Tab = (typeof TABS)[number];
 
+const tabId = (t: Tab) => `product-tab-${t.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
 export function ProductTabs({ product }: { product: Product }) {
   const [tab, setTab] = React.useState<Tab>("Description");
 
   return (
     <div>
       {/* Tab bar */}
-      <div className="flex flex-wrap gap-1 border-b border-border">
+      <div role="tablist" aria-label="Product details" className="flex flex-wrap gap-1 border-b border-border">
         {TABS.map((t) => (
           <button
             key={t}
             type="button"
+            role="tab"
+            id={tabId(t)}
+            aria-selected={tab === t}
+            aria-controls="product-tabpanel"
             onClick={() => setTab(t)}
             className={cn(
               "relative px-4 py-3 text-sm font-medium transition-colors",
@@ -31,7 +37,13 @@ export function ProductTabs({ product }: { product: Product }) {
         ))}
       </div>
 
-      <div className="py-6">
+      <div
+        id="product-tabpanel"
+        role="tabpanel"
+        aria-labelledby={tabId(tab)}
+        tabIndex={0}
+        className="py-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+      >
         {tab === "Description" && (
           <div className="max-w-3xl space-y-4 text-muted-foreground">
             <p>{product.shortDesc || "Detailed product description."}</p>

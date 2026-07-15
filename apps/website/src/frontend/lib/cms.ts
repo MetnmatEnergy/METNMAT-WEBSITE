@@ -56,6 +56,7 @@ type CmsCategory = {
   order?: number;
   parent?: { slug?: string } | string | null;
   image?: Media;
+  updatedAt?: string;
 };
 
 type CmsProduct = {
@@ -142,6 +143,7 @@ function mapCategory(d: CmsCategory): Category {
     blurb: d.blurb,
     parent: typeof d.parent === "object" && d.parent ? d.parent.slug : undefined,
     imageUrl: mediaUrl(d.image),
+    updatedAt: d.updatedAt,
   };
 }
 

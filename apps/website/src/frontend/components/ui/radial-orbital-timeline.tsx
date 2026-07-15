@@ -170,11 +170,22 @@ export default function RadialOrbitalTimeline({ timelineData }: RadialOrbitalTim
                 ref={(el) => {
                   nodeRefs.current[item.id] = el;
                 }}
-                className="absolute cursor-pointer transition-all duration-700"
+                role="button"
+                tabIndex={0}
+                aria-expanded={!!isExpanded}
+                aria-label={`${item.title} — ${item.category}, stage maturity ${item.energy}%. ${item.content}`}
+                className="absolute cursor-pointer rounded-full transition-all duration-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0f]"
                 style={nodeStyle}
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleItem(item.id);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleItem(item.id);
+                  }
                 }}
               >
                 <div

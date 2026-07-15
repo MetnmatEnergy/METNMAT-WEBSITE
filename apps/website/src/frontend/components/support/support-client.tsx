@@ -427,7 +427,7 @@ function Bubble({ from, authorName, body, createdAt, youLabel }: { from: "custom
         <div className={cn("mb-0.5 text-[11px] font-semibold", isYou ? "text-brand-foreground/80" : "text-brand-soft")}>
           {isYou ? (youLabel ? "You" : authorName || "You") : authorName || "METNMAT Support"}
         </div>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed">{body}</p>
+        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{body}</p>
         {createdAt && <div className={cn("mt-1 text-[10px]", isYou ? "text-brand-foreground/70" : "text-muted-foreground")}>{fmtDate(createdAt)}</div>}
       </div>
     </div>

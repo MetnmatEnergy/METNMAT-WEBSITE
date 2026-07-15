@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
 import { Container } from "@/frontend/components/ui/container";
 import { PageHero } from "@/frontend/components/layout/page-hero";
+import { pageMetadata } from "@/frontend/lib/seo";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { Button } from "@/frontend/components/ui/button";
 import { site } from "@/frontend/lib/site";
@@ -14,12 +14,12 @@ import {
   Headset,
 } from "lucide-react";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Replacement Policy",
   description:
     "METNMAT operates a no-refund, replacement-only policy. Eligible items can be replaced within 7 days of delivery when they arrive damaged, defective, or incorrect.",
-  alternates: { canonical: "/replacement-policy" },
-};
+  path: "/replacement-policy",
+});
 
 const LAST_UPDATED = "13 June 2026";
 

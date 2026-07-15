@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { GlowCard } from "@/frontend/components/ui/spotlight-card";
@@ -12,13 +13,13 @@ export function CategoryCard({ category }: { category: Category }) {
         className="flex h-full flex-col gap-3 p-3 transition-transform duration-300 group-hover:-translate-y-0.5"
       >
         {category.imageUrl ? (
-          <span className="block aspect-[5/3] overflow-hidden rounded-xl bg-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <span className="relative block aspect-[5/3] overflow-hidden rounded-xl bg-white">
+            <Image
               src={category.imageUrl}
               alt={category.name}
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
           </span>
         ) : (

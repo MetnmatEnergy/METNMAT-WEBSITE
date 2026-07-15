@@ -1,15 +1,15 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/frontend/lib/seo";
 import { Container } from "@/frontend/components/ui/container";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { Button } from "@/frontend/components/ui/button";
 import { site } from "@/frontend/lib/site";
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: "Privacy Policy",
   description:
     "How METNMAT Research & Innovations collects, uses, shares, and protects your personal data, and the rights you have over it.",
-  alternates: { canonical: "/privacy" },
-};
+  path: "/privacy",
+});
 
 const LAST_UPDATED = "13 June 2026";
 
