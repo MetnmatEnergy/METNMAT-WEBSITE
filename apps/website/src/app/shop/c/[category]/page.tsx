@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/frontend/components/ui/container";
-import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, breadcrumbJsonLd, itemListJsonLd } from "@/frontend/components/seo/json-ld";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
 import { FilterSidebar } from "@/frontend/components/commerce/filter-sidebar";
 import { FilterDrawer } from "@/frontend/components/commerce/filter-drawer";
@@ -26,18 +26,36 @@ type Search = Record<string, string | string[] | undefined>;
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<Params>;
+  searchParams: Promise<Search>;
 }): Promise<Metadata> {
   const { category } = await params;
   const cat = await getCategoryBySlug(category);
-  return pageMetadata({
+  const query = parseShopQuery(await searchParams);
+  const filtered = hasActiveFilters(query);
+  const base = pageMetadata({
     title: cat ? `${cat.name} — Shop` : "Category",
     description:
       cat?.blurb ||
       `Browse ${cat?.name ?? "research-grade"} products at METNMAT — lab-grade electrochemistry equipment with GST invoicing and shipping across India & worldwide.`,
     path: `/shop/c/${category}`,
   });
+  return {
+    ...base,
+    // Filtered/sorted views are thin near-duplicates — noindex (still follow so
+    // crawlers reach the products) rather than self-canonicalising away the filter.
+    ...(filtered ? { robots: { index: false, follow: true } } : {}),
+    alternates: {
+      ...base.alternates,
+      // Unfiltered pagination canonicalises to ITSELF — pointing pages 2+ at
+      // page 1 would tell crawlers to drop every product past the first page.
+      ...(!filtered && query.page > 1
+        ? { canonical: `/shop/c/${category}?page=${query.page}` }
+        : {}),
+    },
+  };
 }
 
 export default async function CategoryPage({
@@ -81,6 +99,14 @@ export default async function CategoryPage({
           { name: cat.name, path: `/shop/c/${cat.slug}` },
         ])}
       />
+      {items.length > 0 && (
+        <JsonLd
+          data={itemListJsonLd(
+            `${cat.name} — products`,
+            items.map((p) => ({ name: p.name, path: `/shop/p/${p.slug}` })),
+          )}
+        />
+      )}
       <Breadcrumbs
         items={[
           { name: "Home", href: "/" },

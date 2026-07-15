@@ -78,6 +78,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
           ...(product.shortDesc ? { description: product.shortDesc } : {}),
           ...(product.imageUrl ? { image: product.imageUrl } : {}),
+          // Surface the technical specs already rendered on the page as
+          // machine-readable properties (rich results + AI grounding).
+          ...(product.specs && product.specs.length > 0
+            ? { additionalProperty: product.specs.filter((s) => s.label && s.value).map((s) => ({ "@type": "PropertyValue", name: s.label, value: s.value })) }
+            : {}),
           // Only emit a buyable Offer for genuinely purchasable items. A
           // quote-only/discontinued product shows "Price on request" on the
           // page, so advertising a concrete price + InStock in structured data

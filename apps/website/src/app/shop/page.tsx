@@ -10,6 +10,7 @@ import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-but
 import { ShopShowcase } from "@/frontend/components/commerce/shop-showcase";
 import { getTopCategories, getFeaturedProducts } from "@/frontend/lib/cms";
 import { pageMetadata } from "@/frontend/lib/seo";
+import { JsonLd, breadcrumbJsonLd, itemListJsonLd } from "@/frontend/components/seo/json-ld";
 
 export const metadata: Metadata = pageMetadata({
   title: "Shop — Electrodes, Membranes, Cells & Lab Equipment",
@@ -25,6 +26,8 @@ export default async function ShopHomePage() {
   ]);
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd([{ name: "Home", path: "/" }, { name: "Shop", path: "/shop" }])} />
+      <JsonLd data={itemListJsonLd("METNMAT Shop departments", categories.map((c) => ({ name: c.name, path: `/shop/c/${c.slug}` })))} />
       {/* Store title — stays at the top */}
       <section className="bg-surface/40">
         <Container className="pb-2 pt-4">

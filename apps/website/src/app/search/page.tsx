@@ -13,6 +13,12 @@ import { sortProducts, PAGE_SIZE } from "@/frontend/lib/shop-query";
 export const metadata: Metadata = {
   title: "Search",
   description: "Search the whole METNMAT site — products, categories and pages.",
+  // Query-result pages are thin, infinite-permutation, per-visitor views — keep
+  // them out of the index (still follow, so crawlers reach real product/content
+  // pages). robots.ts also Disallows /search; this is the belt-and-braces meta,
+  // since a URL can be indexed from inbound links even when crawling is blocked.
+  robots: { index: false, follow: true },
+  alternates: { canonical: "/search" },
 };
 
 export default async function SearchPage({

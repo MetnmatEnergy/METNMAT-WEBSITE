@@ -181,6 +181,23 @@ export function faqJsonLd(faqs: { q: string; a: string }[]) {
   };
 }
 
+/** ItemList of links (a product grid or a category list) — helps search + AI
+ *  understand a listing page's contents. Paths are absolute-ised against site.url. */
+export function itemListJsonLd(name: string, items: { name: string; path: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    numberOfItems: items.length,
+    itemListElement: items.map((it, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${site.url}${it.path}`,
+      name: it.name,
+    })),
+  };
+}
+
 /** Build a BreadcrumbList for a page (rich results + AI grounding). */
 export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
   return {

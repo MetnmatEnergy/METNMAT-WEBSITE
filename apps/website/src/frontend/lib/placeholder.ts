@@ -25,6 +25,7 @@ export type Project = {
   highlights?: { label: string; value: string }[];
   coverUrl?: string;
   coverAlt?: string;
+  updatedAt?: string;
 };
 export type Product = {
   slug: string;

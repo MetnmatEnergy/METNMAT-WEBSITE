@@ -333,6 +333,7 @@ type CmsProjectDoc = {
   seoTitle?: string;
   metaDescription?: string;
   externalUrl?: string;
+  updatedAt?: string;
 };
 
 function mapProjectCard(d: CmsProjectDoc): Project {
@@ -351,6 +352,7 @@ function mapProjectCard(d: CmsProjectDoc): Project {
       .map((h) => ({ label: h.label as string, value: h.value as string })),
     coverUrl: mediaUrl(d.coverImage),
     coverAlt: d.coverImageAlt,
+    updatedAt: d.updatedAt,
   };
 }
 

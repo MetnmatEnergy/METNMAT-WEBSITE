@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/frontend/components/ui/container";
-import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, breadcrumbJsonLd, itemListJsonLd } from "@/frontend/components/seo/json-ld";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
 import { FilterSidebar } from "@/frontend/components/commerce/filter-sidebar";
 import { FilterDrawer } from "@/frontend/components/commerce/filter-drawer";
@@ -17,12 +17,31 @@ import { pageMetadata } from "@/frontend/lib/seo";
 
 type Search = Record<string, string | string[] | undefined>;
 
-export const metadata: Metadata = pageMetadata({
-  title: "All Products — Shop the Full Catalog",
-  description:
-    "Browse the complete METNMAT catalog — electrodes, ion-exchange membranes, electrochemical cells & reactors, lab equipment and accessories. Filter by brand, price and availability. GST invoice, pan-India & worldwide shipping.",
-  path: "/shop/all",
-});
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Search>;
+}): Promise<Metadata> {
+  const query = parseShopQuery(await searchParams);
+  const filtered = hasActiveFilters(query);
+  const base = pageMetadata({
+    title: "All Products — Shop the Full Catalog",
+    description:
+      "Browse the complete METNMAT catalog — electrodes, ion-exchange membranes, electrochemical cells & reactors, lab equipment and accessories. Filter by brand, price and availability. GST invoice, pan-India & worldwide shipping.",
+    path: "/shop/all",
+  });
+  return {
+    ...base,
+    // Filtered/sorted views are thin near-duplicates — noindex (still follow) so
+    // crawlers reach products without indexing every brand/price permutation.
+    ...(filtered ? { robots: { index: false, follow: true } } : {}),
+    alternates: {
+      ...base.alternates,
+      // Unfiltered pagination canonicalises to itself, not back to page 1.
+      ...(!filtered && query.page > 1 ? { canonical: `/shop/all?page=${query.page}` } : {}),
+    },
+  };
+}
 
 export default async function AllProductsPage({
   searchParams,
@@ -52,6 +71,14 @@ export default async function AllProductsPage({
           { name: "All products", path: "/shop/all" },
         ])}
       />
+      {items.length > 0 && (
+        <JsonLd
+          data={itemListJsonLd(
+            "METNMAT catalog — products",
+            items.map((p) => ({ name: p.name, path: `/shop/p/${p.slug}` })),
+          )}
+        />
+      )}
       <Breadcrumbs
         items={[
           { name: "Home", href: "/" },

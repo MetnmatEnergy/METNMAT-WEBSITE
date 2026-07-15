@@ -57,6 +57,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     ...projects.map((p) => ({
       url: `${site.url}/projects/${p.slug}`,
+      ...(p.updatedAt ? { lastModified: p.updatedAt } : {}),
       changeFrequency: "monthly" as const,
       priority: 0.6,
     })),

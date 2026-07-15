@@ -17,6 +17,7 @@ import { ContactForm } from "@/frontend/components/commerce/contact-form";
 import { HighlightGroup, HighlighterItem, Particles } from "@/frontend/components/ui/highlighter";
 import { site } from "@/frontend/lib/site";
 import { pageMetadata } from "@/frontend/lib/seo";
+import { JsonLd, organizationJsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
 
 export const metadata: Metadata = pageMetadata({
   title: "Contact",
@@ -39,6 +40,12 @@ export default function ContactPage() {
 
   return (
     <>
+      {/* The canonical NAP/local page — emit the Organization/LocalBusiness entity
+          (same #organization @id, so it dedupes), a ContactPage node, and the
+          breadcrumb, so search + AI resolve METNMAT's contact details here. */}
+      <JsonLd data={organizationJsonLd} />
+      <JsonLd data={{ "@context": "https://schema.org", "@type": "ContactPage", name: "Contact METNMAT", url: `${site.url}/contact`, mainEntity: { "@id": `${site.url}/#organization` } }} />
+      <JsonLd data={breadcrumbJsonLd([{ name: "Home", path: "/" }, { name: "Contact", path: "/contact" }])} />
       {/* ───────────── Hero — brand spotlight + ambient particles ───────────── */}
       <section className="relative">
         <Container className="py-10 sm:py-14">
