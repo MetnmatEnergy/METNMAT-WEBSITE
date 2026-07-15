@@ -99,8 +99,11 @@ export function Sparkline({ data, color }: { data: number[]; color: string }) {
   const max = Math.max(...data, 1);
   const min = Math.min(...data, 0);
   const span = max - min || 1;
-  const step = data.length > 1 ? w / (data.length - 1) : w;
-  const pts = data.map((v, i) => `${i * step},${h - ((v - min) / span) * (h - 4) - 2}`).join(" ");
+  const n = data.length;
+  const step = n > 1 ? w / (n - 1) : w;
+  const xOf = (i: number) => (n > 1 ? i * step : w / 2);
+  const yOf = (v: number) => h - ((v - min) / span) * (h - 4) - 2;
+  const pts = data.map((v, i) => `${xOf(i)},${yOf(v)}`).join(" ");
   const areaPts = `0,${h} ${pts} ${w},${h}`;
   const id = `spk-${color.replace(/[^a-zA-Z0-9-]/g, "")}-${data.join("").length}`;
   return (
@@ -111,8 +114,19 @@ export function Sparkline({ data, color }: { data: number[]; color: string }) {
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <polygon points={areaPts} fill={`url(#${id})`} />
-      <polyline points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      {n <= 1 ? (
+        // A single point has no trend (and no y-scale) — show a flat marker line
+        // + dot at mid-height so the card isn't blank.
+        <>
+          <line x1={4} x2={w - 4} y1={h / 2} y2={h / 2} stroke={color} strokeWidth={2} strokeLinecap="round" opacity={0.6} />
+          <circle cx={xOf(0)} cy={h / 2} r={2.5} fill={color} />
+        </>
+      ) : (
+        <>
+          <polygon points={areaPts} fill={`url(#${id})`} />
+          <polyline points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        </>
+      )}
     </svg>
   );
 }
@@ -185,10 +199,11 @@ export function LineArea({
   const maxB = b ? Math.max(...b, 1) : 1;
   const n = a.length;
   const step = n > 1 ? (w - padL) / (n - 1) : w;
-  const ptsOf = (vals: number[], max: number) =>
-    vals.map((v, i) => `${padL + i * step},${plotH - (v / max) * (plotH - 8) - 2}`).join(" ");
+  const xOf = (i: number) => (n > 1 ? padL + i * step : w / 2);
+  const yOf = (v: number, max: number) => plotH - (v / max) * (plotH - 8) - 2;
+  const ptsOf = (vals: number[], max: number) => vals.map((v, i) => `${xOf(i)},${yOf(v, max)}`).join(" ");
   const ptsA = ptsOf(a, maxA);
-  const areaA = `${padL},${plotH} ${ptsA} ${padL + (n - 1) * step},${plotH}`;
+  const areaA = `${padL},${plotH} ${ptsA} ${xOf(n - 1)},${plotH}`;
   const id = `la-${colorA.replace(/[^a-zA-Z0-9-]/g, "")}-${n}`;
   return (
     <svg width="100%" viewBox={`0 0 ${w} ${h}`} role="img" aria-label={ariaLabel} style={{ display: "block" }}>
@@ -201,9 +216,23 @@ export function LineArea({
       {[0.25, 0.5, 0.75, 1].map((g) => (
         <line key={g} x1={padL} x2={w} y1={plotH * (1 - g)} y2={plotH * (1 - g)} stroke="var(--theme-elevation-100)" strokeWidth={1} />
       ))}
-      <polygon points={areaA} fill={`url(#${id})`} />
-      <polyline points={ptsA} fill="none" stroke={colorA} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-      {b && colorB ? (
+      {n <= 1 ? (
+        // Single-point range (Today / Yesterday): a one-coordinate polyline is
+        // invisible. A lone value has no y-scale (value/max === 1 would pin it to
+        // the top and clip the label), so mark it at mid-height with a dot + flat
+        // reference line + the value.
+        <>
+          <line x1={padL} x2={w} y1={plotH / 2} y2={plotH / 2} stroke={colorA} strokeWidth={1.5} strokeDasharray="4 4" opacity={0.5} />
+          <circle cx={xOf(0)} cy={plotH / 2} r={4} fill={colorA} />
+          <text x={xOf(0)} y={plotH / 2 - 9} textAnchor="middle" fontSize={13} fontWeight={700} fill={colorA}>{a[0] ?? 0}</text>
+        </>
+      ) : (
+        <>
+          <polygon points={areaA} fill={`url(#${id})`} />
+          <polyline points={ptsA} fill="none" stroke={colorA} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        </>
+      )}
+      {n > 1 && b && colorB ? (
         <polyline
           points={ptsOf(b, maxB)}
           fill="none"
@@ -216,7 +245,7 @@ export function LineArea({
       ) : null}
       {months.map((m, i) =>
         i % Math.ceil(n / 12) === 0 ? (
-          <text key={i} x={padL + i * step} y={h - 8} textAnchor="middle" fontSize={10} fill="var(--theme-elevation-500)">
+          <text key={i} x={xOf(i)} y={h - 8} textAnchor="middle" fontSize={10} fill="var(--theme-elevation-500)">
             {m}
           </text>
         ) : null

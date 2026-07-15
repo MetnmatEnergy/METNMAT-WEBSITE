@@ -129,7 +129,7 @@ export function KpiCard({
         </div>
         {compare !== "none" && <ChangeBadge change={d} />}
       </div>
-      {series && series.length > 1 ? (
+      {series && series.length >= 1 ? (
         <div style={{ marginTop: 10 }}>
           <Sparkline data={series} color={color} />
         </div>
