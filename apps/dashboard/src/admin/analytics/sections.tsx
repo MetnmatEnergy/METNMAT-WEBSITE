@@ -58,8 +58,11 @@ import { WorldLiveMap, type LiveCountry } from "./world-map";
 
 type Ctx = { payload: Payload; range: ResolvedRange; searchParams: Record<string, string | undefined> };
 
-const grid2: React.CSSProperties = { display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" };
-const kpiGrid: React.CSSProperties = { display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))" };
+// minmax(min(NNNpx, 100%), 1fr) — the min() guard stops the track (and the whole
+// grid) from being wider than a 320px viewport's content box, which caused
+// page-level horizontal overflow on the smallest phones.
+const grid2: React.CSSProperties = { display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))" };
+const kpiGrid: React.CSSProperties = { display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "repeat(auto-fit, minmax(min(210px, 100%), 1fr))" };
 
 const fmtDur = (sec: number) => {
   if (sec <= 0) return "0s";
@@ -121,7 +124,7 @@ export async function Highlights({ payload, range }: Ctx) {
         <KpiCard label="Revenue" value={inrCompact(revenue)} current={revenue} previous={0} compare="none" sub="paid orders in range (Orders collection)" />
       </div>
 
-      <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "minmax(0, 1.7fr) minmax(0, 1fr)" }}>
+      <div className="mn-a-split" style={{ display: "grid", gap: 14, marginTop: 14 }}>
         <Panel title="Sessions & page views">
           {cur.sessions > 0 || cur.pageViews > 0 ? (
             <LineArea months={range.days.map((d) => d.slice(5))} a={seriesFrom(rows, range.days, (r) => r.pageViews ?? 0)} b={seriesFrom(rows, range.days, (r) => r.sessions ?? 0)} colorA={INFO} colorB={SUCCESS} ariaLabel="Page views and sessions per day" />
@@ -227,7 +230,7 @@ export async function Realtime({ payload }: Ctx) {
           <WorldLiveMap countries={liveCountries} unlocated={unlocated} configured={geoStatus !== "disabled"} />
         </Panel>
       </div>
-      <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.4fr)" }}>
+      <div className="mn-a-split-rev" style={{ display: "grid", gap: 14, marginTop: 14 }}>
         <Panel title={`Active now (${active.length})`} action={<span style={{ fontSize: 11.5, opacity: 0.5 }}>last 5 min · refreshes every 12s</span>}>
           {active.length > 0 ? (
             <div style={{ display: "grid", gap: 8 }}>
@@ -483,9 +486,9 @@ export async function Behavior({ payload, range, searchParams }: Ctx) {
           {pages.length > 0 ? (
             <div style={{ display: "grid", gap: 8 }}>
               {pages.map((p) => (
-                <a key={p.path} href={href("behavior", range, { path: p.path })} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, textDecoration: "none", color: "var(--theme-text)", borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 6 }}>
-                  <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.path}</span>
-                  <span style={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                <a key={p.path} href={href("behavior", range, { path: p.path })} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, textDecoration: "none", color: "var(--theme-text)", borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 6, minWidth: 0 }}>
+                  <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.path}</span>
+                  <span style={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
                     {p.views} <span style={{ opacity: 0.5 }}>views · {p.visitors} visitors</span>
                   </span>
                 </a>
@@ -565,7 +568,7 @@ export async function Behavior({ payload, range, searchParams }: Ctx) {
         </Panel>
       </div>
 
-      <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+      <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))" }}>
         <Panel title="Device">
           {devices.length > 0 ? <HBars rows={dimRows(devices)} color={BRAND} valueLabel="sessions" /> : <EmptyHint text="Device mix (mobile / desktop / tablet) ranks here." />}
         </Panel>
@@ -579,7 +582,7 @@ export async function Behavior({ payload, range, searchParams }: Ctx) {
 
       <div style={{ marginTop: 14 }}>
         <Panel title="Views by time of day (IST)">
-          <Heatmap grid={heat} />
+          {heat.some((row) => row.some((v) => v > 0)) ? <Heatmap grid={heat} /> : <EmptyHint text="Page views by hour × weekday appear here once traffic arrives." />}
         </Panel>
       </div>
     </>

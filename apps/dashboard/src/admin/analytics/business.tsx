@@ -147,7 +147,7 @@ export async function BusinessAnalytics({ payload }: { payload: Payload }) {
         ))}
       </div>
 
-      <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "minmax(0, 1.7fr) minmax(0, 1fr)" }}>
+      <div className="mn-a-split" style={{ display: "grid", gap: 14, marginTop: 14 }}>
         <div style={panel}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
             <div>

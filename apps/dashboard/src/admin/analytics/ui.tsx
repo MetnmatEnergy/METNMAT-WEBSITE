@@ -63,7 +63,7 @@ export function RangeBar({ section, range }: { section: string; range: ResolvedR
           </a>
         ))}
         {/* Custom range — a plain GET form, no client JS. */}
-        <form action={`/admin/analytics${section ? `/${section}` : ""}`} method="get" style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+        <form action={`/admin/analytics${section ? `/${section}` : ""}`} method="get" style={{ display: "inline-flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}>
           <input type="hidden" name="range" value="custom" />
           <input type="hidden" name="compare" value={range.compare} />
           <input
@@ -89,7 +89,7 @@ export function RangeBar({ section, range }: { section: string; range: ResolvedR
         {range.label}
         {range.compare !== "none" && range.compareLabel ? ` · compared to ${range.compareLabel}` : ""}
       </span>
-      <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginLeft: "auto" }}>
         {COMPARES.map((c) => (
           <a key={c.key} href={href(section, range, { compare: c.key })} style={pill(range.compare === c.key)}>
             {c.label}

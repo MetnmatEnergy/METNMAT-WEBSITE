@@ -98,7 +98,7 @@ export function WorldLiveMap({
         <span style={{ fontSize: 11, opacity: 0.5 }}>country-level · as of {istClock()}</span>
       </div>
 
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="World map of active visitors" style={{ display: "block", borderRadius: 12 }}>
+      <svg className="mn-live-map__svg" viewBox={`0 0 ${W} ${H}`} width="100%" preserveAspectRatio="xMidYMid meet" role="img" aria-label="World map of active visitors" style={{ display: "block", borderRadius: 12 }}>
         <title>World map of active visitors</title>
         <desc>
           {total > 0

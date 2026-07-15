@@ -365,3 +365,19 @@ html[data-recovery="true"] .login__form { display: block !important; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+/* ── Analytics responsive helpers ────────────────────────────────────────────
+   Inline React style objects can't carry media queries, so the analytics split
+   grids and the live map opt into these classes. Single column on phones; the
+   intended proportions kick in from 900px up. */
+.mn-a-split,
+.mn-a-split-rev { grid-template-columns: 1fr; }
+@media (min-width: 900px) {
+  .mn-a-split { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+  .mn-a-split-rev { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+}
+/* The live visitor map is illegible below ~640px; hide the SVG there — the
+   ranked legend + "N live visitors in M countries" line carry the same data. */
+@media (max-width: 639px) {
+  .mn-live-map__svg { display: none; }
+}
