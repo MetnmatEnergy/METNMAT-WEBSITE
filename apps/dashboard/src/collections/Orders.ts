@@ -2,6 +2,7 @@ import type { CollectionConfig } from "payload";
 import { internalOrderOrManage, isSuperAdmin, fieldAccountsOrInternal } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { orderBeforeChange, orderBeforeDelete } from "../hooks/order-workflow";
+import { linkAnalyticsConversion } from "../hooks/analytics-conversion";
 
 /**
  * Customer orders (Razorpay checkout). Created by the WEBSITE SERVER only
@@ -244,11 +245,19 @@ export const Orders: CollectionConfig = {
     },
 
     { name: "notes", type: "textarea", admin: { description: "Internal notes (not shown to the customer)." } },
+    {
+      // First-party analytics session id captured at checkout (from the mm-sid
+      // cookie/localStorage). Internal — used only to stamp the session's
+      // authoritative conversion when the order is paid. Never customer-facing.
+      name: "analyticsSid",
+      type: "text",
+      admin: { readOnly: true, hidden: true },
+    },
   ],
   hooks: {
     beforeChange: [orderBeforeChange],
     beforeDelete: [orderBeforeDelete],
-    afterChange: [auditAfterChange],
+    afterChange: [auditAfterChange, linkAnalyticsConversion],
     afterDelete: [auditAfterDelete],
   },
   timestamps: true,
