@@ -59,23 +59,29 @@ export function pctChange(series: number[]): { text: string; up: boolean } {
 }
 
 /** Build the last `n` month buckets ending with the current month. */
+// Month buckets are keyed in IST (the business timezone the whole analytics suite
+// uses), NOT the container's server-local/UTC time. Using getFullYear/getMonth
+// (server-local) put an order created just after IST midnight near a month
+// boundary into the previous UTC month — inconsistent with every other view.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 export function monthKeys(n: number): { key: string; label: string }[] {
-  const now = new Date();
+  const nowIst = new Date(Date.now() + IST_OFFSET_MS);
+  const y = nowIst.getUTCFullYear();
+  const m = nowIst.getUTCMonth();
   const out: { key: string; label: string }[] = [];
   for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    out.push({
-      key: `${d.getFullYear()}-${d.getMonth()}`,
-      label: d.toLocaleString("en-US", { month: "short" }),
-    });
+    const d = new Date(Date.UTC(y, m - i, 1));
+    out.push({ key: `${d.getUTCFullYear()}-${d.getUTCMonth()}`, label: MONTH_SHORT[d.getUTCMonth()] });
   }
   return out;
 }
 
 export function monthKeyOf(iso?: string): string {
   if (!iso) return "";
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${d.getMonth()}`;
+  const d = new Date(new Date(iso).getTime() + IST_OFFSET_MS);
+  return `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
 }
 
 export const timeAgo = (iso?: string): string => {
