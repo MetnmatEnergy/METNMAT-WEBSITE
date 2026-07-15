@@ -69,6 +69,10 @@ describe("wire contract constants", () => {
       "form_start",
       "form_submit",
       "search",
+      // Commerce-intent funnel — must stay in sync with the CMS ingest whitelist.
+      "add_to_cart",
+      "checkout_start",
+      "payment_failed",
       "purchase",
     ]);
   });
