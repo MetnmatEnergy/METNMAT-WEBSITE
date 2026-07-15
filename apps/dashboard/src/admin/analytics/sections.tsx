@@ -115,6 +115,11 @@ export async function Highlights({ payload, range }: Ctx) {
 
   return (
     <>
+      <SectionIntro>
+        The at-a-glance overview — traffic, engagement and the business outcomes (enquiries, orders, revenue) for
+        the selected period, with change against the comparison period. Revenue and order counts are the
+        authoritative figures from the Orders collection.
+      </SectionIntro>
       <div style={kpiGrid}>
         <KpiCard label="Site sessions" value={String(cur.sessions)} current={cur.sessions} previous={prev.sessions} compare={range.compare} series={seriesFrom(rows, range.days, (r) => r.sessions ?? 0)} color={SUCCESS} sub={`${stats.visitors} unique visitors`} />
         <KpiCard label="Page views" value={String(cur.pageViews)} current={cur.pageViews} previous={prev.pageViews} compare={range.compare} series={seriesFrom(rows, range.days, (r) => r.pageViews ?? 0)} color={INFO} sub={stats.sessions > 0 ? `${(stats.totalPageViews / stats.sessions).toFixed(1)} pages / session` : undefined} />
@@ -225,6 +230,10 @@ export async function Realtime({ payload }: Ctx) {
   return (
     <>
       <AutoRefresh seconds={12} />
+      <SectionIntro>
+        Who is on the site right now — active visitors on the map and the last few minutes of activity, refreshing
+        every 12 seconds. Country-level; this view ignores the date selector.
+      </SectionIntro>
       <div style={{ marginTop: 14 }}>
         <Panel title="Live visitor map" action={<span style={{ fontSize: 11.5, opacity: 0.5 }}>last 5 min · refreshes every 12s</span>}>
           <WorldLiveMap countries={liveCountries} unlocated={unlocated} configured={geoStatus !== "disabled"} />
@@ -295,6 +304,11 @@ export async function Traffic({ payload, range }: Ctx) {
 
   return (
     <>
+      <SectionIntro>
+        Where visitors come from — traffic volume, acquisition sources and channels, geography, and the landing and
+        exit pages of each visit. &ldquo;Returning&rdquo; is scoped to this period (a visitor with 2+ sessions in the
+        selected range), so it isn&rsquo;t a lifetime figure.
+      </SectionIntro>
       <div style={kpiGrid}>
         <KpiCard label="Sessions" value={String(stats.sessions)} current={stats.sessions} previous={prevStats.sessions} compare={range.compare} color={SUCCESS} />
         <KpiCard label="Visitors" value={String(stats.visitors)} current={stats.visitors} previous={prevStats.visitors} compare={range.compare} color={INFO} sub={`${newVisitors} new · ${stats.returningVisitors} returning`} />
