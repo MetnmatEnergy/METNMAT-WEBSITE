@@ -488,6 +488,15 @@ export default function CheckoutPage() {
           marketingOptIn: form.marketingOptIn,
           items: cartLines.map((l) => ({ slug: l.slug, qty: l.qty, size: l.size })),
           displayCurrency: currency,
+          // Link this order to the analytics session (best-effort) so the paid
+          // conversion is attributed server-side from the Order total.
+          analyticsSid: (() => {
+            try {
+              return localStorage.getItem("mm-sid") || undefined;
+            } catch {
+              return undefined;
+            }
+          })(),
         }),
       });
       const data = (await res.json()) as {

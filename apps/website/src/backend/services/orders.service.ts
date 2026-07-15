@@ -61,6 +61,9 @@ export type OrderInput = {
   displayCurrency?: "INR" | "USD";
   usdRateAtPurchase?: number;
   totalUsdApprox?: number;
+  /** First-party analytics session id (mm-sid) — links the paid order back to
+   *  the session for server-truth conversion attribution. Optional/internal. */
+  analyticsSid?: string;
 };
 
 export type OrderDoc = OrderInput & {

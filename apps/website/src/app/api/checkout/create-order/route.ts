@@ -42,6 +42,8 @@ type Body = {
   items?: { slug?: string; qty?: number; size?: string }[];
   /** Display context only — never used for amounts. */
   displayCurrency?: string;
+  /** First-party analytics session id (mm-sid) for conversion attribution. */
+  analyticsSid?: string;
 };
 
 const bad = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status });
@@ -234,6 +236,9 @@ export async function POST(req: Request) {
     billingCountry: billing.country,
     deliveryNotes: body.deliveryNotes?.trim() || undefined,
     marketingOptIn: body.marketingOptIn === true,
+    // Sanitised analytics session id (same shape as the collector's) — links the
+    // paid order back to its session for server-truth conversion attribution.
+    analyticsSid: /^[a-zA-Z0-9-]{10,64}$/.test(body.analyticsSid ?? "") ? body.analyticsSid : undefined,
     items: orderItems,
     subtotal,
     gstAmount,
