@@ -27,6 +27,10 @@ export const EVENT_TYPES = [
   "form_start",
   "form_submit",
   "search",
+  // Commerce-intent funnel (the CMS ingest whitelist ships first — see its note).
+  "add_to_cart",
+  "checkout_start",
+  "payment_failed",
   "purchase",
 ] as const;
 

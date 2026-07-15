@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { unitPriceForQty, clampQty, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
+import { getTracker } from "@/frontend/lib/analytics/collector";
 
 // Cart/wishlist store a product SNAPSHOT taken at add-time (denormalized) so the
 // website no longer depends on static catalog data — products come from the CMS.
@@ -78,6 +79,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const addToCart = React.useCallback((product: Product, qty = 1, size?: string) => {
     // Quote-only items (no price) can't be bought online — they go through RFQ.
     if (isQuoteOnly(product)) return;
+    // Central add-to-cart signal — fires for every path (product page, buy box,
+    // reorder, chatbot bridge) since they all funnel through here. value uses the
+    // qty-tiered unit price already computed by the store.
+    getTracker().track("add_to_cart", {
+      entity: `product:${product.slug}`,
+      meta: { qty, value: unitPriceForQty(product, qty) * qty },
+    });
     setCart((prev) => {
       const k = lineKey(product.slug, size);
       const existing = prev.find((i) => itemKey(i) === k);

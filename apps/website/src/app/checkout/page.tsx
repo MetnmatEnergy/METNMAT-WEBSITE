@@ -317,6 +317,16 @@ export default function CheckoutPage() {
   const isIndia = isIndiaName(form.country);
   const dialCode = dialFor(form.country) || "+91";
 
+  // checkout_start — fire once when the cart has hydrated with items, so the
+  // funnel (product view → add to cart → checkout start → purchase/failed) is
+  // complete. value = GST-inclusive cart total.
+  const checkoutTracked = React.useRef(false);
+  React.useEffect(() => {
+    if (checkoutTracked.current || !ready || cartCount === 0) return;
+    checkoutTracked.current = true;
+    getTracker().track("checkout_start", { meta: { value: Math.round(subtotalIncl), items: itemCount } });
+  }, [ready, cartCount, subtotalIncl, itemCount]);
+
   // Prefill from the signed-in customer's saved profile + default address
   // (checkout is gated, so one always exists). Runs once on mount, before the
   // customer types — and never overwrites a field they've already filled.
@@ -550,6 +560,7 @@ export default function CheckoutPage() {
           ondismiss: () => {
             setPaying(false);
             setPayError("Payment was cancelled — your cart is unchanged.");
+            getTracker().track("payment_failed", { meta: { reason: "dismissed", value: data.total ?? 0 } });
           },
         },
         handler: async (resp: {
@@ -576,10 +587,12 @@ export default function CheckoutPage() {
             } else {
               setPaying(false);
               setPayError(vd.error || "Payment verification failed. If you were charged, contact us.");
+              getTracker().track("payment_failed", { meta: { reason: "verify_failed", value: data.total ?? 0 } });
             }
           } catch {
             setPaying(false);
             setPayError("Could not verify the payment. If you were charged, contact us with your payment ID.");
+            getTracker().track("payment_failed", { meta: { reason: "verify_error", value: data.total ?? 0 } });
           }
         },
       });

@@ -32,6 +32,7 @@ import {
   topSearches,
   outboundTargets,
   formFunnel,
+  commerceFunnel,
   viewsHeatmap,
   pageDetail,
   realtimeSnapshot,
@@ -417,7 +418,7 @@ export async function Traffic({ payload, range }: Ctx) {
 
 export async function Behavior({ payload, range, searchParams }: Ctx) {
   const focusPath = typeof searchParams.path === "string" && searchParams.path.startsWith("/") ? searchParams.path : null;
-  const [stats, prevStats, devices, browsers, oses, pages, products, projects, blogs, ctas, outbound, searches, funnel, heat, detail] = await Promise.all([
+  const [stats, prevStats, devices, browsers, oses, pages, products, projects, blogs, ctas, outbound, searches, funnel, commerce, heat, detail] = await Promise.all([
     sessionStats(payload, range.days),
     sessionStats(payload, range.compareDays),
     sessionsBy(payload, range.days, "device", 6),
@@ -431,9 +432,11 @@ export async function Behavior({ payload, range, searchParams }: Ctx) {
     outboundTargets(payload, range.days, 8),
     topSearches(payload, range.days, 10),
     formFunnel(payload, range.days),
+    commerceFunnel(payload, range.days),
     viewsHeatmap(payload, range.days),
     focusPath ? pageDetail(payload, range.days, focusPath) : Promise.resolve(null),
   ]);
+  const commerceHasData = commerce.productViews + commerce.addToCarts + commerce.checkoutStarts + commerce.purchases > 0;
 
   // Engagement KPIs — derived from real session fields, framed so "up is good"
   // (engaged % rather than bounce %, so the shared change badge reads correctly).
@@ -505,6 +508,32 @@ export async function Behavior({ payload, range, searchParams }: Ctx) {
           ) : (
             <EmptyHint text="Form starts and submissions chart here." />
           )}
+        </Panel>
+      </div>
+
+      <div style={grid2}>
+        <Panel title="Commerce funnel" action={commerce.paymentFailed > 0 ? <span style={{ fontSize: 11.5, color: BRAND }}>{commerce.paymentFailed} payment failure{commerce.paymentFailed === 1 ? "" : "s"}</span> : undefined}>
+          {commerceHasData ? (
+            <Funnel
+              stages={[
+                { label: "Product views", value: commerce.productViews },
+                { label: "Added to cart", value: commerce.addToCarts },
+                { label: "Checkout started", value: commerce.checkoutStarts },
+                { label: "Purchased", value: commerce.purchases },
+              ]}
+            />
+          ) : (
+            <EmptyHint text="Product view → add to cart → checkout → purchase. Populates as shoppers move through the store." />
+          )}
+        </Panel>
+        <Panel title="Cart & checkout — notes">
+          <div style={{ fontSize: 12.5, opacity: 0.7, lineHeight: 1.7, padding: "4px 2px" }}>
+            <p style={{ margin: 0 }}>
+              Add-to-cart, checkout-start and payment-failure are captured as first-party events. Purchases here are the
+              browser-observed count; the authoritative paid-order figures live on <strong>Highlights</strong> (Orders
+              collection), which also counts orders paid via UPI/redirect that never return to the tab.
+            </p>
+          </div>
         </Panel>
       </div>
 

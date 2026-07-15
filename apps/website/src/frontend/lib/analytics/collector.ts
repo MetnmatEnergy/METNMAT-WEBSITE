@@ -268,6 +268,10 @@ export function getTracker(): Tracker {
       try {
         // Close out the previous page first (SPA navigation has no pagehide).
         recordLeave();
+        // Reset form-start dedup per page view — deduping for the whole tab
+        // lifetime let a form be re-shown (SPA nav back to it, or after a submit)
+        // without a new form_start, so the funnel could report >100% completion.
+        started.clear();
         pagePath = path.slice(0, LIMITS.maxPathLen);
         pageStart = Date.now();
         maxScroll = 0;

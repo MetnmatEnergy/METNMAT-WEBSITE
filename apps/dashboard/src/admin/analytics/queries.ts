@@ -350,6 +350,31 @@ export async function formFunnel(payload: Payload, days: string[]) {
   return [...forms.values()].sort((a, b) => b.submits - a.submits);
 }
 
+/** Commerce-intent funnel from raw events: product views → add to cart →
+ *  checkout start → purchase, plus payment failures. All from real events. */
+export async function commerceFunnel(payload: Payload, days: string[]) {
+  const zero = { productViews: 0, addToCarts: 0, checkoutStarts: 0, purchases: 0, paymentFailed: 0 };
+  if (days.length === 0) return zero;
+  const [byType, pv] = await Promise.all([
+    agg<{ _id: string; n: number }>(payload, "analytics-events", [
+      { $match: { day: { $in: days }, type: { $in: ["add_to_cart", "checkout_start", "purchase", "payment_failed"] } } },
+      { $group: { _id: "$type", n: { $sum: 1 } } },
+    ]),
+    agg<{ _id: null; n: number }>(payload, "analytics-events", [
+      { $match: { day: { $in: days }, type: "page_view", entityType: "product" } },
+      { $group: { _id: null, n: { $sum: 1 } } },
+    ]),
+  ]);
+  const m = new Map(byType.map((r) => [String(r._id), r.n]));
+  return {
+    productViews: pv[0]?.n ?? 0,
+    addToCarts: m.get("add_to_cart") ?? 0,
+    checkoutStarts: m.get("checkout_start") ?? 0,
+    purchases: m.get("purchase") ?? 0,
+    paymentFailed: m.get("payment_failed") ?? 0,
+  };
+}
+
 /** Views heatmap: page_view counts per (IST hour × weekday). */
 export async function viewsHeatmap(payload: Payload, days: string[]): Promise<number[][]> {
   const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
