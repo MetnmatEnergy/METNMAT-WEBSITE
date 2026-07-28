@@ -59,7 +59,15 @@ const OAUTH_PREFIX = process.env.NODE_ENV === "production" ? "__Host-" : "";
 export const OAUTH_STATE_COOKIE = `${OAUTH_PREFIX}mm-oauth-state`;
 export const OAUTH_VERIFIER_COOKIE = `${OAUTH_PREFIX}mm-oauth-verifier`;
 export const OAUTH_REDIRECT_COOKIE = `${OAUTH_PREFIX}mm-oauth-redirect`;
-export const OAUTH_TEMP_COOKIES = [OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE, OAUTH_REDIRECT_COOKIE] as const;
+/** Which pane the user started from ("login" | "signup"), so a failed sign-in
+ *  returns them to that pane instead of always dumping them on /login. */
+export const OAUTH_PANE_COOKIE = `${OAUTH_PREFIX}mm-oauth-pane`;
+export const OAUTH_TEMP_COOKIES = [
+  OAUTH_STATE_COOKIE,
+  OAUTH_VERIFIER_COOKIE,
+  OAUTH_REDIRECT_COOKIE,
+  OAUTH_PANE_COOKIE,
+] as const;
 
 /** URL-safe random token (state, PKCE verifier). */
 export const randomToken = (bytes = 32): string => randomBytes(bytes).toString("base64url");

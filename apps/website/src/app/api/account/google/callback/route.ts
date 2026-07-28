@@ -8,6 +8,7 @@ import {
   OAUTH_STATE_COOKIE,
   OAUTH_VERIFIER_COOKIE,
   OAUTH_REDIRECT_COOKIE,
+  OAUTH_PANE_COOKIE,
   OAUTH_TEMP_COOKIES,
 } from "@/backend/lib/google-oauth";
 import { CUSTOMER_COOKIE, cookieOptions } from "@/backend/lib/customer";
@@ -33,8 +34,18 @@ export async function GET(req: Request): Promise<Response> {
     for (const name of OAUTH_TEMP_COOKIES) res.cookies.set(name, "", { path: "/", maxAge: 0 });
     return res;
   };
-  const fail = (code = "google") =>
-    finish(NextResponse.redirect(new URL(`/login?error=${code}`, siteBase())));
+  const jar = await cookies();
+  // Re-validate the redirect even though start/route.ts already sanitised it.
+  const redirectTo = safeRedirect(jar.get(OAUTH_REDIRECT_COOKIE)?.value);
+  // Where the user was trying to go, and which pane they came from, so a failed
+  // Google sign-in returns them to the same place with the destination intact —
+  // rather than stranding a checkout-bound customer on a bare /login.
+  const failBase = jar.get(OAUTH_PANE_COOKIE)?.value === "signup" ? "/signup" : "/login";
+  const fail = (code = "google") => {
+    const qs = new URLSearchParams({ error: code });
+    if (redirectTo && redirectTo !== "/account") qs.set("redirect", redirectTo);
+    return finish(NextResponse.redirect(new URL(`${failBase}?${qs}`, siteBase())));
+  };
 
   if (!googleConfigured()) return fail("google_unavailable");
 
@@ -45,11 +56,8 @@ export async function GET(req: Request): Promise<Response> {
   const state = url.searchParams.get("state");
   const oauthError = url.searchParams.get("error");
 
-  const jar = await cookies();
   const stateCookie = jar.get(OAUTH_STATE_COOKIE)?.value;
   const verifier = jar.get(OAUTH_VERIFIER_COOKIE)?.value;
-  // Re-validate the redirect even though start/route.ts already sanitised it.
-  const redirectTo = safeRedirect(jar.get(OAUTH_REDIRECT_COOKIE)?.value);
 
   // User cancelled, or CSRF/state mismatch, or missing PKCE verifier.
   if (oauthError || !code || !state || !stateCookie || !verifier || state !== stateCookie) {
@@ -76,7 +84,12 @@ export async function GET(req: Request): Promise<Response> {
       }),
       cache: "no-store",
     });
-    const data = (await r.json().catch(() => ({}))) as { token?: string; exp?: number; created?: boolean };
+    const data = (await r.json().catch(() => ({}))) as {
+      token?: string;
+      exp?: number;
+      created?: boolean;
+      passwordReset?: boolean;
+    };
     if (!r.ok || !data.token) {
       console.error(`[google/callback] CMS oauth mint failed status=${r.status}`);
       return fail("google");
@@ -85,7 +98,11 @@ export async function GET(req: Request): Promise<Response> {
     // A brand-new Google account has no password of its own. Offer to set one, so
     // the customer can later sign in either way — then carry on to where they were
     // headed. Only on the FIRST sign-in; repeat logins go straight through.
-    const destination = data.created
+    // `passwordReset` means the CMS scrambled an unverified local password while
+    // linking this Google identity (anti account-pre-hijacking) — so, like a
+    // brand-new account, this customer has no password they can use and must be
+    // offered one before carrying on.
+    const destination = data.created || data.passwordReset
       ? `/set-password?next=${encodeURIComponent(redirectTo)}`
       : redirectTo;
 

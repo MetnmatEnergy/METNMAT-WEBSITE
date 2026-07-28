@@ -2,6 +2,7 @@ import { getFieldsToSign, jwtSign, type CollectionConfig, type CollectionBeforeC
 import { randomBytes } from "crypto";
 import { isAdmin } from "../access";
 import { safeKeyEqual } from "../lib/internal-key";
+import { oauthLinkPolicy } from "../lib/oauth-link";
 import { assignUserCode } from "../hooks/customer-code";
 
 /**
@@ -344,13 +345,31 @@ export const Customers: CollectionConfig = {
 
         // Link data reused by the normal and the race-recovery paths. We always
         // store the authenticating account's googleId and refresh the avatar when
-        // Google provides one. The existing password is never touched.
-        const linkData = (existingProvider: unknown) => ({
-          googleId,
-          authProvider: existingProvider === "google" ? "google" : "linked",
-          emailVerified: true,
-          ...(avatarUrl ? { avatarUrl } : {}),
-        });
+        // Google provides one.
+        //
+        // ANTI ACCOUNT-PRE-HIJACKING. Registration does not verify the email, so
+        // anyone can create a password account on someone else's address and wait.
+        // If that victim later signs in with Google we would otherwise link the
+        // two — handing the squatter a live password on an account that is now
+        // emailVerified (which also unlocks the victim's historical guest orders
+        // and invoices via ownerClause). Google has just PROVEN who owns this
+        // inbox, so an unproven local password must not survive the link: we
+        // scramble it, which also bumps sessionsValidFrom via
+        // stampSessionsOnPasswordChange and kills any JWT the squatter holds.
+        // (The token minted below is signed after this write, and
+        // tokenNotBeforeReset allows a small skew, so the real owner stays in.)
+        // Accounts that already proved their email — or that Google created —
+        // are trusted and keep their password exactly as before.
+        const linkData = (existing: Record<string, unknown>) => {
+          const { untrusted, authProvider } = oauthLinkPolicy(existing);
+          return {
+            googleId,
+            authProvider,
+            emailVerified: true,
+            ...(untrusted ? { password: randomBytes(32).toString("base64url") } : {}),
+            ...(avatarUrl ? { avatarUrl } : {}),
+          };
+        };
 
         try {
           const findByEmail = async () =>
@@ -370,6 +389,10 @@ export const Customers: CollectionConfig = {
           // repeat Google sign-in, or a link onto an existing account, must not
           // re-trigger that.
           let created = false;
+          // True when we scrambled an unverified local password during linking —
+          // the caller must then onboard the user to /set-password, since the
+          // password they (or a squatter) previously knew no longer works.
+          let passwordReset = false;
 
           if (!user) {
             // New Google account. Random password = valid account with no known
@@ -395,20 +418,26 @@ export const Customers: CollectionConfig = {
               // email field is unique). Re-find and link instead of 500-ing.
               const raced = await findByEmail();
               if (!raced) throw createErr;
+              const data = linkData(raced);
+              passwordReset = "password" in data;
               user = await payload.update({
                 collection: "customers",
                 id: raced.id,
                 overrideAccess: true,
-                data: linkData(raced.authProvider),
+                data,
               });
             }
           } else {
-            // Auto-link Google to the existing account (password untouched).
+            // Auto-link Google to the existing account. A password that was never
+            // email-verified is scrambled here (see linkData) — that account may
+            // have been squatted on the victim's address.
+            const data = linkData(user);
+            passwordReset = "password" in data;
             user = await payload.update({
               collection: "customers",
               id: user.id,
               overrideAccess: true,
-              data: linkData(user.authProvider),
+              data,
             });
           }
 
@@ -422,7 +451,7 @@ export const Customers: CollectionConfig = {
             secret: payload.secret,
             tokenExpiration: collectionConfig.auth.tokenExpiration,
           });
-          return Response.json({ token, exp, created });
+          return Response.json({ token, exp, created, passwordReset });
         } catch (e) {
           payload.logger.error(`[customers/oauth] ${(e as Error).message}`);
           return Response.json({ error: "OAuth login failed" }, { status: 500 });

@@ -54,10 +54,10 @@ function GoogleG() {
 
 /** Continue-with-Google button. A full navigation (not fetch) — OAuth needs a
  *  top-level redirect — carrying the post-login destination through. */
-function GoogleButton({ redirectTo, label }: { redirectTo: string; label: string }) {
+function GoogleButton({ redirectTo, label, pane }: { redirectTo: string; label: string; pane: "login" | "register" }) {
   return (
     <a
-      href={`/api/account/google/start?redirect=${encodeURIComponent(redirectTo)}`}
+      href={`/api/account/google/start?redirect=${encodeURIComponent(redirectTo)}&pane=${pane === "register" ? "signup" : "login"}`}
       className="flex w-full items-center justify-center gap-3 rounded-lg border border-input bg-surface px-4 py-3 text-sm font-semibold text-foreground shadow-sm transition-colors hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring/30"
     >
       <GoogleG />
@@ -341,7 +341,7 @@ export function AuthCard({ initialMode = "login" }: { initialMode?: "login" | "r
               </p>
 
               <div className="mt-6">
-                <GoogleButton redirectTo={redirectTo} label={mode === "login" ? "Continue with Google" : "Sign up with Google"} />
+                <GoogleButton redirectTo={redirectTo} pane={mode} label={mode === "login" ? "Continue with Google" : "Sign up with Google"} />
               </div>
 
               <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground" aria-hidden>
