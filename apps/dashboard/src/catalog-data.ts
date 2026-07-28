@@ -1,5 +1,12 @@
 // AUTO-GENERATED from Product_data_sheet_completed.xlsx (phase 2). Do not edit by
 // hand — re-run the transform when the source sheet changes. Prices are quote-only (0).
+//
+// INTENTIONAL MANUAL EDIT (keep when regenerating): "Accessories" was merged into
+// "Equipments" as a SUB-category — the department is now "Equipments & Accessories"
+// and `accessories` carries `parentSlug: "equipments"`. This drops it from the
+// storefront's top-level department grid while keeping /shop/c/accessories a live
+// URL, and category pages roll child products up into the parent, so accessory
+// products still list under the merged department.
 
 export type SeedCategory = { slug: string; name: string; blurb?: string; parentSlug?: string; order?: number };
 export type SeedProduct = {
@@ -31,15 +38,16 @@ export const seedCategories: SeedCategory[] = [
   },
   {
     "slug": "equipments",
-    "name": "Equipments",
-    "blurb": "Peristaltic pumps, MEA fabrication & specialised research equipment",
+    "name": "Equipments & Accessories",
+    "blurb": "Peristaltic pumps, MEA fabrication, specialised equipment & lab consumables",
     "order": 4
   },
   {
     "slug": "accessories",
     "name": "Accessories",
     "blurb": "Electrode materials, sheets, nanoparticles & lab consumables",
-    "order": 5
+    "parentSlug": "equipments",
+    "order": 4
   },
   {
     "slug": "reference-electrodes",
