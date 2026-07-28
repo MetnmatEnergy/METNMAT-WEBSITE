@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Loader2,
   LogIn,
@@ -171,11 +171,21 @@ function safeRedirect(raw: string | null): string {
   return raw;
 }
 
-export function AuthCard() {
+/**
+ * Sign-in / create-account card.
+ *
+ * The pane is URL-addressable: /login opens "Sign in", /signup opens "Create
+ * account". Switching panes swaps the URL via history.replaceState rather than a
+ * route push — the pane flips instantly (no server round-trip, typed form state
+ * preserved) while refresh, the back button, and shared links still land on the
+ * pane the user was actually looking at.
+ */
+export function AuthCard({ initialMode = "login" }: { initialMode?: "login" | "register" }) {
   const router = useRouter();
   const params = useSearchParams();
+  const pathname = usePathname();
   const redirectTo = safeRedirect(params.get("redirect"));
-  const [mode, setMode] = React.useState<"login" | "register">("login");
+  const [mode, setMode] = React.useState<"login" | "register">(initialMode);
   const [form, setForm] = React.useState<Form>({ name: "", email: "", password: "", phone: "", company: "", role: "" });
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [showPw, setShowPw] = React.useState(false);
@@ -193,6 +203,13 @@ export function AuthCard() {
     setMode(m);
     setError("");
     setFieldErrors({});
+    // Keep the address bar in step with the visible pane (preserving ?redirect=)
+    // without re-mounting the card or losing what the user has already typed.
+    if (typeof window !== "undefined") {
+      const qs = params.toString();
+      const path = m === "login" ? "/login" : "/signup";
+      window.history.replaceState(null, "", qs ? `${path}?${qs}` : path);
+    }
   };
 
   // Surface a Google sign-in failure passed back as ?error= by the callback, then
@@ -204,8 +221,11 @@ export function AuthCard() {
     const next = new URLSearchParams(params.toString());
     next.delete("error");
     const qs = next.toString();
-    router.replace(qs ? `/login?${qs}` : "/login", { scroll: false });
-  }, [params, router]);
+    // Stay on whichever pane the user is on (/login or /signup) — hardcoding
+    // /login here would yank a would-be signup back to the sign-in URL.
+    const base = pathname || "/login";
+    router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
+  }, [params, router, pathname]);
 
   function validate(): boolean {
     const fe: FieldErrors = {};

@@ -10,6 +10,7 @@ export default function robots(): MetadataRoute.Robots {
       // off the crawl budget (login, cart, checkout, account, search results…).
       disallow: [
         "/login",
+        "/signup",
         "/forgot",
         "/reset",
         "/cart",

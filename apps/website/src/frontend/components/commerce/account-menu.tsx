@@ -170,7 +170,7 @@ export function AccountMenu({ triggerClassName }: { triggerClassName?: string })
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/login" className="cursor-pointer">
+              <Link href="/signup" className="cursor-pointer">
                 <UserPlus className="h-4 w-4 text-muted-foreground" />
                 Create account
               </Link>
