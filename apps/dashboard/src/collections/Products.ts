@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload";
 import { canManageCatalog, publicRead, fieldAccountsOrInternal } from "../access";
+import { slugify } from "../lib/blog";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
@@ -9,7 +10,7 @@ export const Products: CollectionConfig = {
   admin: {
     group: "Catalog",
     useAsTitle: "name",
-    defaultColumns: ["name", "brand", "category", "price", "inStock"],
+    defaultColumns: ["name", "category", "sku", "price", "inStock", "featured"],
     // "Preview" button → the live storefront page for this product.
     preview: (doc) =>
       doc?.slug
@@ -34,17 +35,48 @@ export const Products: CollectionConfig = {
     {
       type: "row",
       fields: [
-        { name: "slug", type: "text", required: true, unique: true, index: true, admin: { width: "50%" } },
+        {
+          name: "slug",
+          type: "text",
+          required: true,
+          unique: true,
+          index: true,
+          admin: {
+            width: "50%",
+            description:
+              "URL segment (auto-generated from the product name when blank), e.g. 'aluminum-sheet'. Changing it changes the product's public URL.",
+          },
+          // Auto-fill from the name so a product can never be saved without a
+          // slug. This mirrors Projects/Posts, and matters beyond convenience:
+          // the storefront addresses products by slug, and seed's
+          // cleanupMalformed() DELETES slug-less products on boot.
+          hooks: {
+            beforeValidate: [({ value, data }) => slugify((value as string) || (data?.name as string) || "")],
+          },
+        },
         { name: "sku", type: "text", admin: { width: "50%" } },
       ],
     },
-    { name: "category", type: "relationship", relationTo: "categories", required: true },
+    {
+      name: "category",
+      type: "relationship",
+      relationTo: "categories",
+      required: true,
+      admin: {
+        description:
+          "Pick the most specific sub-category (e.g. 'Reference Electrodes', not 'Electrodes'). The product still appears on the parent department's page, so specific is always better.",
+      },
+    },
     { name: "shortDesc", type: "text" },
     { name: "description", type: "richText" },
     {
       name: "images",
       type: "array",
       labels: { singular: "Image", plural: "Images" },
+      admin: {
+        description:
+          "The FIRST image is the thumbnail used everywhere (shop grid, homepage showcase, search, cart). Add more for the product-page gallery. Use a clean, well-lit shot on a plain background; square or 4:3 crops render best.",
+      },
       fields: [{ name: "image", type: "upload", relationTo: "media", required: true }],
     },
     {
@@ -135,7 +167,7 @@ export const Products: CollectionConfig = {
               "Storefront availability — this is the flag the website's In-stock/Made-to-order label reads. Independent of the on-hand quantity in 'Tax, stock & fulfilment'.",
           },
         },
-        { name: "featured", type: "checkbox", defaultValue: false, admin: { width: "33%", description: "Show in the homepage 'Featured' row." } },
+        { name: "featured", type: "checkbox", defaultValue: false, admin: { width: "33%", description: "Feature this product on the homepage hero showcase, the homepage preview row, and 'Featured products' on the Shop page. Tick ~8 products — the hero showcase only animates when featured products exist." } },
         { name: "rating", type: "number", min: 0, max: 5, admin: { width: "34%" } },
       ],
     },
