@@ -1,7 +1,7 @@
 import path from "path";
 import { existsSync } from "fs";
 import type { Payload } from "payload";
-import { seedCategories, seedProducts } from "./catalog-data";
+import { seedCategories, seedProducts, type SeedCategory } from "./catalog-data";
 import {
   seedServices,
   seedProjects,
@@ -21,6 +21,30 @@ import { istYear2, formatUserCode, bumpCounter, countersModel, userCodeCounterKe
 // Product_data_sheet.xlsx into ./catalog-data.ts. Seeded on boot; idempotent.
 // On boot it also PRUNES any product/category that is no longer in the catalog
 // (so the old placeholder catalog is replaced cleanly).
+
+/**
+ * Storefront departments that are NOT part of the auto-generated product sheet
+ * (catalog-data.ts). Kept here by hand so regenerating that file from the source
+ * xlsx can never silently drop them. ensureCategory upserts name/blurb/order on
+ * boot, so edit these to change them site-wide.
+ *
+ * Staff can still add more categories in the admin — nothing here deletes
+ * anything (pruning is opt-in via SEED_PRUNE_PLACEHOLDERS).
+ *
+ * NOTE: the blurbs below are starting copy — review them in the admin so each
+ * one matches what METNMAT actually stocks in that department.
+ */
+const EXTRA_DEPARTMENTS: SeedCategory[] = [
+  { slug: "furnaces", name: "Furnaces", blurb: "Muffle, tubular & box furnaces", order: 5 },
+  { slug: "crucibles", name: "Crucibles", blurb: "Crucibles for melting, casting & high-temperature work", order: 6 },
+  { slug: "analysis", name: "Analysis Instruments", blurb: "Instruments for materials & electrochemical analysis", order: 7 },
+  { slug: "consumables", name: "Consumables", blurb: "Lab consumables & replacement parts", order: 8 },
+  { slug: "raw-materials", name: "Raw Materials & Alloys", blurb: "Metals, alloys & raw materials for research", order: 9 },
+  { slug: "safety", name: "Lab Safety", blurb: "Protective equipment & laboratory safety essentials", order: 10 },
+];
+
+/** Every seeded category: the product-sheet ones plus the hand-kept departments. */
+const ALL_SEED_CATEGORIES: SeedCategory[] = [...seedCategories, ...EXTRA_DEPARTMENTS];
 
 async function cleanupMalformed(payload: Payload): Promise<void> {
   try {
@@ -1150,7 +1174,7 @@ export async function seed(payload: Payload): Promise<void> {
   await scrubPinBearingEmails(payload);
   await cleanupMalformed(payload);
 
-  const catSlugs = new Set(seedCategories.map((c) => c.slug));
+  const catSlugs = new Set(ALL_SEED_CATEGORIES.map((c) => c.slug));
   const prodSlugs = new Set(seedProducts.map((p) => p.slug));
 
   // CATALOG OWNERSHIP = CMS STAFF (decision 2026-07-13). Boot must NEVER delete
@@ -1165,8 +1189,8 @@ export async function seed(payload: Payload): Promise<void> {
 
   // 2) Upsert categories (parents before children so parent ids resolve).
   const ids: Record<string, string> = {};
-  for (const c of seedCategories.filter((c) => !c.parentSlug)) await ensureCategory(payload, c, ids);
-  for (const c of seedCategories.filter((c) => c.parentSlug)) await ensureCategory(payload, c, ids);
+  for (const c of ALL_SEED_CATEGORIES.filter((c) => !c.parentSlug)) await ensureCategory(payload, c, ids);
+  for (const c of ALL_SEED_CATEGORIES.filter((c) => c.parentSlug)) await ensureCategory(payload, c, ids);
 
   // 3) (Opt-in only) remove stale categories (now that no products reference them).
   if (allowPrune) await pruneStale(payload, "categories", catSlugs);
