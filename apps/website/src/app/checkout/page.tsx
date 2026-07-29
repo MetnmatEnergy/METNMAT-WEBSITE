@@ -13,6 +13,7 @@ import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { site } from "@/frontend/lib/site";
 import { countryByName, dialFor, isIndiaName } from "@/frontend/lib/countries";
 import { CountryPicker } from "@/frontend/components/commerce/country-picker";
+import { ProductImage } from "@/frontend/components/commerce/product-image";
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(" ");
 
@@ -864,8 +865,14 @@ export default function CheckoutPage() {
                 <li key={l.key} className="flex items-center gap-3">
                   <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-border bg-muted/40">
                     {l.product.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={l.product.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                      // Was object-cover — cropped the edges off the product.
+                      <ProductImage
+                        src={l.product.imageUrl}
+                        alt={l.product.name}
+                        sizes="96px"
+                        className="aspect-square h-full w-full"
+                        imageClassName="p-0.5"
+                      />
                     ) : (
                       <span className="flex h-full w-full items-center justify-center text-muted-foreground">
                         <Package className="h-4 w-4" aria-hidden />

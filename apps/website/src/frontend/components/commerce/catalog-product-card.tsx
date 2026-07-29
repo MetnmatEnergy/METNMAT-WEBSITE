@@ -1,7 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
 import { SlidersHorizontal } from "lucide-react";
-import { MediaPlaceholder } from "@/frontend/components/ui/card";
+import { ProductImage } from "@/frontend/components/commerce/product-image";
 import { Button } from "@/frontend/components/ui/button";
 import { PriceBlock } from "@/frontend/components/commerce/price-block";
 import { RatingStars } from "@/frontend/components/commerce/rating-stars";
@@ -42,30 +41,17 @@ export function CatalogProductCard({
           !isGrid && "sm:w-56"
         )}
       >
-        {product.imageUrl ? (
-          <div
-            className={cn(
-              "relative w-full bg-white",
-              isGrid ? "aspect-square" : "aspect-square sm:h-full"
-            )}
-          >
-            <Image
-              src={product.imageUrl}
-              alt={product.name}
-              fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
-              className="object-contain p-2 transition-transform duration-500 group-hover:scale-105 sm:p-3"
-            />
-          </div>
-        ) : (
-          <MediaPlaceholder
-            className={cn(
-              "rounded-none border-0",
-              isGrid ? "aspect-square rounded-t-2xl" : "aspect-square sm:h-full sm:rounded-l-2xl"
-            )}
-            label="Product"
-          />
-        )}
+        <ProductImage
+          src={product.imageUrl}
+          alt={product.name}
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
+          className={cn(
+            "w-full bg-white",
+            isGrid ? "rounded-t-2xl" : "sm:rounded-l-2xl",
+            !product.imageUrl && "rounded-none border-0"
+          )}
+          imageClassName="p-2 transition-transform duration-500 group-hover:scale-105 sm:p-3"
+        />
       </Link>
 
       <div className="flex flex-1 flex-col p-3 sm:p-4">

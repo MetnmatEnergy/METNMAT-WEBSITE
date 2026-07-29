@@ -9,6 +9,7 @@ import { QuantityStepper } from "@/frontend/components/commerce/quantity-stepper
 import { useStore } from "@/frontend/components/commerce/store-provider";
 import { inclGST, usdFor, lineUsdValue, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
+import { ProductImage } from "@/frontend/components/commerce/product-image";
 
 export default function CartPage() {
   const { cartLines, setQty, removeFromCart, clearCart, cartCount, ready, toggleWishlist, inWishlist } = useStore();
@@ -74,12 +75,12 @@ export default function CartPage() {
                 className="block h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-white sm:h-24 sm:w-24"
               >
                 {line.product.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <ProductImage
                     src={line.product.imageUrl}
                     alt={line.product.name}
-                    loading="lazy"
-                    className="h-full w-full object-contain p-1.5"
+                    sizes="96px"
+                    className="aspect-square h-full w-full"
+                    imageClassName="p-1.5"
                   />
                 ) : (
                   <span className="flex h-full items-center justify-center font-display text-3xl font-bold text-zinc-300">

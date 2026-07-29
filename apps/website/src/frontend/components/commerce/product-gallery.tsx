@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { X, ZoomIn, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
+import { ProductImage } from "@/frontend/components/commerce/product-image";
 import { cn } from "@/frontend/lib/utils";
 
 const SLIDE_MS = 4500;
@@ -144,7 +145,7 @@ export function ProductGallery({
               src={src}
               alt={`${name} — image ${i + 1}`}
               fill
-              sizes="(max-width: 1024px) 100vw, 45vw"
+              sizes="(max-width: 768px) 100vw, 640px"
               priority={i === 0}
               className={cn(
                 "object-contain transition-opacity duration-700",
@@ -258,7 +259,16 @@ export function ProductGallery({
                 aria-label={it.kind === "video" ? "Play product video" : `View image ${i + 1}`}
               >
                 {it.kind === "image" ? (
-                  <Image src={it.src} alt={`${name} ${i + 1}`} fill sizes="80px" className="object-contain" />
+                  // Square thumb frame is the existing design; ProductImage's
+                  // contain keeps the 4:3 master whole inside it (letterboxed,
+                  // never cropped). aspect-square wins over the component's
+                  // default 4:3 via twMerge.
+                  <ProductImage
+                    src={it.src}
+                    alt={`${name} ${i + 1}`}
+                    sizes="128px"
+                    className="aspect-square h-full w-full"
+                  />
                 ) : (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -321,13 +331,20 @@ export function ProductGallery({
               </button>
             </>
           )}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={zoomSrc}
-            alt={name}
-            className="max-h-full max-w-full rounded-lg bg-white object-contain"
+          {/* Zoom view: the 4:3 master at full width, optimised (was a raw <img>,
+              which shipped the untouched original on every open). */}
+          <div
+            className="relative h-full w-full max-w-5xl"
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <Image
+              src={zoomSrc}
+              alt={name}
+              fill
+              sizes="(max-width: 768px) 100vw, 1200px"
+              className="rounded-lg object-contain"
+            />
+          </div>
         </div>
       )}
     </div>

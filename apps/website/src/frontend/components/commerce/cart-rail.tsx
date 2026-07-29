@@ -8,6 +8,7 @@ import { useStore } from "@/frontend/components/commerce/store-provider";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { inclGST, usdFor, lineUsdValue } from "@/frontend/lib/catalog";
 import { cn } from "@/frontend/lib/utils";
+import { ProductImage } from "@/frontend/components/commerce/product-image";
 
 const COLLAPSE_KEY = "mm-rail-collapsed";
 
@@ -126,12 +127,12 @@ export function CartRail() {
                 className="block overflow-hidden rounded-xl border border-border bg-white"
               >
                 {line.product.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <ProductImage
                     src={line.product.imageUrl}
                     alt={line.product.name}
-                    loading="lazy"
-                    className="mx-auto h-20 w-full object-contain p-1.5 transition-transform duration-200 hover:scale-105"
+                    sizes="96px"
+                    className="h-20 w-full"
+                    imageClassName="p-1.5 transition-transform duration-200 hover:scale-105"
                   />
                 ) : (
                   <span className="flex h-20 items-center justify-center font-display text-2xl font-bold text-zinc-300">

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
+import { ProductImage } from "@/frontend/components/commerce/product-image";
 import { getFeaturedProducts } from "@/frontend/lib/cms";
 import type { Product } from "@/frontend/lib/catalog";
 
@@ -15,22 +15,15 @@ function MosaicCard({ product }: { product: Product }) {
       href={`/shop/p/${product.slug}`}
       className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-colors hover:border-brand/40"
     >
-      {product.imageUrl ? (
-        // next/image → responsive srcset + optimisation + native lazy-load.
-        // This mosaic is a decorative, duplicated auto-scroller, so lazy (the
-        // default) is correct — it must not compete with the hero's LCP.
-        <div className="relative aspect-[4/3] w-full overflow-hidden">
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            sizes="(max-width: 1024px) 40vw, 220px"
-            className="object-cover"
-          />
-        </div>
-      ) : (
-        <MediaPlaceholder className="aspect-[4/3]" label={product.brand || "METNMAT"} />
-      )}
+      {/* Decorative, duplicated auto-scroller — lazy (ProductImage's default)
+          is correct here so it never competes with the hero's LCP. */}
+      <ProductImage
+        src={product.imageUrl}
+        alt={product.name}
+        sizes="(max-width: 640px) 50vw, 280px"
+        className="bg-white"
+        label={product.brand || "METNMAT"}
+      />
       <div className="p-4">
         {product.categorySlug && (
           <span className="text-[11px] font-semibold uppercase tracking-wide text-brand-soft">
