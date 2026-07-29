@@ -25,6 +25,7 @@ export function CartRail() {
   const { money, currency, usdRate } = useCurrency();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = React.useState(false);
+  const railRef = React.useRef<HTMLElement>(null);
 
   React.useEffect(() => {
     try {
@@ -34,19 +35,45 @@ export function CartRail() {
     }
   }, []);
 
-  const toggleCollapsed = () => {
-    setCollapsed((c) => {
-      try {
-        localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1");
-      } catch {
-        /* ignore */
-      }
-      return !c;
-    });
-  };
+  /** Set + remember the state, so the rail opens the same way on the next visit. */
+  const applyCollapsed = React.useCallback((next: boolean) => {
+    setCollapsed(next);
+    try {
+      localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const toggleCollapsed = () => applyCollapsed(!collapsed);
 
   const hiddenRoute = pathname.startsWith("/cart") || pathname.startsWith("/checkout");
   const visible = cartCount > 0 && !hiddenRoute;
+
+  /**
+   * Minimise when the customer's attention goes elsewhere: a click/tap anywhere
+   * outside the rail, or Escape. The rail is a persistent panel rather than a
+   * modal, so this listens on the CAPTURE phase and never calls preventDefault —
+   * the click still reaches whatever was clicked, it just also tucks the rail
+   * away. Only armed while the rail is open, so clicking the collapsed pill
+   * still re-opens it normally.
+   */
+  React.useEffect(() => {
+    if (!visible || collapsed) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const el = railRef.current;
+      if (el && !el.contains(e.target as Node)) applyCollapsed(true);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") applyCollapsed(true);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [visible, collapsed, applyCollapsed]);
 
   const subtotalIncl = cartLines.reduce((n, l) => n + inclGST(l.unitPrice) * l.qty, 0);
   const usdSubtotal =
@@ -84,6 +111,7 @@ export function CartRail() {
 
   return (
     <aside
+      ref={railRef}
       aria-label="Shopping cart summary"
       className={cn(
         "fixed bottom-28 right-3 top-32 z-30 hidden w-44 flex-col overflow-hidden",
