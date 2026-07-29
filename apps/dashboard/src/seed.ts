@@ -67,6 +67,21 @@ const RETIRED_DEPARTMENTS = ["furnaces", "crucibles", "safety"] as const;
  */
 const CATEGORY_IMAGES: { slug: string; asset: string; alt: string }[] = [
   {
+    slug: "electrode-holders",
+    asset: "src/seed-assets/categories/electrode-holders.webp",
+    alt: "Electrode holders, electrochemical cell bodies, sample holders, stands, polishing discs and a polishing kit — METNMAT electrode holders & accessories",
+  },
+  {
+    slug: "battery-components",
+    asset: "src/seed-assets/categories/battery-components.webp",
+    alt: "Cylindrical and coin cell cases, caps, gaskets, current-collector tabs, separators, pouch film and electrode powders — METNMAT battery & cell components",
+  },
+  {
+    slug: "carbon-gdl",
+    asset: "src/seed-assets/categories/carbon-gdl.webp",
+    alt: "Carbon cloth, carbon paper, carbon felt, gas diffusion layer sheets and rolls with carbon powders and granules — METNMAT carbon materials & GDL",
+  },
+  {
     slug: "raw-materials",
     asset: "src/seed-assets/categories/raw-materials-alloys.webp",
     alt: "Metal powders, granules, rods, sheets and high-purity elements — METNMAT raw materials & alloys",
