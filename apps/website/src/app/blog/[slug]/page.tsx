@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { draftMode } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
-import { Download, ExternalLink, Eye, PenLine } from "lucide-react";
+import { Download, ExternalLink, PenLine } from "lucide-react";
 import { Container } from "@/frontend/components/ui/container";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
@@ -206,15 +206,6 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
               <div>
                 <dt className="sr-only">Reading time</dt>
                 <dd>{article.readingTime}</dd>
-              </div>
-            )}
-            {article.viewCount > 0 && (
-              <div className="inline-flex items-center gap-1">
-                <Eye aria-hidden className="h-4 w-4" />
-                <dt className="sr-only">Views</dt>
-                <dd>
-                  {article.viewCount.toLocaleString("en-IN")} view{article.viewCount === 1 ? "" : "s"}
-                </dd>
               </div>
             )}
             {article.doi && (

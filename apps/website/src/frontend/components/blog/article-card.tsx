@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Eye, ThumbsUp } from "lucide-react";
+import { ThumbsUp } from "lucide-react";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import type { BlogArticleCard } from "@/frontend/lib/blog";
 
@@ -59,12 +59,6 @@ export function ArticleCard({ article, headingLevel = 3 }: { article: BlogArticl
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {article.date && <time dateTime={article.date}>{formatArticleDate(article.date)}</time>}
           {article.readingTime && <span>· {article.readingTime}</span>}
-          {article.viewCount > 0 && (
-            <span className="inline-flex items-center gap-1">
-              · <Eye aria-hidden className="h-3.5 w-3.5" /> {count(article.viewCount)}
-              <span className="sr-only">views</span>
-            </span>
-          )}
           {article.likeCount > 0 && (
             <span className="inline-flex items-center gap-1">
               · <ThumbsUp aria-hidden className="h-3.5 w-3.5" /> {count(article.likeCount)}

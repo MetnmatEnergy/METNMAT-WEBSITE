@@ -114,7 +114,11 @@ export function CartRail() {
       ref={railRef}
       aria-label="Shopping cart summary"
       className={cn(
-        "fixed bottom-28 right-3 top-32 z-30 hidden w-44 flex-col overflow-hidden",
+        // Height follows the CONTENT (was a fixed top-32→bottom-28 column, which
+        // left a tall empty panel hanging below a single item). max-h keeps it
+        // inside the viewport — past that the item list scrolls on its own.
+        "fixed right-3 top-32 z-30 hidden w-44 flex-col overflow-hidden",
+        "max-h-[calc(100vh-11rem)]",
         "rounded-2xl border border-border bg-surface/95 shadow-xl backdrop-blur",
         "animate-fade-up lg:flex"
       )}
@@ -143,7 +147,9 @@ export function CartRail() {
       </div>
 
       {/* Items */}
-      <div className="flex-1 space-y-4 overflow-y-auto p-3">
+      {/* min-h-0 lets this shrink inside the flex column so overflow-y-auto
+          actually kicks in once the list is taller than the panel's max-h. */}
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
         {cartLines.map((line) => {
           const min = Math.max(1, line.product.moq || 1);
           const atMin = line.qty <= min;
