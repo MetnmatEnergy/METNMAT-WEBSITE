@@ -23,28 +23,158 @@ import { istYear2, formatUserCode, bumpCounter, countersModel, userCodeCounterKe
 // (so the old placeholder catalog is replaced cleanly).
 
 /**
- * Storefront departments that are NOT part of the auto-generated product sheet
- * (catalog-data.ts). Kept here by hand so regenerating that file from the source
- * xlsx can never silently drop them. ensureCategory upserts name/blurb/order on
- * boot, so edit these to change them site-wide.
+ * THE canonical storefront departments — the 10 top-level categories, in order,
+ * exactly as specified in the company's "Product Categories" document.
  *
- * Staff can still add more categories in the admin — nothing here deletes
- * anything (pruning is opt-in via SEED_PRUNE_PLACEHOLDERS).
+ * This list is the source of truth for department name/blurb/order and OVERRIDES
+ * any top-level entry of the same slug in the auto-generated catalog-data.ts, so
+ * regenerating that file from the product sheet can neither rename a department
+ * nor drop one. Sub-categories still come from catalog-data.
  *
- * NOTE: the blurbs below are starting copy — review them in the admin so each
- * one matches what METNMAT actually stocks in that department.
+ * ensureCategory upserts on boot, so editing a name/blurb here changes it
+ * site-wide on the next deploy. Slugs are the public URL (/shop/c/<slug>) —
+ * changing one breaks inbound links and search rankings, so rename the `name`
+ * and leave the `slug` alone. Staff can still add further categories in the
+ * admin; nothing here deletes them (pruning stays opt-in).
  */
-const EXTRA_DEPARTMENTS: SeedCategory[] = [
-  { slug: "furnaces", name: "Furnaces", blurb: "Muffle, tubular & box furnaces", order: 5 },
-  { slug: "crucibles", name: "Crucibles", blurb: "Crucibles for melting, casting & high-temperature work", order: 6 },
-  { slug: "analysis", name: "Analysis Instruments", blurb: "Instruments for materials & electrochemical analysis", order: 7 },
-  { slug: "consumables", name: "Consumables", blurb: "Lab consumables & replacement parts", order: 8 },
-  { slug: "raw-materials", name: "Raw Materials & Alloys", blurb: "Metals, alloys & raw materials for research", order: 9 },
-  { slug: "safety", name: "Lab Safety", blurb: "Protective equipment & laboratory safety essentials", order: 10 },
+const SHOP_DEPARTMENTS: SeedCategory[] = [
+  { slug: "electrodes", name: "Electrodes", blurb: "Working, reference, and counter electrodes for electrochemistry", order: 1 },
+  { slug: "electrode-holders", name: "Electrode Holders & Accessories", blurb: "Electrode holders, sample holders, polishing kits, and accessories", order: 2 },
+  { slug: "membranes", name: "Membranes", blurb: "Proton, anion, cation, and bipolar exchange membranes, ionomers", order: 3 },
+  { slug: "reactor-cell", name: "Reactors & Cells", blurb: "Water-splitting, CO₂ electrolysis, photoelectrochemical (PEC), fuel cell, and battery reactors", order: 4 },
+  { slug: "battery-components", name: "Battery & Cell Components", blurb: "Coin cell and cylindrical cell components, separators, pouch films, and related parts", order: 5 },
+  { slug: "carbon-gdl", name: "Carbon Materials & Gas Diffusion Layers (GDL)", blurb: "Gas diffusion layers, carbon paper, carbon cloth, carbon felt, and carbon powders", order: 6 },
+  { slug: "raw-materials", name: "Raw Materials & Alloys", blurb: "Metal foams, felts, foils, meshes, sheets, plates, alloys, and raw materials", order: 7 },
+  { slug: "analysis", name: "Analysis Instruments", blurb: "Conductivity measurement systems and materials characterization instruments", order: 8 },
+  { slug: "equipments", name: "Equipment & Accessories", blurb: "Peristaltic pumps, presses, test benches, coating equipment, and laboratory accessories", order: 9 },
+  { slug: "consumables", name: "Consumables", blurb: "Polishing materials, sealing products, gas-handling consumables, and specialty chemicals", order: 10 },
 ];
 
-/** Every seeded category: the product-sheet ones plus the hand-kept departments. */
-const ALL_SEED_CATEGORIES: SeedCategory[] = [...seedCategories, ...EXTRA_DEPARTMENTS];
+const DEPARTMENT_SLUGS = new Set(SHOP_DEPARTMENTS.map((d) => d.slug));
+
+/**
+ * Departments that predate the category document and are no longer offered.
+ * Retired on boot — but ONLY when empty, so a department that still holds
+ * products (or sub-categories) is left alone and reported instead of silently
+ * orphaning catalogue rows. Safe to re-run; safe to leave in place forever.
+ */
+const RETIRED_DEPARTMENTS = ["furnaces", "crucibles", "safety"] as const;
+
+/**
+ * Department banner images, versioned in the repo and attached on boot (same
+ * pattern as project covers). Only fills a category that has NO image yet, so a
+ * staff upload in the admin always wins and is never overwritten.
+ */
+const CATEGORY_IMAGES: { slug: string; asset: string; alt: string }[] = [
+  {
+    slug: "raw-materials",
+    asset: "src/seed-assets/categories/raw-materials-alloys.webp",
+    alt: "Metal powders, granules, rods, sheets and high-purity elements — METNMAT raw materials & alloys",
+  },
+  {
+    slug: "analysis",
+    asset: "src/seed-assets/categories/analysis-instruments.webp",
+    alt: "Analytical balance, microscope, UV-Vis spectrophotometer, XRF and electrochemical analysers — METNMAT analysis instruments",
+  },
+  {
+    slug: "consumables",
+    asset: "src/seed-assets/categories/consumables.webp",
+    alt: "Laboratory plasticware, tubes, petri dishes, pipette tips, fittings and tubing — METNMAT consumables",
+  },
+];
+
+/**
+ * Every seeded category: the canonical departments plus the sub-categories from
+ * the product sheet. Departments win on slug collision (see SHOP_DEPARTMENTS).
+ */
+const ALL_SEED_CATEGORIES: SeedCategory[] = [
+  ...SHOP_DEPARTMENTS,
+  ...seedCategories.filter((c) => !DEPARTMENT_SLUGS.has(c.slug)),
+];
+
+/**
+ * Attach the department banner images. Only fills a category with no image yet,
+ * and reuses an already-uploaded Media row by filename rather than minting a new
+ * one — so this is idempotent across retries, concurrent boots and redeploys,
+ * and never leaves orphaned uploads in the bucket.
+ */
+async function ensureCategoryImages(payload: Payload): Promise<void> {
+  for (const { slug, asset, alt } of CATEGORY_IMAGES) {
+    try {
+      const res = await payload.find({
+        collection: "categories",
+        where: { slug: { equals: slug } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+      const doc = res.docs[0] as { id: string | number; image?: unknown } | undefined;
+      if (!doc || doc.image) continue; // no such category, or staff already set one
+      const filePath = path.resolve(process.cwd(), asset);
+      if (!existsSync(filePath)) {
+        payload.logger.warn(`[seed] category banner asset missing: ${filePath}`);
+        continue;
+      }
+      const filename = path.basename(asset);
+      const existingMedia = await payload.find({
+        collection: "media",
+        where: { filename: { equals: filename } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+      const mediaId =
+        (existingMedia.docs[0] as { id: string | number } | undefined)?.id ??
+        (await payload.create({ collection: "media", filePath, data: { alt }, overrideAccess: true })).id;
+      await payload.update({
+        collection: "categories",
+        id: doc.id,
+        data: { image: mediaId },
+        overrideAccess: true,
+      });
+      payload.logger.info(`[seed] categories: banner attached (${slug}).`);
+    } catch (e) {
+      payload.logger.warn(`[seed] category banner for ${slug} failed: ${(e as Error).message}`);
+    }
+  }
+}
+
+/**
+ * Retire departments dropped from the category document — but only when they
+ * hold no products and no sub-categories. A non-empty one is left in place and
+ * logged, so retiring it stays a deliberate human decision in the admin rather
+ * than a boot-time surprise that orphans catalogue rows.
+ */
+async function retireDepartments(payload: Payload): Promise<void> {
+  for (const slug of RETIRED_DEPARTMENTS) {
+    try {
+      const found = await payload.find({
+        collection: "categories",
+        where: { slug: { equals: slug } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+      const doc = found.docs[0] as { id: string | number } | undefined;
+      if (!doc) continue;
+
+      const [products, children] = await Promise.all([
+        payload.count({ collection: "products", where: { category: { equals: doc.id } }, overrideAccess: true }),
+        payload.count({ collection: "categories", where: { parent: { equals: doc.id } }, overrideAccess: true }),
+      ]);
+      if (products.totalDocs > 0 || children.totalDocs > 0) {
+        payload.logger.warn(
+          `[seed] retired department '${slug}' still has ${products.totalDocs} product(s) and ${children.totalDocs} sub-category(ies) — left in place; move them, then delete it in the admin.`,
+        );
+        continue;
+      }
+      await payload.delete({ collection: "categories", id: doc.id, overrideAccess: true });
+      payload.logger.info(`[seed] categories: retired empty department '${slug}'.`);
+    } catch (e) {
+      payload.logger.warn(`[seed] retiring ${slug} failed: ${(e as Error).message}`);
+    }
+  }
+}
 
 async function cleanupMalformed(payload: Payload): Promise<void> {
   try {
@@ -1191,6 +1321,11 @@ export async function seed(payload: Payload): Promise<void> {
   const ids: Record<string, string> = {};
   for (const c of ALL_SEED_CATEGORIES.filter((c) => !c.parentSlug)) await ensureCategory(payload, c, ids);
   for (const c of ALL_SEED_CATEGORIES.filter((c) => c.parentSlug)) await ensureCategory(payload, c, ids);
+
+  // Departments now exist → attach their banners, then retire the ones the
+  // category document dropped (empty ones only).
+  await ensureCategoryImages(payload);
+  await retireDepartments(payload);
 
   // 3) (Opt-in only) remove stale categories (now that no products reference them).
   if (allowPrune) await pruneStale(payload, "categories", catSlugs);
