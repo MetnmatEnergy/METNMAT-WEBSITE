@@ -33,13 +33,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { category } = await params;
   const cat = await getCategoryBySlug(category);
+  // 404 HERE so the response carries a real 404 STATUS — see the note in
+  // shop/p/[slug]. Building "Category" placeholder metadata instead meant every
+  // bogus /shop/c/* URL answered HTTP 200 with the 404 page inside it.
+  if (!cat) notFound();
   const query = parseShopQuery(await searchParams);
   const filtered = hasActiveFilters(query);
   const base = pageMetadata({
-    title: cat ? `${cat.name} — Shop` : "Category",
+    title: `${cat.name} — Shop`,
     description:
-      cat?.blurb ||
-      `Browse ${cat?.name ?? "research-grade"} products at METNMAT — lab-grade electrochemistry equipment with GST invoicing and shipping across India & worldwide.`,
+      cat.blurb ||
+      `Browse ${cat.name} products at METNMAT — lab-grade electrochemistry equipment with GST invoicing and shipping across India & worldwide.`,
     path: `/shop/c/${category}`,
   });
   return {

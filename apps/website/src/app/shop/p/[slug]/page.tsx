@@ -27,9 +27,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  if (!product) {
-    return { title: "Product", alternates: { canonical: `/shop/p/${slug}` } };
-  }
+  // 404 HERE, not just in the page body. generateMetadata runs before the
+  // response starts, so this is the only place that can still set a 404 STATUS
+  // — returning placeholder metadata instead produced a soft-404: the 404 page
+  // rendered but the response was HTTP 200, so search engines indexed every
+  // bogus /shop/p/* URL as a real page. (Same pattern the blog already uses.)
+  if (!product) notFound();
   const title = product.brand ? `${product.name} — ${product.brand}` : product.name;
   return {
     title,
