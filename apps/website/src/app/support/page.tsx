@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { SupportClient } from "@/frontend/components/support/support-client";
+import { Container } from "@/frontend/components/ui/container";
+import { PageBreadcrumbs } from "@/frontend/components/seo/page-breadcrumbs";
 import { pageMetadata } from "@/frontend/lib/seo";
 
 export const metadata = pageMetadata({
@@ -11,8 +13,13 @@ export const metadata = pageMetadata({
 
 export default function SupportPage() {
   return (
-    <Suspense>
-      <SupportClient />
-    </Suspense>
+    <>
+      <Container className="pt-6">
+        <PageBreadcrumbs items={[{ name: "Home", path: "/" }, { name: "Support", path: "/support" }]} />
+      </Container>
+      <Suspense>
+        <SupportClient />
+      </Suspense>
+    </>
   );
 }

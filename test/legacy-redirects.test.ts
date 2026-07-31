@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 // @ts-expect-error — generated .mjs data module, no types
 import { legacyRedirects } from "../apps/website/legacy-redirects.mjs";
 
-type Rule = { source: string; destination: string; permanent: boolean };
+type Rule = { source: string; destination: string; statusCode: number };
 const rules = legacyRedirects as Rule[];
 
 const productRules = rules.filter((r) => r.source.startsWith("/product-page/") && !r.source.includes(":slug"));
@@ -95,7 +95,7 @@ describe("legacy redirect map", () => {
     for (const r of rules) expect(r.destination.startsWith("/")).toBe(true);
   });
 
-  it("is permanent throughout — these moves are final", () => {
-    expect(rules.every((r) => r.permanent)).toBe(true);
+  it("uses a literal 301 — Next's permanent:true emits 308, and the brief's gate (and every SEO tool) expects 301", () => {
+    expect(rules.every((r) => r.statusCode === 301)).toBe(true);
   });
 });

@@ -140,6 +140,7 @@ export default function TermsPage() {
         eyebrow="Legal"
         title="Terms of Service"
         description="The terms that govern use of our website, catalog, quotes, and online orders."
+        breadcrumbs={[{ name: "Home", path: "/" }, { name: "Terms of Service", path: "/terms" }]}
       />
       <section className="section">
         <Container className="max-w-3xl">

@@ -6,7 +6,7 @@ import { PageHero } from "@/frontend/components/layout/page-hero";
 import { ServiceCardStack, type ServiceStackItem } from "@/frontend/components/ui/service-card-stack";
 import CardFanCarousel, { type CardItem } from "@/frontend/components/ui/card-fan-carousel";
 import { CtaBand } from "@/frontend/components/home/cta";
-import { JsonLd, organizationJsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, organizationJsonLd } from "@/frontend/components/seo/json-ld";
 import { getServices } from "@/frontend/lib/cms";
 import { SERVICE_IMAGES } from "@/frontend/lib/service-images";
 import { SERVICE_DETAILS } from "@/frontend/lib/service-details";
@@ -97,12 +97,6 @@ export default async function ServicesPage() {
 
   return (
     <>
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: "Home", path: "/" },
-          { name: "Services", path: "/services" },
-        ])}
-      />
       {/* Emit the org node here so each Service's provider {@id:#organization}
           resolves; deduped by @id (same as /, /about, /contact). */}
       <JsonLd data={organizationJsonLd} />
@@ -112,6 +106,10 @@ export default async function ServicesPage() {
         title="What we do"
         description="Customized, turnkey R&D for metallurgy & materials. Every client is unique, so we tailor each solution to your requirement — from lab-scale prototype to full industrial scale."
         bordered={false}
+        breadcrumbs={[
+          { name: "Home", path: "/" },
+          { name: "Services", path: "/services" },
+        ]}
       />
 
       {/* Fanned service deck — hover to spread the cards; tap a card to jump to

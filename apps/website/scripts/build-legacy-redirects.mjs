@@ -203,7 +203,7 @@ const sourceForms = (slug) => {
 };
 const productRow = (from, to, how) =>
   sourceForms(from)
-    .map((s) => `  { source: ${esc(`/product-page/${s}`)}, destination: ${esc(`/shop/p/${to}`)}, permanent: true }, // ${how}`)
+    .map((s) => `  { source: ${esc(`/product-page/${s}`)}, destination: ${esc(`/shop/p/${to}`)}, statusCode: 301 }, // ${how}`)
     .join("\n");
 
 const file = `// AUTO-GENERATED — do not hand-edit. Regenerate with:
@@ -237,7 +237,7 @@ const file = `// AUTO-GENERATED — do not hand-edit. Regenerate with:
 // Blog: the 26 legacy posts share zero slugs with the 3 posts on .com, so
 // /post/:slug goes to the blog index rather than inventing equivalences.
 
-/** @type {{source: string, destination: string, permanent: boolean}[]} */
+/** @type {{source: string, destination: string, statusCode: number}[]} */
 export const legacyRedirects = [
   // ---- Wix pages -------------------------------------------------------
 ${[
@@ -271,7 +271,7 @@ ${[
   ["/blank-4", "/account/orders"],
   ["/blank-5", "/account/orders"],
 ]
-  .map(([s, d]) => `  { source: ${esc(s)}, destination: ${esc(d)}, permanent: true },`)
+  .map(([s, d]) => `  { source: ${esc(s)}, destination: ${esc(d)}, statusCode: 301 },`)
   .join("\n")}
 
   // ---- Store products (${rows.length} of ${legacy.length} resolve to a specific product) ----
@@ -279,8 +279,8 @@ ${rows.map(([from, to, how]) => productRow(from, to, how)).join("\n")}
 
   // ---- Catch-alls (MUST stay last: first match wins) --------------------
   // The remaining ${unmatched.length} legacy products have no equivalent we can prove.
-  { source: "/product-page/:slug", destination: "/shop/all", permanent: true },
-  { source: "/post/:slug", destination: "/blog", permanent: true },
+  { source: "/product-page/:slug", destination: "/shop/all", statusCode: 301 },
+  { source: "/post/:slug", destination: "/blog", statusCode: 301 },
 ];
 `;
 

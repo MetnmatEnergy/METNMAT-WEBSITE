@@ -66,6 +66,7 @@ export default function ReplacementPolicyPage() {
         eyebrow="Policy"
         title="Replacement Policy"
         description="We do not offer refunds. Instead, eligible orders are covered by a 7-day replacement policy from the date of delivery."
+        breadcrumbs={[{ name: "Home", path: "/" }, { name: "Replacement Policy", path: "/replacement-policy" }]}
       />
 
       {/* Key points */}

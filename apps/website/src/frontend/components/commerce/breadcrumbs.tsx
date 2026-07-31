@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { cn } from "@/frontend/lib/utils";
 
 export function Breadcrumbs({
   items,
+  className,
 }: {
   items: { name: string; href?: string }[];
+  className?: string;
 }) {
   return (
-    <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+    <nav
+      aria-label="Breadcrumb"
+      className={cn("flex flex-wrap items-center gap-1 text-sm text-muted-foreground", className)}
+    >
       {items.map((item, i) => (
         <span key={i} className="flex items-center gap-1">
           {item.href ? (

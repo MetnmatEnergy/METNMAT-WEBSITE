@@ -138,6 +138,7 @@ export default function PrivacyPolicyPage() {
         eyebrow="Legal"
         title="Privacy Policy"
         description="How we collect, use, share, and protect your personal data — and the choices you have."
+        breadcrumbs={[{ name: "Home", path: "/" }, { name: "Privacy Policy", path: "/privacy" }]}
       />
       <section className="section">
         <Container className="max-w-3xl">

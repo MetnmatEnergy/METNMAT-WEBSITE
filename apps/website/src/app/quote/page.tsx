@@ -18,6 +18,7 @@ export default function QuotePage() {
         eyebrow="Get a Quote"
         title="Request a quote"
         description="Tell us what you need — services, products, or both — and we'll scope it for you."
+        breadcrumbs={[{ name: "Home", path: "/" }, { name: "Get a Quote", path: "/quote" }]}
       />
 
       <section className="section">

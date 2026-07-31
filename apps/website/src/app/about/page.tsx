@@ -27,7 +27,8 @@ import { ProcessOrbit } from "@/frontend/components/about/process-orbit";
 import { AnimatedShaderBackground } from "@/frontend/components/ui/animated-shader-background";
 import { getHomepage, getTeam } from "@/frontend/lib/cms";
 import { pageMetadata } from "@/frontend/lib/seo";
-import { JsonLd, organizationJsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, organizationJsonLd } from "@/frontend/components/seo/json-ld";
+import { PageBreadcrumbs } from "@/frontend/components/seo/page-breadcrumbs";
 
 export const metadata: Metadata = pageMetadata({
   title: "About",
@@ -68,12 +69,6 @@ export default async function AboutPage() {
       {/* GEO/SEO: the canonical "who we are" page should carry the Organization
           entity + a breadcrumb so answer engines anchor METNMAT here. */}
       <JsonLd data={organizationJsonLd} />
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: "Home", path: "/" },
-          { name: "About", path: "/about" },
-        ])}
-      />
       {/* ───────────── Hero ───────────── */}
       <section className="relative overflow-hidden border-b border-border">
         {/* Brand WebGL plasma (recolored red/dark), dimmed under a scrim for legibility */}
@@ -82,6 +77,15 @@ export default async function AboutPage() {
         <div className="bg-grid pointer-events-none absolute inset-0 opacity-50 [mask-image:radial-gradient(80%_60%_at_50%_0%,black,transparent)]" />
 
         <Container className="relative py-16 text-center sm:py-20 lg:py-24">
+          {/* Centred to sit with this hero's centred stack, unlike the
+              left-aligned trail on the standard PageHero. */}
+          <PageBreadcrumbs
+            items={[
+              { name: "Home", path: "/" },
+              { name: "About", path: "/about" },
+            ]}
+            className="mb-6 justify-center"
+          />
           <Reveal className="flex justify-center">
             <Badge variant="dot">About METNMAT</Badge>
           </Reveal>
