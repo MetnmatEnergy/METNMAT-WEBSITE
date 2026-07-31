@@ -34,7 +34,17 @@ import * as React from "react";
  */
 const CHATBOT_URL = process.env.NEXT_PUBLIC_CHATBOT_URL;
 
-const WAKE_EVENTS = ["pointerdown", "pointermove", "keydown", "touchstart", "scroll", "wheel"] as const;
+/**
+ * Deliberately NOT scroll or wheel. Lighthouse scrolls the page itself to
+ * capture its full-page screenshot, which fired a scroll listener and pulled the
+ * whole widget back into the audit — measured on production, 5 requests and
+ * 348 KiB, even though the script is no longer in the server HTML.
+ *
+ * These four cover every real visitor without a programmatic scroll counting as
+ * one: a desktop user moves the pointer before they can scroll, a touch user
+ * fires touchstart before the page moves, and a keyboard user fires keydown.
+ */
+const WAKE_EVENTS = ["pointerdown", "pointermove", "keydown", "touchstart"] as const;
 
 export function ChatWidget() {
   const [wake, setWake] = React.useState(false);
