@@ -65,6 +65,14 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: { card: "summary_large_image" },
     robots: { index: true, follow: true },
+    // Search Console site verification. Set GOOGLE_SITE_VERIFICATION to the
+    // token from the "HTML tag" method and redeploy — the meta tag appears on
+    // every page, which is what Google checks. Left unset, no tag is emitted.
+    // (Domain-property verification uses a DNS TXT record instead and cannot be
+    // done from the app at all.)
+    ...(process.env.GOOGLE_SITE_VERIFICATION
+      ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
+      : {}),
     manifest: "/manifest.webmanifest",
     appleWebApp: { capable: true, title: site.name },
     // Square (1:1) METNMAT-logo favicons served from /public root URLs. Explicit
