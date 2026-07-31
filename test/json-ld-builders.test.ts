@@ -161,3 +161,30 @@ describe("productFaqs", () => {
     expect(out.find((f) => f.q === "What sizes are available?")!.a).toContain("Ø3 mm, Ø6 mm");
   });
 });
+
+describe("entity relationships", () => {
+  it("declares an article as part of the Blog, with a url so the entity is defined not just referenced", () => {
+    const out = articleJsonLd(baseArticle, false) as Record<string, any>;
+    expect(out.isPartOf["@type"]).toBe("Blog");
+    expect(out.isPartOf.url).toMatch(/\/blog$/);
+  });
+
+  it("uses the article's own CMS category as its subject, and omits `about` when there is none", () => {
+    expect((articleJsonLd({ ...baseArticle, categoryName: "Fuel Cells" }, false) as any).about).toEqual({
+      "@type": "Thing",
+      name: "Fuel Cells",
+    });
+    expect(articleJsonLd(baseArticle, false)).not.toHaveProperty("about");
+  });
+
+  it("relates a product only to products actually passed in", () => {
+    const withRel = productJsonLd({
+      product: baseProduct,
+      offerable: false,
+      related: [{ slug: "other", name: "Other" }],
+    }) as Record<string, any>;
+    expect(withRel.isRelatedTo).toHaveLength(1);
+    expect(withRel.isRelatedTo[0].url).toContain("/shop/p/other");
+    expect(productJsonLd({ product: baseProduct, offerable: false })).not.toHaveProperty("isRelatedTo");
+  });
+});

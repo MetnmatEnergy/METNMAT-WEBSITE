@@ -261,6 +261,7 @@ export function productJsonLd({
   categoryName,
   priceInclGst,
   offerable,
+  related,
 }: {
   product: ProductSchemaInput;
   categoryName?: string;
@@ -268,6 +269,8 @@ export function productJsonLd({
   priceInclGst?: number;
   /** False for quote-only / discontinued items — suppresses the whole Offer. */
   offerable: boolean;
+  /** The products actually rendered in the "Related products" strip. */
+  related?: { slug: string; name: string }[];
 }) {
   const specs = (product.specs ?? []).filter((s) => s.label && s.value);
   return {
@@ -276,6 +279,17 @@ export function productJsonLd({
     name: product.name,
     ...(product.sku ? { sku: product.sku, mpn: product.sku } : {}),
     ...(categoryName ? { category: categoryName } : {}),
+    // Mirrors the "Related products" strip on the page — the same catalogue
+    // relation (shared category), not a separately invented list.
+    ...(related?.length
+      ? {
+          isRelatedTo: related.map((r) => ({
+            "@type": "Product",
+            name: r.name,
+            url: `${site.url}/shop/p/${r.slug}`,
+          })),
+        }
+      : {}),
     ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
     ...(product.shortDesc ? { description: product.shortDesc } : {}),
     ...(product.imageUrl ? { image: product.imageUrl } : {}),
@@ -357,6 +371,17 @@ export function articleJsonLd(article: ArticleSchemaInput, isTech: boolean) {
     mainEntityOfPage: url,
     url,
     ...(article.ogImageUrl ? { image: article.ogImageUrl } : {}),
+    // Explicit entity relationships. The Blog node carries its own url rather
+    // than being an @id-only reference, so it defines the entity on this page
+    // instead of pointing at one nothing here declares.
+    isPartOf: {
+      "@type": "Blog",
+      "@id": `${site.url}/blog#blog`,
+      name: "METNMAT Research & Engineering Insights",
+      url: `${site.url}/blog`,
+    },
+    // The subject is the article's own CMS category — not an inferred topic.
+    ...(article.categoryName ? { about: { "@type": "Thing", name: article.categoryName } } : {}),
     author: article.authors.length
       ? article.authors.map((a) => ({
           "@type": "Person",

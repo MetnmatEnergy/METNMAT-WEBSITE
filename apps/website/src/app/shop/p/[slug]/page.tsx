@@ -80,6 +80,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           categoryName: category?.name,
           priceInclGst: product.price ? inclGST(product.price) : undefined,
           offerable: !isQuoteOnly(product),
+          related: related.map((p) => ({ slug: p.slug, name: p.name })),
         })}
       />
       {faqs.length > 0 && <JsonLd data={faqJsonLd(faqs)} />}

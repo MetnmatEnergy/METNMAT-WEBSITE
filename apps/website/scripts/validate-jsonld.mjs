@@ -133,11 +133,15 @@ for (const [label, path] of Object.entries(urls)) {
     if (!defined) problems.push(`@id "${id}" is referenced but never defined on this page (no node carries a url)`);
   }
 
-  // Duplicate top-level entities without a distinguishing @id confuse dedupe.
-  const counts = types.reduce((m, t) => ((m[t] = (m[t] || 0) + 1), m), {});
+  // Two competing ROOT entities of the same type make it ambiguous what the page
+  // is about. Counted at the root of each block only — nested references are
+  // normal and expected (a Product legitimately lists related Products under
+  // isRelatedTo, and counting those flagged a correct page).
+  const rootTypes = parsed.flatMap((d) => (Array.isArray(d) ? d : [d]).map((n) => n?.["@type"]).filter((t) => typeof t === "string"));
+  const counts = rootTypes.reduce((m, t) => ((m[t] = (m[t] || 0) + 1), m), {});
   for (const [t, n] of Object.entries(counts)) {
-    if (n > 1 && ["BreadcrumbList", "WebSite", "Product"].includes(t)) {
-      problems.push(`${t} appears ${n}× on one page`);
+    if (n > 1 && ["BreadcrumbList", "WebSite", "Product", "FAQPage"].includes(t)) {
+      problems.push(`${t} appears as a root entity ${n}× on one page`);
     }
   }
 
