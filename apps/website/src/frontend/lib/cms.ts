@@ -198,8 +198,50 @@ export async function getProductBySku(sku: string): Promise<Product | null> {
   return doc ? mapProduct(doc) : null;
 }
 
+
+/**
+ * Normalise text for search on BOTH sides — the query and the indexed fields.
+ *
+ * NFKD folds the subscript digits used in chemical formulae down to ASCII, so
+ * the article titled "CO₂ Fuel Cells" is reachable by typing "CO2" — which is
+ * what people actually type, and which previously returned nothing at all. It
+ * also strips diacritics, so "Café" matches "cafe".
+ */
+export function normalizeSearchText(s: string): string {
+  return s
+    .normalize("NFKD")
+    // Combining marks left behind by NFKD (the accent in "Café").
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Terms the catalogue names differently from the way customers ask for them.
+ * Every entry maps a word a buyer types onto wording that genuinely appears in
+ * our own data — Nafion IS the PFSA membrane we stock, "electrolyser" is the
+ * British spelling of a product we list as "electrolyzer". No invented
+ * equivalences: if we do not sell it, the synonym does not conjure a result.
+ */
+const SEARCH_SYNONYMS: Record<string, string[]> = {
+  nafion: ["pfsa", "perfluorosulfonic"],
+  electrolyser: ["electrolyzer"],
+  electrolysers: ["electrolyzers"],
+  electrolyse: ["electrolyze"],
+  analyser: ["analyzer"],
+  sulphate: ["sulfate"],
+  sulphuric: ["sulfuric"],
+  aluminium: ["aluminum"],
+};
+
+/** A token matches if the field contains it, or any wording we use for it. */
+function tokenVariants(t: string): string[] {
+  return [t, ...(SEARCH_SYNONYMS[t] ?? [])];
+}
+
 export async function searchProducts(q: string): Promise<Product[]> {
-  const term = q.trim().toLowerCase();
+  const term = normalizeSearchText(q);
   if (!term) return [];
   // Multi-token AND match (every word must appear somewhere) + relevance score
   // so an exact name/SKU ranks above an incidental shortDesc mention — instead
@@ -207,12 +249,13 @@ export async function searchProducts(q: string): Promise<Product[]> {
   const tokens = term.split(/\s+/).filter(Boolean);
   const scored: { p: Product; score: number }[] = [];
   for (const p of await getAllProducts()) {
-    const name = p.name.toLowerCase();
-    const sku = (p.sku ?? "").toLowerCase();
-    const brand = (p.brand ?? "").toLowerCase();
-    const desc = (p.shortDesc ?? "").toLowerCase();
+    const name = normalizeSearchText(p.name);
+    const sku = normalizeSearchText(p.sku ?? "");
+    const brand = normalizeSearchText(p.brand ?? "");
+    const desc = normalizeSearchText(p.shortDesc ?? "");
     const fields = [name, sku, brand, desc];
-    if (!tokens.every((t) => fields.some((f) => f.includes(t)))) continue; // AND
+    // AND across tokens, OR across each token's accepted wordings.
+    if (!tokens.every((t) => tokenVariants(t).some((v) => fields.some((f) => f.includes(v))))) continue;
     let score = 0;
     if (name === term) score += 100;
     else if (name.startsWith(term)) score += 45;
@@ -256,9 +299,15 @@ const SITE_PAGES: (SiteLink & { keywords: string })[] = [
 export async function searchSite(
   q: string
 ): Promise<{ products: Product[]; links: SiteLink[] }> {
-  const term = q.trim().toLowerCase();
+  const term = normalizeSearchText(q);
   if (!term) return { products: [], links: [] };
-  const has = (s: string) => s.toLowerCase().includes(term);
+  const terms = term.split(/s+/).filter(Boolean).flatMap(tokenVariants);
+  // Match on any accepted wording so "CO2" reaches "CO₂" and "electrolyser"
+  // reaches "electrolyzer"; the whole phrase still wins on relevance below.
+  const has = (s: string) => {
+    const f = normalizeSearchText(s);
+    return f.includes(term) || terms.some((t) => f.includes(t));
+  };
 
   const [products, cats, svcs, projs, posts] = await Promise.all([
     searchProducts(term),
