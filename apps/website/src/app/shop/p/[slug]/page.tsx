@@ -8,7 +8,7 @@ import { ProductBuyBox } from "@/frontend/components/commerce/product-buy-box";
 import { ProductGallery } from "@/frontend/components/commerce/product-gallery";
 import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
-import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd, productFaqs, faqJsonLd } from "@/frontend/components/seo/json-ld";
 import { inclGST, isQuoteOnly } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
@@ -64,6 +64,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   const related = (await getProductsByCategory(product.categorySlug))
     .filter((p) => p.slug !== product.slug)
     .slice(0, 4);
+  const faqs = productFaqs(product);
 
   return (
     <Container className="py-8">
@@ -81,6 +82,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           offerable: !isQuoteOnly(product),
         })}
       />
+      {faqs.length > 0 && <JsonLd data={faqJsonLd(faqs)} />}
       <JsonLd
         data={breadcrumbJsonLd([
           { name: "Home", path: "/" },
@@ -185,6 +187,26 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
       <div className="mt-10">
         <ProductTabs product={product} />
       </div>
+
+      {/* Buyer questions. Rendered as real page content, not schema-only —
+          Google requires FAQ answers to be visible on the page, and an answer a
+          customer can't read is no use to them either. Every entry is derived
+          from a field set on THIS product or from a published policy page. */}
+      {faqs.length > 0 && (
+        <section className="mt-14" aria-labelledby="faq-heading">
+          <h2 id="faq-heading" className="font-display text-xl font-bold">
+            Questions about this product
+          </h2>
+          <dl className="mt-6 divide-y divide-border border-y border-border">
+            {faqs.map((f) => (
+              <div key={f.q} className="py-4">
+                <dt className="text-sm font-semibold">{f.q}</dt>
+                <dd className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.a}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
 
       {/* Related */}
       {related.length > 0 && (

@@ -4,6 +4,7 @@ import {
   articleJsonLd,
   organizationRef,
   publisherJsonLd,
+  productFaqs,
 } from "../apps/website/src/frontend/components/seo/schema";
 
 const baseProduct = {
@@ -111,5 +112,52 @@ describe("articleJsonLd", () => {
     const out = articleJsonLd(baseArticle, false) as Record<string, any>;
     expect(out.publisher.logo["@type"]).toBe("ImageObject");
     expect(out.publisher.url).toBeTruthy();
+  });
+});
+
+describe("productFaqs", () => {
+  it("omits questions whose source field is unset — an invented answer would back FAQPage schema with a claim the business never made", () => {
+    const out = productFaqs({ name: "X" });
+    const qs = out.map((f) => f.q);
+    expect(qs).not.toContain("What is the minimum order quantity?");
+    expect(qs).not.toContain("Is bulk pricing available?");
+    expect(qs).not.toContain("What sizes are available?");
+    expect(qs).not.toContain("Where is it made?");
+    expect(qs).not.toContain("Is a datasheet available?");
+  });
+
+  it("always answers the site-wide policies, which are published pages", () => {
+    const qs = productFaqs({ name: "X" }).map((f) => f.q);
+    expect(qs).toContain("Do you provide a GST invoice?");
+    expect(qs).toContain("Can I return or replace it?");
+    expect(qs).toContain("Do you ship outside India?");
+  });
+
+  it("never promises a refund — the published policy is replacement-only", () => {
+    const a = productFaqs({ name: "X" }).find((f) => f.q === "Can I return or replace it?")!.a;
+    expect(a).toMatch(/do not offer refunds/i);
+    expect(a).toMatch(/7-day replacement/i);
+  });
+
+  it("does not claim stock for a quote-only item", () => {
+    const qs = productFaqs({ name: "X", productType: "quote-only", inStock: true }).map((f) => f.q);
+    expect(qs).toContain("How do I get a price for X?");
+    expect(qs).not.toContain("Is X in stock?");
+  });
+
+  it("says a discontinued product is discontinued rather than offering it", () => {
+    const out = productFaqs({ name: "X", productType: "discontinued", inStock: true });
+    expect(out[0].a).toMatch(/discontinued/i);
+  });
+
+  it("reports out-of-stock honestly", () => {
+    const a = productFaqs({ name: "X", inStock: false }).find((f) => f.q === "Is X in stock?")!.a;
+    expect(a).toMatch(/out of stock/i);
+  });
+
+  it("uses the product's own MOQ, unit and sizes verbatim", () => {
+    const out = productFaqs({ name: "X", moq: 5, unit: "box", sizes: ["Ø3 mm", "Ø6 mm"] });
+    expect(out.find((f) => f.q === "What is the minimum order quantity?")!.a).toContain("5 boxs");
+    expect(out.find((f) => f.q === "What sizes are available?")!.a).toContain("Ø3 mm, Ø6 mm");
   });
 });

@@ -368,3 +368,100 @@ export function articleJsonLd(article: ArticleSchemaInput, isTech: boolean) {
     publisher: publisherJsonLd,
   };
 }
+
+type FaqProductInput = {
+  name: string;
+  inStock?: boolean;
+  leadTime?: string;
+  productType?: string;
+  moq?: number;
+  unit?: string;
+  priceTiers?: { minQty?: number }[];
+  sizes?: string[];
+  countryOfOrigin?: string;
+  hsnSac?: string;
+  datasheets?: unknown[];
+};
+
+/**
+ * Buyer questions for a product page, answered ONLY from fields that are
+ * actually set on that product or from a published policy page.
+ *
+ * Every entry is conditional on its source data existing. Nothing here is
+ * written to fill space: an FAQ that answers "what is the lead time?" for a
+ * product with no lead time recorded would be invented content, and it would be
+ * backing FAQPage structured data with a claim the business never made.
+ */
+export function productFaqs(p: FaqProductInput): { q: string; a: string }[] {
+  const faqs: { q: string; a: string }[] = [];
+  const quoteOnly = p.productType === "quote-only";
+  const discontinued = p.productType === "discontinued";
+
+  if (discontinued) {
+    faqs.push({
+      q: `Is ${p.name} still available?`,
+      a: `${p.name} is discontinued. Contact us and we will suggest a current equivalent from the catalogue.`,
+    });
+  } else if (quoteOnly) {
+    faqs.push({
+      q: `How do I get a price for ${p.name}?`,
+      a: `${p.name} is supplied on a quotation basis. Send a request through the product page or the quote form and we will price it against your specification and quantity.`,
+    });
+  } else if (p.inStock !== undefined) {
+    faqs.push({
+      q: `Is ${p.name} in stock?`,
+      a: p.inStock
+        ? `Yes — ${p.name} is in stock.${p.leadTime ? ` ${p.leadTime}.` : ""}`
+        : `${p.name} is currently out of stock.${p.leadTime ? ` ${p.leadTime}.` : ""} Contact us for the current lead time.`,
+    });
+  }
+
+  if (p.moq && p.moq > 1) {
+    faqs.push({
+      q: `What is the minimum order quantity?`,
+      a: `The minimum order is ${p.moq} ${p.unit || "unit"}${p.moq > 1 ? "s" : ""}.`,
+    });
+  }
+
+  if (p.priceTiers?.length) {
+    const from = p.priceTiers.map((t) => t.minQty).filter((q): q is number => typeof q === "number").sort((a, b) => a - b)[0];
+    faqs.push({
+      q: `Is bulk pricing available?`,
+      a: `Yes. Tiered pricing applies${from ? ` from ${from} ${p.unit || "unit"}s upward` : ""} — the price breaks are listed on this page.`,
+    });
+  }
+
+  if (p.sizes?.length) {
+    faqs.push({
+      q: `What sizes are available?`,
+      a: `${p.sizes.join(", ")}. Select the size you need before adding to the cart.`,
+    });
+  }
+
+  if (p.countryOfOrigin) {
+    faqs.push({ q: `Where is it made?`, a: `Country of origin: ${p.countryOfOrigin}.` });
+  }
+
+  if (p.datasheets?.length) {
+    faqs.push({
+      q: `Is a datasheet available?`,
+      a: `Yes — the datasheet is linked on this page under the product documents.`,
+    });
+  }
+
+  // Policies published on the site, identical for every product.
+  faqs.push({
+    q: `Do you provide a GST invoice?`,
+    a: `Yes. Every order ships with a GST invoice${p.hsnSac ? ` (HSN/SAC ${p.hsnSac})` : ""}.`,
+  });
+  faqs.push({
+    q: `Can I return or replace it?`,
+    a: `We do not offer refunds. Eligible orders are covered by a 7-day replacement policy from the date of delivery, for items that arrive defective, damaged or incorrect. See the Replacement Policy page for the full conditions.`,
+  });
+  faqs.push({
+    q: `Do you ship outside India?`,
+    a: `Yes — we ship across India and worldwide.`,
+  });
+
+  return faqs;
+}
