@@ -34,7 +34,13 @@ export function CatalogProductCard({
 
       <Link
         href={href}
+        // The link carries the name and the image is decorative (alt=""). The
+        // alternative — naming both — makes the accessible name duplicate the
+        // image's alt and fails WCAG 2.5.3; dropping the aria-label instead
+        // left the link with NO name at all when the product has no photo,
+        // which is worse. One name, on the link.
         aria-label={product.name}
+
         className={cn(
           "block shrink-0 overflow-hidden",
           isGrid ? "rounded-t-2xl" : "rounded-t-2xl sm:rounded-l-2xl sm:rounded-tr-none",
@@ -43,7 +49,13 @@ export function CatalogProductCard({
       >
         <ProductImage
           src={product.imageUrl}
-          alt={product.name}
+          alt=""
+          // Most of the catalogue has no photo yet, so this placeholder is what
+          // a shopper actually sees. Naming it after the product (rather than
+          // the generic "Product") means the visible word matches the link's
+          // accessible name — a voice user saying what they can read reaches
+          // the right card (WCAG 2.5.3) — and it reads better besides.
+          label={product.name}
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 300px"
           className={cn(
             "w-full bg-white",

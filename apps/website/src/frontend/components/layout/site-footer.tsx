@@ -102,7 +102,7 @@ export async function SiteFooter() {
             <div className="grid grid-cols-2 gap-8 sm:gap-12">
             {groups.map((group) => (
               <div key={group.title}>
-                <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
+                <h2 className="text-sm font-semibold text-foreground">{group.title}</h2>
                 <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
                   {group.links.map((link) => (
                     <li key={link.href}>
@@ -130,7 +130,7 @@ export async function SiteFooter() {
                   href={office.mapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline"
+                  className="mt-2 inline-block text-sm font-medium text-brand-soft underline-offset-4 hover:underline"
                 >
                   Open in Google Maps
                 </a>
@@ -140,7 +140,7 @@ export async function SiteFooter() {
 
           {/* Get in touch — every office (HQ leads). */}
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Get in touch</h3>
+            <h2 className="text-sm font-semibold text-foreground">Get in touch</h2>
             <div className="mt-4 space-y-3">
               {site.addresses.map((a) => (
                 <p key={a.label} className="flex gap-2 text-sm text-muted-foreground">

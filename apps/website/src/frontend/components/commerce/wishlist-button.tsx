@@ -22,7 +22,10 @@ export function WishlistButton({
       type="button"
       onClick={() => toggleWishlist(product)}
       aria-pressed={active}
-      aria-label={active ? "Remove from wishlist" : "Add to wishlist"}
+      // Must contain the visible word ("Save"/"Saved") — WCAG 2.5.3 Label in
+      // Name. "Add to wishlist" beside a button reading "Save" meant a voice
+      // user saying "click Save" could not activate it.
+      aria-label={active ? "Saved — remove from wishlist" : "Save to wishlist"}
       className={cn(
         "inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 text-sm transition-colors hover:bg-surface",
         withLabel ? "px-4 py-2" : "h-9 w-9 justify-center",

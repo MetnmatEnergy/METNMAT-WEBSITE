@@ -26,7 +26,7 @@ export function QuoteDrawer() {
   const [qty, setQty] = React.useState(1);
   const [attachments, setAttachments] = React.useState<UploadItem[]>([]);
   const formRef = React.useRef<HTMLFormElement>(null);
-  const asideRef = React.useRef<HTMLElement>(null);
+  const asideRef = React.useRef<HTMLDivElement>(null);
 
   const uploading = attachments.some((a) => a.status === "uploading");
 
@@ -150,7 +150,11 @@ export function QuoteDrawer() {
         onClick={closeQuote}
         aria-hidden
       />
-      <aside
+      {/* A plain <div>, not <aside>: <aside> already carries an implicit
+          `complementary` role, and role="dialog" is not permitted to override
+          it — axe flags this as aria-allowed-role on every page the drawer
+          mounts on, which is all of them. */}
+      <div
         ref={asideRef}
         tabIndex={-1}
         role="dialog"
@@ -288,6 +292,10 @@ export function QuoteDrawer() {
                 </button>
                 <input
                   name="quantity"
+                  // The two stepper buttons either side are labelled, but the
+                  // field itself had no accessible name at all — a screen reader
+                  // announced only "spin button".
+                  aria-label="Quantity"
                   type="number"
                   min={QTY_MIN}
                   max={QTY_MAX}
@@ -363,7 +371,7 @@ export function QuoteDrawer() {
             </p>
           </form>
         </div>
-      </aside>
+      </div>
 
       {thankYou && (
         <div

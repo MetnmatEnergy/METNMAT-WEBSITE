@@ -128,7 +128,7 @@ export default function ContactPage() {
                 <h2 className="font-display text-xl font-bold tracking-tight">Send us a message</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Buying products? Use the{" "}
-                  <Link href="/quote" className="font-medium text-brand hover:underline">
+                  <Link href="/quote" className="font-medium text-brand-soft hover:underline">
                     quote form
                   </Link>{" "}
                   or the chat bubble in the corner.

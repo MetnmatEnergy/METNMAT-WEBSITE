@@ -27,7 +27,12 @@ export function ServicesPreview({ services = phServices }: { services?: Service[
               key={service.slug}
               href={`/services#${service.slug}`}
               className="block h-full rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
-              aria-label={`${service.title} — learn more`}
+              // No aria-label. It overrode the accessible name with just the
+              // title, while the visible text is the title AND the summary — so
+              // the name no longer contained the visible label and failed WCAG
+              // 2.5.3 (Label in Name), which breaks voice control: saying the
+              // words on screen no longer matched the target. The card's own
+              // content names the link accurately.
             >
               <InfoCard
                 image={SERVICE_IMAGES[service.slug]}

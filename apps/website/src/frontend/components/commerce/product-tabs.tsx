@@ -28,7 +28,7 @@ export function ProductTabs({ product }: { product: Product }) {
             onClick={() => setTab(t)}
             className={cn(
               "relative px-4 py-3 text-sm font-medium transition-colors",
-              tab === t ? "text-brand" : "text-muted-foreground hover:text-foreground"
+              tab === t ? "text-brand-soft" : "text-muted-foreground hover:text-foreground"
             )}
           >
             {t}
@@ -53,7 +53,9 @@ export function ProductTabs({ product }: { product: Product }) {
               specifications, bulk quantities, or application guidance.
             </p>
             <div>
-              <h4 className="mb-2 font-semibold text-foreground">What you get</h4>
+              {/* h3, not h4: the nearest preceding heading is the tab panel's h2, so an
+                  h4 skips a level and axe flags heading-order. */}
+              <h3 className="mb-2 font-semibold text-foreground">What you get</h3>
               <ul className="list-disc space-y-1 pl-5">
                 <li>1 × {product.name}</li>
                 <li>Test/QC certificate on request</li>
@@ -85,7 +87,7 @@ export function ProductTabs({ product }: { product: Product }) {
               <ul className="space-y-2">
                 {product.datasheets.map((d, i) => (
                   <li key={i}>
-                    <a href={d.href} className="inline-flex items-center gap-2 text-sm text-brand hover:underline">
+                    <a href={d.href} className="inline-flex items-center gap-2 text-sm text-brand-soft hover:underline">
                       <FileText className="h-4 w-4" /> {d.label}
                     </a>
                   </li>
@@ -112,7 +114,7 @@ export function ProductTabs({ product }: { product: Product }) {
               <li>
                 No refunds. Damaged, defective, or incorrect items are eligible for a free
                 replacement within 7 days of delivery —{" "}
-                <a href="/replacement-policy" className="text-brand hover:underline">
+                <a href="/replacement-policy" className="text-brand-soft hover:underline">
                   see our Replacement Policy
                 </a>
                 .
