@@ -1028,6 +1028,23 @@ const PROJECT_COVERS: { slug: string; asset: string; alt: string }[] = [
   },
 ];
 
+/**
+ * Run one seed step in isolation.
+ *
+ * The numbered steps below used to be bare sequential awaits inside a single
+ * try/catch in onInit, which meant one throwing step silently skipped EVERY
+ * later step — the CMS booted looking healthy while, say, project covers were
+ * never attached, and the only trace was one log line. Each step is independent,
+ * so a failure in one is isolated and named here.
+ */
+async function step(payload: Payload, name: string, fn: () => Promise<void>): Promise<void> {
+  try {
+    await fn();
+  } catch (e) {
+    payload.logger.error(`[seed] step "${name}" failed (later steps still run): ${(e as Error).message}`);
+  }
+}
+
 async function ensureProjectCovers(payload: Payload): Promise<void> {
   for (const { slug, asset, alt } of PROJECT_COVERS) {
     try {
@@ -1437,29 +1454,29 @@ export async function seed(payload: Payload): Promise<void> {
   await seedGlobalIfUnset(payload, "seo", ["defaultTitle", "description"], { defaultTitle: "METNMAT — Electrochemical Systems | Reference Electrodes | metnmat.com", titleTemplate: "%s · METNMAT", description: "Electrodes, membranes, electrochemical cells, reactors & lab equipment for research — plus turnkey materials R&D." });
 
   // 5) Seed website content (services / projects / posts / faqs + homepage/nav).
-  await seedContent(payload);
+  await step(payload, "seedContent", () => seedContent(payload));
 
   // 6) Legacy copy fix-ups (exact-match, one-shot).
-  await dropFirstFromLegacyCopy(payload);
-  await rebrandHomepageCopy(payload);
-  await refineHeroHeadline(payload);
+  await step(payload, "dropFirstFromLegacyCopy", () => dropFirstFromLegacyCopy(payload));
+  await step(payload, "rebrandHomepageCopy", () => rebrandHomepageCopy(payload));
+  await step(payload, "refineHeroHeadline", () => refineHeroHeadline(payload));
 
   // 7) Default the homepage featured case study (only while unset).
-  await ensureHomepageFeaturedProject(payload);
+  await step(payload, "ensureHomepageFeaturedProject", () => ensureHomepageFeaturedProject(payload));
 
   // 8) Attach bundled project cover images (only while unset).
-  await ensureProjectCovers(payload);
+  await step(payload, "ensureProjectCovers", () => ensureProjectCovers(payload));
 
   // 9) Create post-migration blog articles (create-if-missing) before figures.
-  await ensureExtraBlogArticles(payload);
+  await step(payload, "ensureExtraBlogArticles", () => ensureExtraBlogArticles(payload));
 
   // 10) Inject bundled diagrams into the seeded blog articles (only while none).
-  await ensureBlogFigures(payload);
+  await step(payload, "ensureBlogFigures", () => ensureBlogFigures(payload));
 
   // 11) Backfill MNM-U customer codes for accounts created before the field,
   //     then establish the partial-unique index backstop.
-  await backfillCustomerCodes(payload);
-  await ensureUserCodeIndex(payload);
+  await step(payload, "backfillCustomerCodes", () => backfillCustomerCodes(payload));
+  await step(payload, "ensureUserCodeIndex", () => ensureUserCodeIndex(payload));
 
   payload.logger.info(`[seed] Done. ${prodSlugs.size} catalog products, ${catSlugs.size} categories.`);
 }
