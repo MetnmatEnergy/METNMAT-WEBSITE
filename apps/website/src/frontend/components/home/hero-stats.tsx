@@ -1,8 +1,23 @@
 "use client";
 
 import * as React from "react";
-import VaporizeTextCycle, { Tag } from "@/frontend/components/ui/vapour-text-effect";
+import dynamic from "next/dynamic";
+import { type Tag } from "@/frontend/components/ui/vapour-text-effect";
 import type { Stat } from "@/frontend/lib/placeholder";
+
+/**
+ * The vaporize canvas is ~24 kB and only ever runs on a pointer-capable,
+ * motion-allowing viewport — phones and prefers-reduced-motion render StaticSlot
+ * instead and never mount it. Loading it statically shipped that weight to every
+ * visitor including the ones who can never see it. Loaded on demand it is
+ * fetched only when VaporSlot actually renders.
+ *
+ * ssr:false because it is a canvas effect with no server output; the static
+ * fallback is what renders before hydration either way.
+ */
+const VaporizeTextCycle = dynamic(() => import("@/frontend/components/ui/vapour-text-effect"), {
+  ssr: false,
+});
 
 /**
  * Homepage hero stats. Shows 3 of the N stats at a time and slides the visible
@@ -113,7 +128,7 @@ function VaporSlot({
           spread={2.5}
           density={5}
           animation={ANIM}
-          tag={Tag.P}
+          tag={"p" as Tag}
         />
       </div>
       <div className={LABEL_STAGE}>
@@ -126,7 +141,7 @@ function VaporSlot({
           spread={2}
           density={5}
           animation={ANIM}
-          tag={Tag.P}
+          tag={"p" as Tag}
         />
       </div>
     </div>
