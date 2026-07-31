@@ -978,6 +978,54 @@ const PROJECT_COVERS: { slug: string; asset: string; alt: string }[] = [
     asset: "src/seed-assets/projects/modeling-simulations.webp",
     alt: "Finite-element simulation of a valve body: meshed CAD model on one half, von-Mises stress colour map on the other, with solver code and result charts.",
   },
+  // The remaining nine, completing covers for all 15 case studies. Same
+  // text-left / art-right composition as the originals, so the object-left crop
+  // used on the card, detail hero and home feature keeps the wording readable.
+  {
+    slug: "casting-defects",
+    asset: "src/seed-assets/projects/casting-defects.webp",
+    alt: "Foundry ladle pouring molten metal into a mould beside a thermoelectric waste-heat recovery unit, with a temperature-monitoring screen reading a stable 820 °C.",
+  },
+  {
+    slug: "waste-heat-recycling-system",
+    asset: "src/seed-assets/projects/waste-heat-recycling-system.webp",
+    alt: "Thermoelectric modules clamped in an array around a hot exhaust pipe, recovering 20–50 per cent of the waste heat passing through it.",
+  },
+  {
+    slug: "wear-resistant-composites",
+    asset: "src/seed-assets/projects/wear-resistant-composites.webp",
+    alt: "Metal-matrix composite blocks, discs and a sleeve showing coarse ceramic reinforcement particles, on a steel bench beside tooling.",
+  },
+  {
+    slug: "new-aluminum-alloy",
+    asset: "src/seed-assets/projects/new-aluminum-alloy.webp",
+    alt: "Molten aluminium poured into an ingot mould beside cast billets and ingots, with a hydraulic press behind for thermo-mechanical processing.",
+  },
+  {
+    slug: "material-synthesis",
+    asset: "src/seed-assets/projects/material-synthesis.webp",
+    alt: "Laboratory tube furnace at 800 °C with vials of thermoelectric powders, sintered pellets and an assembled module, against a whiteboard of ZT equations.",
+  },
+  {
+    slug: "surface-casting-improvement",
+    asset: "src/seed-assets/projects/surface-casting-improvement.webp",
+    alt: "Continuous casting line pouring molten metal, with an instrumented thermoelectric recovery module mounted on the mould conveyor.",
+  },
+  {
+    slug: "composite-materials",
+    asset: "src/seed-assets/projects/composite-materials.webp",
+    alt: "Carbon-fibre and honeycomb-cored composite panels beside a speckled composite block, engineered for thermoelectric conductivity and durability.",
+  },
+  {
+    slug: "aluminum-foam",
+    asset: "src/seed-assets/projects/aluminum-foam.webp",
+    alt: "Closed-cell aluminium foam panels and a cylinder showing the porous structure, beside a crucible pouring molten aluminium.",
+  },
+  {
+    slug: "high-temperature-ceramic",
+    asset: "src/seed-assets/projects/high-temperature-ceramic.webp",
+    alt: "High-temperature ceramic tiles and a disc in front of a glowing furnace mouth, with heat-flow lines curving across to them.",
+  },
 ];
 
 async function ensureProjectCovers(payload: Payload): Promise<void> {
