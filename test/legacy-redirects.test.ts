@@ -5,13 +5,8 @@ import { legacyRedirects } from "../apps/website/legacy-redirects.mjs";
 type Rule = { source: string; destination: string; permanent: boolean };
 const rules = legacyRedirects as Rule[];
 
-const productRules = rules.filter((r) => r.source.startsWith("/product-page/"));
-const specific = productRules.filter((r) => !r.source.includes(":slug"));
-
-// Identity-free words: they appear in most lab-equipment slugs, so they must
-// never be what makes two different products look like the same product.
-const STOP = new Set(["the", "of", "for", "and", "with", "a", "to", "in", "cell", "set", "setup", "unit"]);
-const tok = (s: string) => new Set(s.split("-").filter((w) => w && !STOP.has(w)));
+const productRules = rules.filter((r) => r.source.startsWith("/product-page/") && !r.source.includes(":slug"));
+const mapOf = (s: string) => productRules.find((r) => decodeURI(r.source) === `/product-page/${s}`)?.destination;
 
 describe("legacy redirect map", () => {
   it("has no duplicate sources (a shadowed rule would silently never fire)", () => {
@@ -21,39 +16,74 @@ describe("legacy redirect map", () => {
 
   it("keeps the wildcards last — Next takes the first match, so an early catch-all would swallow every specific product", () => {
     const wildcard = rules.findIndex((r) => r.source === "/product-page/:slug");
-    const lastSpecific = rules.map((r) => r.source).reduce((acc, s, i) => (s.startsWith("/product-page/") && !s.includes(":slug") ? i : acc), -1);
+    const lastSpecific = rules
+      .map((r) => r.source)
+      .reduce((acc, s, i) => (s.startsWith("/product-page/") && !s.includes(":slug") ? i : acc), -1);
     expect(wildcard).toBeGreaterThan(lastSpecific);
     expect(rules.at(-1)?.source).toBe("/post/:slug");
   });
 
-  it("never redirects a product to a DIFFERENT material", () => {
-    // Every specific mapping must be provable: the destination is either a
-    // prefix of the source (a truncated import) or its identity tokens are a
-    // subset of the source's (a size/rod variant collapsing to its base
-    // product). Anything else — e.g. a gold electrode pointed at a glassy
-    // carbon one — is a factual error shown to a paying customer.
-    const violations: string[] = [];
-    for (const r of specific) {
-      const from = decodeURI(r.source.replace("/product-page/", ""));
+  it("never redirects a product to a different material", () => {
+    // The chemistry a customer searched for must survive the redirect. This is
+    // the cheap slug-level backstop; the generator enforces the real rule against
+    // each product's spec table.
+    const MATERIALS = [
+      ["platinum", "pt"],
+      ["gold", "au"],
+      ["graphite"],
+      ["glassy"],
+      ["titanium", "ti"],
+      ["copper"],
+      ["zinc"],
+      ["aluminum"],
+      ["agcl"],
+      ["hgo"],
+      ["hg2cl2", "calomel"],
+      ["hg2so4"],
+    ];
+    const familyOf = (s: string) =>
+      new Set(MATERIALS.filter((alts) => alts.some((a) => new RegExp(`(^|-)${a}(-|$)`).test(s))).map((a) => a[0]));
+
+    const bad: string[] = [];
+    for (const r of productRules) {
+      const from = decodeURI(r.source).replace("/product-page/", "");
       const to = r.destination.replace("/shop/p/", "");
-      if (from.startsWith(to)) continue;
-      const F = tok(from);
-      if ([...tok(to)].every((t) => F.has(t))) continue;
-      violations.push(`${from} -> ${to}`);
+      const F = familyOf(from);
+      const T = familyOf(to);
+      if (F.size && T.size && ![...T].some((t) => F.has(t))) bad.push(`${from} -> ${to}`);
     }
-    // Deduped: slugs containing "φ" are emitted in both raw and percent-encoded
-    // form, which decode to the same logical mapping.
-    // The hand-verified pairs (abbreviation expansions / reordered specs) are
-    // the only allowed exceptions; each was checked against both product names.
-    expect([...new Set(violations)].sort()).toEqual(
-      [
-        "detachable-l-shaped-platinum-disk-electrode-φ4mm -> detachable-l-shaped-platinum-disk-electrode-4-mm",
-        "kamoer-kcp-x-mini-peristaltic-pump-24v-with-control-low-flow-rate-19-65ml-min-ad -> kamoer-kcp-x-mini-peristaltic-pump-24v-19-65-ml-min-with-control",
-        "microbial-fuel-cell-stack -> microbial-fuel-cell-stack-ma-mfc-5",
-        "pfsa-proton-exchange-membrane-n115-100x100-mm -> perfluorosulfonic-acid-pfsa-proton-exchange-membrane-n115-pem",
-        "photovoltaic-biased-photoelectrochemical-cell -> photovoltaic-pv-biased-photoelectrochemical-cell-pec",
-      ].sort()
-    );
+    expect([...new Set(bad)]).toEqual([]);
+  });
+
+  // Regression pins. Every one of these was WRONG in the first shipped version:
+  // slug-token matching collapsed variants onto whichever catalogue slug happened
+  // to be a shorter string, which is a different SKU — a platinum SHEET, a PEEK
+  // Ø3 probe — not a family page. Body material and form factor decide whether
+  // the part fits the customer's cell, so these must not drift back.
+  it.each([
+    // platinum: wire / ring / spiral must never land on the SHEET SKU
+    ["platinum-wire-counter-electrode-φ1-37mm-ptfe-rod", "platinum-wire-counter-electrode-1-37-mm"],
+    ["platinum-wire-counter-electrode-φ1-37mm-peek-rod", "platinum-wire-counter-electrode-1-37-mm-ptwk"],
+    ["platinum-wire-ring-counter-electrode-φ0-5-230mm", "platinum-ring-counter-electrode-0-5-230-mm"],
+    ["platinum-counter-electrode-with-spring-shaped-pt-wire-electrode-sheath", "platinum-spiral-counter-electrode"],
+    // …while the sheet URLs still do
+    ["platinum-sheet-counter-electrode-30-30-0-1mm", "platinum-counter-electrode"],
+    // Ag/AgCl: glass / PTFE / PEEK bodies are three different SKUs
+    ["silver-silver-chloride-ag-agcl-reference-electrode-φ6-140mm-glass-rod", "ag-agcl-reference-electrode-6-140-mm"],
+    ["silver-silver-chloride-ag-agcl-reference-electrode-φ6mm-ptfe-rod", "ag-agcl-reference-electrode-6-mm"],
+    ["silver-silver-chloride-ag-agcl-reference-electrode-peek-rod", "silver-silver-chloride-ag-agcl-reference-electrode"],
+    // Hg/HgO: same three-body split
+    ["mercury-oxide-reference-electrode-hg-hgo-galss-rod-φ6-70mm", "hg-hgo-reference-electrode-6-70-mm"],
+    ["mercury-oxide-reference-electrode-hg-hgo-ptfe-rod-φ6-60mm", "hg-hgo-reference-electrode-6-60-mm"],
+    ["mercury-oxide-reference-electrode-hg-hgo-peek-rod-φ4-60mm", "mercury-oxide-reference-electrode-hg-hgo"],
+    // graphite: rod ≠ plate
+    ["graphite-rod-counter-electrode-φ6-120mm", "graphite-rod-counter-electrode-6-80-mm"],
+    ["graphite-plate-counter-electrode-10-10mm-thickness-3mm", "graphite-counter-electrode"],
+    // straight vs L-shaped are different parts
+    ["glassy-carbon-electrode-straight-type-ptfe-rod-φ3mm", "glassy-carbon-electrode-straight-type-ptfe-rod"],
+    ["l-shaped-glassy-carbon-electrode-ptfe-rod-φ3mm", "l-shaped-glassy-carbon-disk-working-electrode-3-mm"],
+  ])("maps %s to the SKU that matches its body and dimensions", (from, to) => {
+    expect(mapOf(from)).toBe(`/shop/p/${to}`);
   });
 
   it("sends every unresolved legacy product to a real page, not a redirect chain into a 404", () => {
