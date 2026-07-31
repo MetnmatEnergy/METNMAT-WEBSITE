@@ -11,6 +11,21 @@ export function DepartmentsMenu({ categories = [] }: { categories?: Category[] }
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  // Only pull focus into the panel when it was opened from the keyboard —
+  // stealing focus on a mouse click would scroll the page under the pointer.
+  const focusFirstRef = React.useRef(false);
+
+  const links = React.useCallback(
+    () => Array.from(panelRef.current?.querySelectorAll<HTMLElement>("a[href]") ?? []),
+    []
+  );
+
+  React.useEffect(() => {
+    if (!open || !focusFirstRef.current) return;
+    focusFirstRef.current = false;
+    links()[0]?.focus();
+  }, [open, links]);
 
   /**
    * Close when the customer's attention moves elsewhere.
@@ -30,9 +45,44 @@ export function DepartmentsMenu({ categories = [] }: { categories?: Category[] }
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setOpen(false);
-      triggerRef.current?.focus(); // keyboard users land back on the trigger
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus(); // keyboard users land back on the trigger
+        return;
+      }
+
+      const items = links();
+      if (!items.length) return;
+      const here = items.indexOf(document.activeElement as HTMLElement);
+
+      // Arrow keys walk the departments; Home/End jump to the ends. Without
+      // this the panel is reachable but not operable — Tab alone makes a
+      // 40-link grid a long crawl.
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const step = e.key === "ArrowDown" ? 1 : -1;
+        const next = here < 0 ? 0 : (here + step + items.length) % items.length;
+        items[next]?.focus();
+        return;
+      }
+      if (e.key === "Home" || e.key === "End") {
+        e.preventDefault();
+        (e.key === "Home" ? items[0] : items[items.length - 1])?.focus();
+        return;
+      }
+
+      // Trap Tab inside the panel so focus can't wander behind an open overlay.
+      if (e.key === "Tab") {
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     document.addEventListener("keydown", onKeyDown);
@@ -40,7 +90,7 @@ export function DepartmentsMenu({ categories = [] }: { categories?: Category[] }
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [open]);
+  }, [open, links]);
 
   const topCategories = categories.filter((c) => !c.parent);
   const subCategories = (parent: string) => categories.filter((c) => c.parent === parent);
@@ -51,6 +101,14 @@ export function DepartmentsMenu({ categories = [] }: { categories?: Category[] }
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          // ArrowDown from the trigger is the standard way into a menu.
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            focusFirstRef.current = true;
+            setOpen(true);
+          }
+        }}
         aria-expanded={open}
         aria-haspopup="true"
         aria-controls="departments-menu"
@@ -64,6 +122,7 @@ export function DepartmentsMenu({ categories = [] }: { categories?: Category[] }
       {open && (
         <>
           <div
+            ref={panelRef}
             id="departments-menu"
             // max-h + scroll: with 10 departments and their sub-categories this
             // list is taller than a 768px laptop viewport, and an absolutely

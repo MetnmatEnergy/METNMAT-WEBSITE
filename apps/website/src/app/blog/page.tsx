@@ -22,7 +22,9 @@ import {
 } from "@/frontend/lib/blog";
 
 const baseMetadata = pageMetadata({
-  title: "Research & Engineering Insights",
+  // Leads with "Blog" so the tab title matches the nav label people clicked —
+  // every other section already does. The h1 keeps the fuller headline.
+  title: "Blog — Research & Engineering Insights",
   description:
     "Explore technical articles, research notes, industrial case studies and engineering insights across metallurgy, materials science, electrochemistry, hydrogen and advanced manufacturing.",
   path: "/blog",
