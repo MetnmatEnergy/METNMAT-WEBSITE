@@ -8,7 +8,7 @@ import { ProductBuyBox } from "@/frontend/components/commerce/product-buy-box";
 import { ProductGallery } from "@/frontend/components/commerce/product-gallery";
 import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
-import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, breadcrumbJsonLd, organizationJsonLd } from "@/frontend/components/seo/json-ld";
 import { inclGST, isQuoteOnly } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
@@ -68,6 +68,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   return (
     <Container className="py-8">
       <AnalyticsEntity type="product" slug={product.slug} />
+      {/* The Offer below names its seller by reference ({@id: #organization}).
+          Without the full node on this page that reference dangles, so the
+          seller resolves to a bare name. Emitting it here makes it resolvable;
+          it dedupes by @id, same as on /, /about, /contact and /services. */}
+      <JsonLd data={organizationJsonLd} />
       <JsonLd
         data={{
           "@context": "https://schema.org",
