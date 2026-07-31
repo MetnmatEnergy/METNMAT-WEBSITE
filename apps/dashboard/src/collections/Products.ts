@@ -1,9 +1,27 @@
-import type { CollectionConfig } from "payload";
-import { canManageCatalog, publicRead, fieldAccountsOrInternal } from "../access";
+import type { Access, CollectionConfig, Where } from "payload";
+import { canManageCatalog, fieldAccountsOrInternal } from "../access";
 import { slugify } from "../lib/blog";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
+
+/**
+ * Public reads see PUBLISHED products only.
+ *
+ * `versions.drafts` is on, so without this gate a `read: publicRead` (literally
+ * `() => true`) returned drafts to anonymous callers — a product still being
+ * written would appear in the live shop, the search index and the sitemap the
+ * moment someone hit Save. Mirrors the gate Projects and Posts already use.
+ *
+ * Staff (the `users` collection) bypass it so the admin list and Preview keep
+ * showing drafts. Customers are a DIFFERENT auth collection and are correctly
+ * treated as public here.
+ */
+const publishedRead: Access = ({ req: { user } }) => {
+  if ((user as { collection?: string } | null)?.collection === "users") return true;
+  const gate: Where = { _status: { equals: "published" } };
+  return gate;
+};
 
 export const Products: CollectionConfig = {
   slug: "products",
@@ -18,7 +36,7 @@ export const Products: CollectionConfig = {
         : null,
   },
   access: {
-    read: publicRead,
+    read: publishedRead,
     create: canManageCatalog,
     update: canManageCatalog,
     delete: canManageCatalog,

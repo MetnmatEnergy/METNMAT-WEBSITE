@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchSite, searchProducts } from "@/frontend/lib/cms";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 import type { Product } from "@/frontend/lib/catalog";
 import type { SiteLink } from "@/frontend/lib/cms";
 
@@ -22,6 +23,16 @@ const slim = (products: Product[]) =>
  * - scope=products (shop): products only, no other-tab results.
  */
 export async function GET(request: Request) {
+  // Public, unauthenticated, and every call fans out to the CMS. 60/min sits far
+  // above a human typing into the debounced autosuggest.
+  const rl = await limitRate(`search:${clientIp(request)}`, 60, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { products: [], links: [], error: "Too many requests." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } }
+    );
+  }
+
   const url = new URL(request.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
   const scope = url.searchParams.get("scope");

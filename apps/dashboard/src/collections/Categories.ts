@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload";
 import { canManageCatalog, publicRead } from "../access";
+import { slugify } from "../lib/blog";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 // A category rename changes products' subcategory label (and can shift the bot's
@@ -23,7 +24,13 @@ export const Categories: CollectionConfig = {
       required: true,
       unique: true,
       index: true,
-      admin: { description: "URL segment, e.g. 'crucibles'." },
+      admin: { description: "URL segment, e.g. 'crucibles'. Auto-generated from the name when blank." },
+      // Normalise so a hand-typed value ("Raw Materials & Alloys") can't become a
+      // broken public URL, and fill from the name when left empty. Matches
+      // Products/Projects/Posts.
+      hooks: {
+        beforeValidate: [({ value, data }) => slugify((value as string) || (data?.name as string) || "")],
+      },
     },
     { name: "blurb", type: "text" },
     {

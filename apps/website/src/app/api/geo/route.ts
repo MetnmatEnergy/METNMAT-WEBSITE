@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clientIp as trustedClientIp } from "@/backend/lib/rate-limit";
+import { clientIp as trustedClientIp, limitRate } from "@/backend/lib/rate-limit";
 
 /**
  * GET /api/geo — resolves the visitor's country to pick the display currency
@@ -37,6 +37,18 @@ function clientIp(req: Request): string {
 }
 
 export async function GET(req: Request) {
+  // A miss calls the keyless ipwho.is API, so leaving this unthrottled lets one
+  // client burn that shared quota for every visitor. Currency is resolved about
+  // once per visit, so 30/min is generous.
+  const rl = await limitRate(`geo:${trustedClientIp(req)}`, 30, 60_000);
+  if (!rl.ok) {
+    // Fail soft: the site renders fine on the default market.
+    return NextResponse.json(
+      { country: "IN" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } }
+    );
+  }
+
   // 1) CDN/platform headers.
   const headerCountry =
     req.headers.get("x-vercel-ip-country") ||

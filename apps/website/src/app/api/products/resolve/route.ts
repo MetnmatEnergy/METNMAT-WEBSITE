@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProductBySlug } from "@/frontend/lib/cms";
+import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 /**
  * Resolve a list of product slugs to their CURRENT catalog products — used by
@@ -9,6 +10,17 @@ import { getProductBySlug } from "@/frontend/lib/cms";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request): Promise<Response> {
+  // Throttled because this is a request amplifier: one unauthenticated POST can
+  // fan out to 50 CMS lookups. "Buy again" fires it once per click, so 20/min
+  // is far above real use and well below anything that could load the CMS.
+  const rl = await limitRate(`resolve:${clientIp(req)}`, 20, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { products: [], error: "Too many requests." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } }
+    );
+  }
+
   let body: { slugs?: unknown };
   try {
     body = await req.json();

@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload";
 import { canManageContent, publicRead } from "../access";
+import { slugify } from "../lib/blog";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 
@@ -29,7 +30,14 @@ export const Services: CollectionConfig = {
       required: true,
       unique: true,
       index: true,
-      admin: { description: "URL anchor, e.g. 'product-process-development'." },
+      admin: {
+        description: "URL anchor, e.g. 'product-process-development'. Auto-generated from the title when blank.",
+      },
+      // Normalise so a hand-typed value can't produce a broken #anchor / URL,
+      // and fill from the title when left empty. Matches Products/Projects/Posts.
+      hooks: {
+        beforeValidate: [({ value, data }) => slugify((value as string) || (data?.title as string) || "")],
+      },
     },
     { name: "summary", type: "textarea", required: true, admin: { description: "One- or two-line description shown on the service card." } },
     {
