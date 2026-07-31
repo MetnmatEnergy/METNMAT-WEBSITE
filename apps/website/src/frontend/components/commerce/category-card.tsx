@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { DeferredImage } from "@/frontend/components/ui/deferred-image";
 import { ArrowRight } from "lucide-react";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { GlowCard } from "@/frontend/components/ui/spotlight-card";
@@ -14,7 +14,11 @@ export function CategoryCard({ category }: { category: Category }) {
       >
         {category.imageUrl ? (
           <span className="relative block aspect-[5/3] overflow-hidden rounded-xl bg-white">
-            <Image
+            {/* Deferred, not merely lazy: these tiles sit 134-1093px below the
+                fold, which is inside Chrome's ~1250px lazy-load threshold, so
+                loading="lazy" fetched all ten of them alongside the LCP hero
+                banner — ~202 KB against the banner's 36 KB. */}
+            <DeferredImage
               src={category.imageUrl}
               alt={category.name}
               fill
