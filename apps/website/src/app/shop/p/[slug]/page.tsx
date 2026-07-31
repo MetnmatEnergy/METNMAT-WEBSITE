@@ -8,7 +8,7 @@ import { ProductBuyBox } from "@/frontend/components/commerce/product-buy-box";
 import { ProductGallery } from "@/frontend/components/commerce/product-gallery";
 import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
-import { JsonLd, breadcrumbJsonLd, organizationJsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd } from "@/frontend/components/seo/json-ld";
 import { inclGST, isQuoteOnly } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
@@ -74,65 +74,12 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           it dedupes by @id, same as on /, /about, /contact and /services. */}
       <JsonLd data={organizationJsonLd} />
       <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "Product",
-          name: product.name,
-          // Emit optional fields only when present — the CMS mapper defaults
-          // brand/sku/shortDesc to "", and shipping empty Brand/description/sku
-          // nodes is invalid structured data that search engines flag.
-          ...(product.sku ? { sku: product.sku, mpn: product.sku } : {}),
-          ...(category?.name ? { category: category.name } : {}),
-          ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
-          ...(product.shortDesc ? { description: product.shortDesc } : {}),
-          ...(product.imageUrl ? { image: product.imageUrl } : {}),
-          // Surface the technical specs already rendered on the page as
-          // machine-readable properties (rich results + AI grounding).
-          ...(product.specs && product.specs.length > 0
-            ? { additionalProperty: product.specs.filter((s) => s.label && s.value).map((s) => ({ "@type": "PropertyValue", name: s.label, value: s.value })) }
-            : {}),
-          // Only emit a buyable Offer for genuinely purchasable items. A
-          // quote-only/discontinued product shows "Price on request" on the
-          // page, so advertising a concrete price + InStock in structured data
-          // would mislead SERP rich results. Availability tracks productType.
-          ...(!isQuoteOnly(product) && product.price
-            ? {
-                offers: {
-                  "@type": "Offer",
-                  priceCurrency: "INR",
-                  price: inclGST(product.price),
-                  // Rolling ~1-year validity horizon so the price is never read as
-                  // "expired" in rich results. Computed at request time (server
-                  // component) — a revalidate-by date, NOT a promo/end-of-sale claim.
-                  priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-                    .toISOString()
-                    .slice(0, 10),
-                  // (Discontinued/quote-only items never reach here — isQuoteOnly
-                  // gates the whole Offer block off — so it's just in/out of stock.)
-                  availability: product.inStock
-                    ? "https://schema.org/InStock"
-                    : "https://schema.org/OutOfStock",
-                  itemCondition: "https://schema.org/NewCondition",
-                  url: `${site.url}/shop/p/${product.slug}`,
-                  seller: { "@type": "Organization", "@id": `${site.url}/#organization`, name: site.legalName },
-                  // Backed 1:1 by the published /replacement-policy page: a 7-day
-                  // window from delivery, replacement-only (no monetary refund →
-                  // ExchangeRefund). merchantReturnLink carries the full conditions
-                  // (defective/damaged/incorrect only). returnMethod/returnFees are
-                  // omitted deliberately — the policy doesn't state them, and
-                  // inventing either would be a fabricated claim.
-                  hasMerchantReturnPolicy: {
-                    "@type": "MerchantReturnPolicy",
-                    applicableCountry: "IN",
-                    returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-                    merchantReturnDays: 7,
-                    refundType: "https://schema.org/ExchangeRefund",
-                    merchantReturnLink: `${site.url}/replacement-policy`,
-                  },
-                },
-              }
-            : {}),
-        }}
+        data={productJsonLd({
+          product,
+          categoryName: category?.name,
+          priceInclGst: product.price ? inclGST(product.price) : undefined,
+          offerable: !isQuoteOnly(product),
+        })}
       />
       <JsonLd
         data={breadcrumbJsonLd([

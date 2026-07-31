@@ -7,7 +7,7 @@ import { Container } from "@/frontend/components/ui/container";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { Button } from "@/frontend/components/ui/button";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
-import { JsonLd, breadcrumbJsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, breadcrumbJsonLd, articleJsonLd } from "@/frontend/components/seo/json-ld";
 import { RichText, hasRichText } from "@/frontend/components/blog/rich-text";
 import { ArticleCard, formatArticleDate } from "@/frontend/components/blog/article-card";
 import { AuthorsBlock } from "@/frontend/components/blog/authors-block";
@@ -99,38 +99,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
     article.contentTypeSlug ?? "",
   );
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": isTech ? "TechArticle" : "BlogPosting",
-    headline: article.title,
-    description: article.metaDescription ?? article.excerpt,
-    ...(article.abstract ? { abstract: article.abstract } : {}),
-    articleSection: article.categoryName,
-    ...(article.keywords ? { keywords: article.keywords } : {}),
-    ...(article.date ? { datePublished: article.date } : {}),
-    ...(article.updatedAt ? { dateModified: article.updatedAt } : {}),
-    mainEntityOfPage: `${site.url}/blog/${article.slug}`,
-    url: `${site.url}/blog/${article.slug}`,
-    ...(article.ogImageUrl ? { image: article.ogImageUrl } : {}),
-    author: article.authors.length
-      ? article.authors.map((a) => ({
-          "@type": "Person",
-          name: a.name,
-          ...(a.organisation ? { affiliation: { "@type": "Organization", name: a.organisation } } : {}),
-          ...(a.orcidUrl ? { sameAs: a.orcidUrl } : {}),
-        }))
-      : // No named authors — METNMAT itself is the author. Carry the canonical
-        // @id so this resolves to the same Organization entity as the publisher
-        // below, rather than looking like a second, urlless company.
-        { "@type": "Organization", "@id": `${site.url}/#organization`, name: site.legalName },
-    publisher: {
-      "@type": "Organization",
-      "@id": `${site.url}/#organization`,
-      name: site.legalName,
-      url: site.url,
-      logo: { "@type": "ImageObject", url: `${site.url}/icon-512.png` },
-    },
-  };
+  const jsonLd = articleJsonLd(article, isTech);
 
   return (
     <article className="pb-16">
