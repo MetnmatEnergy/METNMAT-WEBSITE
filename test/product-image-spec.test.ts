@@ -53,3 +53,21 @@ describe("checkProductMaster", () => {
     expect(PRODUCT_IMAGE_SPEC.minWidth).toBeGreaterThanOrEqual(2400);
   });
 });
+
+describe("what the spec must NOT police", () => {
+  it("rejects the project-banner shape as a product master", () => {
+    // 1536x1024 is 3:2 — the shape every project cover uses. It is correctly
+    // rejected AS A PRODUCT MASTER, which is exactly why non-product media must
+    // never be filed under category "product": Media.category defaults to
+    // "product", so nine project covers silently failed validation on upload
+    // until the seed started naming their category explicitly.
+    const r = checkProductMaster(1536, 1024);
+    expect(r.ok).toBe(false);
+    expect(r.ratioOk).toBe(false);
+    expect(r.wideEnough).toBe(false);
+  });
+
+  it("still rejects a 4:3 master that is merely too small", () => {
+    expect(checkProductMaster(1600, 1200).ok).toBe(false);
+  });
+});

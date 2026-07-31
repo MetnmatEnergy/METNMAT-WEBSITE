@@ -140,7 +140,7 @@ async function ensureCategoryImages(payload: Payload): Promise<void> {
       });
       const mediaId =
         (existingMedia.docs[0] as { id: string | number } | undefined)?.id ??
-        (await payload.create({ collection: "media", filePath, data: { alt }, overrideAccess: true })).id;
+        (await payload.create({ collection: "media", filePath, data: { alt, category: "hero-banner" }, overrideAccess: true })).id;
       await payload.update({
         collection: "categories",
         id: doc.id,
@@ -561,7 +561,9 @@ async function ensureRealBlogArticles(payload: Payload): Promise<void> {
     const media = await payload.create({
       collection: "media",
       filePath,
-      data: { alt: coverAlt ?? "" },
+      // Explicit category — the "product" default would put this through the
+      // product-image spec check and reject it.
+      data: { alt: coverAlt ?? "", category: "hero-banner" },
     });
     await payload.update({
       collection: "posts",
@@ -1081,7 +1083,13 @@ async function ensureProjectCovers(payload: Payload): Promise<void> {
           await payload.create({
             collection: "media",
             filePath,
-            data: { alt },
+            // Category MUST be explicit. Media.category defaults to "product",
+            // and that is precisely the category enforceProductImageSpec polices
+            // (4:3, >=2400px master). A project banner is not product
+            // photography, so leaving it to the default made every cover upload
+            // fail validation — silently, because the catch below logs a warning
+            // and moves on. That is why nine covers never attached.
+            data: { alt, category: "hero-banner" },
             overrideAccess: true,
           })
         ).id;
@@ -1188,7 +1196,7 @@ async function ensureBlogFigures(payload: Payload): Promise<void> {
         });
         const mediaId =
           (existing.docs[0] as { id: string | number } | undefined)?.id ??
-          (await payload.create({ collection: "media", filePath, data: { alt: fig.alt }, overrideAccess: true })).id;
+          (await payload.create({ collection: "media", filePath, data: { alt: fig.alt, category: "other" }, overrideAccess: true })).id;
         built.push({
           afterParagraph: fig.afterParagraph,
           // Payload Lexical v3 upload node: block-level sibling of paragraphs,
@@ -1287,7 +1295,7 @@ async function ensureExtraBlogArticles(payload: Payload): Promise<void> {
           const em = await payload.find({ collection: "media", where: { filename: { equals: filename } }, limit: 1, depth: 0, overrideAccess: true });
           const mediaId =
             (em.docs[0] as { id: string | number } | undefined)?.id ??
-            (await payload.create({ collection: "media", filePath, data: { alt: coverAlt ?? "" }, overrideAccess: true })).id;
+            (await payload.create({ collection: "media", filePath, data: { alt: coverAlt ?? "", category: "hero-banner" }, overrideAccess: true })).id;
           await payload.update({ collection: "posts", id: created.id, data: { coverImage: mediaId, coverImageAlt: coverAlt ?? "" }, overrideAccess: true });
         }
       }
