@@ -119,7 +119,10 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
           ...(a.organisation ? { affiliation: { "@type": "Organization", name: a.organisation } } : {}),
           ...(a.orcidUrl ? { sameAs: a.orcidUrl } : {}),
         }))
-      : { "@type": "Organization", name: site.legalName },
+      : // No named authors — METNMAT itself is the author. Carry the canonical
+        // @id so this resolves to the same Organization entity as the publisher
+        // below, rather than looking like a second, urlless company.
+        { "@type": "Organization", "@id": `${site.url}/#organization`, name: site.legalName },
     publisher: {
       "@type": "Organization",
       "@id": `${site.url}/#organization`,

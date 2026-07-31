@@ -19,3 +19,4 @@ Out-of-scope items found during a phase. Logged, not fixed (operating rule 5).
 | Phase 4 | P2 | 26 legacy blog posts all land on `/blog` | Zero slug overlap with the 3 posts on `.com`. Closes when the posts are migrated (decision 2) |
 | Phase 4 | P3 | `/blank-4`, `/blank-5` redirect to auth-gated `/account/orders` | Logged-out crawlers see 308→307→`/login`. Intended (they were order-tracking pages) but it is a chain |
 | Phase 4 | P3 | Redirect map is a build-time snapshot of the Wix sitemaps | Regenerate via `apps/website/scripts/build-legacy-redirects.mjs` if the legacy site changes before it is retired |
+| Phase 6 | **P1** | **62 of 68 products have no image in the CMS** | Only 6 products carry a gallery. Product pages render a placeholder, `Product` schema has no `image`, and the image sitemap can only cover 6 URLs. Content gap — needs real product photography uploaded; nothing in code can fix it |

@@ -49,7 +49,10 @@ const REQUIRED = {
   BlogPosting: ["headline", "datePublished"],
   Article: ["headline", "datePublished"],
   BreadcrumbList: ["itemListElement"],
-  Organization: ["name", "url"],
+  // `url` is NOT required on every Organization: an author's affiliation is
+  // legitimately just a name. The canonical company entity is checked separately
+  // by the dangling-@id-reference rule below.
+  Organization: ["name"],
   WebSite: ["name", "url"],
   ItemList: ["itemListElement"],
   FAQPage: ["mainEntity"],
@@ -112,6 +115,22 @@ for (const [label, path] of Object.entries(urls)) {
         problems.push(`Offer.price is not a valid number ("${n.price}")`);
       }
     });
+  }
+
+  // Dangling @id references: if a page points at an entity by @id, some node on
+  // that page must actually DEFINE it (carry a url). Otherwise the reference
+  // resolves to a bare name — which is how product Offers ended up with a
+  // seller that had no identity at all.
+  const ids = new Map();
+  for (const doc of parsed) {
+    walk(doc, (n) => {
+      if (typeof n["@id"] !== "string") return;
+      const defined = ids.get(n["@id"]) || false;
+      ids.set(n["@id"], defined || Boolean(n.url));
+    });
+  }
+  for (const [id, defined] of ids) {
+    if (!defined) problems.push(`@id "${id}" is referenced but never defined on this page (no node carries a url)`);
   }
 
   // Duplicate top-level entities without a distinguishing @id confuse dedupe.
