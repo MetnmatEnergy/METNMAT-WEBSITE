@@ -107,6 +107,16 @@ export default async function RootLayout({
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} dark`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* Feed autodiscovery, emitted here rather than through Metadata.
+            `alternates` is replaced wholesale by any page that sets its own
+            canonical — which pageMetadata() does on every page — so declaring
+            it in the root metadata only ever survived on /blog. */}
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title={`${site.name} — Research & Engineering Insights`}
+          href={`${site.url}/blog/rss.xml`}
+        />
       </head>
       <body className="min-h-dvh font-sans">
         <a

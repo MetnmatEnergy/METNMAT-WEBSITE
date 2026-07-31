@@ -50,7 +50,8 @@ export async function generateMetadata({
       // Unfiltered pagination canonicalises to itself — pointing pages 2+ at
       // page 1 would tell crawlers to ignore everything beyond the first page.
       ...(!filtered && query.page > 1 ? { canonical: `/blog?page=${query.page}` } : {}),
-      types: { "application/rss+xml": "/blog/rss.xml" },
+      // Feed link now comes from the root layout's <head> so every page
+      // advertises it; declaring it here too emitted the same tag twice.
     },
   };
 }
