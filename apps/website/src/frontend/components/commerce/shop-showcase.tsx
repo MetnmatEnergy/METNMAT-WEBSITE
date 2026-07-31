@@ -28,6 +28,24 @@ export function ShopShowcase() {
   const [paused, setPaused] = React.useState(false);
   const count = BANNERS.length;
 
+  /**
+   * Which slides are allowed in the DOM. All five used to be mounted at once —
+   * and because they are stacked in the same box and hidden with opacity rather
+   * than being off-screen, they all intersect the viewport, so next/image's lazy
+   * loading never engaged and the browser fetched every banner up front. That is
+   * ~120 kB of images competing with the LCP banner on a throttled mobile
+   * connection, for four pictures nobody is looking at.
+   *
+   * Mounting only the current slide and the one after it keeps the crossfade
+   * intact (the incoming slide is always already present) while cutting the
+   * initial fetch from five banners to two. `reveal` only ever grows, so a slide
+   * already shown is not torn down and re-fetched when it comes round again.
+   */
+  const [reveal, setReveal] = React.useState(1);
+  React.useEffect(() => {
+    setReveal((r) => Math.max(r, Math.min(active + 1, count - 1)));
+  }, [active, count]);
+
   const go = React.useCallback(
     (dir: 1 | -1) => setActive((a) => (a + dir + count) % count),
     [count]
@@ -59,20 +77,22 @@ export function ShopShowcase() {
           are that size), so the slides render full-bleed to the card edges —
           no letterboxing, no cropping, at every viewport width. */}
       <div className="relative aspect-[1600/680] w-full">
-        {BANNERS.map((b, i) => (
-          <Image
-            key={b.src}
-            src={b.src}
-            alt={b.alt}
-            fill
-            priority={i === 0}
-            sizes="(max-width: 1280px) 100vw, 1200px"
-            className={cn(
-              "object-cover transition-opacity duration-700",
-              i === active ? "opacity-100" : "opacity-0"
-            )}
-          />
-        ))}
+        {BANNERS.map((b, i) =>
+          i > reveal ? null : (
+            <Image
+              key={b.src}
+              src={b.src}
+              alt={b.alt}
+              fill
+              priority={i === 0}
+              sizes="(max-width: 1280px) 100vw, 1200px"
+              className={cn(
+                "object-cover transition-opacity duration-700",
+                i === active ? "opacity-100" : "opacity-0"
+              )}
+            />
+          )
+        )}
       </div>
 
       {/* Prev / next — always visible on touch, fade in on hover for desktop */}
