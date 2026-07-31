@@ -1,3 +1,5 @@
+import { legacyRedirects } from "./legacy-redirects.mjs";
+
 // The CMS/dashboard host (serves uploaded media/documents) + Google Cloud Storage,
 // so browser <img> tags and fetches to them aren't blocked by CSP.
 const CMS_ORIGIN = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
@@ -91,6 +93,15 @@ const nextConfig = {
       { protocol: "http", hostname: "localhost", port: "3001" },
       { protocol: "https", hostname: "storage.googleapis.com" },
     ],
+  },
+  // Legacy metnmat.in (Wix) URLs → their .com equivalents. Kept in the build
+  // rather than a CMS "redirects" collection on purpose: this is a fixed,
+  // one-time migration set that nobody edits, it costs nothing at runtime, and
+  // it keeps working when the CMS is unreachable — a CMS-backed lookup would put
+  // the CMS in the critical path of every 404. See legacy-redirects.mjs for how
+  // each product mapping was derived.
+  async redirects() {
+    return legacyRedirects;
   },
   async headers() {
     return [
