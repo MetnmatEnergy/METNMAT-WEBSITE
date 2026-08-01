@@ -12,8 +12,8 @@ curl -sI https://www.metnmat.com/<path> | grep -iE 'cache-control|x-nextjs-cache
 | Route | `Cache-Control` | Cached? |
 |---|---|---|
 | `/`, `/shop` | `public, max-age=3600, s-maxage=60, stale-while-revalidate=31535940` | yes (ISR) |
-| `/shop/p/<slug>` | `private, no-cache, no-store, max-age=0, must-revalidate` | **no** |
-| `/blog` | `private, no-cache, no-store, max-age=0, must-revalidate` | **no** |
+| `/shop/p/<slug>` | `s-maxage=60, stale-while-revalidate=31535940` | yes (ISR) |
+| `/blog` | `private, no-cache, no-store, max-age=0, must-revalidate` | no — reads `searchParams` for filtering |
 | `/sitemap.xml`, `/sitemaps/*.xml` | `public, max-age=3600, s-maxage=3600` | yes |
 | `/api/account/*`, `/api/blog/*`, `/api/a/*` | `no-store, max-age=0` | never (correct — these set cookies) |
 | `/*.{png,webp,woff2,…}` in `/public` | `public, max-age=31536000, immutable` | yes, forever |
@@ -59,19 +59,29 @@ apart.
   has no pluggable image cache (see BACKLOG), so a cold Cloud Run instance
   re-optimises from scratch.
 
-## Open: product pages and the blog listing are uncacheable
+## Why product pages need BOTH revalidate and generateStaticParams
 
-`/shop/p/<slug>` and `/blog` are served `private, no-cache, no-store`, so
-neither the CDN nor the browser keeps them. Every product view re-renders and
-re-fetches from the CMS.
+`/shop/p/<slug>` used to be served `private, no-cache, no-store` — the busiest
+pages in the catalogue re-rendered and re-fetched the CMS on every hit.
 
-Neither file declares `force-dynamic`, reads `cookies()` or `headers()`, and
-neither does the root layout — so something deeper in the tree is opting the
-route into fully dynamic rendering. It has not been traced yet, and it was not
-changed: making product pages cacheable trades price and stock freshness for
-speed, which is a business decision rather than a technical one.
+The cause was not a `force-dynamic`, a `cookies()` call or anything in the
+component tree; there are none. A dynamic segment simply never enters the ISR
+path unless Next knows its params at build time. **`export const revalidate`
+alone is inert here** — measured, the header stayed `no-store` until
+`generateStaticParams` was added as well. If you ever add another dynamic
+content route, it needs both.
 
-Worth doing, because the win is large: these are the highest-traffic pages and
-they currently get no edge caching at all. The likely shape of the fix is a
-short `s-maxage` with `stale-while-revalidate`, leaning on the existing
-tag-based invalidation to keep prices correct on publish.
+Freshness did not change: `api()` already cached data for 60s, and a Product
+save fires `revalidateTag("cms")` which purges immediately. The 60s window is
+only the fallback for a failed webhook.
+
+`generateStaticParams` degrades to an empty list if the CMS is cold during a
+build, which is exactly the pre-fix behaviour, so a build-time fetch failure
+costs nothing. `dynamicParams` stays default, so a product added after the build
+is served on demand and then cached.
+
+Re-check after touching this route, because it has produced a soft-404 before:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://www.metnmat.com/shop/p/not-a-product  # must be 404, repeatedly
+```
