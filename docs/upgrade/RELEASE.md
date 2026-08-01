@@ -66,14 +66,33 @@ verified on production.
   own CMS category; products declare `isRelatedTo` the products actually shown.
 
 ### Phase 8 — Performance · `4360a96` `dd17472` `c22a163` `4b728a0` `9a1b982`
-**Gate not met.** Desktop passes (96–99); mobile does not reach ≥95.
+**Gate not met.** Desktop passes (95–100); mobile does not reach ≥95 on `/`.
+
+Measured with Lighthouse 12.8.2 against production, **median of 3 serial runs
+per page** (parallel runs contend for CPU and corrupt the result). Reproduce:
+
+```bash
+node run.mjs mobile 3   # scratchpad runner; desktop needs lighthouse/core/config/desktop-config.js
+```
+
+Two methodology traps, both of which produced wrong numbers here first:
+- **`formFactor: "desktop"` alone is not the desktop preset.** It changes the
+  viewport but leaves the default *mobile* throttling (4× CPU, 1.6 Mbps) in
+  place, which scored desktop at 71–80 instead of 94–100. Use `desktop-config.js`.
+- Passing the string `"lighthouse:default"` as a config object throws
+  "No artifacts were defined on the config". For stock mobile, pass `undefined`.
 
 | Page | Mobile (Phase 0) | Desktop | Weight |
 |---|---|---|---|
-| `/` | 73 (94) | 96 | 903 KiB |
-| `/shop` | **86 (74)** | 99 | **560 KiB** |
-| `/shop/p/…` | 78 (99) | 98 | 600 KiB |
-| `/blog/…` | 82 (98) | 99 | 500 KiB |
+| `/` | **75** (73) | 98 | 817 KiB |
+| `/shop` | **92 (74)** | 99 | **536 KiB** |
+| `/shop/p/…` | **96** (99) | 100 | 572 KiB |
+| `/blog/…` | 81 (98) | 98 | 491 KiB |
+| `/cart` | 91 | 95 | 1,102 KiB |
+
+Mobile perf scores still swing ±20 between runs (`/` ran 75/73/81 in one median),
+so treat weight and the a11y/SEO categories as the signal and single perf scores
+as noise.
 
 `/shop` — the page actually worked — beat its baseline; its weight fell
 **1,016 → 560 KiB**. Fixes: carousel mounted all 5 banners at once; the chat
@@ -97,21 +116,88 @@ bytes — the site is fast for real users.
   visit speculatively pulled `/cart` (10 KB) and `/search` for routes most people
   never open. Primary nav still prefetches: `/shop`, `/services`, `/contact`.
 
-Where the remaining weight actually is, so the next pass doesn't re-derive it:
+Then a production Lighthouse run found three more, fixed in `cd6334f`:
+
+- **The desktop LCP was a lazily-loaded mosaic tile.** Promoting "the first tile"
+  would have been a no-op — column A's four products all lack photography — so
+  the rule is *first card that actually has an image, first copy only*. Against
+  live CMS data that resolves to exactly one image, `PEM Fuel Cell Hardware`,
+  the very element Lighthouse named. It uses `loading="eager"`, **not**
+  `priority`: the mosaic is `hidden lg:block`, and `priority` would preload a
+  large image on mobile where it never renders and is not the LCP.
+- **Homepage service cards pulled 900px Unsplash masters into a ~366px box** —
+  504 → 401 KiB measured on a 750px variant. Width only, no `&h=`: these URLs
+  carry `fit=crop`, so pinning a height re-frames the photo. `/services` keeps
+  the tall master; its fan carousel is genuinely portrait (344×608).
+- **The logo was still PNG.** Re-encoded lossless to WebP and verified
+  pixel-identical after decode — the wordmark is the same artwork, 67 → 45 KB.
+  The PNGs stay on disk; `icon-512.png` remains the structured-data logo.
+- **62 partner logos had no intrinsic size.** All 31 dimensions measured with
+  sharp. CSS still decides the rendered size, so nothing moves after load — the
+  box is simply correct *before* the bitmap arrives. `getClients()` now carries
+  `width`/`height` from Payload so CMS-supplied logos inherit the same fix.
+
+Net: `/` mobile **867 → 817 KiB**, TBT 152 → 61 ms.
+
+Where the remaining weight is, so the next pass doesn't re-derive it:
 
 | | |
 |---|---|
 | Warm cache | 106 KB total — 57 KB HTML + 48 KB nav prefetch; everything else served from cache |
 | Initial JS | ~197 KB brotli, excluding the 34 KB polyfills chunk (it carries `noModule`, so modern browsers never fetch it). This is the React 19 + Next 15 App Router baseline |
-| Images | **Nothing to win.** At DPR 2 on a 375px viewport, zero images download a variant more than 1.6× their rendered box — the `sizes` attributes are correct — and nothing above the fold is `eager` below it |
-| LCP element | **Text**, not an image (the hero subtitle). So `priority` on the mosaic would only compete with the real LCP, not help it |
+| Images | At DPR 2 on a 375px viewport, no image downloads a variant more than 1.6× its rendered box — the `sizes` attributes are correct |
 
-### Phase 9 — Accessibility · `28987d9`
+#### Three Lighthouse failures that are CORRECT behaviour
+
+Verified against the source and deliberately **not** changed:
+
+- **`/cart` SEO 63 — `is-crawlable`.** `robots.ts` disallows `/cart` on purpose,
+  in a commented list of thin/transactional routes. A cart must not be indexed;
+  the audit is reporting the intent working. Adding a `noindex` meta would be a
+  no-op — a compliant crawler never fetches a disallowed URL, so it never reads
+  the tag. Making the meta effective would mean *removing* the disallow.
+- **`legacy-javascript`.** There is no browserslist anywhere in the repo, so Next
+  already uses its modern target. The flagged bytes are `next/dist/build/
+  polyfills/polyfill-module.js`, `require()`d unconditionally by Next itself —
+  ~513 bytes brotli that no config can remove. Adding a browserslist would make
+  it *worse*: the usual values are wider than Next's floor, so SWC would start
+  down-compiling our own source, and browserslist is shared with autoprefixer,
+  silently re-targeting CSS prefixing site-wide.
+- **`uses-long-cache-ttl`.** The app already sends
+  `public, max-age=31536000, immutable` on `/_next/static/**`. A Google edge
+  cache rewrites it to `public,max-age=3600` before the browser sees it — the
+  CDN clamp already documented in CLAUDE.md. Nothing in app code can override a
+  header applied downstream of the origin.
+
+### Phase 9 — Accessibility · `28987d9` `cd6334f`
 **axe clean, 100/100 on all six page types** (from 91–93). Fixed: `<aside>`
 cannot carry `role="dialog"`; the quantity field had no accessible name;
 `text-brand` measured 3.70:1 on dark (moved to `brand-soft`, 5.23:1); heading
 order; and three WCAG 2.5.3 failures — a button reading "Save" that announced
 "Add to wishlist" could not be activated by voice.
+
+**That 100/100 held only at mobile width.** A later production Lighthouse run at
+*desktop* width scored `/` at **94** and every other page at **97** — because the
+desktop nav is hidden on mobile, so the audit never reached it. Two real defects
+were hiding there, fixed in `cd6334f`:
+
+- The **active nav link** still used `text-brand`: 3.79:1 on the translucent
+  header, under the 4.5:1 AA floor. Now `text-brand-soft` (4.99:1). The same
+  defect sat in `mobile-nav.tsx` and `departments-menu.tsx`, both rendered behind
+  `{open && …}` where no automated audit can ever see them. All six
+  theme × background combinations were recomputed from the raw HSL tokens and
+  every one now passes. The brand-red underline stays — a non-text indicator,
+  judged at 3:1. This one class fixed a11y on *every* page: 97 → **100**.
+- **Carousel dots were 6×6 hit targets.** The dot is now the visual and the
+  button's padding is the target — 12×26, an 8.7× area increase — with
+  `px-[3px]` recreating the exact 6px whitespace `gap-1.5` gave. Verified: pills
+  still 6×6/32×6, gaps still 6px, row still 40px tall, and clicking the padding
+  outside the pill selects the tab.
+
+`/` therefore sits at **97**, not 100: axe wants a 24px target and 12px is under
+it. Closing that needs visibly wider dot spacing, which is a design decision, not
+a bug fix — and WCAG 2.5.8 already exempts a control with an equivalent path,
+which the 40×40 prev/next arrows provide to every slide. Recorded, not hidden.
 
 Keyboard walkthrough: nav, search (a correct combobox with
 `aria-activedescendant`), and the inquiry form (labels, `aria-invalid`,
@@ -156,15 +242,26 @@ creates now state their category explicitly.
 
 ## Known limitations
 
-1. **Lighthouse mobile ≥95 not met.** The maintenance banner is the LCP element
-   on 3 of 5 pages; the site owner is keeping it for now.
-2. **CSP keeps `'unsafe-inline'`** — a decision, not a gap. Nonces are per-request and cannot coexist with cached HTML, and Next's 21 per-page RSC scripts cannot be hashed, so removing it would make every page dynamic. JSON-LD is already escaped and no user-generated HTML is rendered, so nothing exploitable is open. Caps securityheaders.com at A.
-3. **62 of 68 products have no image.** Content gap; nothing in code fixes it.
-4. **35 legacy products and all 26 legacy posts** land on `/shop/all` and
+1. **Lighthouse mobile ≥95 not met on `/` and `/blog/…`** (75 and 81; `/shop/p/…`
+   now reaches 96 and `/shop` 92). The maintenance banner is the LCP element on
+   3 of 5 pages; the site owner is keeping it for now.
+2. **`/` desktop accessibility is 97, not 100** — axe `target-size` on the
+   carousel dots. The hit area is 8.7× larger than it was but still 12px wide
+   against axe's 24px bar; clearing it needs visibly wider dot spacing, which is
+   a design call. The 40×40 prev/next arrows already reach every slide.
+3. **`/cart` CLS is 0.14–0.155**, above the 0.1 "good" threshold. The cart
+   renders from `localStorage` after hydration, so content lands late. Not yet
+   diagnosed — Lighthouse's `layout-shift-elements` returned no culprit with a
+   non-zero score in the runs captured, so it needs a dedicated look.
+4. **CSP keeps `'unsafe-inline'`** — a decision, not a gap. Nonces are per-request and cannot coexist with cached HTML, and Next's 21 per-page RSC scripts cannot be hashed, so removing it would make every page dynamic. JSON-LD is already escaped and no user-generated HTML is rendered, so nothing exploitable is open. Caps securityheaders.com at A.
+5. **62 of 68 products have no image.** Content gap; nothing in code fixes it.
+   This is also why the homepage mosaic's whole first column renders
+   placeholders — see the LCP fix in Phase 8.
+6. **35 legacy products and all 26 legacy posts** land on `/shop/all` and
    `/blog` — no provable equivalent exists.
-5. **Mobile Lighthouse varies ±20 points run to run** (`/shop` measured
+7. **Mobile Lighthouse varies ±20 points run to run** (`/shop` measured
    63/69/82/86 in one session). Compare page weight, not single scores.
-6. **Do not trust paint timings (FCP/LCP) taken from the in-app browser pane.**
+8. **Do not trust paint timings (FCP/LCP) taken from the in-app browser pane.**
    The homepage reported FCP 1452 ms with TTFB 32 ms, CSS resolved at 44 ms,
    fonts at 92 ms, `domInteractive` 91 ms and **zero** long tasks — an
    unexplained 1.36 s gap that reads exactly like a render-blocking bug. It
@@ -173,7 +270,7 @@ creates now state their category explicitly.
    promptly, so every paint metric it produces is floor-limited by the harness.
    Resource sizes, request counts, element geometry and `naturalWidth` from that
    pane are fine — only paint timing is not. Use Lighthouse or a real browser.
-6. **The deployer service account cannot read Cloud Logging**, which made a
+9. **The deployer service account cannot read Cloud Logging**, which made a
    silent seed failure cost several deploy cycles to diagnose.
 
 ## Needs the site owner
