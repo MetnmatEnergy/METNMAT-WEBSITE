@@ -84,7 +84,7 @@ Two methodology traps, both of which produced wrong numbers here first:
 
 | Page | Mobile (Phase 0) | Desktop | Weight |
 |---|---|---|---|
-| `/` | **75** (73) | 99 | 817 KiB |
+| `/` | **85** (73) | 99 | 817 KiB |
 | `/shop` | **92 (74)** | 100 | **536 KiB** |
 | `/shop/p/…` | 85–96 (99) | 100 | 571 KiB |
 | `/blog/…` | 77–82 (98) | 99 | 500 KiB |
@@ -146,6 +146,43 @@ Where the remaining weight is, so the next pass doesn't re-derive it:
 | Warm cache | 106 KB total — 57 KB HTML + 48 KB nav prefetch; everything else served from cache |
 | Initial JS | ~197 KB brotli, excluding the 34 KB polyfills chunk (it carries `noModule`, so modern browsers never fetch it). This is the React 19 + Next 15 App Router baseline |
 | Images | At DPR 2 on a 375px viewport, no image downloads a variant more than 1.6× its rendered box — the `sizes` attributes are correct |
+
+#### Homepage mobile LCP · `98933fc`
+
+The hero's left column — badge, headline, subtitle, CTAs, stats — was wrapped in
+`animate-fade-up`, which starts at `opacity: 0`. That block holds the LCP
+element, and **Chrome does not count an invisible element**, so a decorative
+entrance animation was pushing LCP out by roughly its own 0.6s.
+
+Controlled A/B, identical content and a 58 KiB document, median of 5 mobile runs
+against a local server (6–15 ms server time, so this isolates render):
+
+| | perf | LCP |
+|---|---|---|
+| with `animate-fade-up` | 86 | 3996 ms |
+| without | **89** | **3392 ms** |
+
+On production the median moved **83 → 85** and LCP **4798 → 4165 ms**.
+`cart-rail` and `filter-drawer` keep the animation; they hold no LCP candidate.
+
+**Two things measured and deliberately NOT shipped:**
+
+- **`content-visibility` on the below-fold sections** reached perf 92 / LCP
+  3129 ms and did *not* regress CLS (0.0001). Rejected anyway: the page grew
+  7283 → 8488px as sections rendered, because `contain-intrinsic-size` cannot be
+  sized correctly for both mobile and desktop — the real blocks measure
+  1820/2771/1805px at desktop and are taller on mobile. First scroll jumps
+  ~1200px. Two Lighthouse points is not worth that on a marketing page.
+- **Hiding the maintenance banner is worth about ONE point** (perf 90 vs 89,
+  LCP 3325 vs 3392 ms). See the correction under Known limitations.
+
+**Why ≥95 is not reachable without structural change.** With a **6 ms** server
+and near-zero network, local FCP is still ~2 s and LCP ~3.4 s. This is CPU, not
+bytes: Lighthouse throttles mobile CPU 4×, and the page is **1502 DOM elements /
+445 KiB of raw HTML** (`dom-size` scores 0.5; main-thread work 2.2 s). Of the
+255 KiB of markup, the partner marquee alone is **55 KiB and 247 elements** — 62
+logos whose repeated Tailwind class strings account for 39 KiB. The remaining
+lever is shipping *less homepage*, which is a redesign, not a fix.
 
 #### `/cart` layout shift · `6d65142`
 
@@ -266,9 +303,13 @@ creates now state their category explicitly.
 
 ## Known limitations
 
-1. **Lighthouse mobile ≥95 not met on `/` and `/blog/…`** (75 and 81; `/shop/p/…`
-   now reaches 96 and `/shop` 92). The maintenance banner is the LCP element on
-   3 of 5 pages; the site owner is keeping it for now.
+1. **Lighthouse mobile ≥95 not met on `/` and `/blog/…`** (85 and 81; `/shop/p/…`
+   reaches 96, `/shop` 92, `/cart` 95).
+   **Correction: the maintenance banner is NOT what caps this.** That claim was
+   never measured. It was measured now, by building with the banner disabled:
+   worth **~1 point** (perf 90 vs 89). Keeping it costs essentially nothing, so
+   there is no performance reason to retire it early. The real cap is DOM size
+   and CPU — see the homepage LCP note in Phase 8.
 2. **`/` desktop accessibility is 97, not 100** — axe `target-size` on the
    carousel dots. The hit area is 8.7× larger than it was but still 12px wide
    against axe's 24px bar; clearing it needs visibly wider dot spacing, which is
