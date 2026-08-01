@@ -11,6 +11,23 @@ import { inclGST, usdFor, lineUsdValue, type Product } from "@/frontend/lib/cata
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { ProductImage } from "@/frontend/components/commerce/product-image";
 
+/**
+ * The cart has three states — hydrating, empty, and populated — and the first
+ * one is what the server renders, because the cart lives in localStorage and is
+ * unknowable until the client mounts.
+ *
+ * Without a reserved height the spinner box (~152px) resolves to the empty
+ * state (~368px) and everything below it drops ~216px. That single jump was the
+ * page's ENTIRE layout shift: measured CLS 0.196 locally / 0.155 on production,
+ * attributed by Lighthouse to <footer>.
+ *
+ * Reserving the resolved height on every state makes the hydrating -> empty
+ * transition shift-free, and shortens the drop for a cart that turns out to
+ * have items (that one cannot be eliminated without telling the server the cart
+ * size, which would mean a cookie and an uncacheable page).
+ */
+const CART_MIN_H = "min-h-[23rem]";
+
 export default function CartPage() {
   const { cartLines, setQty, removeFromCart, clearCart, cartCount, ready, toggleWishlist, inWishlist } = useStore();
   const { money, currency, usdRate } = useCurrency();
@@ -33,7 +50,7 @@ export default function CartPage() {
   // Avoid a false "empty cart" flash before localStorage hydrates.
   if (!ready) {
     return (
-      <Container className="py-16 text-center">
+      <Container className={`py-16 text-center ${CART_MIN_H}`}>
         <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
       </Container>
     );
@@ -41,7 +58,7 @@ export default function CartPage() {
 
   if (cartCount === 0) {
     return (
-      <Container className="py-16">
+      <Container className={`py-16 ${CART_MIN_H}`}>
         <div className="mx-auto max-w-md text-center">
           <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-surface">
             <ShoppingCart className="h-7 w-7 text-muted-foreground" />
@@ -63,7 +80,7 @@ export default function CartPage() {
     // pb-32 on mobile reserves room for the sticky checkout bar so it never
     // covers the last of the summary; from lg up the bar is hidden and the
     // normal padding applies.
-    <Container className="py-8 pb-32 lg:pb-8">
+    <Container className={`py-8 pb-32 lg:pb-8 ${CART_MIN_H}`}>
       <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
         Shopping cart
       </h1>
