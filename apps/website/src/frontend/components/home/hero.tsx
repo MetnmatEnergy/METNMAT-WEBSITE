@@ -45,8 +45,14 @@ export function Hero({
       <div className="bg-hero-glow pointer-events-none absolute inset-0" />
 
       <Container className="relative grid items-stretch gap-8 pb-10 pt-6 sm:gap-10 sm:pt-8 lg:grid-cols-2 lg:gap-12 lg:pb-12 lg:pt-10">
-        {/* Left: copy */}
-        <div className="animate-fade-up">
+        {/* Left: copy.
+            Deliberately NOT `animate-fade-up`. This block holds the LCP element,
+            and fade-up starts at opacity:0 — Chrome will not count an invisible
+            element, so the entrance animation was pushing LCP out by its own
+            duration. Controlled A/B on identical content: LCP 3996ms -> 3392ms,
+            mobile Lighthouse 86 -> 89. Do not re-add it here; below-the-fold
+            blocks can still use it. */}
+        <div>
           <Badge variant="dot">
             <AnimatedTextCycle
               words={[hero.eyebrow, ...KICKER_TERMS]}
