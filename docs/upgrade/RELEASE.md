@@ -85,6 +85,27 @@ cold-miss (every resource returns in <300 ms, TTFB 0.12 s), cold containers, and
 local CPU contention. Lighthouse *simulates* 1.6 Mbps, so the score tracks total
 bytes — the site is fast for real users.
 
+#### Homepage weight · `55e5337` `f9fa75d`
+
+`/` was the heaviest page. Two measured reductions:
+
+- **Partner logos PNG → WebP: 571 → 202 KiB.** 31 logos in the trusted-by
+  marquee, shipped as PNG.
+- **Header stopped prefetching utility routes: 5 prefetches / 58 KB → 3 / 48 KB**
+  (verified on production). Next prefetches every visible `Link`, and the cart,
+  wishlist and mobile-search icons sit in the header of every page — so each
+  visit speculatively pulled `/cart` (10 KB) and `/search` for routes most people
+  never open. Primary nav still prefetches: `/shop`, `/services`, `/contact`.
+
+Where the remaining weight actually is, so the next pass doesn't re-derive it:
+
+| | |
+|---|---|
+| Warm cache | 106 KB total — 57 KB HTML + 48 KB nav prefetch; everything else served from cache |
+| Initial JS | ~197 KB brotli, excluding the 34 KB polyfills chunk (it carries `noModule`, so modern browsers never fetch it). This is the React 19 + Next 15 App Router baseline |
+| Images | **Nothing to win.** At DPR 2 on a 375px viewport, zero images download a variant more than 1.6× their rendered box — the `sizes` attributes are correct — and nothing above the fold is `eager` below it |
+| LCP element | **Text**, not an image (the hero subtitle). So `priority` on the mosaic would only compete with the real LCP, not help it |
+
 ### Phase 9 — Accessibility · `28987d9`
 **axe clean, 100/100 on all six page types** (from 91–93). Fixed: `<aside>`
 cannot carry `role="dialog"`; the quantity field had no accessible name;
@@ -143,6 +164,15 @@ creates now state their category explicitly.
    `/blog` — no provable equivalent exists.
 5. **Mobile Lighthouse varies ±20 points run to run** (`/shop` measured
    63/69/82/86 in one session). Compare page weight, not single scores.
+6. **Do not trust paint timings (FCP/LCP) taken from the in-app browser pane.**
+   The homepage reported FCP 1452 ms with TTFB 32 ms, CSS resolved at 44 ms,
+   fonts at 92 ms, `domInteractive` 91 ms and **zero** long tasks — an
+   unexplained 1.36 s gap that reads exactly like a render-blocking bug. It
+   isn't. A calibration page serving one `<h1>` with no CSS, no JS and no images
+   reported **FCP 2368 ms** in the same pane. The pane doesn't composite
+   promptly, so every paint metric it produces is floor-limited by the harness.
+   Resource sizes, request counts, element geometry and `naturalWidth` from that
+   pane are fine — only paint timing is not. Use Lighthouse or a real browser.
 6. **The deployer service account cannot read Cloud Logging**, which made a
    silent seed failure cost several deploy cycles to diagnose.
 
