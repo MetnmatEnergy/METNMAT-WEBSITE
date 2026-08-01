@@ -1,6 +1,6 @@
 import type { Access, CollectionConfig, Where } from "payload";
 import { canManageCatalog, fieldAccountsOrInternal } from "../access";
-import { slugify } from "../lib/blog";
+import { slugify, validateHttpUrl } from "../lib/blog";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
@@ -339,6 +339,47 @@ export const Products: CollectionConfig = {
                 description:
                   "Small tags on the product page. Only apply ones that are actually true.",
               },
+            },
+          ],
+        },
+
+        {
+          label: "SEO",
+          description:
+            "Everything here is optional — leave a field blank and the product's own name, short description and first image are used.",
+          fields: [
+            {
+              name: "seoTitle",
+              type: "text",
+              admin: { description: "Overrides the page <title> (defaults to the product name, plus the brand)." },
+            },
+            {
+              name: "metaDescription",
+              type: "textarea",
+              admin: { description: "Defaults to the short description. Around 150-160 characters reads best in search results." },
+            },
+            {
+              name: "keywords",
+              type: "text",
+              admin: { description: "Comma-separated. Only terms genuinely relevant to this product." },
+            },
+            {
+              name: "canonicalUrl",
+              type: "text",
+              validate: validateHttpUrl,
+              admin: { description: "Only when this product canonically lives on another URL. Leave blank otherwise." },
+            },
+            {
+              name: "ogImage",
+              type: "upload",
+              relationTo: "media",
+              admin: { description: "Social sharing image (defaults to the first product image)." },
+            },
+            {
+              name: "noIndex",
+              type: "checkbox",
+              defaultValue: false,
+              admin: { description: "Ask search engines not to index this product. It stays reachable on the site." },
             },
           ],
         },

@@ -65,23 +65,31 @@ export async function generateMetadata({
   // rendered but the response was HTTP 200, so search engines indexed every
   // bogus /shop/p/* URL as a real page. (Same pattern the blog already uses.)
   if (!product) notFound();
-  const title = product.brand ? `${product.name} — ${product.brand}` : product.name;
+  // CMS overrides win; each falls back to what the page derived before, so a
+  // product with the SEO tab untouched renders byte-identical metadata.
+  const title = product.seoTitle || (product.brand ? `${product.name} — ${product.brand}` : product.name);
+  const description = product.metaDescription || product.shortDesc;
+  const image = product.ogImageUrl || product.imageUrl;
   return {
     title,
-    description: product.shortDesc,
-    alternates: { canonical: `/shop/p/${slug}` },
+    description,
+    ...(product.seoKeywords ? { keywords: product.seoKeywords.split(",").map((k) => k.trim()).filter(Boolean) } : {}),
+    // noIndex keeps the page reachable on the site but out of the index — the
+    // usual reason is a product that is listed for existing customers only.
+    ...(product.noIndex ? { robots: { index: false, follow: true } } : {}),
+    alternates: { canonical: product.canonicalUrl || `/shop/p/${slug}` },
     openGraph: {
       type: "website",
       title,
-      description: product.shortDesc,
+      description,
       url: `${site.url}/shop/p/${slug}`,
-      ...(product.imageUrl ? { images: [{ url: product.imageUrl }] } : {}),
+      ...(image ? { images: [{ url: image }] } : {}),
     },
     twitter: {
       card: "summary_large_image",
       title,
-      description: product.shortDesc,
-      ...(product.imageUrl ? { images: [product.imageUrl] } : {}),
+      description,
+      ...(image ? { images: [image] } : {}),
     },
   };
 }

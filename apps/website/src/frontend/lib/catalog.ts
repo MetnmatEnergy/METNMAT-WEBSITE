@@ -61,6 +61,14 @@ export type Product = {
   hsnSac?: string; // HSN/SAC code — snapshotted onto order items for the GST invoice
   countryOfOrigin?: string;
   productType?: string; // "in-stock" | "made-to-order" | "quote-only" | "discontinued"
+  // Optional CMS overrides. All blank by default — the page falls back to the
+  // product's own name / shortDesc / first image, which is what it always did.
+  seoTitle?: string;
+  metaDescription?: string;
+  seoKeywords?: string;
+  canonicalUrl?: string;
+  ogImageUrl?: string;
+  noIndex?: boolean;
 };
 
 export type Deal = { title: string; subtitle: string; href: string };

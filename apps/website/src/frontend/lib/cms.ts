@@ -87,6 +87,12 @@ type CmsProduct = {
   countryOfOrigin?: string;
   productType?: string;
   documents?: (CmsDocument | string)[];
+  seoTitle?: string;
+  metaDescription?: string;
+  keywords?: string;
+  canonicalUrl?: string;
+  ogImage?: Media;
+  noIndex?: boolean;
 };
 
 /** A product-attached document (datasheet / SDS / certificate). Only ones the
@@ -133,6 +139,15 @@ function mapProduct(d: CmsProduct): Product {
     hsnSac: d.hsnSac?.trim() || undefined,
     countryOfOrigin: d.countryOfOrigin?.trim() || undefined,
     productType: d.productType?.trim() || undefined,
+    // Optional SEO overrides from the CMS. Empty strings collapse to undefined
+    // so the page's existing fallbacks (name / shortDesc / first image) apply
+    // unchanged when staff leave a field blank.
+    seoTitle: d.seoTitle?.trim() || undefined,
+    metaDescription: d.metaDescription?.trim() || undefined,
+    seoKeywords: d.keywords?.trim() || undefined,
+    canonicalUrl: d.canonicalUrl?.trim() || undefined,
+    ogImageUrl: mediaUrl(d.ogImage) || undefined,
+    noIndex: d.noIndex === true,
   };
 }
 
