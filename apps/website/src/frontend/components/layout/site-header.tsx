@@ -33,7 +33,7 @@ export async function SiteHeader() {
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Search: the full bar shows on md+ (above); on smaller screens an icon
               link to /search — visible on phones too, not just the sm–md range. */}
-          <Link href="/search" aria-label="Search the site" className={`${iconLink} md:hidden`}>
+          <Link href="/search" prefetch={false} aria-label="Search the site" className={`${iconLink} md:hidden`}>
             <Search className="h-[18px] w-[18px]" />
           </Link>
 

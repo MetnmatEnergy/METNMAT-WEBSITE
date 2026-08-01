@@ -22,6 +22,10 @@ export function CartButton() {
   return (
     <Link
       href="/cart"
+      // Utility icon rendered on every page; Next prefetches visible Links on
+      // sight, which pulled a 10 KB RSC payload for a route most visitors never
+      // open. Primary nav keeps its prefetch.
+      prefetch={false}
       aria-label={`Cart, ${cartCount} item${cartCount === 1 ? "" : "s"}`}
       className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-all hover:bg-muted hover:border-foreground/20 active:scale-95"
     >
@@ -36,6 +40,7 @@ export function WishlistBadgeButton() {
   return (
     <Link
       href="/wishlist"
+      prefetch={false}
       aria-label={`Wishlist, ${wishlistCount} item${wishlistCount === 1 ? "" : "s"}`}
       className="relative flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-all hover:bg-muted hover:border-foreground/20 active:scale-95"
     >
