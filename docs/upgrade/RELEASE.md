@@ -111,9 +111,10 @@ as PFSA). All ten now return correct results in ~200 ms.
 ### Phase 12 — Security
 **8 of 9 pass.** Headers complete; no secrets in `.next/static`; CMS collections
 403; internal routes 401; cookies `httpOnly`/`sameSite`/`secure`; **no draft
-leakage** (probed three ways). Open: CSP still carries `unsafe-inline` — the
-nonce migration is documented in BACKLOG.md and deliberately not attempted,
-because a mistake blocks every script on every page.
+leakage** (probed three ways). `unsafe-inline` stays in `script-src` by decision: nonces cannot coexist with
+cached HTML and Next's per-page RSC scripts cannot be hashed, so the migration
+would cost site-wide caching to close a hole that is not open. Recorded in
+BACKLOG.md with the measurements.
 
 ### Phase 14 — Final QA
 `apps/website/scripts/qa-crawl.mjs` — **clean: 126 pages, 78 images, exit 0**.
@@ -136,7 +137,7 @@ creates now state their category explicitly.
 
 1. **Lighthouse mobile ≥95 not met.** The maintenance banner is the LCP element
    on 3 of 5 pages; the site owner is keeping it for now.
-2. **CSP `unsafe-inline`** — caps securityheaders.com at A.
+2. **CSP keeps `'unsafe-inline'`** — a decision, not a gap. Nonces are per-request and cannot coexist with cached HTML, and Next's 21 per-page RSC scripts cannot be hashed, so removing it would make every page dynamic. JSON-LD is already escaped and no user-generated HTML is rendered, so nothing exploitable is open. Caps securityheaders.com at A.
 3. **62 of 68 products have no image.** Content gap; nothing in code fixes it.
 4. **35 legacy products and all 26 legacy posts** land on `/shop/all` and
    `/blog` — no provable equivalent exists.
