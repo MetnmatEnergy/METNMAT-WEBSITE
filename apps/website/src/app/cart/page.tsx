@@ -60,7 +60,10 @@ export default function CartPage() {
   }
 
   return (
-    <Container className="py-8">
+    // pb-32 on mobile reserves room for the sticky checkout bar so it never
+    // covers the last of the summary; from lg up the bar is hidden and the
+    // normal padding applies.
+    <Container className="py-8 pb-32 lg:pb-8">
       <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
         Shopping cart
       </h1>
@@ -197,6 +200,31 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* Sticky checkout bar — mobile only.
+          On a phone the order summary sits below every line item, so with a few
+          products in the cart the checkout button is off-screen until you scroll
+          to the bottom. This keeps the total and the action reachable at all
+          times; from lg up the summary column is already sticky, so it is hidden.
+
+          pe-20 keeps the button clear of the chat bubble, which is fixed in the
+          bottom-right corner and would otherwise sit on top of it.
+          pb uses safe-area-inset so it clears the iOS home indicator. */}
+      {cartLines.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm lg:hidden">
+          <div className="flex items-center gap-3 px-4 py-3 pe-20 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Subtotal (incl. GST)</p>
+              <p className="truncate text-base font-semibold leading-tight">
+                {money(subtotalIncl, usdSubtotal)}
+              </p>
+            </div>
+            <Button href="/checkout" className="ms-auto shrink-0">
+              Checkout <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </Container>
   );
 }
