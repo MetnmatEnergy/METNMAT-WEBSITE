@@ -158,7 +158,7 @@ export function DepartmentsMenu({ categories = [] }: { categories?: Category[] }
             <Link
               href="/shop"
               onClick={() => setOpen(false)}
-              className="mt-4 block border-t border-border pt-3 text-sm font-medium text-brand"
+              className="mt-4 block border-t border-border pt-3 text-sm font-medium text-brand-soft"
             >
               Visit the full store →
             </Link>

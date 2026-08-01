@@ -3,7 +3,7 @@ import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { InfoCard } from "@/frontend/components/ui/info-card";
-import { SERVICE_IMAGES } from "@/frontend/lib/service-images";
+import { SERVICE_CARD_IMAGES } from "@/frontend/lib/service-images";
 import { services as phServices, type Service } from "@/frontend/lib/placeholder";
 
 export function ServicesPreview({ services = phServices }: { services?: Service[] } = {}) {
@@ -35,7 +35,7 @@ export function ServicesPreview({ services = phServices }: { services?: Service[
               // content names the link accurately.
             >
               <InfoCard
-                image={SERVICE_IMAGES[service.slug]}
+                image={SERVICE_CARD_IMAGES[service.slug]}
                 title={service.title}
                 description={service.summary}
               />

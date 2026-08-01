@@ -255,7 +255,9 @@ export function ServiceCardStack({ items }: { items: ServiceStackItem[] }) {
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <div className="flex items-center gap-1.5" role="tablist" aria-label="Services">
+        {/* Padding, not the pill, is the tap target — see the matching comment
+            in featured-projects-carousel.tsx. Dot positions are unchanged. */}
+        <div className="-mx-[3px] flex items-center" role="tablist" aria-label="Services">
           {items.map((s, i) => (
             <button
               key={s.slug}
@@ -264,11 +266,15 @@ export function ServiceCardStack({ items }: { items: ServiceStackItem[] }) {
               aria-selected={order[0] === i}
               aria-label={s.title}
               onClick={() => jumpTo(i)}
-              className={cn(
-                "h-1.5 rounded-full transition-all duration-300",
-                order[0] === i ? "w-8 bg-brand" : "w-1.5 bg-border hover:bg-brand/40",
-              )}
-            />
+              className="group/dot flex items-center justify-center rounded-full px-[3px] py-2.5"
+            >
+              <span
+                className={cn(
+                  "block h-1.5 rounded-full transition-all duration-300",
+                  order[0] === i ? "w-8 bg-brand" : "w-1.5 bg-border group-hover/dot:bg-brand/40",
+                )}
+              />
+            </button>
           ))}
         </div>
         <button

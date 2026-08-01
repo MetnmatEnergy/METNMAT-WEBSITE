@@ -24,7 +24,11 @@ export function NavLinks({ className, items = mainNav }: { className?: string; i
             className={cn(
               "relative px-3 py-2 text-sm font-medium transition-colors",
               active
-                ? "text-brand"
+                // brand-soft, not brand: on the translucent header `text-brand`
+                // measures 3.79:1, under the 4.5:1 AA floor for body text. The
+                // underline below stays brand — it is a non-text indicator,
+                // judged at 3:1.
+                ? "text-brand-soft"
                 : "text-foreground/80 hover:text-foreground"
             )}
           >

@@ -249,7 +249,12 @@ export function FeaturedProjectsCarousel({ projects }: { projects: Project[] }) 
             <span className="text-sm font-medium tabular-nums text-muted-foreground sm:hidden">
               <span className="text-foreground">{active + 1}</span> / {count}
             </span>
-            <div className="hidden max-w-md flex-wrap items-center gap-1.5 sm:flex" role="tablist" aria-label="Choose a project">
+            {/* The dot is the visual, not the target. Padding on the button
+                grows the 6px pill to a 12x26 hit box; px-[3px] recreates the
+                exact whitespace `gap-1.5` used to give, and -mx-[3px] cancels
+                the outer padding so the strip's edges do not move. Dots render
+                pixel-identically to before. */}
+            <div className="-mx-[3px] hidden max-w-md flex-wrap items-center sm:flex" role="tablist" aria-label="Choose a project">
               {projects.map((project, i) => (
                 <button
                   key={project.slug}
@@ -258,11 +263,15 @@ export function FeaturedProjectsCarousel({ projects }: { projects: Project[] }) 
                   aria-selected={active === i}
                   aria-label={project.title}
                   onClick={() => goTo(i)}
-                  className={cn(
-                    "h-1.5 rounded-full transition-all duration-300",
-                    active === i ? "w-8 bg-brand" : "w-1.5 bg-border hover:bg-brand/40",
-                  )}
-                />
+                  className="group/dot flex items-center justify-center rounded-full px-[3px] py-2.5"
+                >
+                  <span
+                    className={cn(
+                      "block h-1.5 rounded-full transition-all duration-300",
+                      active === i ? "w-8 bg-brand" : "w-1.5 bg-border group-hover/dot:bg-brand/40",
+                    )}
+                  />
+                </button>
               ))}
             </div>
             <button

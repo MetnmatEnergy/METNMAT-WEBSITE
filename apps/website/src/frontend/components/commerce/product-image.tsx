@@ -24,6 +24,7 @@ export function ProductImage({
   alt,
   sizes = "400px",
   priority = false,
+  eager = false,
   className,
   imageClassName,
   label = "Product",
@@ -35,6 +36,13 @@ export function ProductImage({
   sizes?: string;
   /** Only the PDP's first gallery slide should set this. */
   priority?: boolean;
+  /**
+   * De-lazy WITHOUT emitting a <head> preload — for an above-the-fold image
+   * that only exists at SOME breakpoints. The homepage mosaic is `hidden
+   * lg:block`, so `priority` there would preload a large image on mobile,
+   * where it never renders and is not the LCP.
+   */
+  eager?: boolean;
   /** Classes for the 4:3 wrapper (rounding, background, borders). */
   className?: string;
   /** Classes for the <Image> itself (e.g. padding, hover transforms). */
@@ -54,6 +62,9 @@ export function ProductImage({
         fill
         sizes={sizes}
         priority={priority}
+        // Leave `loading` undefined when priority is set — next/image throws on
+        // priority combined with an explicit loading value.
+        loading={!priority && eager ? "eager" : undefined}
         className={cn("object-contain", imageClassName)}
       />
     </div>

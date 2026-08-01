@@ -12,12 +12,14 @@ export function Logo() {
     <Link href="/" className="flex items-center" aria-label={`${site.name} home`}>
       {/* One theme-adaptive lockup as a background-image: the browser only fetches
           the variant whose selector matches the applied theme class (set before
-          paint), so we load ONE logo instead of downloading both PNGs on every
+          paint), so we load ONE logo instead of downloading both files on every
           page. aspect-[656/194] keeps the exact intrinsic ratio at h-8 / sm:h-9.
-          Decorative — the Link carries the accessible name. */}
+          Decorative — the Link carries the accessible name.
+          WebP, encoded lossless from the source PNGs: verified pixel-identical
+          after decode, so the wordmark is byte-for-byte the same artwork. */}
       <span
         aria-hidden
-        className="block h-8 sm:h-9 aspect-[656/194] bg-[url('/logo-metnmat.png')] bg-contain bg-left bg-no-repeat dark:bg-[url('/logo-metnmat-dark.png')]"
+        className="block h-8 sm:h-9 aspect-[656/194] bg-[url('/logo-metnmat.webp')] bg-contain bg-left bg-no-repeat dark:bg-[url('/logo-metnmat-dark.webp')]"
       />
     </Link>
   );

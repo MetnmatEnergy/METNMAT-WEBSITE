@@ -39,7 +39,7 @@ const api = cache(async function api<T>(path: string): Promise<T | null> {
   }
 });
 
-type Media = { url?: string; alt?: string } | string | null | undefined;
+type Media = { url?: string; alt?: string; width?: number; height?: number } | string | null | undefined;
 
 /** Absolute URL for a Payload media object (handles local + cloud storage). */
 export function mediaUrl(media: Media): string | undefined {
@@ -582,8 +582,14 @@ export async function getClients(): Promise<{ companies: Client[]; institutions:
   for (const d of docs) {
     const url = mediaUrl(d.logo);
     if (!url) continue;
-    if (d.type === "company") companies.push({ name: d.name, logo: url });
-    else institutions.push({ src: url, name: d.name });
+    // Payload returns intrinsic width/height on a media doc; carrying them
+    // through lets the marquee reserve the right box before the logo loads.
+    const dim =
+      d.logo && typeof d.logo === "object"
+        ? { width: d.logo.width, height: d.logo.height }
+        : {};
+    if (d.type === "company") companies.push({ name: d.name, logo: url, ...dim });
+    else institutions.push({ src: url, name: d.name, ...dim });
   }
   return {
     companies: companies.length ? companies : phClients,

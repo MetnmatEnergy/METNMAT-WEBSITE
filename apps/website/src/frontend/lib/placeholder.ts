@@ -10,7 +10,7 @@
  */
 
 export type Stat = { value: string; label: string };
-export type Client = { name: string; logo: string };
+export type Client = { name: string; logo: string; width?: number; height?: number };
 export type Service = { slug: string; title: string; summary: string; icon?: string };
 export type Project = {
   slug: string;
@@ -65,44 +65,44 @@ export const stats: Stat[] = [
 
 // Clients / partners (from the company site).
 export const clients: Client[] = [
-  { name: "Tata Steel", logo: "/clients/tata.webp" },
-  { name: "Vedanta", logo: "/clients/vedanta.webp" },
-  { name: "JSL", logo: "/clients/jsl.webp" },
-  { name: "Eastern Copper", logo: "/clients/eastern-copper.webp" },
-  { name: "Mescab Wires & Cables", logo: "/clients/mescab.webp" },
+  { name: "Tata Steel", logo: "/clients/tata.webp", width: 130, height: 120 },
+  { name: "Vedanta", logo: "/clients/vedanta.webp", width: 360, height: 100 },
+  { name: "JSL", logo: "/clients/jsl.webp", width: 360, height: 77 },
+  { name: "Eastern Copper", logo: "/clients/eastern-copper.webp", width: 231, height: 120 },
+  { name: "Mescab Wires & Cables", logo: "/clients/mescab.webp", width: 360, height: 90 },
 ];
 
 // Colleges, universities & research labs METNMAT works with — shown as a sliding
 // wall of named, full-colour logos. (Two source files excluded: a duplicate IIT
 // Bombay and a generic clipart.)
-export type EduLogo = { src: string; name: string };
+export type EduLogo = { src: string; name: string; width?: number; height?: number };
 export const eduLogos: EduLogo[] = [
-  { src: "/clients/edu/edu-01.webp", name: "IIT Bombay" },
-  { src: "/clients/edu/edu-05.webp", name: "IIT Hyderabad" },
-  { src: "/clients/edu/edu-08.webp", name: "IIT Patna" },
-  { src: "/clients/edu/edu-25.webp", name: "IIT Madras" },
-  { src: "/clients/edu/edu-26.webp", name: "IIT Kanpur" },
-  { src: "/clients/edu/edu-27.webp", name: "IIT (BHU) Varanasi" },
-  { src: "/clients/edu/edu-28.webp", name: "IIT Delhi" },
-  { src: "/clients/edu/edu-19.webp", name: "Indian Institute of Science" },
-  { src: "/clients/edu/edu-11.webp", name: "IISER Mohali" },
-  { src: "/clients/edu/edu-16.webp", name: "Manipal Academy of Higher Education" },
-  { src: "/clients/edu/edu-10.webp", name: "MNIT Jaipur" },
-  { src: "/clients/edu/edu-14.webp", name: "Birla Institute of Technology & Science" },
-  { src: "/clients/edu/edu-07.webp", name: "CSIR" },
-  { src: "/clients/edu/edu-15.webp", name: "University of Michigan" },
-  { src: "/clients/edu/edu-20.webp", name: "University of California, Irvine" },
-  { src: "/clients/edu/edu-06.webp", name: "University of Nottingham" },
-  { src: "/clients/edu/edu-12.webp", name: "University of Padova" },
-  { src: "/clients/edu/edu-09.webp", name: "University of Brescia" },
-  { src: "/clients/edu/edu-23.webp", name: "Linköping University" },
-  { src: "/clients/edu/edu-29.webp", name: "UNICAMP" },
-  { src: "/clients/edu/edu-18.webp", name: "Instituto Superior Técnico" },
-  { src: "/clients/edu/edu-02.webp", name: "Universiti Teknologi Malaysia" },
-  { src: "/clients/edu/edu-22.webp", name: "Universiti Malaysia Terengganu" },
-  { src: "/clients/edu/edu-03.webp", name: "American University of Sharjah" },
-  { src: "/clients/edu/edu-30.webp", name: "Sultan Qaboos University" },
-  { src: "/clients/edu/edu-17.webp", name: "Bu-Ali Sina University" },
+  { src: "/clients/edu/edu-01.webp", width: 148, height: 144, name: "IIT Bombay" },
+  { src: "/clients/edu/edu-05.webp", width: 132, height: 132, name: "IIT Hyderabad" },
+  { src: "/clients/edu/edu-08.webp", width: 137, height: 136, name: "IIT Patna" },
+  { src: "/clients/edu/edu-25.webp", width: 144, height: 144, name: "IIT Madras" },
+  { src: "/clients/edu/edu-26.webp", width: 144, height: 144, name: "IIT Kanpur" },
+  { src: "/clients/edu/edu-27.webp", width: 139, height: 144, name: "IIT (BHU) Varanasi" },
+  { src: "/clients/edu/edu-28.webp", width: 144, height: 144, name: "IIT Delhi" },
+  { src: "/clients/edu/edu-19.webp", width: 156, height: 144, name: "Indian Institute of Science" },
+  { src: "/clients/edu/edu-11.webp", width: 98, height: 110, name: "IISER Mohali" },
+  { src: "/clients/edu/edu-16.webp", width: 122, height: 141, name: "Manipal Academy of Higher Education" },
+  { src: "/clients/edu/edu-10.webp", width: 146, height: 144, name: "MNIT Jaipur" },
+  { src: "/clients/edu/edu-14.webp", width: 126, height: 125, name: "Birla Institute of Technology & Science" },
+  { src: "/clients/edu/edu-07.webp", width: 116, height: 116, name: "CSIR" },
+  { src: "/clients/edu/edu-15.webp", width: 242, height: 48, name: "University of Michigan" },
+  { src: "/clients/edu/edu-20.webp", width: 134, height: 134, name: "University of California, Irvine" },
+  { src: "/clients/edu/edu-06.webp", width: 146, height: 43, name: "University of Nottingham" },
+  { src: "/clients/edu/edu-12.webp", width: 223, height: 95, name: "University of Padova" },
+  { src: "/clients/edu/edu-09.webp", width: 144, height: 144, name: "University of Brescia" },
+  { src: "/clients/edu/edu-23.webp", width: 142, height: 99, name: "Linköping University" },
+  { src: "/clients/edu/edu-29.webp", width: 115, height: 130, name: "UNICAMP" },
+  { src: "/clients/edu/edu-18.webp", width: 108, height: 129, name: "Instituto Superior Técnico" },
+  { src: "/clients/edu/edu-02.webp", width: 131, height: 132, name: "Universiti Teknologi Malaysia" },
+  { src: "/clients/edu/edu-22.webp", width: 131, height: 99, name: "Universiti Malaysia Terengganu" },
+  { src: "/clients/edu/edu-03.webp", width: 131, height: 131, name: "American University of Sharjah" },
+  { src: "/clients/edu/edu-30.webp", width: 126, height: 132, name: "Sultan Qaboos University" },
+  { src: "/clients/edu/edu-17.webp", width: 87, height: 144, name: "Bu-Ali Sina University" },
 ];
 
 // Services offered (METNMAT Research & Innovations).

@@ -141,7 +141,7 @@ export function MobileNav({ items = mainNav }: { items?: NavItem[] }) {
                     href={item.href}
                     className={cn(
                       "rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                      active ? "bg-surface text-brand" : "text-foreground/80 hover:bg-surface"
+                      active ? "bg-surface text-brand-soft" : "text-foreground/80 hover:bg-surface"
                     )}
                   >
                     {item.label}

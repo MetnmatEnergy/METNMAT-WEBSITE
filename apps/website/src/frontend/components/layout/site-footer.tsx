@@ -49,12 +49,13 @@ export async function SiteFooter() {
           <div className="max-w-sm">
             <span className="inline-flex items-center">
               {/* Single theme-adaptive lockup (background-image) so only the
-                  active-theme PNG downloads, not both. role/aria-label keep the
-                  accessible name the two <img alt> tags carried. */}
+                  active-theme file downloads, not both. role/aria-label keep the
+                  accessible name the two <img alt> tags carried. WebP encoded
+                  lossless from the PNGs — verified pixel-identical. */}
               <span
                 role="img"
                 aria-label={`${legalName} logo`}
-                className="block h-9 aspect-[656/194] bg-[url('/logo-metnmat.png')] bg-contain bg-left bg-no-repeat dark:bg-[url('/logo-metnmat-dark.png')]"
+                className="block h-9 aspect-[656/194] bg-[url('/logo-metnmat.webp')] bg-contain bg-left bg-no-repeat dark:bg-[url('/logo-metnmat-dark.webp')]"
               />
             </span>
             <p className="mt-4 text-sm font-medium text-foreground/90">{tagline}.</p>

@@ -8,7 +8,7 @@ function prettyCategory(slug: string): string {
   return slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function MosaicCard({ product }: { product: Product }) {
+function MosaicCard({ product, eager }: { product: Product; eager?: boolean }) {
   const spec = product.specs?.[0]?.value || product.shortDesc || product.brand;
   return (
     <Link
@@ -16,13 +16,15 @@ function MosaicCard({ product }: { product: Product }) {
       className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-colors hover:border-brand/40"
     >
       {/* Decorative, duplicated auto-scroller — lazy (ProductImage's default)
-          is correct here so it never competes with the hero's LCP. */}
+          is correct for all but the one tile Chrome picks as the desktop LCP,
+          which Column de-lazies explicitly. */}
       <ProductImage
         src={product.imageUrl}
         alt={product.name}
         sizes="(max-width: 640px) 50vw, 280px"
         className="bg-white"
         label={product.brand || "METNMAT"}
+        eager={eager}
       />
       <div className="p-4">
         {product.categorySlug && (
@@ -47,6 +49,13 @@ function Column({
   reverse?: boolean;
   className?: string;
 }) {
+  // Lighthouse reported the desktop LCP as a lazily-loaded mosaic tile, which
+  // delays it for no reason. De-lazy exactly the topmost card that actually HAS
+  // a photo — index 0 is CMS-driven and today points at an image-less product,
+  // so promoting "the first card" blindly would be a no-op. First copy only:
+  // the duplicate exists purely to make the scroll loop seamless.
+  const lcpIndex = items.findIndex((p) => p.imageUrl);
+
   return (
     <div className={className}>
       <div
@@ -55,7 +64,7 @@ function Column({
         }`}
       >
         {[...items, ...items].map((p, i) => (
-          <MosaicCard key={`${p.slug}-${i}`} product={p} />
+          <MosaicCard key={`${p.slug}-${i}`} product={p} eager={i === lcpIndex} />
         ))}
       </div>
     </div>

@@ -6,14 +6,21 @@ import {
   type EduLogo,
 } from "@/frontend/lib/placeholder";
 
+type Partner = { src: string; name: string; width?: number; height?: number };
+
 // All partners in one smooth sliding row, with the companies spread evenly
 // among the institutions (deterministic, so SSR & client render identically).
-function buildPartners(companies: Client[], institutions: EduLogo[]): { src: string; name: string }[] {
-  const comp = companies.map((c) => ({ src: c.logo, name: c.name }));
-  const edu = [...institutions];
+function buildPartners(companies: Client[], institutions: EduLogo[]): Partner[] {
+  const comp = companies.map((c) => ({
+    src: c.logo,
+    name: c.name,
+    width: c.width,
+    height: c.height,
+  }));
+  const edu: Partner[] = [...institutions];
   if (!comp.length) return edu;
   const gap = Math.max(1, Math.floor(edu.length / comp.length));
-  const out: { src: string; name: string }[] = [];
+  const out: Partner[] = [];
   let ci = 0;
   edu.forEach((e, i) => {
     out.push(e);
@@ -71,10 +78,20 @@ export function TrustedBy({
             className="group/logo flex w-44 shrink-0 flex-col items-center gap-3"
           >
             <span className="flex h-[88px] w-full items-center justify-center rounded-2xl border border-black/[0.06] bg-white px-6 shadow-md ring-1 ring-black/[0.03] transition-all duration-300 group-hover/logo:-translate-y-1.5 group-hover/logo:shadow-xl group-hover/logo:ring-brand/25 dark:border-white/10 dark:shadow-[0_10px_26px_-12px_rgba(0,0,0,0.7)]">
+              {/* A raw <img>, deliberately: `src` is a runtime union of a
+                  bundled path and a CMS URL, so next/image could not derive
+                  dimensions for free anyway, and routing 62 already-optimised
+                  1.7-20 KB WebPs through the optimizer would be a net loss.
+                  The measured intrinsic width/height give the box its correct
+                  aspect ratio BEFORE the bitmap arrives; CSS (h-12 w-auto) still
+                  decides the rendered size, so nothing moves after load. The
+                  conditional spread degrades to today's behaviour for a CMS logo
+                  with no dimensions rather than asserting a wrong ratio. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={p.src}
                 alt={`${p.name} logo`}
+                {...(p.width && p.height ? { width: p.width, height: p.height } : {})}
                 loading="lazy"
                 className="h-12 w-auto max-w-full object-contain transition-transform duration-300 group-hover/logo:scale-[1.07]"
               />
