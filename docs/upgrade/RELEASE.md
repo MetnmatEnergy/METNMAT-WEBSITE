@@ -84,11 +84,11 @@ Two methodology traps, both of which produced wrong numbers here first:
 
 | Page | Mobile (Phase 0) | Desktop | Weight |
 |---|---|---|---|
-| `/` | **75** (73) | 98 | 817 KiB |
-| `/shop` | **92 (74)** | 99 | **536 KiB** |
-| `/shop/p/…` | **96** (99) | 100 | 572 KiB |
-| `/blog/…` | 81 (98) | 98 | 491 KiB |
-| `/cart` | 91 | 95 | 1,102 KiB |
+| `/` | **75** (73) | 99 | 817 KiB |
+| `/shop` | **92 (74)** | 100 | **536 KiB** |
+| `/shop/p/…` | 85–96 (99) | 100 | 571 KiB |
+| `/blog/…` | 77–82 (98) | 99 | 500 KiB |
+| `/cart` | **95** | **100** | 1,102 KiB |
 
 Mobile perf scores still swing ±20 between runs (`/` ran 75/73/81 in one median),
 so treat weight and the a11y/SEO categories as the signal and single perf scores
@@ -146,6 +146,30 @@ Where the remaining weight is, so the next pass doesn't re-derive it:
 | Warm cache | 106 KB total — 57 KB HTML + 48 KB nav prefetch; everything else served from cache |
 | Initial JS | ~197 KB brotli, excluding the 34 KB polyfills chunk (it carries `noModule`, so modern browsers never fetch it). This is the React 19 + Next 15 App Router baseline |
 | Images | At DPR 2 on a 375px viewport, no image downloads a variant more than 1.6× its rendered box — the `sizes` attributes are correct |
+
+#### `/cart` layout shift · `6d65142`
+
+`/cart` was the only page failing CLS — **0.155 on production**, and Lighthouse
+attributed all of it to one shift of `<footer>`.
+
+The cart lives in `localStorage`, so the server can only render a spinner. That
+box is ~152px and resolves to the empty-cart state at ~368px, dropping
+everything below it — footer included — by ~216px in a single frame.
+
+All three states now reserve the same height. Measured with the same instrument
+on the same build: **0.196 → 0.0002 locally, 0.0000 on production**, the only
+remainder being a 0.00015 font swap. `/cart` went **91 → 95 mobile, 94 → 100
+desktop**.
+
+Nothing gains dead whitespace: the reserved height *is* the empty state's
+natural height, and because the block sits in `max-w-md` that height is
+viewport-independent — it measures 368px at both 375px and 803px, where the
+64px under the buttons is the pre-existing `py-16`. With items the container
+measures 880px, so the reservation is inert.
+
+A cart that *does* have items still expands from the reserved height. Removing
+that would mean telling the server the cart size through a cookie, which would
+make the page uncacheable — not worth it for the returning-visitor case.
 
 #### Three Lighthouse failures that are CORRECT behaviour
 
@@ -249,10 +273,9 @@ creates now state their category explicitly.
    carousel dots. The hit area is 8.7× larger than it was but still 12px wide
    against axe's 24px bar; clearing it needs visibly wider dot spacing, which is
    a design call. The 40×40 prev/next arrows already reach every slide.
-3. **`/cart` CLS is 0.14–0.155**, above the 0.1 "good" threshold. The cart
-   renders from `localStorage` after hydration, so content lands late. Not yet
-   diagnosed — Lighthouse's `layout-shift-elements` returned no culprit with a
-   non-zero score in the runs captured, so it needs a dedicated look.
+3. **`/blog/…` occasionally reports CLS ~0.115.** Intermittent: three
+   consecutive dedicated runs measured 0.0000 with no shift items, so treat a
+   single non-zero reading as a cold image load, not a regression.
 4. **CSP keeps `'unsafe-inline'`** — a decision, not a gap. Nonces are per-request and cannot coexist with cached HTML, and Next's 21 per-page RSC scripts cannot be hashed, so removing it would make every page dynamic. JSON-LD is already escaped and no user-generated HTML is rendered, so nothing exploitable is open. Caps securityheaders.com at A.
 5. **62 of 68 products have no image.** Content gap; nothing in code fixes it.
    This is also why the homepage mosaic's whole first column renders
