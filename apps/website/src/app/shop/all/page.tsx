@@ -101,7 +101,11 @@ export default async function AllProductsPage({
           </div>
 
           <div>
-            <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
+            {/* Wraps below sm: the Filters button, the result count and the sort
+                control together measure ~410px, which overflowed a 375px
+                viewport as one non-wrapping row. Above sm they still sit on one
+                line, so the desktop layout is unchanged. */}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-border pb-4">
               <div className="flex items-center gap-3">
                 <FilterDrawer {...sidebarProps} />
                 <p className="text-sm text-muted-foreground">

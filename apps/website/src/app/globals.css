@@ -67,6 +67,14 @@
        (Reduced-motion users get instant jumps via the media query below.) */
     scroll-behavior: smooth;
     scroll-padding-top: 7rem;
+    /* Must be here as well as on body. `body { overflow-x: clip }` cannot
+       contain a POSITION:FIXED element, because fixed boxes resolve against the
+       initial containing block rather than body — so the closed quote drawer
+       (fixed right-0, translate-x-full) still pushed the document 7px wide and
+       every page on the site scrolled sideways on a 375px screen. Measured:
+       scrollWidth 382 -> 375. `clip` not `hidden`, so the sticky header and
+       scroll-padding anchors keep working. */
+    overflow-x: clip;
   }
 
   body {
