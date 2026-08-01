@@ -16,7 +16,39 @@ import {
   getProductBySlug,
   getCategoryBySlug,
   getProductsByCategory,
+  getProductSitemapEntries,
 } from "@/frontend/lib/cms";
+
+/**
+ * Makes the route ISR-cacheable. A dynamic segment needs either
+ * generateStaticParams or an explicit revalidate to be cached at all; this had
+ * neither, so Next rendered every product view fully dynamically and served
+ * `private, no-cache, no-store`. The catalogue's busiest pages got no CDN or
+ * browser caching whatsoever and re-fetched the CMS on every single hit.
+ *
+ * 60s matches the `api()` data cache, so nothing becomes staler than it already
+ * was — the rendered HTML simply becomes cacheable too. Price and stock
+ * accuracy does not depend on this window: every Product save fires
+ * revalidateWebsiteAfterChange -> revalidateTag("cms"), which purges
+ * immediately. The window is only the fallback if that webhook fails.
+ */
+export const revalidate = 60;
+
+/**
+ * Required for the route to be cacheable at all. `revalidate` on its own does
+ * nothing here: without knowing the params at build time Next never puts a
+ * dynamic segment on the ISR path, so it rendered every view fully dynamically
+ * (verified — adding revalidate alone left the header at `no-store`).
+ *
+ * A cold CMS during a Cloud Build degrades this to an empty list, which is
+ * exactly today's behaviour, so a build-time fetch failure costs nothing.
+ * dynamicParams stays default (true), so a product added after the build is
+ * still served on demand and then cached.
+ */
+export async function generateStaticParams(): Promise<Params[]> {
+  const products = await getProductSitemapEntries().catch(() => []);
+  return products.map((p) => ({ slug: p.slug }));
+}
 
 type Params = { slug: string };
 
