@@ -284,6 +284,65 @@ cached HTML and Next's per-page RSC scripts cannot be hashed, so the migration
 would cost site-wide caching to close a hole that is not open. Recorded in
 BACKLOG.md with the measurements.
 
+### DPDP Act, 2023 · `c87447d`
+
+India's Digital Personal Data Protection Act has **no "legitimate interest"
+basis**, and website analytics is not one of the s.7 certain legitimate uses.
+The site was setting a persistent visitor id on every visit with nothing asked.
+
+**Consent (s.6).** Analytics runs only on an explicit yes. Nothing is
+pre-selected and the banner has no dismiss "X" — dismissal is not a clear
+affirmative action. Accept and Decline are one click, same size, both on screen.
+`getTracker()` gates on consent and deliberately does **not** memoise the
+refusal, so accepting starts measurement without a reload; `resetTracker()`
+drops the cached instance *and* the queued events so withdrawal stops it
+mid-session. Withdrawal erases `mm-vid`/`mm-sid`/`mm-slast` rather than merely
+ceasing to use them, and lives behind "Privacy choices" in every footer, because
+s.6(4) requires withdrawing to be as easy as giving. The record is versioned:
+raising `CONSENT_VERSION` re-asks everyone.
+
+**Notice (s.5).** `/privacy` rewritten to the Act's structure — a per-purpose
+table, the consent position, browser storage itemised as necessary vs consented,
+processors named, retention (including that GST invoices cannot be erased on
+request while that duty stands), s.8(5) safeguards, the five rights, and the
+route to the Data Protection Board. s.9 children is stated honestly: a B2B site
+not directed at under-18s, with no claim to a parental-consent mechanism we do
+not have.
+
+**Rights and grievance (ss.11-14).** `/privacy/request` files into a new
+`data-requests` collection that stamps `receivedAt`, a due date from a
+configurable SLA, and a reference shown to the requester. Public create,
+staff-only read. Nothing is auto-actioned — erasing a customer record is a human
+decision with legal retention to weigh. The route has **no email fallback** on a
+CMS failure, unlike `/api/contact`: a statutory clock has to leave an auditable
+record, and silently emailing it would look like success while the obligation
+went untracked. The Grievance Officer (s.13(3)) is published from a new CMS
+global defaulting to the real `contact@metnmat.com`; name and phone are editable
+so the officer can be named without a deploy.
+
+Verified on production:
+
+| Check | Result |
+|---|---|
+| First-time visitor, no decision | no `mm-vid`, no `mm-sid`, **0** `/api/a/collect` calls |
+| After Accept (no reload) | ids created, collect request sent |
+| Withdraw via footer | all three ids erased, **0** further collect calls |
+| Rights request end to end | `DPR-2026-IBUU0D` persisted with reference + due date |
+| `GET /api/data-requests` unauthenticated | **403** — anyone may file, nobody may read |
+| Honeypot / bad email / bad type / >4000 chars | 400 each |
+
+Nine tests pin what must not silently regress: undecided is not consent, corrupt
+storage is not consent, a stale version re-asks, and withdrawal erases.
+
+Two things worth knowing before touching this:
+
+- **The accept path cannot be verified with Puppeteer.** `collector.ts`
+  self-excludes bots on `navigator.webdriver`, which Puppeteer sets true, so an
+  automated run shows consent stored but no visitor id — correct behaviour that
+  reads exactly like a bug. Verify accept in a non-automated browser.
+- Consent is **opt-in by the site owner's decision**, taken knowing it costs
+  analytics coverage from everyone who declines or ignores the banner.
+
 ### Phase 14 — Final QA
 `apps/website/scripts/qa-crawl.mjs` — **clean: 126 pages, 78 images, exit 0**.
 Fails on non-200, broken link or image, missing/duplicate title, description,
@@ -339,6 +398,13 @@ creates now state their category explicitly.
 
 ## Needs the site owner
 
+- **Delete the DPDP verification record** `DPR-2026-IBUU0D` in Admin → Data
+  Requests. I created it to prove the pipeline persists end to end; it is
+  labelled "AUTOMATED VERIFICATION - safe to delete" and deleting needs a staff
+  login I do not have.
+- **Name the Grievance Officer** in Admin → Privacy & DPDP. The site currently
+  publishes `contact@metnmat.com` alone, which is a valid published contact,
+  but naming a person is better practice.
 - Verify both domains in **Google Search Console** and submit the sitemap.
   `GOOGLE_SITE_VERIFICATION` is wired; set it and redeploy.
 - Retire the **maintenance banner** when the site is ready.
