@@ -25,15 +25,19 @@ export async function SiteHeader() {
       <Container className="flex h-14 items-center gap-4">
         <Logo />
 
-        {/* Global site search — products, categories & pages */}
-        <div className="hidden flex-1 justify-center md:flex">
+        {/* Global site search — products, categories & pages.
+            lg, not md: the actions cluster is 447px and the logo 122px, so at
+            768px only 117px was left and the input collapsed to 27px — a search
+            box too narrow to show its own placeholder. At 1024px it gets 284px,
+            which is usable. Below lg the icon link below stands in for it. */}
+        <div className="hidden flex-1 justify-center lg:flex">
           <SearchBar compact className="w-full max-w-xl" />
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Search: the full bar shows on md+ (above); on smaller screens an icon
-              link to /search — visible on phones too, not just the sm–md range. */}
-          <Link href="/search" prefetch={false} aria-label="Search the site" className={`${iconLink} md:hidden`}>
+          {/* Search: the full bar shows on lg+ (above); below that an icon link
+              to /search — phones and tablets alike. */}
+          <Link href="/search" prefetch={false} aria-label="Search the site" className={`${iconLink} lg:hidden`}>
             <Search className="h-[18px] w-[18px]" />
           </Link>
 

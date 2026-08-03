@@ -34,7 +34,11 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
 
   return (
     <label
-      className={cn("theme-switch", className)}
+      // `inline-flex` lives here, not in globals.css: as a utility it sits in
+      // @layer utilities, so twMerge lets a caller's `hidden sm:inline-flex`
+      // actually win. Declared in the unlayered stylesheet it could not be
+      // overridden at all.
+      className={cn("theme-switch inline-flex", className)}
       title={isDark ? "Switch to light mode" : "Switch to dark mode"}
       aria-label="Toggle color theme"
     >

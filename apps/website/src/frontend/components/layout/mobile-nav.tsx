@@ -130,7 +130,12 @@ export function MobileNav({ items = mainNav }: { items?: NavItem[] }) {
             role="dialog"
             aria-modal="true"
             aria-label="Menu"
-            className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b border-border bg-background p-4 shadow-xl"
+            // pb clears the chat bubble, which is fixed to the bottom-right by
+            // a third-party embed we cannot restyle from here. Without it the
+            // bubble sits on top of the last row (Account / Get a Quote) with
+            // no way to scroll them clear. Padding-bottom is inside the scroll
+            // area, so the panel is no taller than its content needs.
+            className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-3.5rem)] overflow-y-auto border-b border-border bg-background p-4 pb-24 shadow-xl"
           >
             <nav className="flex flex-col gap-1">
               {items.map((item) => {

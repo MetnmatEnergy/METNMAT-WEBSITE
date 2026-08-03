@@ -322,7 +322,13 @@
   --back-clouds-color: #aacadf;
   --sky-transition: 0.5s cubic-bezier(0, -0.02, 0.4, 1.25);
   --circle-transition: 0.3s cubic-bezier(0, -0.02, 0.35, 1.17);
-  display: inline-flex;
+  /* NO `display` here. This block is unlayered, and unlayered rules beat
+     anything in @layer utilities — so a `display` declared here silently
+     overrode Tailwind's `hidden`, and the 90px switch rendered at every width.
+     That pushed the header past the viewport and, because html has
+     `overflow-x: clip`, the menu button was clipped off the right edge instead
+     of producing a scrollbar. The component now carries `inline-flex` in its
+     own class list, where twMerge can resolve it against a caller's `hidden`. */
 }
 
 .theme-switch,
