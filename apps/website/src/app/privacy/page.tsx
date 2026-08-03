@@ -3,88 +3,187 @@ import { Container } from "@/frontend/components/ui/container";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { Button } from "@/frontend/components/ui/button";
 import { site } from "@/frontend/lib/site";
+import { getPrivacySettings } from "@/frontend/lib/cms";
 
 export const metadata = pageMetadata({
   title: "Privacy Policy",
   description:
-    "How METNMAT Research & Innovations collects, uses, shares, and protects your personal data, and the rights you have over it.",
+    "How METNMAT collects, uses, shares and protects your personal data, your rights under India's Digital Personal Data Protection Act, 2023, and how to exercise them.",
   path: "/privacy",
 });
 
-const LAST_UPDATED = "13 June 2026";
+const LAST_UPDATED = "3 August 2026";
 
 type Section = { heading: string; body: React.ReactNode };
 
-export default function PrivacyPolicyPage() {
+export default async function PrivacyPolicyPage() {
   const email = site.contact.email;
+  const privacy = await getPrivacySettings();
 
   const sections: Section[] = [
     {
-      heading: "1. Who we are",
-      body: (
-        <p>
-          {site.legalName} (&ldquo;METNMAT&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) operates this website and the
-          associated B2B catalog and enquiry services. This policy explains what personal data we
-          handle and why. For any privacy question, contact us at{" "}
-          <a href={`mailto:${email}`} className="text-brand hover:underline">{email}</a>.
-        </p>
-      ),
-    },
-    {
-      heading: "2. Information we collect",
-      body: (
-        <ul className="list-disc space-y-1.5 pl-5">
-          <li><strong>Contact &amp; account details</strong> — name, email, phone, company, and role when you enquire, request a quote, raise a support ticket, or place an order.</li>
-          <li><strong>Order &amp; billing details</strong> — shipping address, GSTIN/business name, and the items ordered. Card and bank details are entered directly with our payment partner and are never stored on our servers.</li>
-          <li><strong>Enquiry &amp; support content</strong> — messages, specifications, and any files you upload for customization requests or support.</li>
-          <li><strong>Technical &amp; usage data</strong> — IP address (used to detect your country for currency display), device/browser information, and basic analytics about how pages are used.</li>
-          <li><strong>First-party analytics</strong> — we measure site usage ourselves (pages viewed, how you arrived, device type) using a random identifier stored in your browser. This data stays on our own systems, is never shared with advertising or third-party analytics companies, and your IP address is not stored with it.</li>
-        </ul>
-      ),
-    },
-    {
-      heading: "3. How we use your information",
-      body: (
-        <ul className="list-disc space-y-1.5 pl-5">
-          <li>To process and fulfil orders, quotes, and customization requests.</li>
-          <li>To provide support and respond to your enquiries.</li>
-          <li>To issue GST-compliant invoices and meet legal, tax, and accounting obligations.</li>
-          <li>To operate, secure, and improve the website (including showing prices in your local currency).</li>
-          <li>To send transactional emails (order confirmations, ticket updates). We do not send marketing email without your consent.</li>
-        </ul>
-      ),
-    },
-    {
-      heading: "4. Who we share it with",
+      heading: "1. Who we are, and what this notice is",
       body: (
         <>
-          <p>We do not sell your personal data. We share it only with trusted service providers who process it on our behalf, under contract:</p>
-          <ul className="mt-2 list-disc space-y-1.5 pl-5">
-            <li><strong>Payments</strong> — Razorpay, to process payments securely (PCI-DSS compliant).</li>
-            <li><strong>Email</strong> — our transactional email provider, to deliver confirmations and updates.</li>
-            <li><strong>Hosting &amp; storage</strong> — our cloud hosting and file-storage providers.</li>
-          </ul>
-          <p className="mt-2">We may also disclose data where required by law or to protect our legal rights.</p>
+          <p>
+            {site.legalName} (&ldquo;METNMAT&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;) operates this
+            website and the associated B2B catalogue, enquiry and order services. Under India&apos;s{" "}
+            <strong className="text-foreground">Digital Personal Data Protection Act, 2023</strong>{" "}
+            (the &ldquo;DPDP Act&rdquo;) we are the <em>Data Fiduciary</em> for the personal data
+            described below, and you are the <em>Data Principal</em>.
+          </p>
+          <p className="mt-2">
+            This page is our notice under section 5 of the Act: what personal data we process and
+            why, how you exercise your rights, and how to complain.
+          </p>
         </>
       ),
     },
     {
-      heading: "5. Cookies & local storage",
+      heading: "2. What we collect, and the purpose for each",
       body: (
-        <p>
-          We use essential cookies and browser storage to keep the site working — for example, your
-          cart, and a cached country/currency preference. These are necessary for core functionality.
-          We do not use them to build advertising profiles.
-        </p>
+        <>
+          <p>We collect only what a given purpose needs:</p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[34rem] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border text-start">
+                  <th scope="col" className="py-2 pe-4 text-start font-semibold text-foreground">
+                    Personal data
+                  </th>
+                  <th scope="col" className="py-2 text-start font-semibold text-foreground">
+                    Purpose it is processed for
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="align-top">
+                {[
+                  [
+                    "Name, email, phone, company, role",
+                    "To answer an enquiry, quote, support ticket or order you initiated.",
+                  ],
+                  [
+                    "Shipping address, GSTIN / business name, items ordered",
+                    "To fulfil the order and issue a GST-compliant invoice.",
+                  ],
+                  [
+                    "Account credentials, or your Google account identifier if you sign in with Google",
+                    "To create and secure your account.",
+                  ],
+                  [
+                    "Enquiry content and any files you upload",
+                    "To scope and respond to a customisation or support request.",
+                  ],
+                  [
+                    "IP address, at the moment of the request",
+                    "To detect your country for currency display and to rate-limit abuse. It is not stored against your analytics record.",
+                  ],
+                  [
+                    "A random visitor identifier, pages viewed, referrer, device and browser type",
+                    "First-party analytics — only if you accept. See section 3.",
+                  ],
+                ].map(([data, purpose]) => (
+                  <tr key={data} className="border-b border-border/60">
+                    <td className="py-2.5 pe-4 text-foreground/90">{data}</td>
+                    <td className="py-2.5">{purpose}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3">
+            We do not process personal data for advertising, we do not sell it, and we do not use it
+            to build profiles about you.
+          </p>
+        </>
       ),
     },
     {
-      heading: "6. Data retention",
+      heading: "3. Consent, and how to withdraw it",
+      body: (
+        <>
+          <p>
+            <strong className="text-foreground">Analytics runs only if you accept it.</strong> When
+            you first visit we ask, and nothing is measured until you choose. Declining changes
+            nothing about how the site works.
+          </p>
+          <p className="mt-2">
+            You can change your mind at any time using{" "}
+            <span className="whitespace-nowrap">&ldquo;Privacy choices&rdquo;</span> in the footer of
+            every page. Withdrawing takes effect immediately and erases the identifier from your
+            browser. Section 6(4) of the Act requires withdrawal to be as easy as giving consent, and
+            that link is how we meet it.
+          </p>
+          <p className="mt-2">
+            Where you give us data to complete something you asked for — an order, a quote, a support
+            ticket — we process it for that purpose without a separate consent prompt, because it is
+            the certain legitimate use recognised by section 7(a) of the Act. You can still ask us to
+            erase it once the purpose is served.
+          </p>
+        </>
+      ),
+    },
+    {
+      heading: "4. Storage in your browser",
+      body: (
+        <>
+          <p>
+            The site stores a small amount of data in your browser. Only the last item below depends
+            on your consent; the rest are necessary to deliver what you asked for, and are not used
+            for tracking:
+          </p>
+          <ul className="mt-2 list-disc space-y-1.5 ps-5">
+            <li>Your cart and wishlist, so they survive a refresh.</li>
+            <li>Your light/dark theme choice.</li>
+            <li>Your signed-in session, if you have an account.</li>
+            <li>Your country/currency preference, so prices display correctly.</li>
+            <li>Your privacy choice itself, so we do not ask again on every page.</li>
+            <li>
+              <strong className="text-foreground">If you accepted analytics:</strong> a random
+              visitor and session identifier. No name, email or IP address is stored with them.
+            </li>
+          </ul>
+        </>
+      ),
+    },
+    {
+      heading: "5. Who we share it with",
+      body: (
+        <>
+          <p>
+            We share personal data only with processors who handle it on our behalf, under contract,
+            and only for the purposes above:
+          </p>
+          <ul className="mt-2 list-disc space-y-1.5 ps-5">
+            <li>
+              <strong className="text-foreground">Payments</strong> — Razorpay. Card and bank details
+              are entered directly with them and never reach our servers.
+            </li>
+            <li>
+              <strong className="text-foreground">Transactional email</strong> — our email delivery
+              provider, for order confirmations and ticket updates.
+            </li>
+            <li>
+              <strong className="text-foreground">Hosting, database and file storage</strong> — our
+              cloud infrastructure providers.
+            </li>
+          </ul>
+          <p className="mt-2">
+            We may also disclose data where the law requires it. Our analytics are first-party: usage
+            data is never sent to an advertising network or a third-party analytics company.
+          </p>
+        </>
+      ),
+    },
+    {
+      heading: "6. How long we keep it",
       body: (
         <p>
-          We keep personal data only as long as needed for the purposes above, or as required by law
-          (for example, tax and invoicing records are retained for the statutory period). When no
-          longer needed, data is securely deleted or anonymised.
+          We keep personal data only as long as the purpose needs, or as long as the law requires —
+          invoices and tax records, for example, must be retained for the statutory period, and we
+          cannot erase those on request while that obligation stands. When neither applies, the data
+          is deleted or anonymised. Analytics identifiers expire from your browser as soon as you
+          withdraw consent.
         </p>
       ),
     },
@@ -92,41 +191,125 @@ export default function PrivacyPolicyPage() {
       heading: "7. Security",
       body: (
         <p>
-          We apply appropriate technical and organisational measures to protect your data, including
-          encrypted connections (HTTPS), access controls, and keeping payment details with our PCI-DSS
-          compliant processor rather than on our own systems. No method of transmission is perfectly
-          secure, but we work to protect your information.
+          We apply reasonable technical and organisational safeguards, as section 8(5) of the Act
+          requires: encrypted connections (HTTPS) everywhere, role-based access control over the
+          admin system, rate limiting on public endpoints, and keeping payment credentials with a
+          PCI-DSS compliant processor rather than on our own systems. No system is perfectly secure,
+          but if a breach affects your personal data we will notify you and the Data Protection Board
+          as the Act requires.
         </p>
       ),
     },
     {
-      heading: "8. Your rights",
+      heading: "8. Your rights, and how to use them",
+      body: (
+        <>
+          <p>As a Data Principal you have the right to:</p>
+          <ul className="mt-2 list-disc space-y-1.5 ps-5">
+            <li>
+              <strong className="text-foreground">Access</strong> — a summary of the personal data we
+              hold about you and how we process it (s.11).
+            </li>
+            <li>
+              <strong className="text-foreground">Correction and erasure</strong> — have inaccurate
+              data corrected or completed, and have data erased where we no longer need it (s.12).
+            </li>
+            <li>
+              <strong className="text-foreground">Grievance redressal</strong> — a readily available
+              means of raising a complaint with us (s.13).
+            </li>
+            <li>
+              <strong className="text-foreground">Nomination</strong> — nominate someone to exercise
+              your rights if you die or become incapacitated (s.14).
+            </li>
+            <li>
+              <strong className="text-foreground">Withdraw consent</strong> — at any time, as easily
+              as it was given (s.6(4)).
+            </li>
+          </ul>
+          <p className="mt-3">
+            The quickest route is our request form, which records your request with a reference and a
+            due date so it can be tracked to closure. You do not have to give a reason. We may ask
+            you to verify your identity first — that step exists to stop someone else obtaining or
+            deleting your data.
+          </p>
+          <div className="mt-4">
+            <Button href="/privacy/request" size="md">
+              Submit a data request
+            </Button>
+          </div>
+        </>
+      ),
+    },
+    {
+      heading: "9. Grievance Officer",
+      body: (
+        <>
+          <p>
+            Section 13(3) of the Act requires us to publish a contact who answers questions about how
+            we process personal data. That is:
+          </p>
+          <p className="mt-2">
+            {privacy.officerName ? (
+              <>
+                <strong className="text-foreground">{privacy.officerName}</strong>
+                <br />
+              </>
+            ) : null}
+            <a
+              href={`mailto:${privacy.officerEmail}`}
+              className="text-brand-soft underline underline-offset-4"
+            >
+              {privacy.officerEmail}
+            </a>
+            {privacy.officerPhone ? (
+              <>
+                <br />
+                {privacy.officerPhone}
+              </>
+            ) : null}
+            <br />
+            {site.legalName}, {site.addresses[0]?.lines.join(", ")}
+          </p>
+          <p className="mt-3">
+            We aim to respond within {privacy.responseDays} days. If we do not resolve your
+            grievance, you may complain to the{" "}
+            <strong className="text-foreground">Data Protection Board of India</strong>. The Act
+            expects you to raise it with us first.
+          </p>
+        </>
+      ),
+    },
+    {
+      heading: "10. Children",
       body: (
         <p>
-          Subject to applicable law (including India&apos;s data-protection regulations), you may request
-          access to, correction of, or deletion of your personal data, and may withdraw consent where
-          processing is based on it. To exercise these rights, email{" "}
-          <a href={`mailto:${email}`} className="text-brand hover:underline">{email}</a>. We may need to
-          verify your identity before acting on a request.
+          This is a business-to-business site for laboratory and industrial buyers. It is not
+          directed at children, and we do not knowingly collect the personal data of anyone under 18.
+          Section 9 of the Act requires verifiable parental consent before processing a child&apos;s
+          data and prohibits tracking or behavioural advertising directed at children — we do neither.
+          If you believe a child has given us personal data, contact the Grievance Officer above and
+          we will erase it.
         </p>
       ),
     },
     {
-      heading: "9. International visitors",
+      heading: "11. Visitors outside India",
       body: (
         <p>
-          We are based in India and operate primarily here. If you access the site from elsewhere,
-          your data may be processed in India. Prices may be shown in your local currency for
+          We are established in India and process personal data here. If you visit from elsewhere,
+          your data is processed in India. Prices may be displayed in your local currency for
           convenience, but orders are charged in Indian Rupees (INR).
         </p>
       ),
     },
     {
-      heading: "10. Changes to this policy",
+      heading: "12. Changes to this notice",
       body: (
         <p>
-          We may update this policy from time to time. The &ldquo;last updated&rdquo; date below reflects the
-          current version; material changes will be highlighted on this page.
+          We may update this notice. The date below reflects the current version. If a change
+          materially alters why or how we process personal data that you consented to, we will ask
+          for your consent again rather than rely on the old one.
         </p>
       ),
     },
@@ -137,7 +320,7 @@ export default function PrivacyPolicyPage() {
       <PageHero
         eyebrow="Legal"
         title="Privacy Policy"
-        description="How we collect, use, share, and protect your personal data — and the choices you have."
+        description="How we collect, use, share and protect your personal data — your rights under the DPDP Act, 2023, and how to exercise them."
         breadcrumbs={[{ name: "Home", path: "/" }, { name: "Privacy Policy", path: "/privacy" }]}
       />
       <section className="section">
@@ -152,14 +335,23 @@ export default function PrivacyPolicyPage() {
           </div>
 
           <div className="mt-12 rounded-2xl border border-border bg-surface p-6 text-center">
-            <p className="text-muted-foreground">Questions about your data or this policy?</p>
+            <p className="text-muted-foreground">
+              Want to access, correct or erase your data, or withdraw consent?
+            </p>
             <div className="mt-4 flex flex-wrap justify-center gap-3">
-              <Button href="/contact" size="md">Contact us</Button>
-              <Button href={`mailto:${email}`} variant="outline" size="md">Email {email}</Button>
+              <Button href="/privacy/request" size="md">
+                Submit a data request
+              </Button>
+              <Button href={`mailto:${privacy.officerEmail}`} variant="outline" size="md">
+                Email the Grievance Officer
+              </Button>
             </div>
           </div>
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            Last updated: {LAST_UPDATED}. {site.legalName}.
+            Last updated: {LAST_UPDATED}. {site.legalName}. Contact:{" "}
+            <a href={`mailto:${email}`} className="underline underline-offset-4">
+              {email}
+            </a>
           </p>
         </Container>
       </section>

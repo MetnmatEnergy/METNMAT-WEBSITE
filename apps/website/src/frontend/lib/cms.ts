@@ -777,3 +777,27 @@ export async function getSettings(): Promise<SiteSettings> {
     },
   };
 }
+
+/** Grievance Officer + SLA published for the DPDP Act, 2023 (s.13(3)). */
+export type PrivacySettings = {
+  officerName: string;
+  officerEmail: string;
+  officerPhone: string;
+  responseDays: number;
+};
+
+/**
+ * Read the `privacy` global. Falls back to the company mailbox so the policy
+ * always publishes a REACHABLE contact — a blank grievance contact would be a
+ * compliance gap, and an invented one would be worse.
+ */
+export async function getPrivacySettings(): Promise<PrivacySettings> {
+  const g = await api<Record<string, unknown>>("/api/globals/privacy?depth=0");
+  const days = Number(g?.responseDays);
+  return {
+    officerName: (g?.officerName as string) || "",
+    officerEmail: (g?.officerEmail as string) || "contact@metnmat.com",
+    officerPhone: (g?.officerPhone as string) || "",
+    responseDays: Number.isFinite(days) && days > 0 ? days : 30,
+  };
+}

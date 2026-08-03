@@ -26,6 +26,7 @@ import { Faqs } from "./collections/Faqs";
 import { Team } from "./collections/Team";
 import { Clients } from "./collections/Clients";
 import { AuditLogs } from "./collections/AuditLogs";
+import { DataRequests } from "./collections/DataRequests";
 import { Enquiries } from "./collections/Enquiries";
 import { EnquiryUploads } from "./collections/EnquiryUploads";
 import { Orders } from "./collections/Orders";
@@ -218,6 +219,7 @@ export default buildConfig({
     Users,
     StaffRoles,
     AuditLogs,
+    DataRequests,
     IntegrationLogs,
     Counters,
     AnalyticsEvents,

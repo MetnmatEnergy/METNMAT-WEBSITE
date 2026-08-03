@@ -3,6 +3,7 @@ import { Mail, Phone, MapPin } from "lucide-react";
 import { AmazonIcon, FacebookIcon, LinkedInIcon, YouTubeIcon } from "@/frontend/components/ui/brand-icons";
 import { Container } from "@/frontend/components/ui/container";
 import { site, footerNav } from "@/frontend/lib/site";
+import { PrivacyChoicesLink } from "@/frontend/components/legal/privacy-choices-link";
 import { getSettings, getNavigation } from "@/frontend/lib/cms";
 
 const bottomLinks = [
@@ -175,6 +176,10 @@ export async function SiteFooter() {
                 </Link>
               </li>
             ))}
+            {/* DPDP s.6(4) — withdrawal has to be as reachable as consent was. */}
+            <li>
+              <PrivacyChoicesLink className="underline-offset-4 transition-colors hover:text-brand hover:underline" />
+            </li>
           </ul>
         </Container>
       </div>

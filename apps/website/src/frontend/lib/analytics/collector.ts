@@ -27,6 +27,7 @@ import {
   type CollectedEvent,
   type EventType,
 } from "./session";
+import { hasAnalyticsConsent } from "../consent";
 
 type Tracker = {
   track: (type: EventType, data?: { entity?: string; meta?: CollectedEvent["meta"] }) => void;
@@ -170,8 +171,30 @@ function recordLeave(): void {
 }
 
 /**
+ * Drop the cached instance so the next getTracker() re-evaluates consent.
+ *
+ * getTracker() memoises, which is right for a page load but wrong the moment a
+ * visitor changes their mind: without this, granting consent would do nothing
+ * until a reload, and withdrawing it would leave a live tracker running.
+ * The queue is dropped too — anything collected before withdrawal must not be
+ * flushed afterwards.
+ */
+export function resetTracker(): void {
+  instance = null;
+  queue.length = 0;
+  newSessionInfo = undefined;
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  vid = "";
+  sid = "";
+}
+
+/**
  * Initialize once per real browser. Returns the tracker (or a no-op for bots /
- * opted-out staff / SSR), so callers never need null checks.
+ * opted-out staff / SSR / anyone who has not consented), so callers never need
+ * null checks.
  */
 export function getTracker(): Tracker {
   if (instance) return instance;
@@ -180,6 +203,10 @@ export function getTracker(): Tracker {
   try {
     if ((navigator as { webdriver?: boolean }).webdriver) return (instance = noop);
     if (ls.get(K_OPTOUT) === "1") return (instance = noop);
+    // DPDP s.6: measurement runs only on an explicit, current-version yes.
+    // Note this is NOT cached as `instance` — an undecided visitor who accepts
+    // a moment later must be able to start being measured without a reload.
+    if (!hasAnalyticsConsent()) return noop;
   } catch {
     return noop;
   }

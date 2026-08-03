@@ -53,3 +53,56 @@ export function validateEnquiry(
     },
   };
 }
+
+/**
+ * DPDP data-rights request. Same honeypot + field-error shape as the enquiry
+ * validator so the client form handling is identical.
+ *
+ * Kept deliberately light on required fields: a Data Principal exercising a
+ * statutory right must not be made to justify themselves. Name and a reachable
+ * email are the minimum needed to verify identity and reply; everything else is
+ * optional. Identity is verified out-of-band by a human before anything is
+ * disclosed or erased — this form never authenticates anyone.
+ */
+export function validateDataRequest(
+  input: unknown
+): ValidationResult<{
+  type: string;
+  name: string;
+  email: string;
+  phone?: string;
+  details?: string;
+}> {
+  const fields: Record<string, string> = {};
+  const body = (input ?? {}) as Record<string, unknown>;
+
+  if (String(body.hp_company_url ?? "").trim() !== "") {
+    return { success: false, fields: { _rejected: "invalid submission" } };
+  }
+
+  const allowed = ["access", "correction", "erasure", "withdraw", "nominate", "grievance"];
+  const type = String(body.type ?? "").trim();
+  const name = String(body.name ?? "").trim();
+  const email = String(body.email ?? "").trim();
+  const details = String(body.details ?? "").trim();
+  const phone = String(body.phone ?? "").trim();
+
+  if (!allowed.includes(type)) fields.type = "Please choose the type of request.";
+  if (name.length < 2) fields.name = "Please enter your name.";
+  if (!isEmail(email)) fields.email = "Please enter a valid email so we can reply.";
+  // Cap free text: this reaches the CMS, and an unbounded body is a cheap DoS.
+  if (details.length > 4000) fields.details = "Please keep this under 4000 characters.";
+
+  if (Object.keys(fields).length > 0) return { success: false, fields };
+
+  return {
+    success: true,
+    data: {
+      type,
+      name,
+      email,
+      phone: phone || undefined,
+      details: details || undefined,
+    },
+  };
+}

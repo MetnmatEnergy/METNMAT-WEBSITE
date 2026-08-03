@@ -3,6 +3,7 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { getTracker } from "./collector";
+import { CONSENT_EVENT } from "../consent";
 
 /**
  * Mounts the analytics collector and emits one page_view per App Router
@@ -12,6 +13,16 @@ import { getTracker } from "./collector";
  */
 export function AnalyticsProvider() {
   const pathname = usePathname();
+  // Bumped when the visitor changes their consent, purely to re-run the effect
+  // below: someone who accepts should have the page they are ON counted,
+  // without waiting for their next navigation.
+  const [consentTick, setConsentTick] = React.useState(0);
+
+  React.useEffect(() => {
+    const onChange = () => setConsentTick((n) => n + 1);
+    window.addEventListener(CONSENT_EVENT, onChange);
+    return () => window.removeEventListener(CONSENT_EVENT, onChange);
+  }, []);
 
   React.useEffect(() => {
     // Small delay lets the new page's <meta name="mm:entity"> land in the DOM
@@ -26,7 +37,7 @@ export function AnalyticsProvider() {
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [pathname]);
+  }, [pathname, consentTick]);
 
   return null;
 }

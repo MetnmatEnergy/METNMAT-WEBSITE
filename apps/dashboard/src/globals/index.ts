@@ -319,4 +319,47 @@ export const Navigation: GlobalConfig = {
   ],
 };
 
-export const globals = [Branding, Company, Contact, Social, SEO, Commerce, Homepage, Maintenance, Navigation];
+/**
+ * DPDP Act, 2023 — the contact a Data Principal must be able to reach.
+ *
+ * s.13(3) requires the Data Fiduciary to publish the contact details of the
+ * person who can answer questions about the processing of personal data. It is
+ * editable here rather than hard-coded so the named officer can change without
+ * a deploy. Leave the name blank and the website falls back to publishing the
+ * company contact mailbox alone, which is still a valid published contact.
+ */
+export const Privacy: GlobalConfig = {
+  slug: "privacy",
+  label: "Privacy & DPDP",
+  ...settings({
+    admin: {
+      description:
+        "Grievance Officer details published on the Privacy Policy, and the SLA shown to people who submit a data-rights request.",
+    },
+  }),
+  fields: [
+    {
+      name: "officerName",
+      type: "text",
+      label: "Grievance Officer name",
+      admin: { description: "Optional. Shown on /privacy. Leave blank to publish the email only." },
+    },
+    {
+      name: "officerEmail",
+      type: "email",
+      label: "Grievance Officer email",
+      defaultValue: "contact@metnmat.com",
+      admin: { description: "Required by DPDP s.13(3). Must be a mailbox that is actually monitored." },
+    },
+    { name: "officerPhone", type: "text", label: "Grievance Officer phone", admin: { description: "Optional." } },
+    {
+      name: "responseDays",
+      type: "number",
+      label: "Response SLA (days)",
+      defaultValue: 30,
+      admin: { description: "Working days quoted to a Data Principal when they submit a request." },
+    },
+  ],
+};
+
+export const globals = [Branding, Company, Contact, Social, SEO, Commerce, Homepage, Maintenance, Navigation, Privacy];

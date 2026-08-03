@@ -15,6 +15,7 @@ import { QuoteModal } from "@/frontend/components/commerce/quote-modal";
 import { ChatWidget } from "@/frontend/components/chat/chat-widget";
 import { ChatCartBridge } from "@/frontend/components/commerce/chat-cart-bridge";
 import { AnalyticsProvider } from "@/frontend/lib/analytics/provider";
+import { ConsentBanner } from "@/frontend/components/legal/consent-banner";
 import { CartRail } from "@/frontend/components/commerce/cart-rail";
 import { CartToast } from "@/frontend/components/commerce/cart-toast";
 
@@ -143,6 +144,9 @@ export default async function RootLayout({
         <CartToast />
         <ChatWidget />
         <ChatCartBridge />
+        {/* Mounted BEFORE the analytics provider so the choice is on screen
+            from the first paint of an undecided visitor. */}
+        <ConsentBanner />
         <AnalyticsProvider />
         </QuoteProvider>
         </StoreProvider>
