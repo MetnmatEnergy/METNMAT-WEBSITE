@@ -80,6 +80,13 @@ const config: Config = {
           from: { transform: "translateX(100%)" },
           to: { transform: "translateX(0)" },
         },
+        // Consent card entrance. Short and ease-out per the 150-300ms
+        // micro-interaction budget; a longer fade reads as sluggish on a
+        // surface that appears unprompted.
+        "rise-in": {
+          from: { opacity: "0", transform: "translateY(0.75rem)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
         // Whole background logo-wall breathes in and out together.
         "logo-wall": {
           "0%, 100%": { opacity: "0" },
@@ -91,6 +98,7 @@ const config: Config = {
         "scroll-y": "scroll-y 26s linear infinite",
         "fade-up": "fade-up 0.6s ease-out both",
         "slide-in-right": "slide-in-right 0.28s ease-out both",
+        "rise-in": "rise-in 0.22s ease-out both",
         "logo-wall": "logo-wall 7s ease-in-out infinite",
       },
     },

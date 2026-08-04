@@ -67,46 +67,67 @@ export function ConsentBanner() {
   if (decision !== null && !forced) return null;
 
   return (
-    <div
-      role="dialog"
-      aria-labelledby={headingId}
-      aria-describedby={bodyId}
-      // z-50 clears the header (z-40) and the cart rail; pe-20 on the inner row
-      // keeps the buttons off the chat bubble, which a third-party embed fixes
-      // to the bottom-right corner.
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 backdrop-blur"
-    >
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 lg:flex-row lg:items-center lg:gap-6">
-        <div className="flex min-w-0 gap-3">
-          <ShieldCheck aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-brand-soft" />
-          <div className="min-w-0">
-            <p id={headingId} className="text-sm font-semibold text-foreground">
-              Your privacy choice
-            </p>
-            <p id={bodyId} className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              We&apos;d like to measure how this site is used — pages viewed, how you arrived and
-              device type — using a random identifier stored in your browser. It is first-party
-              only: never shared with advertisers, and your IP address is not stored with it. The
-              site works exactly the same if you decline, and you can change this any time from{" "}
-              <span className="whitespace-nowrap">&ldquo;Privacy choices&rdquo;</span> in the footer.{" "}
-              <Link href="/privacy" className="font-medium text-brand-soft underline underline-offset-4">
-                Privacy Policy
-              </Link>
-            </p>
-          </div>
+    // Positioned bottom-LEFT, not full-bleed. Two reasons: a 448px column keeps
+    // the body copy near the 60-75 character measure that is actually readable
+    // (full width ran past 120), and the support bubble is a third-party embed
+    // fixed bottom-right whose z-index we cannot reliably outrank — so the card
+    // is kept out of its corner rather than stacked against it. On phones it
+    // floats clear of that corner via the bottom margin.
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 p-3 sm:p-4 md:max-w-[34rem]">
+      <div
+        role="dialog"
+        aria-labelledby={headingId}
+        aria-describedby={bodyId}
+        // bg-background in light (a crisp white card the shadow lifts off the
+        // page) but bg-surface in dark, where an elevated surface has to be
+        // LIGHTER than what is behind it or the card reads as a hole.
+        className="pointer-events-auto mb-20 animate-rise-in rounded-2xl border border-border bg-background p-5 shadow-2xl ring-1 ring-black/5 motion-reduce:animate-none dark:bg-surface dark:ring-white/10 sm:p-6 md:mb-[env(safe-area-inset-bottom)]"
+      >
+        {/* Icon sits INLINE with the heading rather than indenting the body.
+            Indenting cost ~48px of measure, which at 320px squeezed the copy
+            into a ~200px column and made the card 69% of the screen. */}
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10">
+            <ShieldCheck aria-hidden className="h-[18px] w-[18px] text-brand-soft" />
+          </span>
+          <h2 id={headingId} className="font-display text-base font-semibold text-foreground">
+            Your privacy choice
+          </h2>
         </div>
+
+        <div id={bodyId} className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
+          <p>
+            We&apos;d like to measure how this site is used — pages viewed, how you arrived, device
+            type — using a random identifier in your browser. It is first-party only: never shared
+            with advertisers, and no IP address is stored with it.
+          </p>
+          <p>The site works exactly the same if you decline.</p>
+        </div>
+
         {/* Both choices are one click, the same size, and both on screen — the
             equal-ease test in s.6(4). Decline is DOM-first so keyboard and
-            screen-reader users reach it before Accept; flex-col-reverse then
-            renders it lowest on a phone, which is the easier thumb reach. */}
-        <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row lg:ms-auto">
-          <Button variant="outline" onClick={() => decide(false)} className="w-full sm:w-auto">
+            screen-reader users reach it before Accept; on phones the buttons
+            stack full-width, which keeps both at a comfortable tap size. */}
+        <div className="mt-5 flex flex-col-reverse gap-2.5 sm:flex-row">
+          <Button variant="outline" onClick={() => decide(false)} className="w-full sm:flex-1">
             Decline
           </Button>
-          <Button onClick={() => decide(true)} className="w-full sm:w-auto">
-            Accept analytics
+          <Button onClick={() => decide(true)} className="w-full sm:flex-1">
+            Accept
           </Button>
         </div>
+
+        <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
+          Change this any time from{" "}
+          <span className="whitespace-nowrap font-medium text-foreground/80">Privacy choices</span>{" "}
+          in the footer.{" "}
+          <Link
+            href="/privacy"
+            className="font-medium text-brand-soft underline underline-offset-4 hover:text-brand"
+          >
+            Privacy Policy
+          </Link>
+        </p>
       </div>
     </div>
   );
