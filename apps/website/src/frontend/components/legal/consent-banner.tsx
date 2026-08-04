@@ -5,6 +5,11 @@ import Link from "next/link";
 import { ShieldCheck, BarChart3, Lock, Check } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
 import { cn } from "@/frontend/lib/utils";
+import {
+  NOTICE_LANGUAGES,
+  NOTICE_LANGUAGE_KEYS,
+  preferredNoticeLanguage,
+} from "@/frontend/lib/consent-i18n";
 import { resetTracker } from "@/frontend/lib/analytics/collector";
 import {
   notifyConsentChange,
@@ -59,6 +64,10 @@ export function ConsentBanner() {
   const [forced, setForced] = React.useState(false);
   const [showPrefs, setShowPrefs] = React.useState(false);
   const [analyticsOn, setAnalyticsOn] = React.useState(false);
+  // Starts from the browser preference — an option nobody finds is not an
+  // option. English is always available and is the authoritative text.
+  const [langKey, setLangKey] = React.useState("en");
+  const t = NOTICE_LANGUAGES[langKey] ?? NOTICE_LANGUAGES.en;
 
   const panelRef = React.useRef<HTMLDivElement>(null);
   const restoreFocusRef = React.useRef<HTMLElement | null>(null);
@@ -67,6 +76,7 @@ export function ConsentBanner() {
 
   React.useEffect(() => {
     setDecision(readConsent());
+    setLangKey(preferredNoticeLanguage());
     const reopen = () => {
       // Reopening from the footer should show the CURRENT setting, not a reset.
       const current = readConsent();
@@ -163,7 +173,13 @@ export function ConsentBanner() {
   if (decision === undefined || !open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
+    // z-index measured, not guessed: the support widget injects
+    // #chat-widget-container at 999999, so at z-60 its bubble floated over the
+    // dialog. That was invisible on a first visit (the widget is gated until a
+    // decision exists) but hit every footer reopen, because a returning visitor
+    // always has it loaded. One above it puts the scrim over the bubble, which
+    // is what a modal should do.
+    <div className="fixed inset-0 z-[1000000] flex items-end justify-center sm:items-center">
       {/* Scrim. Not clickable-to-dismiss: closing without choosing would leave
           the visitor undecided, and click-outside is not an affirmative act. */}
       <div
@@ -189,46 +205,66 @@ export function ConsentBanner() {
           "max-h-[calc(100dvh-1.5rem)]",
         )}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
-          <div className="flex items-center gap-3">
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6" lang={t.lang}>
+          <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10">
               <ShieldCheck aria-hidden className="h-5 w-5 text-brand-soft" />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h2 id={headingId} className="font-display text-lg font-semibold text-foreground">
-                Your privacy choice
+                {t.heading}
               </h2>
-              <p className="text-xs text-muted-foreground">
-                Digital Personal Data Protection Act, 2023
-              </p>
+              <p className="text-xs text-muted-foreground">{t.act}</p>
             </div>
+
+            {/* DPDP s.5(3): the notice must be available in English or an
+                Eighth Schedule language, and the option belongs HERE — at the
+                point of collection — not only on the policy page. */}
+            {/* aria-label rather than a wrapping <label>: a label that wraps a
+                <select> also contains its options, which makes the computed
+                accessible name depend on the browser's name-from-content rules.
+                This one is unambiguous. */}
+            <select
+              aria-label={t.languageLabel}
+              value={langKey}
+              onChange={(e) => setLangKey(e.target.value)}
+              className="shrink-0 rounded-lg border border-border bg-surface px-2 py-1 text-xs font-medium text-foreground outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:bg-background/40"
+            >
+              {NOTICE_LANGUAGE_KEYS.map((k) => (
+                <option key={k} value={k} lang={NOTICE_LANGUAGES[k].lang}>
+                  {NOTICE_LANGUAGES[k].label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div id={bodyId} className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
-            <p>
-              We&apos;d like to measure how this site is used — pages viewed, how you arrived, device
-              type — using a random identifier in your browser. It is first-party only: never shared
-              with advertisers, and no IP address is stored with it.
-            </p>
-            <p>The site works exactly the same if you decline.</p>
+            <p>{t.body1}</p>
+            <p>{t.body2}</p>
           </div>
 
           {showPrefs ? (
             <div className="mt-5 space-y-3">
               <PreferenceRow
                 icon={<Lock aria-hidden className="h-4 w-4" />}
-                title="Strictly necessary"
-                description="Your cart, sign-in session, theme and currency. The site cannot work without these, so they are always on and are never used for tracking."
+                title={t.necessaryTitle}
+                description={t.necessaryDesc}
+                lockedLabel={t.alwaysOn}
                 locked
               />
               <PreferenceRow
                 icon={<BarChart3 aria-hidden className="h-4 w-4" />}
-                title="Analytics"
-                description="A random visitor and session identifier, the pages you view, and how you arrived."
+                title={t.analyticsTitle}
+                description={t.analyticsDesc}
                 checked={analyticsOn}
                 onChange={setAnalyticsOn}
               />
             </div>
+          ) : null}
+
+          {/* Stated, not implied: a translation is an aid, the English governs. */}
+          {t.authoritative ? (
+            <p className="mt-4 text-xs italic text-muted-foreground">{t.authoritative}</p>
           ) : null}
         </div>
 
@@ -239,15 +275,15 @@ export function ConsentBanner() {
               thumb reach, without either option changing size or weight. */}
           <div className="flex flex-col-reverse gap-2.5 sm:flex-row">
             <Button variant="outline" onClick={() => decide(false)} className="w-full sm:flex-1">
-              Reject
+              {t.reject}
             </Button>
             {showPrefs ? (
               <Button onClick={() => decide(analyticsOn)} className="w-full sm:flex-1">
-                <Check className="h-4 w-4" /> Save choices
+                <Check className="h-4 w-4" /> {t.save}
               </Button>
             ) : (
               <Button onClick={() => decide(true)} className="w-full sm:flex-1">
-                Accept
+                {t.accept}
               </Button>
             )}
           </div>
@@ -258,7 +294,7 @@ export function ConsentBanner() {
               onClick={() => setShowPrefs(true)}
               className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 underline-offset-4 transition-colors hover:text-foreground hover:underline"
             >
-              Manage preferences
+              {t.manage}
             </button>
           ) : null}
 
@@ -276,15 +312,13 @@ export function ConsentBanner() {
               }}
               className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
             >
-              Close without changing
+              {t.closeNoChange}
             </button>
           ) : null}
         </div>
 
         <p className="shrink-0 border-t border-border bg-surface/60 px-5 py-3 text-xs leading-relaxed text-muted-foreground sm:px-6 dark:bg-background/40">
-          Change this any time from{" "}
-          <span className="whitespace-nowrap font-medium text-foreground/80">Privacy choices</span>{" "}
-          in the footer.{" "}
+          {t.footerPre}{" "}
           {/* New tab, deliberately. Navigating in place left the visitor on a
               blurred, scroll-locked /privacy behind a dialog they could not
               dismiss — so the s.5 notice was unreadable at the exact moment
@@ -295,7 +329,7 @@ export function ConsentBanner() {
             rel="noopener"
             className="font-medium text-brand-soft underline underline-offset-4 hover:text-brand"
           >
-            Privacy Policy
+            {t.footerLink}
             <span className="sr-only"> (opens in a new tab)</span>
           </Link>
         </p>
@@ -311,6 +345,7 @@ function PreferenceRow({
   checked,
   onChange,
   locked = false,
+  lockedLabel = "Always on",
 }: {
   icon: React.ReactNode;
   title: string;
@@ -318,36 +353,46 @@ function PreferenceRow({
   checked?: boolean;
   onChange?: (v: boolean) => void;
   locked?: boolean;
+  lockedLabel?: string;
 }) {
-  const id = React.useId();
+  // A <label htmlFor> pointed at the "Always on" <span>, which is not a
+  // labelable element, so the title and its state were two adjacent strings
+  // with no programmatic link. The row is a group named by its title, and the
+  // switch is named and described by the same nodes — no sr-only duplicate.
+  const titleId = React.useId();
+  const descId = React.useId();
   return (
-    <div className="rounded-xl border border-border bg-surface/60 p-3.5 dark:bg-background/40">
+    <div
+      role="group"
+      aria-labelledby={titleId}
+      className="rounded-xl border border-border bg-surface/60 p-3.5 dark:bg-background/40"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 gap-2.5">
           <span className="mt-0.5 shrink-0 text-brand-soft">{icon}</span>
           <div className="min-w-0">
-            <label htmlFor={id} className="block text-sm font-medium text-foreground">
+            <p id={titleId} className="text-sm font-medium text-foreground">
               {title}
-            </label>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
+            </p>
+            <p id={descId} className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              {description}
+            </p>
           </div>
         </div>
 
         {locked ? (
           // Not a disabled switch: a control that looks operable but is not is a
           // dark pattern. This states the fact instead.
-          <span
-            id={id}
-            className="shrink-0 whitespace-nowrap rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
-          >
-            Always on
+          <span className="shrink-0 whitespace-nowrap rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+            {lockedLabel}
           </span>
         ) : (
           <button
-            id={id}
             type="button"
             role="switch"
             aria-checked={checked}
+            aria-labelledby={titleId}
+            aria-describedby={descId}
             onClick={() => onChange?.(!checked)}
             className={cn(
               "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
@@ -360,7 +405,8 @@ function PreferenceRow({
               checked ? "bg-brand" : "bg-zinc-500",
             )}
           >
-            <span className="sr-only">{title}</span>
+            {/* No sr-only label: aria-labelledby already names this from the
+                visible title, and a duplicate would be announced twice. */}
             <span
               aria-hidden
               className={cn(

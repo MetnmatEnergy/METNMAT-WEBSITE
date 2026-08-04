@@ -335,7 +335,27 @@ export default async function PrivacyPolicyPage() {
       ),
     },
     {
-      heading: "12. Changes to this notice",
+      heading: "12. Language of this notice",
+      body: (
+        <>
+          <p>
+            Section 5(3) of the Act gives you the option to access this notice in English or in a
+            language listed in the Eighth Schedule to the Constitution. The consent notice shown
+            when you first visit can be read in{" "}
+            <strong className="text-foreground">English, हिन्दी and বাংলা</strong> — use the
+            language selector in that dialog, which you can reopen at any time from{" "}
+            <span className="whitespace-nowrap">&ldquo;Privacy choices&rdquo;</span> in the footer.
+          </p>
+          <p className="mt-2">
+            The English text is the authoritative version. If you would like this full policy in
+            another Eighth Schedule language, ask the Grievance Officer above and we will provide
+            it.
+          </p>
+        </>
+      ),
+    },
+    {
+      heading: "13. Changes to this notice",
       body: (
         <p>
           We may update this notice. The date below reflects the current version. If a change
