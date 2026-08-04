@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, BarChart3, Lock, Check } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
+import { cn } from "@/frontend/lib/utils";
 import { resetTracker } from "@/frontend/lib/analytics/collector";
 import {
   notifyConsentChange,
@@ -23,35 +24,69 @@ export function openConsentSettings(): void {
   }
 }
 
+/** Focusable descendants, in DOM order, for the focus trap. */
+function focusables(root: HTMLElement): HTMLElement[] {
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((el) => el.offsetParent !== null);
+}
+
 /**
- * DPDP consent notice for first-party analytics.
+ * DPDP consent dialog for first-party analytics.
  *
- * Deliberate choices, all of them load-bearing for s.6:
- *  - Nothing is pre-selected and closing is not a decision — the banner has no
- *    dismiss "X", because dismissal-as-consent is not a clear affirmative act.
- *  - Accept and Decline are the same size and weight. s.6(4) requires
- *    withdrawing to be as easy as giving, and a greyed-out decline fails that.
- *  - It renders only AFTER mount and is position:fixed, so it can neither
- *    cause a hydration mismatch nor shift layout (CLS).
- *  - It never blocks the page: no backdrop, no focus trap. Someone who wants
- *    to read the privacy policy first can.
+ * Presented as a modal because a consent request is a decision the visitor is
+ * being asked to make, not an announcement — the same pattern enterprise
+ * consent platforms use. Deliberate choices, all load-bearing for s.6:
+ *
+ *  - Nothing is pre-selected and there is NO dismiss "X": dismissal is not a
+ *    clear affirmative action, so it must not be a route past the question.
+ *  - Reject and Accept are equal in size and weight and sit side by side.
+ *    s.6(4) requires withdrawing to be as easy as giving, and a buried or
+ *    de-emphasised reject fails that. Reject is also DOM-first.
+ *  - Escape resolves to REJECT, never to "undecided". That keeps a keyboard
+ *    escape route (WCAG 2.1.2) without ever letting an accidental keypress be
+ *    read as consent.
+ *  - "Manage preferences" exposes exactly what is stored and lets analytics be
+ *    refused while strictly-necessary storage stays — which is honest, because
+ *    the cart and session genuinely cannot be switched off.
+ *  - Rendered only AFTER mount and position:fixed, so it cannot mismatch on
+ *    hydration or shift layout.
  */
 export function ConsentBanner() {
   const [decision, setDecision] = React.useState<ConsentRecord | null | undefined>(undefined);
   const [forced, setForced] = React.useState(false);
+  const [showPrefs, setShowPrefs] = React.useState(false);
+  const [analyticsOn, setAnalyticsOn] = React.useState(false);
+
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const restoreFocusRef = React.useRef<HTMLElement | null>(null);
   const headingId = React.useId();
   const bodyId = React.useId();
 
-  // Read only after mount — localStorage is not available during SSR, and
-  // rendering the banner on the server would mismatch on hydration.
   React.useEffect(() => {
     setDecision(readConsent());
-    const reopen = () => setForced(true);
+    const reopen = () => {
+      // Reopening from the footer should show the CURRENT setting, not a reset.
+      const current = readConsent();
+      setAnalyticsOn(current?.analytics === true);
+      setShowPrefs(true);
+      setForced(true);
+    };
     window.addEventListener(OPEN_CONSENT_EVENT, reopen);
     return () => window.removeEventListener(OPEN_CONSENT_EVENT, reopen);
   }, []);
 
+  const open = decision === null || forced;
+
   const decide = React.useCallback((analytics: boolean) => {
+    // Use the record saveConsent RETURNS, never a re-read. In a browser where
+    // localStorage throws (Safari private mode, storage disabled, quota), the
+    // write is swallowed and readConsent() would come back null — leaving
+    // `decision` null, so the dialog re-opened over itself and the visitor
+    // could never get past it. The in-memory record closes the dialog and the
+    // session is simply un-persisted, which is the correct degradation.
     const record = saveConsent(analytics);
     // Re-evaluate the tracker immediately: granting starts measurement without
     // a reload, withdrawing stops it and drops anything already queued.
@@ -59,65 +94,166 @@ export function ConsentBanner() {
     notifyConsentChange();
     setDecision(record);
     setForced(false);
+    setShowPrefs(false);
   }, []);
 
-  // undefined = not read yet (first paint). Never flash the banner before we
-  // know whether the visitor already answered.
-  if (decision === undefined) return null;
-  if (decision !== null && !forced) return null;
+  // Focus management + trap + scroll lock, only while actually open.
+  React.useEffect(() => {
+    if (!open || decision === undefined) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    restoreFocusRef.current = document.activeElement as HTMLElement | null;
+    // Focus the panel itself rather than a button, so a screen reader announces
+    // the dialog's name and description before any control.
+    panel.focus({ preventScroll: true });
+
+    // Lock the page behind the scrim. The scrollbar's width is given back as
+    // padding so removing it cannot shift the layout (CLS).
+    const { body } = document;
+    const prevOverflow = body.style.overflow;
+    const prevPadding = body.style.paddingRight;
+    const gap = window.innerWidth - document.documentElement.clientWidth;
+    body.style.overflow = "hidden";
+    if (gap > 0) body.style.paddingRight = `${gap}px`;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        // Never leaves the visitor undecided, and never records consent.
+        e.preventDefault();
+        decide(false);
+        return;
+      }
+      if (e.key !== "Tab" || !panel) return;
+      const items = focusables(panel);
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || active === panel)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      body.style.overflow = prevOverflow;
+      body.style.paddingRight = prevPadding;
+      restoreFocusRef.current?.focus?.();
+    };
+  }, [open, decision, decide]);
+
+  // undefined = not read yet. Never flash the dialog before we know whether the
+  // visitor already answered.
+  if (decision === undefined || !open) return null;
 
   return (
-    // Positioned bottom-LEFT, not full-bleed. Two reasons: a 448px column keeps
-    // the body copy near the 60-75 character measure that is actually readable
-    // (full width ran past 120), and the support bubble is a third-party embed
-    // fixed bottom-right whose z-index we cannot reliably outrank — so the card
-    // is kept out of its corner rather than stacked against it. On phones it
-    // floats clear of that corner via the bottom margin.
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 p-3 sm:p-4 md:max-w-[34rem]">
+    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
+      {/* Scrim. Not clickable-to-dismiss: closing without choosing would leave
+          the visitor undecided, and click-outside is not an affirmative act. */}
       <div
+        aria-hidden
+        className="absolute inset-0 bg-black/60 backdrop-blur-[2px] motion-safe:animate-fade-up"
+      />
+
+      <div
+        ref={panelRef}
         role="dialog"
+        aria-modal="true"
         aria-labelledby={headingId}
         aria-describedby={bodyId}
-        // bg-background in light (a crisp white card the shadow lifts off the
-        // page) but bg-surface in dark, where an elevated surface has to be
-        // LIGHTER than what is behind it or the card reads as a hole.
-        className="pointer-events-auto mb-20 animate-rise-in rounded-2xl border border-border bg-background p-5 shadow-2xl ring-1 ring-black/5 motion-reduce:animate-none dark:bg-surface dark:ring-white/10 sm:p-6 md:mb-[env(safe-area-inset-bottom)]"
+        tabIndex={-1}
+        className={cn(
+          "relative m-3 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl outline-none ring-1 ring-black/5",
+          "motion-safe:animate-rise-in dark:bg-surface dark:ring-white/10",
+          // Column layout with only the BODY scrolling, so the actions stay
+          // reachable. With preferences open on a 320px phone the content is
+          // taller than the viewport, and a whole-panel scroll pushed Reject and
+          // Accept below the fold — the two things that must never be hard to
+          // reach.
+          "max-h-[calc(100dvh-1.5rem)]",
+        )}
       >
-        {/* Icon sits INLINE with the heading rather than indenting the body.
-            Indenting cost ~48px of measure, which at 320px squeezed the copy
-            into a ~200px column and made the card 69% of the screen. */}
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10">
-            <ShieldCheck aria-hidden className="h-[18px] w-[18px] text-brand-soft" />
-          </span>
-          <h2 id={headingId} className="font-display text-base font-semibold text-foreground">
-            Your privacy choice
-          </h2>
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10">
+              <ShieldCheck aria-hidden className="h-5 w-5 text-brand-soft" />
+            </span>
+            <div className="min-w-0">
+              <h2 id={headingId} className="font-display text-lg font-semibold text-foreground">
+                Your privacy choice
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Digital Personal Data Protection Act, 2023
+              </p>
+            </div>
+          </div>
+
+          <div id={bodyId} className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">
+            <p>
+              We&apos;d like to measure how this site is used — pages viewed, how you arrived, device
+              type — using a random identifier in your browser. It is first-party only: never shared
+              with advertisers, and no IP address is stored with it.
+            </p>
+            <p>The site works exactly the same if you decline.</p>
+          </div>
+
+          {showPrefs ? (
+            <div className="mt-5 space-y-3">
+              <PreferenceRow
+                icon={<Lock aria-hidden className="h-4 w-4" />}
+                title="Strictly necessary"
+                description="Your cart, sign-in session, theme and currency. The site cannot work without these, so they are always on and are never used for tracking."
+                locked
+              />
+              <PreferenceRow
+                icon={<BarChart3 aria-hidden className="h-4 w-4" />}
+                title="Analytics"
+                description="A random visitor and session identifier, the pages you view, and how you arrived."
+                checked={analyticsOn}
+                onChange={setAnalyticsOn}
+              />
+            </div>
+          ) : null}
         </div>
 
-        <div id={bodyId} className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
-          <p>
-            We&apos;d like to measure how this site is used — pages viewed, how you arrived, device
-            type — using a random identifier in your browser. It is first-party only: never shared
-            with advertisers, and no IP address is stored with it.
-          </p>
-          <p>The site works exactly the same if you decline.</p>
+        {/* Sticky action region — never scrolls away. */}
+        <div className="shrink-0 border-t border-border p-5 pt-4 sm:p-6 sm:pt-4">
+          {/* Reject is DOM-first so keyboard and screen-reader users reach it
+              before Accept; on phones the row stacks with Accept uppermost for
+              thumb reach, without either option changing size or weight. */}
+          <div className="flex flex-col-reverse gap-2.5 sm:flex-row">
+            <Button variant="outline" onClick={() => decide(false)} className="w-full sm:flex-1">
+              Reject
+            </Button>
+            {showPrefs ? (
+              <Button onClick={() => decide(analyticsOn)} className="w-full sm:flex-1">
+                <Check className="h-4 w-4" /> Save choices
+              </Button>
+            ) : (
+              <Button onClick={() => decide(true)} className="w-full sm:flex-1">
+                Accept
+              </Button>
+            )}
+          </div>
+
+          {!showPrefs ? (
+            <button
+              type="button"
+              onClick={() => setShowPrefs(true)}
+              className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+              Manage preferences
+            </button>
+          ) : null}
         </div>
 
-        {/* Both choices are one click, the same size, and both on screen — the
-            equal-ease test in s.6(4). Decline is DOM-first so keyboard and
-            screen-reader users reach it before Accept; on phones the buttons
-            stack full-width, which keeps both at a comfortable tap size. */}
-        <div className="mt-5 flex flex-col-reverse gap-2.5 sm:flex-row">
-          <Button variant="outline" onClick={() => decide(false)} className="w-full sm:flex-1">
-            Decline
-          </Button>
-          <Button onClick={() => decide(true)} className="w-full sm:flex-1">
-            Accept
-          </Button>
-        </div>
-
-        <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
+        <p className="shrink-0 border-t border-border bg-surface/60 px-5 py-3 text-xs leading-relaxed text-muted-foreground sm:px-6 dark:bg-background/40">
           Change this any time from{" "}
           <span className="whitespace-nowrap font-medium text-foreground/80">Privacy choices</span>{" "}
           in the footer.{" "}
@@ -128,6 +264,73 @@ export function ConsentBanner() {
             Privacy Policy
           </Link>
         </p>
+      </div>
+    </div>
+  );
+}
+
+function PreferenceRow({
+  icon,
+  title,
+  description,
+  checked,
+  onChange,
+  locked = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  checked?: boolean;
+  onChange?: (v: boolean) => void;
+  locked?: boolean;
+}) {
+  const id = React.useId();
+  return (
+    <div className="rounded-xl border border-border bg-surface/60 p-3.5 dark:bg-background/40">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 gap-2.5">
+          <span className="mt-0.5 shrink-0 text-brand-soft">{icon}</span>
+          <div className="min-w-0">
+            <label htmlFor={id} className="block text-sm font-medium text-foreground">
+              {title}
+            </label>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
+          </div>
+        </div>
+
+        {locked ? (
+          // Not a disabled switch: a control that looks operable but is not is a
+          // dark pattern. This states the fact instead.
+          <span
+            id={id}
+            className="shrink-0 whitespace-nowrap rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
+          >
+            Always on
+          </span>
+        ) : (
+          <button
+            id={id}
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            onClick={() => onChange?.(!checked)}
+            className={cn(
+              "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+              checked ? "bg-brand" : "bg-muted-foreground/30",
+            )}
+          >
+            <span className="sr-only">{title}</span>
+            <span
+              aria-hidden
+              className={cn(
+                "inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow transition-transform",
+                "h-[18px] w-[18px]",
+                checked ? "translate-x-[22px]" : "translate-x-[3px]",
+              )}
+            />
+          </button>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { CONSENT_EVENT, readConsent } from "@/frontend/lib/consent";
 
 /**
  * Loads the Metnmat customer-agent chat bubble.
@@ -48,9 +49,26 @@ const WAKE_EVENTS = ["pointerdown", "pointermove", "keydown", "touchstart"] as c
 
 export function ChatWidget() {
   const [wake, setWake] = React.useState(false);
+  // A third-party embed must not load while we are still ASKING about privacy.
+  // Two reasons, one principled and one visible: injecting someone else's script
+  // mid-consent-request is incoherent, and the widget fixes its bubble to the
+  // bottom-right at a z-index we cannot outrank, so it floated over the consent
+  // dialog. The wake events below (pointermove, keydown) are exactly what a
+  // visitor does while reaching for Accept or Reject, so this would fire every
+  // time. Nothing is lost by waiting: the dialog is modal, so the bubble is
+  // unreachable until a choice is made anyway. A returning visitor already has
+  // a decision stored and is unaffected.
+  const [decided, setDecided] = React.useState(false);
 
   React.useEffect(() => {
-    if (!CHATBOT_URL || wake) return;
+    const check = () => setDecided(readConsent() !== null);
+    check();
+    window.addEventListener(CONSENT_EVENT, check);
+    return () => window.removeEventListener(CONSENT_EVENT, check);
+  }, []);
+
+  React.useEffect(() => {
+    if (!CHATBOT_URL || wake || !decided) return;
 
     const load = () => setWake(true);
     for (const ev of WAKE_EVENTS) {
@@ -67,7 +85,7 @@ export function ChatWidget() {
       for (const ev of WAKE_EVENTS) window.removeEventListener(ev, load);
       if (t !== undefined) window.clearTimeout(t);
     };
-  }, [wake]);
+  }, [wake, decided]);
 
   React.useEffect(() => {
     if (!wake || !CHATBOT_URL) return;
