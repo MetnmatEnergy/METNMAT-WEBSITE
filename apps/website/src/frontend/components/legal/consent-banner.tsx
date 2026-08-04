@@ -119,9 +119,19 @@ export function ConsentBanner() {
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        // Never leaves the visitor undecided, and never records consent.
         e.preventDefault();
-        decide(false);
+        if (forced) {
+          // Reopened from the footer to REVIEW an existing choice. Escape means
+          // "close", as it does in every other dialog — silently revoking the
+          // consent they came to look at would be destructive and surprising.
+          setForced(false);
+          setShowPrefs(false);
+        } else {
+          // First run: there is no decision yet, so Escape must resolve to the
+          // privacy-protective one. It never leaves the visitor undecided and
+          // it can never be read as consent.
+          decide(false);
+        }
         return;
       }
       if (e.key !== "Tab" || !panel) return;
@@ -146,7 +156,7 @@ export function ConsentBanner() {
       body.style.paddingRight = prevPadding;
       restoreFocusRef.current?.focus?.();
     };
-  }, [open, decision, decide]);
+  }, [open, decision, decide, forced]);
 
   // undefined = not read yet. Never flash the dialog before we know whether the
   // visitor already answered.
@@ -251,17 +261,42 @@ export function ConsentBanner() {
               Manage preferences
             </button>
           ) : null}
+
+          {/* Non-destructive exit, but ONLY when reopened over an existing
+              decision. Someone who came from the footer just to read what they
+              chose must be able to leave without changing it. It is deliberately
+              absent on the first run, where there is no decision to preserve and
+              a "close" would be a route past the question. */}
+          {forced && decision !== null ? (
+            <button
+              type="button"
+              onClick={() => {
+                setForced(false);
+                setShowPrefs(false);
+              }}
+              className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+              Close without changing
+            </button>
+          ) : null}
         </div>
 
         <p className="shrink-0 border-t border-border bg-surface/60 px-5 py-3 text-xs leading-relaxed text-muted-foreground sm:px-6 dark:bg-background/40">
           Change this any time from{" "}
           <span className="whitespace-nowrap font-medium text-foreground/80">Privacy choices</span>{" "}
           in the footer.{" "}
+          {/* New tab, deliberately. Navigating in place left the visitor on a
+              blurred, scroll-locked /privacy behind a dialog they could not
+              dismiss — so the s.5 notice was unreadable at the exact moment
+              s.6(1) requires the consent to be informed. */}
           <Link
             href="/privacy"
+            target="_blank"
+            rel="noopener"
             className="font-medium text-brand-soft underline underline-offset-4 hover:text-brand"
           >
             Privacy Policy
+            <span className="sr-only"> (opens in a new tab)</span>
           </Link>
         </p>
       </div>
@@ -317,7 +352,12 @@ function PreferenceRow({
             className={cn(
               "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-              checked ? "bg-brand" : "bg-muted-foreground/30",
+              // zinc-500 for OFF, not a translucent muted tint: the old
+              // bg-muted-foreground/30 measured 1.53:1 against the card, so in
+              // light mode neither the pill nor its white thumb was discernible
+              // — and OFF is the state the control is in every single time the
+              // panel opens. zinc-500 clears 3:1 in both themes.
+              checked ? "bg-brand" : "bg-zinc-500",
             )}
           >
             <span className="sr-only">{title}</span>

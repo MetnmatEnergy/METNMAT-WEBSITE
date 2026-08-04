@@ -27,7 +27,7 @@ import {
   type CollectedEvent,
   type EventType,
 } from "./session";
-import { hasAnalyticsConsent } from "../consent";
+import { hasAnalyticsConsent, K_CONSENT } from "../consent";
 
 type Tracker = {
   track: (type: EventType, data?: { entity?: string; meta?: CollectedEvent["meta"] }) => void;
@@ -124,6 +124,14 @@ function scheduleFlush(): void {
 }
 
 function push(ev: CollectedEvent): void {
+  // The single chokepoint every event passes through, and the only reliable
+  // place to enforce withdrawal. resetTracker() can drop the memoised tracker
+  // but it CANNOT unbind the delegated click/focusin/scroll/pagehide listeners
+  // registered below in getTracker() — those call push()/send() directly and
+  // never consult getTracker() again. Without this check a withdrawn visitor
+  // kept beaconing for the rest of the page load, which DPDP s.6(6) forbids
+  // and which contradicts what /privacy tells them.
+  if (!hasAnalyticsConsent()) return;
   queue.push(ev);
   ls.set(K_LAST_ACTIVE, String(Date.now()));
   if (queue.length >= 20) {
@@ -189,6 +197,31 @@ export function resetTracker(): void {
   }
   vid = "";
   sid = "";
+  // Also drop the in-flight page-leave state. Leaving it set meant that after
+  // withdraw-then-re-accept, the first page_view emitted a page_leave whose
+  // dwell and scroll described browsing done WHILE consent was withdrawn.
+  pagePath = "";
+  pageStart = 0;
+  maxScroll = 0;
+}
+
+/**
+ * Withdrawal in ANOTHER tab reaches this one only as a `storage` event —
+ * localStorage is shared across tabs but CustomEvents are not. Without this a
+ * second open tab kept its memoised tracker alive and ensureIds() re-minted the
+ * mm-vid that withdrawal had just erased, re-persisting the identifier and
+ * starting a fresh session. DPDP s.6(6) requires processing to cease and s.8(7)
+ * requires erasure; having two tabs open is ordinary on a catalogue site.
+ */
+let consentWatched = false;
+function watchConsent(): void {
+  if (consentWatched || typeof window === "undefined") return;
+  consentWatched = true;
+  window.addEventListener("storage", (e) => {
+    // key === null means localStorage.clear(); treat it as a consent change too.
+    if (e.key !== null && e.key !== K_CONSENT) return;
+    if (!hasAnalyticsConsent()) resetTracker();
+  });
 }
 
 /**
@@ -197,20 +230,33 @@ export function resetTracker(): void {
  * null checks.
  */
 export function getTracker(): Tracker {
-  if (instance) return instance;
   const noop: Tracker = { track: () => {}, pageView: () => {} };
   if (typeof window === "undefined") return noop;
+
+  // Consent is checked BEFORE the memoisation, not after. Reading it after
+  // `if (instance) return instance` made consent an init-time decision: a tab
+  // that had already built a tracker never re-read it, so a withdrawal made
+  // elsewhere could not stop that tab. It is never cached as `instance` either,
+  // so an undecided visitor who accepts a moment later starts being measured
+  // without a reload.
   try {
-    if ((navigator as { webdriver?: boolean }).webdriver) return (instance = noop);
-    if (ls.get(K_OPTOUT) === "1") return (instance = noop);
-    // DPDP s.6: measurement runs only on an explicit, current-version yes.
-    // Note this is NOT cached as `instance` — an undecided visitor who accepts
-    // a moment later must be able to start being measured without a reload.
-    if (!hasAnalyticsConsent()) return noop;
+    if (!hasAnalyticsConsent()) {
+      if (instance) resetTracker();
+      return noop;
+    }
   } catch {
     return noop;
   }
 
+  if (instance) return instance;
+  try {
+    if ((navigator as { webdriver?: boolean }).webdriver) return (instance = noop);
+    if (ls.get(K_OPTOUT) === "1") return (instance = noop);
+  } catch {
+    return noop;
+  }
+
+  watchConsent();
   ensureIds();
 
   // Deliver whatever is queued when the page is being backgrounded/closed —

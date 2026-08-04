@@ -64,12 +64,27 @@ export async function GET(req: NextRequest) {
   if (!rl.ok) {
     return NextResponse.json({ ok: false, error: "Too many requests" }, { status: 429 });
   }
-  const { visitorId, setCookie } = await resolveVisitor(req);
+  // READ-ONLY: never mint an identity here. Rendering the reaction widget is a
+  // side effect of opening an article, not an act by the visitor, and minting
+  // on GET planted a one-year site-wide `mm-visitor` cookie on every blog page
+  // load — including for someone who had just pressed Reject. An identity is
+  // created only when they actually react (see POST), which is a deliberate act
+  // and is the DPDP s.7(a) basis for the dedupe cookie.
+  const customer = await getCurrentCustomer().catch(() => null);
+  const existing = verifyVisitorToken(req.cookies.get(VISITOR_COOKIE)?.value);
+  const visitorId = customer?.id
+    ? `customer:${customer.id}`
+    : existing
+      ? `anon:${existing}`
+      : null;
+  // getReactionState omits the visitor param when this is null, so the counts
+  // still render — only the "you reacted" highlight is unknown, which is
+  // accurate for someone we have never identified.
   const state = await getReactionState(articleId, visitorId);
   if (!state) {
     return NextResponse.json({ ok: false, error: "Unavailable" }, { status: 503 });
   }
-  return withVisitorCookie(NextResponse.json(state), setCookie);
+  return NextResponse.json(state);
 }
 
 export async function POST(req: NextRequest) {

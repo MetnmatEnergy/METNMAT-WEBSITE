@@ -76,11 +76,19 @@ export default async function PrivacyPolicyPage() {
                   ],
                   [
                     "IP address, at the moment of the request",
-                    "To detect your country for currency display and to rate-limit abuse. It is not stored against your analytics record.",
+                    "To detect your country for currency display and to rate-limit abuse. The IP itself is not stored.",
                   ],
                   [
                     "A random visitor identifier, pages viewed, referrer, device and browser type",
                     "First-party analytics — only if you accept. See section 3.",
+                  ],
+                  [
+                    "The country your IP resolves to",
+                    "Stored alongside the analytics record above, so we can see which countries our visitors come from. Country only — never a city, and never the IP itself.",
+                  ],
+                  [
+                    "Which articles you read, and a reaction you leave on one",
+                    "Article view counts, only if you accept analytics. A reaction sets a long-lived identifier so the same person cannot vote twice — that one is created only when you actually react.",
                   ],
                 ].map(([data, purpose]) => (
                   <tr key={data} className="border-b border-border/60">
@@ -140,7 +148,15 @@ export default async function PrivacyPolicyPage() {
             <li>Your privacy choice itself, so we do not ask again on every page.</li>
             <li>
               <strong className="text-foreground">If you accepted analytics:</strong> a random
-              visitor and session identifier. No name, email or IP address is stored with them.
+              visitor and session identifier, and a short-lived marker recording which articles have
+              already been counted so one read is not counted twice. No name, email or IP address is
+              stored with them.
+            </li>
+            <li>
+              <strong className="text-foreground">If you react to a blog article:</strong> a
+              long-lived identifier so the same person cannot vote twice. It is created at the
+              moment you react — not when you open an article — and exists only to keep the count
+              honest.
             </li>
           </ul>
         </>
@@ -272,10 +288,25 @@ export default async function PrivacyPolicyPage() {
             {site.legalName}, {site.addresses[0]?.lines.join(", ")}
           </p>
           <p className="mt-3">
-            We aim to respond within {privacy.responseDays} days. If we do not resolve your
-            grievance, you may complain to the{" "}
-            <strong className="text-foreground">Data Protection Board of India</strong>. The Act
-            expects you to raise it with us first.
+            We aim to respond within {privacy.responseDays} days.
+          </p>
+          <h3 className="mt-4 font-display text-base font-semibold text-foreground">
+            Complaining to the Data Protection Board
+          </h3>
+          <p className="mt-2">
+            If we do not resolve your grievance, you may complain to the{" "}
+            <strong className="text-foreground">Data Protection Board of India</strong>. Section
+            13(3) of the Act expects you to exhaust this route with us first, so please contact the
+            Grievance Officer above before you approach the Board.
+          </p>
+          <p className="mt-2">
+            After that, you may complain to the Board once either we have failed to respond within
+            the period above, or you are not satisfied with our response. The Board accepts
+            complaints digitally, and the Central Government publishes the current filing channel
+            and the Board&apos;s particulars — the Act provides for proceedings to be conducted
+            digitally, so no in-person filing is required. When you complain, quote the reference
+            number we issued for your request; it identifies the grievance and the date it was
+            raised.
           </p>
         </>
       ),
