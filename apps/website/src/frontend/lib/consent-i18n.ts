@@ -37,6 +37,8 @@ export type NoticeCopy = {
   analyticsDesc: string;
   footerPre: string;
   footerLink: string;
+  rightsLink: string;
+  complaintLink: string;
   authoritative: string;
   languageLabel: string;
 };
@@ -46,7 +48,7 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
     label: "English",
     lang: "en-IN",
     heading: "Your privacy choice",
-    act: "Digital Personal Data Protection Act, 2023",
+    act: "Digital Personal Data Protection Act, 2023 · Rules, 2025",
     body1:
       "We'd like to measure how this site is used — pages viewed, how you arrived, device type — using a random identifier in your browser. It is first-party only: never shared with advertisers, and no IP address is stored with it.",
     body2: "The site works exactly the same if you decline.",
@@ -64,6 +66,8 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
       "A random visitor and session identifier, the pages you view, and how you arrived.",
     footerPre: "Change this any time from Privacy choices in the footer.",
     footerLink: "Privacy Policy",
+    rightsLink: "Your rights",
+    complaintLink: "Complaints",
     authoritative: "",
     languageLabel: "Notice language",
   },
@@ -72,7 +76,7 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
     label: "हिन्दी",
     lang: "hi-IN",
     heading: "आपकी गोपनीयता का विकल्प",
-    act: "डिजिटल व्यक्तिगत डेटा संरक्षण अधिनियम, 2023",
+    act: "डिजिटल व्यक्तिगत डेटा संरक्षण अधिनियम, 2023 · नियम, 2025",
     body1:
       "हम यह मापना चाहते हैं कि इस साइट का उपयोग कैसे किया जाता है — कौन से पृष्ठ देखे गए, आप यहाँ कैसे पहुँचे, और डिवाइस किस प्रकार का है — इसके लिए आपके ब्राउज़र में एक यादृच्छिक पहचानकर्ता का उपयोग किया जाता है। यह केवल हमारा अपना है: इसे विज्ञापनदाताओं के साथ कभी साझा नहीं किया जाता, और इसके साथ कोई IP पता संग्रहीत नहीं किया जाता।",
     body2: "यदि आप अस्वीकार करते हैं, तब भी साइट बिल्कुल वैसे ही काम करती है।",
@@ -90,6 +94,8 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
       "एक यादृच्छिक विज़िटर और सत्र पहचानकर्ता, आपके द्वारा देखे गए पृष्ठ, और आप यहाँ कैसे पहुँचे।",
     footerPre: "आप इसे कभी भी फ़ुटर में “गोपनीयता विकल्प” से बदल सकते हैं।",
     footerLink: "गोपनीयता नीति",
+    rightsLink: "आपके अधिकार",
+    complaintLink: "शिकायत",
     authoritative: "इस सूचना का अंग्रेज़ी पाठ ही अंतिम रूप से मान्य है।",
     languageLabel: "सूचना की भाषा",
   },
@@ -98,7 +104,7 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
     label: "বাংলা",
     lang: "bn-IN",
     heading: "আপনার গোপনীয়তার পছন্দ",
-    act: "ডিজিটাল ব্যক্তিগত তথ্য সুরক্ষা আইন, ২০২৩",
+    act: "ডিজিটাল ব্যক্তিগত তথ্য সুরক্ষা আইন, ২০২৩ · বিধি, ২০২৫",
     body1:
       "আমরা জানতে চাই এই সাইটটি কীভাবে ব্যবহৃত হয় — কোন পৃষ্ঠাগুলি দেখা হয়েছে, আপনি কীভাবে এসেছেন, কোন ধরনের ডিভাইস — এর জন্য আপনার ব্রাউজারে একটি এলোমেলো শনাক্তকারী ব্যবহার করা হয়। এটি সম্পূর্ণ আমাদের নিজস্ব: বিজ্ঞাপনদাতাদের সঙ্গে কখনও ভাগ করা হয় না, এবং এর সঙ্গে কোনও IP ঠিকানা সংরক্ষণ করা হয় না।",
     body2: "আপনি প্রত্যাখ্যান করলেও সাইটটি ঠিক একইভাবে কাজ করে।",
@@ -116,6 +122,8 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
       "একটি এলোমেলো ভিজিটর ও সেশন শনাক্তকারী, আপনি যে পৃষ্ঠাগুলি দেখেন, এবং আপনি কীভাবে এসেছেন।",
     footerPre: "আপনি যে কোনও সময় ফুটারের “গোপনীয়তা পছন্দ” থেকে এটি পরিবর্তন করতে পারেন।",
     footerLink: "গোপনীয়তা নীতি",
+    rightsLink: "আপনার অধিকার",
+    complaintLink: "অভিযোগ",
     authoritative: "এই বিজ্ঞপ্তির ইংরেজি পাঠটিই চূড়ান্তভাবে প্রযোজ্য।",
     languageLabel: "বিজ্ঞপ্তির ভাষা",
   },

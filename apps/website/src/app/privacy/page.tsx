@@ -8,13 +8,13 @@ import { getPrivacySettings } from "@/frontend/lib/cms";
 export const metadata = pageMetadata({
   title: "Privacy Policy",
   description:
-    "How METNMAT collects, uses, shares and protects your personal data, your rights under India's Digital Personal Data Protection Act, 2023, and how to exercise them.",
+    "How METNMAT collects, uses, shares and protects your personal data, your rights under India's Digital Personal Data Protection Act, 2023 and the DPDP Rules, 2025, and how to exercise them.",
   path: "/privacy",
 });
 
-const LAST_UPDATED = "3 August 2026";
+const LAST_UPDATED = "4 August 2026";
 
-type Section = { heading: string; body: React.ReactNode };
+type Section = { heading: string; body: React.ReactNode; id?: string };
 
 export default async function PrivacyPolicyPage() {
   const email = site.contact.email;
@@ -33,8 +33,22 @@ export default async function PrivacyPolicyPage() {
             described below, and you are the <em>Data Principal</em>.
           </p>
           <p className="mt-2">
-            This page is our notice under section 5 of the Act: what personal data we process and
-            why, how you exercise your rights, and how to complain.
+            This page is our notice under section 5 of the Act, read with{" "}
+            <strong className="text-foreground">
+              the Digital Personal Data Protection Rules, 2025
+            </strong>
+            , which were notified in November 2025 and set out how the Act operates in practice.
+            Under Rule 3 a notice must stand on its own, describe the personal data item by item,
+            and carry the links for withdrawing consent, exercising your rights and complaining to
+            the Board — which is what this page and the consent dialog do.
+          </p>
+          <p className="mt-2">
+            The Rules commence in phases. The Data Protection Board of India was constituted when
+            they were notified; the substantive obligations — notice and consent, breach reporting,
+            security safeguards, children&apos;s data and the rights below — become binding in{" "}
+            <strong className="text-foreground">May 2027</strong>, at the end of an eighteen-month
+            transition. We are not waiting for that date: everything described here is already in
+            force on this site.
           </p>
         </>
       ),
@@ -258,6 +272,7 @@ export default async function PrivacyPolicyPage() {
       ),
     },
     {
+      id: "grievance",
       heading: "9. Grievance Officer",
       body: (
         <>
@@ -378,7 +393,9 @@ export default async function PrivacyPolicyPage() {
         <Container className="max-w-3xl">
           <div className="space-y-8">
             {sections.map((s) => (
-              <div key={s.heading}>
+              // scroll-mt clears the sticky header when an anchor lands here —
+              // the consent notice links straight to #grievance under Rule 3.
+              <div key={s.heading} id={s.id} className={s.id ? "scroll-mt-32" : undefined}>
                 <h2 className="font-display text-lg font-semibold">{s.heading}</h2>
                 <div className="mt-2 space-y-2 text-muted-foreground">{s.body}</div>
               </div>

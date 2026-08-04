@@ -317,22 +317,34 @@ export function ConsentBanner() {
           ) : null}
         </div>
 
-        <p className="shrink-0 border-t border-border bg-surface/60 px-5 py-3 text-xs leading-relaxed text-muted-foreground sm:px-6 dark:bg-background/40">
-          {t.footerPre}{" "}
-          {/* New tab, deliberately. Navigating in place left the visitor on a
-              blurred, scroll-locked /privacy behind a dialog they could not
-              dismiss — so the s.5 notice was unreadable at the exact moment
-              s.6(1) requires the consent to be informed. */}
-          <Link
-            href="/privacy"
-            target="_blank"
-            rel="noopener"
-            className="font-medium text-brand-soft underline underline-offset-4 hover:text-brand"
-          >
-            {t.footerLink}
-            <span className="sr-only"> (opens in a new tab)</span>
-          </Link>
-        </p>
+        {/* Rule 3 of the DPDP Rules, 2025 requires the notice itself to carry
+            the communication links for withdrawing consent and exercising
+            rights, and the means of complaining to the Board — not merely to
+            mention that those rights exist. All open in a NEW TAB: navigating in
+            place left the visitor on a blurred, scroll-locked page behind a
+            dialog they could not dismiss, so the notice was unreadable at the
+            exact moment s.6(1) requires the consent to be informed. */}
+        <div className="shrink-0 border-t border-border bg-surface/60 px-5 py-3 text-xs leading-relaxed text-muted-foreground sm:px-6 dark:bg-background/40">
+          <p>{t.footerPre}</p>
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {[
+              { href: "/privacy", label: t.footerLink },
+              { href: "/privacy/request", label: t.rightsLink },
+              { href: "/privacy#grievance", label: t.complaintLink },
+            ].map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                target="_blank"
+                rel="noopener"
+                className="font-medium text-brand-soft underline underline-offset-4 hover:text-brand"
+              >
+                {l.label}
+                <span className="sr-only"> (opens in a new tab)</span>
+              </Link>
+            ))}
+          </p>
+        </div>
       </div>
     </div>
   );
