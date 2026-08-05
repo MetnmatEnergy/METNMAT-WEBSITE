@@ -4,7 +4,7 @@ Branch `seo/technical-geo-overhaul` · audited 2026-08-05 against live productio
 (`https://www.metnmat.com`) and the repo at `c938551`.
 
 Every number below was measured, not estimated. The commands are in
-[§9 How this was measured](#9-how-this-was-measured) so you can re-run them.
+[§11 How this was measured](#11-how-this-was-measured) so you can re-run them.
 
 ---
 
@@ -314,7 +314,43 @@ Ordered by leverage.
 
 ---
 
-## 9. Internal-linking map
+## 9. Generative / AI-surface readiness
+
+The brief asks for generative SEO, not just classic SEO. What an LLM crawler
+needs differs from what Googlebot needs: it extracts from the **initial HTML**,
+has no JS runtime, and rewards explicit structure over layout.
+
+**Content is genuinely server-rendered.** Word counts below are from raw HTML
+with `<script>` and `<style>` stripped — so they exclude JSON-LD and Next's RSC
+payload, and represent what a crawler with no JS actually reads.
+
+| Route | Words in SSR HTML | `<h2>` | `<h3>` |
+|---|---:|---:|---:|
+| `/` | 2,064 | 11 | 24 |
+| `/services` | 1,049 | 8 | 11 |
+| `/projects` | 883 | 7 | 14 |
+| `/about` | 839 | 11 | 6 |
+| `/shop` | 764 | 7 | 10 |
+| `/blog` | 611 | 6 | 3 |
+| `/contact` | 486 | 5 | 0 |
+
+Nothing important is client-rendered, and every page carries a real heading
+hierarchy rather than styled `<div>`s. That is the single biggest determinant of
+whether an AI surface can quote you, and it is already right.
+
+**Also in place:** `llms.txt` (2,244 bytes, real facts only — addresses, hours,
+founding year, disciplines), `FAQPage` on `/`, `Product` with full offer data,
+and an `Organization`+`LocalBusiness` node with a stable `@id` and four real
+`sameAs` profiles.
+
+**The one thing undermining it** is §1's banner: the first assertion in the
+initial HTML of every page is that the site is under maintenance and that
+`metnmat.in` is preferable. An extractor reads that before any of the content
+above.
+
+---
+
+## 10. Internal-linking map
 
 Built by crawling all **126** indexable URLs from the live sitemap and
 extracting every internal `href`. Inbound-link counts below are real, not
@@ -354,7 +390,7 @@ catalogue.
 
 ---
 
-## 10. How this was measured
+## 11. How this was measured
 
 ```bash
 # indexability
