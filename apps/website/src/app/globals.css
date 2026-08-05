@@ -3,37 +3,20 @@
 @tailwind utilities;
 
 /*
- * METNMAT theme tokens. Dark is the default (matches the brand reference).
- * Add data-theme handling / a toggle later; the .light class is ready to use.
+ * METNMAT theme tokens. LIGHT is the default; visitors switch to dark with the
+ * header toggle, which persists to `mm-theme` and is re-applied before paint by
+ * the script in app/layout.tsx.
  * Values are HSL channels so Tailwind opacity modifiers (e.g. bg-brand/20) work.
  */
 @layer base {
+  /* LIGHT IS THE DEFAULT.
+     :root holds the light values, `.dark` overrides them. It used to be the
+     other way round — :root was dark and `.light` overrode it — which meant any
+     surface that failed to get a class rendered dark, including the brief
+     moment before the pre-paint script runs and any page reached with JS off.
+     Basing the default on :root makes light the no-JS, no-class fallback.
+     Tailwind is darkMode:"class", so `dark:` variants key off `.dark`. */
   :root {
-    --background: 240 10% 4%;
-    --foreground: 0 0% 98%;
-
-    --surface: 240 6% 8%;
-    --surface-foreground: 0 0% 98%;
-
-    --card: 0 0% 98%;
-    --card-foreground: 240 10% 8%;
-
-    --muted: 240 5% 14%;
-    --muted-foreground: 240 5% 65%;
-
-    --border: 240 5% 16%;
-    --input: 240 5% 16%;
-    --ring: 357 74% 49%;
-
-    /* Brand red #d81f26 */
-    --brand: 357 74% 49%;
-    --brand-foreground: 0 0% 100%;
-    --brand-soft: 357 74% 60%;
-
-    --radius: 0.9rem;
-  }
-
-  .light {
     --background: 0 0% 100%;
     --foreground: 240 10% 8%;
 
@@ -50,12 +33,40 @@
     --input: 240 6% 88%;
     --ring: 357 74% 49%;
 
+    /* Brand red #d81f26. Hue and saturation are theme-independent. */
+    --brand: 357 74% 49%;
+    --brand-foreground: 0 0% 100%;
     /* WCAG AA on light backgrounds. The dark-theme --brand-soft (357 74% 60%)
        has good contrast on the dark surface but only ~3.8:1 on white — and
        ~3.3:1 on the bg-brand/10 chips — so small text set in text-brand-soft
-       fails AA in light mode. Darken it here (light only) to ~4.8:1 on white /
-       ~4.6:1 on the chips. Same brand hue/saturation, no dark-mode change. */
-    --brand-soft: 357 74% 47%;
+       fails AA in light mode.
+       47% measured 4.28:1 on the bg-brand/10 chip — the earlier "~4.6:1 on the
+       chips" note was optimistic, and it only surfaced once light became the
+       default. 45% is 4.59:1 there and 5.1:1 on white. */
+    --brand-soft: 357 74% 45%;
+
+    --radius: 0.9rem;
+  }
+
+  .dark {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+
+    --surface: 240 6% 8%;
+    --surface-foreground: 0 0% 98%;
+
+    --card: 0 0% 98%;
+    --card-foreground: 240 10% 8%;
+
+    --muted: 240 5% 14%;
+    --muted-foreground: 240 5% 65%;
+
+    --border: 240 5% 16%;
+    --input: 240 5% 16%;
+    --ring: 357 74% 49%;
+
+    /* Lighter on a dark surface, where the light-mode value would be too dim. */
+    --brand-soft: 357 74% 60%;
   }
 
   * {

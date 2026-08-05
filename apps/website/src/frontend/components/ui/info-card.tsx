@@ -91,7 +91,14 @@ export function InfoCard({
               aria-hidden
               className="absolute -inset-y-0.5 inset-x-0 z-0"
               style={{
-                backgroundColor: "hsl(var(--brand))",
+                // Transparent until it is actually shown. The clip-path alone
+                // hides it visually, but the element still HAD a brand-red
+                // background at full size, and contrast checkers do not
+                // evaluate clip-path — so the resting title was measured as
+                // dark text on red (3.72:1) instead of on the white card. That
+                // was invisible while the site defaulted to dark, where the
+                // title is near-white and passes either way.
+                backgroundColor: hovered ? "hsl(var(--brand))" : "transparent",
                 clipPath: hovered
                   ? "polygon(0 0, 100% 0, 100% 100%, 0 100%)"
                   : "polygon(0 50%, 100% 50%, 100% 50%, 0 50%)",

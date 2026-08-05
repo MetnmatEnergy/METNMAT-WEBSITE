@@ -15,20 +15,33 @@ interface ThemeToggleProps {
  * app/layout.tsx). Checked = dark/night (the site's default).
  */
 export function ThemeToggle({ className }: ThemeToggleProps) {
-  const [theme, setTheme] = React.useState<"dark" | "light">("dark");
+  // Light is the default, so the initial state must be light too — starting at
+  // "dark" made the switch render in its night position for a frame on every
+  // load, then flip.
+  const [theme, setTheme] = React.useState<"dark" | "light">("light");
   const isDark = theme === "dark";
 
   React.useEffect(() => {
-    const stored = localStorage.getItem("mm-theme");
-    setTheme(stored === "light" ? "light" : "dark");
+    // Only an explicit stored "dark" is dark. Anything else — unset, corrupt,
+    // storage blocked — is light, matching the pre-paint script in layout.tsx
+    // and the :root defaults in globals.css.
+    try {
+      setTheme(localStorage.getItem("mm-theme") === "dark" ? "dark" : "light");
+    } catch {
+      setTheme("light");
+    }
   }, []);
 
   function toggle() {
     const next = isDark ? "light" : "dark";
-    const root = document.documentElement;
-    root.classList.toggle("light", next === "light");
-    root.classList.toggle("dark", next === "dark");
-    localStorage.setItem("mm-theme", next);
+    // Only the `dark` class is meaningful now; `.light` no longer exists as a
+    // selector, because :root carries the light values.
+    document.documentElement.classList.toggle("dark", next === "dark");
+    try {
+      localStorage.setItem("mm-theme", next);
+    } catch {
+      /* storage blocked — the choice still applies for this page view */
+    }
     setTheme(next);
   }
 

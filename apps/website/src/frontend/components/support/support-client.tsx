@@ -27,7 +27,7 @@ const STATUS_META: Record<string, { label: string; cls: string; step: number }> 
   open: { label: "Open", cls: "bg-blue-500/10 text-blue-500", step: 0 },
   "in-progress": { label: "In progress", cls: "bg-amber-500/10 text-amber-500", step: 1 },
   waiting: { label: "Waiting on you", cls: "bg-amber-500/10 text-amber-500", step: 1 },
-  resolved: { label: "Resolved", cls: "bg-emerald-500/10 text-emerald-500", step: 2 },
+  resolved: { label: "Resolved", cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400", step: 2 },
   closed: { label: "Closed", cls: "bg-muted text-muted-foreground", step: 2 },
 };
 
@@ -177,7 +177,7 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
     return (
       <div className="rounded-2xl border border-border bg-surface p-8 text-center">
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
-          <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+          <CheckCircle2 className="h-8 w-8 text-emerald-700 dark:text-emerald-400" />
         </span>
         <h2 className="mt-5 font-display text-2xl font-bold">Ticket created</h2>
         <p className="mt-2 text-muted-foreground">

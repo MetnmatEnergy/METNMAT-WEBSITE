@@ -42,7 +42,7 @@ export function PriceBlock({
         </span>
       )}
       {discount > 0 && (
-        <span className="text-sm font-semibold text-emerald-500">{discount}% off</span>
+        <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">{discount}% off</span>
       )}
       {product.price > 0 && (
         <span className="text-xs text-muted-foreground">/ {product.unit} · incl. GST</span>

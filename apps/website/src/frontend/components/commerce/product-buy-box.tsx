@@ -31,7 +31,7 @@ export function ProductBuyBox({ product }: { product: Product }) {
 
   const madeToOrder = product.productType === "made-to-order";
   const stock = (
-    <p className={`mt-1 text-sm ${product.inStock && !madeToOrder ? "text-emerald-500" : "text-amber-500"}`}>
+    <p className={`mt-1 text-sm ${product.inStock && !madeToOrder ? "text-emerald-700 dark:text-emerald-400" : "text-amber-500"}`}>
       {madeToOrder ? "Made to order" : product.inStock ? "In stock" : "Made to order"} · {product.leadTime}
     </p>
   );
@@ -117,7 +117,7 @@ export function ProductBuyBox({ product }: { product: Product }) {
           <span className="text-muted-foreground line-through">
             {money(mrpIncl, usdFor(product, mrpIncl))}
           </span>{" "}
-          <span className="font-semibold text-emerald-500">{off}% off</span>
+          <span className="font-semibold text-emerald-700 dark:text-emerald-400">{off}% off</span>
         </p>
       )}
 

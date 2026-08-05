@@ -82,7 +82,7 @@ export default async function CheckoutSuccessPage({
     <Container className="py-16">
       <div className="mx-auto max-w-lg text-center">
         <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
-          <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+          <CheckCircle2 className="h-10 w-10 text-emerald-700 dark:text-emerald-400" />
         </span>
         <h1 className="mt-6 font-display text-3xl font-bold tracking-tight">
           Payment successful — order confirmed!

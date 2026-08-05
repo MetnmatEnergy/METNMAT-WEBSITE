@@ -318,7 +318,7 @@ export function AttachmentUploader({
                     </span>
                   )}
                   {it.status === "done" && (
-                    <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-500">
+                    <span className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
                       <CheckCircle2 className="h-3.5 w-3.5" /> Uploaded
                     </span>
                   )}

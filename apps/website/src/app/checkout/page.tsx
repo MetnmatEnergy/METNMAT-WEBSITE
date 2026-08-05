@@ -142,7 +142,7 @@ function TextField({
           onBlur={onBlur}
         />
         {valid && !error && (
-          <Check className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" aria-hidden />
+          <Check className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-700 dark:text-emerald-400" aria-hidden />
         )}
       </div>
       {error && (
@@ -703,7 +703,7 @@ export default function CheckoutPage() {
                     onBlur={blur("phone")}
                   />
                   {phoneValid && !errors.phone && (
-                    <Check className="mr-3 h-4 w-4 shrink-0 self-center text-emerald-500" aria-hidden />
+                    <Check className="mr-3 h-4 w-4 shrink-0 self-center text-emerald-700 dark:text-emerald-400" aria-hidden />
                   )}
                 </div>
                 {errors.phone && (

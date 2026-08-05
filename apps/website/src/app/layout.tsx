@@ -91,13 +91,24 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0b",
+  // Matches the default (light) surface, with a dark alternative for anyone
+  // whose OS is dark — this is the browser UI colour, not the page theme.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0b" },
+  ],
   width: "device-width",
   initialScale: 1,
 };
 
 // Apply persisted theme before paint to avoid a flash.
-const themeScript = `(function(){try{var t=localStorage.getItem('mm-theme');var d=document.documentElement;if(t==='light'){d.classList.add('light');d.classList.remove('dark');}else{d.classList.add('dark');}}catch(e){document.documentElement.classList.add('dark');}})();`;
+// Light is the default; only an explicit stored 'dark' turns it on. Runs before
+// paint so a returning dark-mode visitor never sees a light flash.
+//
+// Note it only ever ADDS the class — the server renders no theme class at all,
+// so there is nothing to remove, and :root already carries the light values.
+// If this script fails, the page stays light rather than falling back to dark.
+const themeScript = `(function(){try{if(localStorage.getItem('mm-theme')==='dark'){document.documentElement.classList.add('dark');}}catch(e){}})();`;
 
 export default async function RootLayout({
   children,
@@ -105,7 +116,7 @@ export default async function RootLayout({
   // ₹-per-$ display rate, maintained by staff in the dashboard.
   const usdRate = await getUsdRate();
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} dark`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         {/* Feed autodiscovery, emitted here rather than through Metadata.

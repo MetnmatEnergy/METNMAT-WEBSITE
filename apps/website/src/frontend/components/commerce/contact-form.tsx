@@ -117,7 +117,7 @@ export function ContactForm() {
         role="status"
         className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface/60 px-6 py-16 text-center outline-none"
       >
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
           <CheckCircle2 className="h-7 w-7" />
         </span>
         <h3 className="mt-5 font-display text-xl font-semibold">Message sent</h3>

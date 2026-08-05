@@ -113,7 +113,7 @@ export function CatalogProductCard({
           <span
             className={cn(
               "inline-flex items-center gap-1",
-              product.inStock ? "text-emerald-500" : "text-amber-500"
+              product.inStock ? "text-emerald-700 dark:text-emerald-400" : "text-amber-500"
             )}
           >
             <span

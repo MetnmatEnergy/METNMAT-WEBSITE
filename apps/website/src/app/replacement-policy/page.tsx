@@ -103,12 +103,12 @@ export default function ReplacementPolicyPage() {
           <div className="mt-8 grid gap-8 lg:grid-cols-2">
             <div>
               <h3 className="flex items-center gap-2 font-display text-base font-semibold">
-                <CheckCircle2 className="h-5 w-5 text-emerald-500" /> Eligible for replacement
+                <CheckCircle2 className="h-5 w-5 text-emerald-700 dark:text-emerald-400" /> Eligible for replacement
               </h3>
               <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
                 {eligible.map((item) => (
                   <li key={item} className="flex gap-2.5">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
                     <span>{item}</span>
                   </li>
                 ))}

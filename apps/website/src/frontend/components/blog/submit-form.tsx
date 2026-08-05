@@ -133,7 +133,7 @@ export function SubmitForm({
   if (reference) {
     return (
       <div role="status" className="rounded-2xl border border-border bg-surface p-8 text-center md:p-12">
-        <CheckCircle2 aria-hidden className="mx-auto h-12 w-12 text-emerald-500" />
+        <CheckCircle2 aria-hidden className="mx-auto h-12 w-12 text-emerald-700 dark:text-emerald-400" />
         <h2 ref={successHeadingRef} tabIndex={-1} className="mt-4 font-display text-2xl font-bold outline-none">
           Publication request submitted
         </h2>
