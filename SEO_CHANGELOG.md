@@ -59,8 +59,30 @@ suggestion would have de-indexed the only page listing all 68 products.
 An earlier 8-concurrent pass reported "91 already gone" — that was Wix
 rate-limiting into connect timeouts, not 404s. Corrected by a sequential re-run.
 
+**5 · Internal-linking map + roadmap.** `docs/seo/ROADMAP.md` — prioritised
+backlog, 30/60/90, and a sitelink-readiness score of **62/100** scored against
+measurable signals. Crawled all 126 indexable sitemap URLs: **0 orphans**, but
+`/shop/all` has exactly **1** inbound link and 11 products have 1 (P2-6).
+
 **Verification:** `tsc --noEmit` clean · `next build` clean · `next lint` clean
 · `pnpm test` 222 passed.
+
+The title fix was verified end-to-end, not inferred: rebuilt against the live
+CMS and rendered locally. `NEXT_PUBLIC_*` is inlined at build time, so the first
+attempt — overriding it at `next start` — silently served the 404 page's root
+metadata and had to be redone as a rebuild.
+
+| | before (production) | after (local, live CMS) |
+|---|---|---|
+| `<title>` | `…(3 mm) — METNMAT · METNMAT` | `…(3 mm) · METNMAT` |
+| `og:title` | `…(3 mm) — METNMAT` | `…(3 mm) · METNMAT` |
+| `og:site_name` | *absent* | `METNMAT INNOVATIONS PRIVATE LIMITED` |
+| `twitter:title` | `…(3 mm) — METNMAT` | `…(3 mm) · METNMAT` |
+| canonical | correct | unchanged |
+| `Product` schema | present | unchanged |
+
+Checked across 4 products. Every catalogue product currently carries brand
+`METNMAT`, so the third-party-brand branch is preserved but unexercised today.
 
 ---
 

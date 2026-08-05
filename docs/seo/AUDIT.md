@@ -295,7 +295,47 @@ Ordered by leverage.
 
 ---
 
-## 9. How this was measured
+## 9. Internal-linking map
+
+Built by crawling all **126** indexable URLs from the live sitemap and
+extracting every internal `href`. Inbound-link counts below are real, not
+derived from the route table.
+
+**Orphans: 0.** Every URL in the sitemap has at least one internal link
+pointing at it. That is the result you want and it is worth stating plainly.
+
+**Site-wide tier — 125 inbound each** (header + footer, i.e. every page):
+`/` · `/shop` · `/services` · `/projects` · `/blog` · `/about` · `/contact` ·
+`/quote` · `/support` · `/privacy` · `/terms` · `/replacement-policy`
+
+**Thinly linked — 1–2 inbound (19 URLs):**
+
+| Inbound | URL | Note |
+|---:|---|---|
+| **1** | `/shop/all` | **The full catalogue, linked from one page** |
+| 1 | 11 product pages | reachable only from their category |
+| 2 | 3 product pages, 2 categories, 2 projects | |
+
+### P2-6 · `/shop/all` is under-linked
+
+The page that lists all 68 products has exactly **one** inbound link — from
+`/shop`. It is not in the header or the footer, so it receives none of the
+site-wide equity that `/quote`, `/support` and the policy pages all get.
+
+This is the interesting counterpart to the finding I withdrew in §4. I first
+claimed `/shop/all` was *competing* with `/shop`; the crawl shows the opposite
+problem — it is starved. A footer link under a "Shop" grouping would fix it
+without touching the hub/catalogue structure.
+
+The 11 single-inbound products are a milder version of the same thing: they are
+reachable only from their category page, so category → product is their sole
+path. Related-product links already exist in `Product.isRelatedTo` schema;
+surfacing those as real on-page links would raise the floor across the
+catalogue.
+
+---
+
+## 10. How this was measured
 
 ```bash
 # indexability
