@@ -120,6 +120,25 @@ Two clarifications, so this is on the record fairly:
 | projects | 15 |
 | images | 6 |
 
+### Sitemap / robots / canonical validation — 126 URLs, 0 contradictions
+
+A sitemap is a set of assertions: *"these URLs are canonical and indexable."*
+Every disagreement between it, `robots.txt`, the `meta robots` tag and the
+`rel=canonical` surfaces in Search Console as a coverage error. All four were
+checked against all 126 declared URLs:
+
+| Check | Failures |
+|---|---:|
+| Declared in the sitemap but not `200` | **0** |
+| Declared in the sitemap but `Disallow`'d in robots.txt | **0** |
+| Declared in the sitemap but carries `noindex` | **0** |
+| Missing `rel=canonical` | **0** |
+| Canonical points to a *different* URL than the sitemap declares | **0** |
+
+Clean. This is the layer people usually expect to find broken when organic
+traffic is flat, and it is the strongest single piece of evidence for §1's
+conclusion that the problem is not technical.
+
 The `legacy-redirects.mjs` work is genuinely good and worth calling out: 123
 mappings derived from *product specification data* (chemistry, body material,
 form factor, dimensions) rather than slug similarity, with each mapping's
