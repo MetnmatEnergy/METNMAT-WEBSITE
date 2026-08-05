@@ -6,6 +6,51 @@ Format: what changed · why · files · verification.
 
 ---
 
+## 2026-08-05 — MERGED TO `main` AND DEPLOYED (`c0b1f25`)
+
+Merged `seo/technical-geo-overhaul` (7 commits) and pushed. Cloud Build →
+Cloud Run. **Verified live on production ~200 s after push**, not assumed:
+
+| Check | Result |
+|---|---|
+| Product `<title>` | `…(3 mm) · METNMAT` — double-brand gone |
+| `og:title` | branded (was bare) |
+| `og:site_name` | present (was absent) |
+| `/blank-4`, `/blank-5` | `301 → /support` (were → `/account/orders`) |
+| Homepage `FAQPage` | 5 `Question` nodes — the `active` filter did not empty it |
+| `admin.metnmat.com/admin` | `200` |
+| CMS products API | `200` |
+
+Pre-merge gate, all with real exit codes: `pnpm typecheck` 0 · `pnpm lint` 0
+(both apps) · `pnpm test` 0 (227 passed, 26 files) · `pnpm build` 0 (both apps
+compiled). `importMap.js` verified identical to `main` and still 1 import +
+1 map entry after the build (gotcha #2).
+
+A note on the build gate: `next build | tail` reports **tail's** exit code, not
+the build's. Every build above was checked with an unpiped exit code.
+
+### Round-2 findings — see `docs/seo/FINDINGS-ROUND-2.md`
+
+A 4-way measurement pass (metadata, structured data, IA, CWV) with independent
+adversarial verifiers. Two verifiers flagged fabrication and two agents
+contradicted each other, so everything below was **re-measured by hand**:
+
+- **P0** `/services` pulls hero imagery from `images.unsplash.com` — 34 refs,
+  16 lazy-loaded, mobile LCP 8.93 s median. Performance, third-party
+  availability, and a DPDP-relevant third-party request all in one.
+- **P1** every CMS image returns `404` to `HEAD` but `200` to `GET`.
+- **P1** 62 of 68 `Product` nodes emit no `image`.
+- **P1** og:image absent on 101 of 126 indexable URLs.
+- **P1** 4 meta descriptions byte-identical across 11 product URLs.
+
+**Corrected an agent:** the claim that 7 URLs share a `<title>` is false —
+0 duplicate title groups across all 126 sitemap URLs.
+
+None of these are regressions; all pre-date the deploy. None were changed in
+this pass — the `/services` and media-route fixes both need decisions.
+
+---
+
 ## 2026-08-05 — Phase 2b: the FAQ `active` flag was decorative
 
 **The CMS checkbox did nothing.** `Faqs.active` is labelled *"Uncheck to hide"*,
