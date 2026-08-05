@@ -55,8 +55,15 @@ export const legacyRedirects = [
   { source: "/blank", destination: "/quote", statusCode: 301 },
   { source: "/blank-1", destination: "/terms", statusCode: 301 },
   { source: "/blank-3", destination: "/support", statusCode: 301 },
-  { source: "/blank-4", destination: "/account/orders", statusCode: 301 },
-  { source: "/blank-5", destination: "/account/orders", statusCode: 301 },
+  // /blank-4 is "Order Tracking" and /blank-5 is "tracking-status" on the legacy
+  // site (confirmed from their live <title>s). Both used to point at
+  // /account/orders, which is a dead end for the visitor these redirects exist
+  // to serve: it is `Disallow: /account` in robots.txt AND 307s to /login, so a
+  // crawler cannot follow it and a logged-out customer arriving from an old link
+  // hits a sign-in wall instead of help. There is no public order-tracking page
+  // — tracking lives inside the account — so /support is the real equivalent.
+  { source: "/blank-4", destination: "/support", statusCode: 301 },
+  { source: "/blank-5", destination: "/support", statusCode: 301 },
 
   // ---- Store products (65 of 100 resolve to a specific product) ----
   { source: "/product-page/30-ton-hydraulic-press-four-pillar-hand-operated-semi-automatic-model-mhp-30", destination: "/shop/p/30-ton-hydraulic-press-four-pillar-hand-operated-semi-automatic-model", statusCode: 301 }, // truncated

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 // @ts-expect-error — generated .mjs data module, no types
 import { legacyRedirects } from "../apps/website/legacy-redirects.mjs";
+import robots from "../apps/website/src/app/robots";
 
 type Rule = { source: string; destination: string; statusCode: number };
 const rules = legacyRedirects as Rule[];
@@ -93,6 +94,25 @@ describe("legacy redirect map", () => {
 
   it("only ever redirects to internal paths", () => {
     for (const r of rules) expect(r.destination.startsWith("/")).toBe(true);
+  });
+
+  it("never lands a redirect on a route robots.txt disallows", () => {
+    // /blank-4 ("Order Tracking") and /blank-5 ("tracking-status") used to point
+    // at /account/orders. The destination is auth-gated, so a logged-out visitor
+    // arriving from an old link hit a 307 to /login instead of help — and
+    // /account is Disallow'd, so a crawler could not follow it at all. A 301 into
+    // a route we have told crawlers to ignore spends the legacy URL's equity on
+    // nothing.
+    //
+    // Derived from robots.ts rather than a hardcoded list, so adding a disallow
+    // there fails this test instead of silently creating dead redirects.
+    const disallowed = (robots().rules as { disallow?: string[] }).disallow ?? [];
+    expect(disallowed.length).toBeGreaterThan(0);
+
+    const bad = rules
+      .filter((r) => disallowed.some((d) => r.destination === d || r.destination.startsWith(`${d}/`)))
+      .map((r) => `${r.source} -> ${r.destination}`);
+    expect(bad).toEqual([]);
   });
 
   it("uses a literal 301 — Next's permanent:true emits 308, and the brief's gate (and every SEO tool) expects 301", () => {

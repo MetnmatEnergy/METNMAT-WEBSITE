@@ -550,12 +550,31 @@ export async function getBlogPostFull(slug: string): Promise<BlogPostFull | null
   return ph ? { ...ph } : null;
 }
 
-export type Faq = { q: string; a: string };
-type CmsFaq = { question: string; answer: string };
-/** FAQs — returns [] when none in CMS so the caller can fall back to its own. */
-export async function getFaqs(): Promise<Faq[]> {
-  const data = await api<{ docs: CmsFaq[] }>("/api/faqs?depth=0&limit=100&sort=order");
-  return (data?.docs ?? []).map((d) => ({ q: d.question, a: d.answer }));
+export type Faq = { q: string; a: string; category?: string };
+type CmsFaq = { question: string; answer: string; category?: string };
+/**
+ * FAQs — returns [] when none in CMS so the caller can fall back to its own.
+ *
+ * Filters on `active`. It previously did not, which made the admin checkbox
+ * decorative: its own description reads "Uncheck to hide", but an unchecked FAQ
+ * still rendered on the page AND was still emitted as FAQPage structured data.
+ * Staff had no way to retract a published answer from Google short of deleting
+ * the record.
+ *
+ * `not_equals: false` rather than `equals: true` so a document written before
+ * the field existed (no `active` key at all) still shows, instead of silently
+ * emptying the section.
+ *
+ * `category` is optional and free text in the CMS. Passing one scopes the
+ * result, so a page can emit an FAQPage of only its own questions — the schema
+ * is driven by what is actually in the database, not by a hardcoded list.
+ */
+export async function getFaqs(category?: string): Promise<Faq[]> {
+  const scope = category ? `&where[category][equals]=${encodeURIComponent(category)}` : "";
+  const data = await api<{ docs: CmsFaq[] }>(
+    `/api/faqs?depth=0&limit=100&sort=order&where[active][not_equals]=false${scope}`,
+  );
+  return (data?.docs ?? []).map((d) => ({ q: d.question, a: d.answer, category: d.category }));
 }
 
 export type TeamMember = { name: string; role?: string; photoUrl?: string; bio?: string; linkedin?: string };
