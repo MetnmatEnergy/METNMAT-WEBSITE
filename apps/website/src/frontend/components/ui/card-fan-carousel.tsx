@@ -298,8 +298,21 @@ export default function CardFanCarousel({ cards }: CardFanProps) {
           {cards.map((card, index) => {
             const image = (
               <div className="relative h-full w-full overflow-hidden">
+                {/* The fan's front card is the LCP element on /services, and
+                    lazy-loading it meant the browser deferred the exact thing
+                    the metric waits on — mobile LCP measured 8.93s median. The
+                    first two cards load eagerly (the front card plus its
+                    neighbour, both visible without interaction); the rest, which
+                    are fanned behind and revealed on click, stay lazy. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={card.imgUrl} loading="lazy" alt={card.alt || card.title || `Card ${index}`} className="absolute inset-0 h-full w-full object-cover" />
+                <img
+                  src={card.imgUrl}
+                  loading={index < 2 ? "eager" : "lazy"}
+                  fetchPriority={index === 0 ? "high" : undefined}
+                  decoding={index < 2 ? "sync" : "async"}
+                  alt={card.alt || card.title || `Card ${index}`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
                 {card.title ? (
                   <>
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" aria-hidden />

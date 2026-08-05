@@ -6,6 +6,78 @@ Format: what changed · why · files · verification.
 
 ---
 
+## 2026-08-05 — Phase 3: self-hosted service imagery + HEAD on the REST API
+
+Fixes the P0 and the first P1 from `docs/seo/FINDINGS-ROUND-2.md`.
+
+### 1 · `/services` photography is now self-hosted
+
+The 8 service photos were loaded from `images.unsplash.com` on every page view.
+Three problems in one request: the `/services` fan-carousel photo is the **LCP
+element**, so a third-party origin had to be DNS-resolved, connected and
+TLS-negotiated before its first byte (mobile LCP 8.93 s median); a production
+page depended on a CDN nobody here controls; and every visitor's IP reached
+Unsplash before any consent decision, on a site that ships a DPDP consent layer.
+
+Same photographs, same ids, same crop — fetched once and re-encoded to webp at
+the two widths the design already used (900 w master for the portrait fan card,
+750 w for the homepage letterbox). **677 KB for all 16 files.** The Unsplash
+License permits download, commercial use and self-hosting with no attribution.
+
+The **LCP element was also `loading="lazy"`** — the browser was deferring the
+exact element the metric waits on, the worst possible LCP pattern. The first two
+cards (the front card and its visible neighbour) now load eagerly, with
+`fetchpriority="high"` and `decoding="sync"` on the front one. The rest are
+fanned behind and revealed on click, so they stay lazy.
+
+`images.unsplash.com` is also **removed from the CSP `img-src`** — no page may
+now load an image from a third-party origin at all.
+
+- `apps/website/src/frontend/lib/service-images.ts`
+- `apps/website/src/frontend/components/ui/card-fan-carousel.tsx`
+- `apps/website/next.config.mjs`
+- `apps/website/scripts/fetch-service-images.mjs` (new — regenerates the set)
+- `apps/website/public/services/` (new — 16 files)
+
+**Verified in a real browser** against a build wired to the live CMS:
+
+| Check | Before | After |
+|---|---|---|
+| `images.unsplash.com` refs on `/services` | 34 | **0** |
+| Unsplash anywhere in the DOM | yes | **false** |
+| Self-hosted images that decode | — | **8/8**, correct dimensions |
+| Front card | `loading="lazy"` | `eager` + `fetchpriority="high"` |
+| Homepage Unsplash refs | 12 | **0** |
+| CSP `img-src` | allowed Unsplash | `'self' data: blob:` + CMS/GCS/chatbot |
+
+### 2 · `HEAD` now works across the Payload REST API
+
+Every media file returned **404 to `HEAD`** while returning 200 to `GET`, so
+crawlers, link checkers and asset validators saw the whole media library as
+missing — including the images in the website's image sitemap.
+
+Root cause: `apps/dashboard/src/app/(payload)/api/[...slug]/route.ts` exported
+GET/POST/DELETE/PATCH/PUT/OPTIONS but no HEAD. Next only auto-derives HEAD from
+GET when no handler claims the method; this catch-all *does* claim it, hands it
+to Payload's REST router, and that router dispatches on the method — with no
+HEAD route it fell through to its own 404 JSON.
+
+Now runs the real GET and drops the body, passing the response headers through
+untouched, per RFC 9110.
+
+- `apps/dashboard/src/app/(payload)/api/[...slug]/route.ts`
+
+**Verified locally**: HEAD and GET now return an identical status and
+content-type with 0 bytes on HEAD, where HEAD previously 404'd against a
+succeeding GET. The local Atlas credentials fail (`bad auth`), so both returned
+500 rather than 200 — that proves the *dispatch*, which was the defect, but the
+media-file 200 itself is confirmed on production below.
+
+**Verification:** `pnpm typecheck` 0 · `next lint` 0 (both apps) · `pnpm test` 0
+(227) · `pnpm build` 0 (both apps) · `importMap.js` unchanged, 2 lines.
+
+---
+
 ## 2026-08-05 — MERGED TO `main` AND DEPLOYED (`c0b1f25`)
 
 Merged `seo/technical-geo-overhaul` (7 commits) and pushed. Cloud Build →

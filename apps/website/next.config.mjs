@@ -4,8 +4,10 @@ import { legacyRedirects } from "./legacy-redirects.mjs";
 // so browser <img> tags and fetches to them aren't blocked by CSP.
 const CMS_ORIGIN = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
 const STORAGE_ORIGINS = "https://storage.googleapis.com";
-// Unsplash CDN — themed stock photography used on the Services showcase.
-const UNSPLASH_ORIGIN = "https://images.unsplash.com";
+// NOTE: images.unsplash.com was allow-listed here for the Services showcase
+// photography. Those images are now self-hosted under public/services/, so the
+// allowance is gone — nothing on the site may load an image from a third-party
+// origin any more. See frontend/lib/service-images.ts for why they moved.
 // Parse the CMS origin into next/image remotePattern parts (protocol w/o ":").
 const cmsImageHost = (() => {
   try {
@@ -38,7 +40,7 @@ const ContentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${DEV_EVAL} ${CHATBOT_ORIGIN} ${RAZORPAY_SCRIPT}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${CMS_ORIGIN} ${STORAGE_ORIGINS} ${UNSPLASH_ORIGIN} ${CHATBOT_ORIGIN}`,
+  `img-src 'self' data: blob: ${CMS_ORIGIN} ${STORAGE_ORIGINS} ${CHATBOT_ORIGIN}`,
   "font-src 'self' data:",
   `connect-src 'self' ${CMS_ORIGIN} ${STORAGE_ORIGINS} ${CHATBOT_ORIGIN} ${RAZORPAY_CONNECT}`,
   `frame-src 'self' ${CHATBOT_ORIGIN} https://www.google.com https://maps.google.com https://api.razorpay.com ${RAZORPAY_SCRIPT}`,
