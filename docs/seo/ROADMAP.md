@@ -20,7 +20,8 @@ Status as of 2026-08-05.
 | P1-1 | Product titles double-brand | Me | — | Medium | ✅ Fixed |
 | P1-2 | ~~`/shop` vs `/shop/all` compete~~ | — | — | — | ⛔ Withdrawn, not a defect |
 | P1-3 | 62 of 68 products have no image | You (photography) | large | Medium | Open |
-| P2-3 | FAQ schema not category-aware; `/services`, `/projects` have none | Me + you (content) | small + content | Medium | Open |
+| P2-3 | FAQ schema not category-aware; `/services`, `/projects` have none | Me + you (content) | small + content | Medium | ⚙️ Plumbing done, blocked on content |
+| **P1-4** | CMS "active" checkbox on FAQs did nothing — unchecked FAQs still rendered *and* still emitted `FAQPage` schema | Me | — | Medium | ✅ Fixed |
 | P2-4 | `/shop` `<h1>` is "METNMAT Store" — no keyword | You (approve copy) | minutes | Low-Med | Awaiting decision |
 | P2-5 | Two legacy redirects landed on a robots-disallowed route | Me | — | Low | ✅ Fixed |
 | P2-6 | `/shop/all` has 1 inbound link; 11 products have 1 | Me (needs your OK on footer copy) | small | Medium | Open |
@@ -56,11 +57,18 @@ old domain would be unusual.
 6. **Product photography** (P1-3). 62 imageless products is the largest single
    gap in the commerce surface. Product rich results substantially discount
    imageless items, and this is the one item on the list with no workaround.
-7. **Service and project FAQs** in the CMS. The `Faqs` collection already has a
-   `category` field; once real service FAQs exist I can make the FAQ schema
-   category-aware so `/services` emits its own `FAQPage`. I will not write these
-   — invented FAQs are fabrication, and the 5 live ones are company/product
-   scoped.
+7. **Service and project FAQs** in the CMS. The plumbing now exists —
+   `getFaqs("Services")` returns only that category — so the moment you add real
+   service FAQs, the page can emit its own `FAQPage`. Measured today:
+   `category=Services` returns **0**. I will not write these; invented FAQs are
+   fabrication, and the 5 live ones are company/product scoped.
+
+   Two things must land together, and this is why I did not just wire it up:
+   Google requires FAQ structured data to correspond to FAQs **visible on the
+   page**. Emitting `FAQPage` on `/services` for content that is not rendered
+   would breach that guideline and risks a structured-data manual action. So
+   this needs (a) real Service-category FAQs in the CMS, and (b) your sign-off
+   on a visible FAQ section on `/services` — it is on-page design, not markup.
 8. **Decide on the `/shop` `<h1>`** (P2-4) and on a footer link to `/shop/all`
    (P2-6). A crawl of all 126 indexable URLs found **0 orphans** — good — but
    the full catalogue has exactly one inbound link and 11 products have one.

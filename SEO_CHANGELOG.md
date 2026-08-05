@@ -6,6 +6,50 @@ Format: what changed · why · files · verification.
 
 ---
 
+## 2026-08-05 — Phase 2b: the FAQ `active` flag was decorative
+
+**The CMS checkbox did nothing.** `Faqs.active` is labelled *"Uncheck to hide"*,
+but the website query had no filter on it and neither did the component. An
+unchecked FAQ still rendered on the homepage **and** was still emitted as
+`FAQPage` structured data — so staff had no way to retract a published answer
+from Google short of deleting the record. The bug was invisible in the data
+(all 5 live FAQs happen to be active); it existed only in the request URL.
+
+Now filters `where[active][not_equals]=false` — deliberately not
+`equals=true`, so a document written before the field existed (no `active` key)
+still shows rather than silently emptying the section.
+
+`getFaqs()` also takes an optional category and returns `category` on each row,
+so a page can emit an `FAQPage` of only its own questions, driven by the
+database rather than a hardcoded list.
+
+**Verified against the live CMS**, not assumed:
+
+| query | totalDocs |
+|---|---:|
+| unfiltered (old) | 5 |
+| `active != false` (new) | 5 — no regression today |
+| `active == false` | 0 |
+| `active != false` + `category=Services` | 0 |
+
+An earlier probe of these same queries reported `PARSE-FAIL`. That was Bash
+glob-expanding the unquoted `[` in the URL, not the CMS rejecting anything.
+
+**Deliberately NOT done: `FAQPage` on `/services`.** The plumbing is ready and
+`category=Services` returns 0, but Google requires FAQ structured data to match
+FAQs *visible on the page*. Emitting schema for unrendered content would breach
+that guideline. Needs real Service FAQs **and** sign-off on a visible section.
+
+- `apps/website/src/frontend/lib/cms.ts`
+- `test/faq-query.test.ts` (new, 5 tests — 222 → 227)
+
+Regression-proven: removing the filter fails
+*"excludes FAQs staff have unchecked"*; restoring it passes.
+
+**Verification:** `tsc --noEmit` clean · `next build` clean · `pnpm test` 227.
+
+---
+
 ## 2026-08-05 — Phase 2a: title fix, dead redirect fix, consolidation plan
 
 Decisions taken: **Option B — consolidate `.IN` → `.COM`**; maintenance banner
