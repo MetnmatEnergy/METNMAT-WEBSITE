@@ -67,7 +67,16 @@ export async function generateMetadata({
   if (!product) notFound();
   // CMS overrides win; each falls back to what the page derived before, so a
   // product with the SEO tab untouched renders byte-identical metadata.
-  const title = product.seoTitle || (product.brand ? `${product.name} — ${product.brand}` : product.name);
+  //
+  // The brand suffix is only appended for a THIRD-PARTY brand. Appending it
+  // unconditionally double-branded every own-brand product, because the root
+  // title template (app/layout.tsx) already appends " · METNMAT": the SERP title
+  // read "…Working Electrode (3 mm) — METNMAT · METNMAT", burning ~10 characters
+  // of a ~60-character budget on a repeat of the same word. Branding is the
+  // template's job; the page title's job is the product.
+  const brand = product.brand?.trim();
+  const ownBrand = brand?.toLowerCase() === site.name.toLowerCase();
+  const title = product.seoTitle || (brand && !ownBrand ? `${product.name} — ${brand}` : product.name);
   const description = product.metaDescription || product.shortDesc;
   const image = product.ogImageUrl || product.imageUrl;
   return {
@@ -80,14 +89,20 @@ export async function generateMetadata({
     alternates: { canonical: product.canonicalUrl || `/shop/p/${slug}` },
     openGraph: {
       type: "website",
-      title,
+      // Branded explicitly: Next's root title template applies to `title` only,
+      // never to openGraph/twitter. Every other route brands its OG title via
+      // pageMetadata() as "<page> · METNMAT"; this one was shipping bare, so a
+      // shared product link showed no company name at all once the redundant
+      // "— METNMAT" suffix above was removed.
+      title: `${title} · ${site.name}`,
+      siteName: site.legalName,
       description,
       url: `${site.url}/shop/p/${slug}`,
       ...(image ? { images: [{ url: image }] } : {}),
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: `${title} · ${site.name}`,
       description,
       ...(image ? { images: [image] } : {}),
     },

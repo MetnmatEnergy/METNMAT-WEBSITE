@@ -173,12 +173,27 @@ The PDP builds a title that already ends in `— METNMAT`, then the root templat
 appends ` · METNMAT` again. Wastes ~10 characters of SERP title and reads as an
 error. Fix: strip the suffix at the source so the template does the branding.
 
-**P1-2 · `/shop` and `/shop/all` compete.**
-Both `index, follow`, both self-canonical, both list products, both target
-catalogue intent. Two URLs competing for one query. Recommend: keep `/shop` as
-the indexable landing page and make `/shop/all` the paginated deep list
-(canonical to itself is fine, but the two need distinct, non-overlapping
-targeting — or `/shop/all` should canonical to `/shop`).
+**P1-2 · ~~`/shop` and `/shop/all` compete.~~ — WITHDRAWN, I was wrong.**
+I flagged these as competing duplicates on the basis that both are
+`index, follow` and both list products. Checking properly before acting on it:
+
+- `/shop` `<h1>` is **"METNMAT Store"** — a hub, with categories and 8 featured products
+- `/shop/all` `<h1>` is **"All products"** — the filterable catalogue
+- `/shop` links to `/shop/all`, so it is a deliberate hub → catalogue path
+- Filtered views are already `noindex, follow`; unfiltered pages 2+ already
+  self-canonicalise. The same pattern is applied consistently on
+  `/shop/c/[category]` and `/blog`
+
+That is a correct, conventional e-commerce structure, and the pagination
+handling is textbook. Canonicalising `/shop/all` to `/shop` — my original
+suggestion — would have de-indexed the only page that lists all 68 products.
+**No change made.**
+
+One real, smaller thing surfaced while checking: `/shop`'s `<h1>` is
+"METNMAT Store", which is purely branded on the page most likely to rank for
+"electrochemistry lab equipment" style queries. Worth a keyword-bearing `<h1>`,
+but that is visible brand copy, so it is listed as P2-4 for your approval rather
+than changed unilaterally.
 
 **P1-3 · 62 of 68 products have no image.**
 `Product.image` is present in schema, but pointing at a placeholder for the
@@ -192,9 +207,17 @@ owner list; restating because it directly gates product rich results.
   relevant if you choose Option A in §5.
 - **P2-2** `pages.xml` omits `/quote`, `/support` are present but several
   legitimate landing pages could be added as the content grows.
-- **P2-3** No `Article`-level `speakable` or FAQ blocks on `/services` and
-  `/projects` — both are strong generative-answer candidates and currently
-  offer LLMs less extractable structure than `/` does.
+- **P2-3** No FAQ blocks on `/services` and `/projects` — both are strong
+  generative-answer candidates and currently offer LLMs less extractable
+  structure than `/` does. The `Faqs` collection already has an optional
+  `category` field, so the honest fix is to make FAQ schema category-aware and
+  let you add real service FAQs in the CMS. **Not** to write FAQs myself —
+  the 5 live FAQs are company/product scoped and inventing service ones would
+  be fabrication.
+- **P2-4** `/shop` `<h1>` is "METNMAT Store" — no keyword on the page most
+  likely to rank for catalogue queries. Visible brand copy, so your call.
+- **P2-5** `/blank-4` and `/blank-5` legacy redirects pointed at
+  `/account/orders` — robots-disallowed and 307-gated. **Fixed in this pass.**
 
 ---
 
