@@ -93,6 +93,12 @@ No further code change is needed on the `.com` side.
 - `legacy-redirects.mjs` (122 entries) is wired through `next.config.mjs:103`,
   so any legacy URL that arrives at `.com` directly — from an old bookmark, an
   inbound link, or a stale index entry — already resolves.
+- **No redirect chains.** Sampled 24 legacy URLs across every mapping kind —
+  static pages, products, plus both wildcard fallbacks and a deliberately
+  nonexistent product — and **24/24 reach a `200` in exactly one `301` hop**.
+  This matters for the Wix step: `.in` → `.com` will be hop 1, and hop 2 lands
+  on real content rather than another redirect. Equity is not leaking to a
+  chain, and crawlers are not being made to walk one.
 - All 65 unique destinations return `200`, verified live. One exception was
   found and fixed in this pass: `/blank-4` and `/blank-5` (the legacy "Order
   Tracking" and "tracking-status" pages) pointed at `/account/orders`, which is
