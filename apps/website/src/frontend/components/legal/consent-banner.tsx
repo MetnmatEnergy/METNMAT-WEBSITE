@@ -107,9 +107,16 @@ export function ConsentBanner() {
     setShowPrefs(false);
   }, []);
 
-  // Focus management + trap + scroll lock, only while actually open.
+  // Focus trap + scroll lock apply ONLY to the preferences dialog.
+  //
+  // The first-run notice is a bar, not a modal: it asks for a decision without
+  // taking the page hostage, which is the pattern every enterprise consent
+  // platform uses. Trapping focus or locking scroll behind a bar would be
+  // wrong — the visitor is meant to be able to read the site, and the policy
+  // links in the bar have to be reachable. The dialog that the bar opens IS
+  // modal, and gets both.
   React.useEffect(() => {
-    if (!open || decision === undefined) return;
+    if (!open || decision === undefined || !showPrefs) return;
     const panel = panelRef.current;
     if (!panel) return;
 
@@ -130,17 +137,16 @@ export function ConsentBanner() {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
+        // Escape never changes a stored decision. Reopened from the footer it
+        // closes outright; on a first visit it returns to the notice bar, which
+        // still carries Reject and Accept. Either way the visitor keeps a
+        // keyboard way out (WCAG 2.1.2) without a keypress ever being read as
+        // consent OR silently revoking consent they came to read.
         if (forced) {
-          // Reopened from the footer to REVIEW an existing choice. Escape means
-          // "close", as it does in every other dialog — silently revoking the
-          // consent they came to look at would be destructive and surprising.
           setForced(false);
           setShowPrefs(false);
         } else {
-          // First run: there is no decision yet, so Escape must resolve to the
-          // privacy-protective one. It never leaves the visitor undecided and
-          // it can never be read as consent.
-          decide(false);
+          setShowPrefs(false);
         }
         return;
       }
@@ -166,19 +172,107 @@ export function ConsentBanner() {
       body.style.paddingRight = prevPadding;
       restoreFocusRef.current?.focus?.();
     };
-  }, [open, decision, decide, forced]);
+  }, [open, decision, showPrefs, forced]);
 
   // undefined = not read yet. Never flash the dialog before we know whether the
   // visitor already answered.
   if (decision === undefined || !open) return null;
 
+  // ── The notice bar ────────────────────────────────────────────────────────
+  // Default presentation. Full-bleed, pinned to the bottom, non-modal: it asks
+  // for a decision without taking the page hostage. Both choices are on it, so
+  // nobody has to open anything to answer.
+  if (!showPrefs) {
+    return (
+      <div
+        role="region"
+        aria-labelledby={headingId}
+        // z-index measured, not guessed: the support widget injects
+        // #chat-widget-container at 999999.
+        // Solid, not translucent. At bg-background/98 with a blur the hero
+        // headline and product cards still read through the copy — a legal
+        // notice has to be legible over whatever happens to be behind it, and
+        // the page underneath is high-contrast brand red.
+        className="fixed inset-x-0 bottom-0 z-[1000000] border-t border-border bg-background shadow-[0_-8px_32px_-12px_rgba(0,0,0,0.18)] motion-safe:animate-rise-in dark:bg-surface"
+        lang={t.lang}
+      >
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:gap-8 lg:py-5">
+          {/* Copy */}
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <span className="mt-0.5 hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 sm:flex">
+              <ShieldCheck aria-hidden className="h-[18px] w-[18px] text-brand-soft" />
+            </span>
+            <div className="min-w-0">
+              <h2 id={headingId} className="text-sm font-semibold text-foreground">
+                {t.heading}
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                {t.body1} {t.body2}
+              </p>
+              {/* Rule 3: the notice itself carries the routes to withdraw, to
+                  exercise rights and to complain — not just a mention of them. */}
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                {[
+                  { href: "/privacy", label: t.footerLink },
+                  { href: "/privacy/request", label: t.rightsLink },
+                  { href: "/privacy#grievance", label: t.complaintLink },
+                ].map((l) => (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    target="_blank"
+                    rel="noopener"
+                    className="font-medium text-brand-soft underline underline-offset-4 hover:text-brand"
+                  >
+                    {l.label}
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </Link>
+                ))}
+                <span className="text-muted-foreground">· {t.act}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Actions. Reject is DOM-first for keyboard and screen-reader order,
+              and both are the same size and weight — the s.6(4) equal-ease test.
+              There is deliberately NO dismiss "X": closing is not a decision,
+              and it must not be a route past the question. */}
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center lg:gap-3">
+            <select
+              aria-label={t.languageLabel}
+              value={langKey}
+              onChange={(e) => setLangKey(e.target.value)}
+              className="order-last h-10 rounded-lg border border-border bg-surface px-2 text-xs font-medium text-foreground outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:order-first dark:bg-background/40"
+            >
+              {NOTICE_LANGUAGE_KEYS.map((k) => (
+                <option key={k} value={k} lang={NOTICE_LANGUAGES[k].lang}>
+                  {NOTICE_LANGUAGES[k].label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setShowPrefs(true)}
+              className="h-10 whitespace-nowrap rounded-lg px-3 text-sm font-medium text-foreground/80 underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+              {t.manage}
+            </button>
+            <Button variant="outline" onClick={() => decide(false)} className="w-full sm:w-auto">
+              {t.reject}
+            </Button>
+            <Button onClick={() => decide(true)} className="w-full sm:w-auto">
+              {t.accept}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── The preferences dialog ────────────────────────────────────────────────
+  // Modal, because this one IS a focused task: it shows exactly what is stored
+  // and lets analytics be refused while strictly-necessary storage stays.
   return (
-    // z-index measured, not guessed: the support widget injects
-    // #chat-widget-container at 999999, so at z-60 its bubble floated over the
-    // dialog. That was invisible on a first visit (the widget is gated until a
-    // decision exists) but hit every footer reopen, because a returning visitor
-    // always has it loaded. One above it puts the scrim over the bubble, which
-    // is what a modal should do.
     <div className="fixed inset-0 z-[1000000] flex items-end justify-center sm:items-center">
       {/* Scrim. Not clickable-to-dismiss: closing without choosing would leave
           the visitor undecided, and click-outside is not an affirmative act. */}
@@ -277,44 +371,26 @@ export function ConsentBanner() {
             <Button variant="outline" onClick={() => decide(false)} className="w-full sm:flex-1">
               {t.reject}
             </Button>
-            {showPrefs ? (
-              <Button onClick={() => decide(analyticsOn)} className="w-full sm:flex-1">
-                <Check className="h-4 w-4" /> {t.save}
-              </Button>
-            ) : (
-              <Button onClick={() => decide(true)} className="w-full sm:flex-1">
-                {t.accept}
-              </Button>
-            )}
+            <Button onClick={() => decide(analyticsOn)} className="w-full sm:flex-1">
+              <Check className="h-4 w-4" /> {t.save}
+            </Button>
           </div>
 
-          {!showPrefs ? (
-            <button
-              type="button"
-              onClick={() => setShowPrefs(true)}
-              className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 underline-offset-4 transition-colors hover:text-foreground hover:underline"
-            >
-              {t.manage}
-            </button>
-          ) : null}
-
-          {/* Non-destructive exit, but ONLY when reopened over an existing
-              decision. Someone who came from the footer just to read what they
-              chose must be able to leave without changing it. It is deliberately
-              absent on the first run, where there is no decision to preserve and
-              a "close" would be a route past the question. */}
-          {forced && decision !== null ? (
-            <button
-              type="button"
-              onClick={() => {
-                setForced(false);
-                setShowPrefs(false);
-              }}
-              className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-            >
-              {t.closeNoChange}
-            </button>
-          ) : null}
+          {/* A way out that changes nothing.
+              Reopened from the footer, it closes — someone who came to read what
+              they chose must be able to leave without altering it.
+              On a first visit it returns to the notice bar, which still carries
+              both choices, so this is never a route PAST the question. */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowPrefs(false);
+              if (forced) setForced(false);
+            }}
+            className="mt-3 w-full rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+          >
+            {forced && decision !== null ? t.closeNoChange : t.back}
+          </button>
         </div>
 
         {/* Rule 3 of the DPDP Rules, 2025 requires the notice itself to carry

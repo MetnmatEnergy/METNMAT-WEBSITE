@@ -30,6 +30,7 @@ export type NoticeCopy = {
   accept: string;
   save: string;
   closeNoChange: string;
+  back: string;
   necessaryTitle: string;
   necessaryDesc: string;
   alwaysOn: string;
@@ -57,6 +58,7 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
     accept: "Accept",
     save: "Save choices",
     closeNoChange: "Close without changing",
+    back: "Back",
     necessaryTitle: "Strictly necessary",
     necessaryDesc:
       "Your cart, sign-in session, theme and currency. The site cannot work without these, so they are always on and are never used for tracking.",
@@ -85,6 +87,7 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
     accept: "स्वीकार करें",
     save: "विकल्प सहेजें",
     closeNoChange: "बिना बदले बंद करें",
+    back: "वापस",
     necessaryTitle: "अत्यंत आवश्यक",
     necessaryDesc:
       "आपकी कार्ट, साइन-इन सत्र, थीम और मुद्रा। इनके बिना साइट काम नहीं कर सकती, इसलिए ये हमेशा चालू रहते हैं और कभी ट्रैकिंग के लिए उपयोग नहीं किए जाते।",
@@ -113,6 +116,7 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
     accept: "সম্মতি দিন",
     save: "পছন্দ সংরক্ষণ করুন",
     closeNoChange: "না বদলে বন্ধ করুন",
+    back: "ফিরে যান",
     necessaryTitle: "একান্ত প্রয়োজনীয়",
     necessaryDesc:
       "আপনার কার্ট, সাইন-ইন সেশন, থিম এবং মুদ্রা। এগুলি ছাড়া সাইটটি চলতে পারে না, তাই এগুলি সর্বদা চালু থাকে এবং কখনও ট্র্যাকিং-এর জন্য ব্যবহার করা হয় না।",
