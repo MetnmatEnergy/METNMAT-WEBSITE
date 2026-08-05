@@ -97,6 +97,13 @@ export default function CardFanCarousel({ cards }: CardFanProps) {
   const needsPagination = totalCards > MAX_VISIBLE;
   const [centerIndex, setCenterIndex] = useState(needsPagination ? HALF : totalCards >> 1);
 
+  // Which cards are painted on the FIRST render, and which of them is the front
+  // one. Both drive img loading/priority — see the <img> below. getVisibleMap()
+  // is the identity map when centerIndex is still its initial value, so the
+  // initially visible cards are exactly indices 0..initialVisibleCount-1.
+  const initialVisibleCount = needsPagination ? MAX_VISIBLE : totalCards;
+  const initialFrontIndex = needsPagination ? HALF : totalCards >> 1;
+
   const getVisibleMap = useCallback(
     (center: number) => {
       const map = new Map<number, number>();
@@ -298,18 +305,34 @@ export default function CardFanCarousel({ cards }: CardFanProps) {
           {cards.map((card, index) => {
             const image = (
               <div className="relative h-full w-full overflow-hidden">
-                {/* The fan's front card is the LCP element on /services, and
-                    lazy-loading it meant the browser deferred the exact thing
-                    the metric waits on — mobile LCP measured 8.93s median. The
-                    first two cards load eagerly (the front card plus its
-                    neighbour, both visible without interaction); the rest, which
-                    are fanned behind and revealed on click, stay lazy. */}
+                {/* Every card in the fan is PAINTED on first render — they are
+                    fanned out side by side, not stacked out of view — so any of
+                    them can be the LCP element, and lazy-loading a painted
+                    element defers the exact thing the metric waits on.
+                    getVisibleMap(centerIndex) is the identity map at mount, so
+                    the initially visible set is indices 0..initialVisibleCount-1
+                    and the front card sits at initialFrontIndex (mirroring
+                    `frontSlot` in the layout effect above). Only cards beyond
+                    that set — revealed by cycling — stay lazy.
+
+                    An earlier attempt eagerly loaded indices 0 and 1 on the
+                    assumption that the front card was index 0. It is not: with
+                    8 cards the front card is index 3, so five painted cards
+                    stayed lazy and mobile LCP was still 10.78s against a
+                    lazy-loaded card 2. Derive the indices, never assume them. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={card.imgUrl}
-                  loading={index < 2 ? "eager" : "lazy"}
-                  fetchPriority={index === 0 ? "high" : undefined}
-                  decoding={index < 2 ? "sync" : "async"}
+                  loading={index < initialVisibleCount ? "eager" : "lazy"}
+                  // `high` on the front card, and deliberately NOTHING on the
+                  // other visible ones. Demoting them to `low` looked tidy and
+                  // was wrong: which card Chrome picks as LCP depends on painted
+                  // area, so it moves with the viewport — index 0 on desktop,
+                  // index 2 on mobile, index 3 (the front card) on neither. Any
+                  // card marked `low` is therefore a candidate we just told the
+                  // browser to fetch last. Leave them at auto.
+                  fetchPriority={index === initialFrontIndex ? "high" : undefined}
+                  decoding={index === initialFrontIndex ? "sync" : "async"}
                   alt={card.alt || card.title || `Card ${index}`}
                   className="absolute inset-0 h-full w-full object-cover"
                 />

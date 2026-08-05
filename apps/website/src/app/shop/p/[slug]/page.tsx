@@ -9,6 +9,7 @@ import { ProductGallery } from "@/frontend/components/commerce/product-gallery";
 import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd, productFaqs, faqJsonLd } from "@/frontend/components/seo/json-ld";
+import { productMetaDescription } from "@/frontend/lib/seo";
 import { inclGST, isQuoteOnly } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
@@ -77,7 +78,10 @@ export async function generateMetadata({
   const brand = product.brand?.trim();
   const ownBrand = brand?.toLowerCase() === site.name.toLowerCase();
   const title = product.seoTitle || (brand && !ownBrand ? `${product.name} — ${brand}` : product.name);
-  const description = product.metaDescription || product.shortDesc;
+  // Derived per SKU rather than `metaDescription || shortDesc`: shortDesc is
+  // written per product FAMILY, so that fallback repeated one description across
+  // up to three different SKUs. See productMetaDescription().
+  const description = productMetaDescription(product);
   const image = product.ogImageUrl || product.imageUrl;
   return {
     title,

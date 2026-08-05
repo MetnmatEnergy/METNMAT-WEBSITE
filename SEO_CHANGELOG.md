@@ -6,6 +6,86 @@ Format: what changed · why · files · verification.
 
 ---
 
+## 2026-08-05 — Phase 4: per-SKU product descriptions, and the LCP fix corrected
+
+### 1 · Product meta descriptions are now derived per SKU
+
+All 68 products ship with `metaDescription` unset, so every one fell back to
+`shortDesc` — which is written per product **family**, not per SKU. Four
+descriptions were byte-identical across 11 URLs, and 63 of 68 ran past Google's
+~155-character display limit.
+
+The SKUs genuinely differ — body material, tube diameter, effective length,
+junction core — and every one of those values is already in the product's own
+`specs`. Descriptions now lead with the specs that distinguish the SKU and
+follow with the family prose. **Nothing is invented; every word traces to a real
+CMS field.** A CMS `metaDescription` still wins and is returned untouched.
+
+**Measured across all 68 real products:**
+
+| | before | after |
+|---|---:|---:|
+| Duplicate description groups | 4 (11 URLs) | **0** |
+| Descriptions over 155 chars | 63 | **0** |
+| Longest | 314 | **154** (median 151) |
+
+Two rules had to be found by measuring, not reasoning:
+
+- **Taking the first three specs in CMS order was not enough.** Sibling SKUs
+  share their opening specs: the platinum-wire pair is identical for three rows
+  and splits at `body material` (PEEK vs PTFE); the Hg/HgO pair is identical for
+  five and splits at `Body Material` (Glass vs PTFE). Two duplicate groups
+  survived the first attempt. Specs are now ranked — material, then dimensions,
+  then CMS order — before slicing.
+- **Nine products carry the same spec twice** under punctuation variants, which
+  rendered as `Body / Material: PEEK, Body Material: PEEK`. Deduped on the label
+  stripped to alphanumerics — deliberately *not* on the value, since
+  `body diameter` and `tube diameter` can both legitimately be 6 mm.
+
+- `apps/website/src/frontend/lib/seo.ts` — `productMetaDescription()`
+- `apps/website/src/app/shop/p/[slug]/page.tsx`
+- `test/product-meta-description.test.ts` (new, 18 tests — 227 → 245)
+
+### 2 · The `/services` LCP fix from Phase 3 was wrong, and is corrected
+
+Phase 3 eagerly loaded carousel indices 0 and 1 on the assumption that the front
+card is index 0. **It is not.** With `MAX_VISIBLE = 7`, `HALF = 3` and 8 cards,
+`centerIndex` starts at 3 and the initially visible set is indices 0–6 — every
+one of them painted on first render. Five painted cards stayed lazy, and mobile
+LCP was still **10.78 s median** against a lazy-loaded card 2.
+
+Now derived rather than assumed: `initialVisibleCount` and `initialFrontIndex`
+mirror the layout effect's own `frontSlot`, so every painted card is eager and
+the front card carries `fetchpriority="high"`.
+
+A second mistake, caught by measuring: the first correction also marked the
+other visible cards `fetchpriority="low"`. Which card Chrome picks as LCP
+depends on painted area and moves with the viewport — index 0 on desktop, index
+2 on mobile, the front card on neither — so `low` was telling the browser to
+fetch the actual LCP candidate last. Removed; only the front card carries an
+explicit priority.
+
+Phase 3 did work on desktop: LCP 2.84 s → **2.35 s**, `lcp-lazy-loaded` passing.
+It was mobile that was untouched.
+
+**Verified locally:** `lcp-lazy-loaded = 1` across runs (was 0/0.5), LCP element
+eager, CLS 0.000. Absolute LCP is too noisy locally at this sample size to
+compare — production measurement follows.
+
+- `apps/website/src/frontend/components/ui/card-fan-carousel.tsx`
+
+**Verification:** `pnpm typecheck` 0 · `pnpm lint` 0 · `pnpm test` 0 (245) ·
+`pnpm build` 0 (both apps) · `importMap.js` 2 lines.
+
+### Owner action surfaced by this work
+
+`ag-agcl-reference-electrode-6-mm` has a spec label typo — **`Body Mateirial`** —
+which now appears in that product's public meta description. It is CMS data, not
+code, so it is not being patched in the codebase: one-field fix in
+Admin → Products.
+
+---
+
 ## 2026-08-05 — Phase 3: self-hosted service imagery + HEAD on the REST API
 
 Fixes the P0 and the first P1 from `docs/seo/FINDINGS-ROUND-2.md`.
