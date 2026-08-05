@@ -186,7 +186,10 @@ export function ConsentBanner() {
     return (
       <div
         role="region"
-        aria-labelledby={headingId}
+        // aria-LABEL, not labelledby: the bar has no heading now (the reference
+        // layout is one flowing sentence), and naming a region by a 60-word
+        // paragraph gives a screen reader a useless landmark name.
+        aria-label={t.heading}
         // z-index measured, not guessed: the support widget injects
         // #chat-widget-container at 999999.
         // Solid, not translucent. At bg-background/98 with a blur the hero
@@ -196,53 +199,55 @@ export function ConsentBanner() {
         className="fixed inset-x-0 bottom-0 z-[1000000] border-t border-border bg-background shadow-[0_-8px_32px_-12px_rgba(0,0,0,0.18)] motion-safe:animate-rise-in dark:bg-surface"
         lang={t.lang}
       >
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:gap-8 lg:py-5">
-          {/* Copy */}
-          <div className="flex min-w-0 flex-1 items-start gap-3">
-            <span className="mt-0.5 hidden h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 sm:flex">
-              <ShieldCheck aria-hidden className="h-[18px] w-[18px] text-brand-soft" />
-            </span>
-            <div className="min-w-0">
-              <h2 id={headingId} className="text-sm font-semibold text-foreground">
-                {t.heading}
-              </h2>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                {t.body1} {t.body2}
-              </p>
-              {/* Rule 3: the notice itself carries the routes to withdraw, to
-                  exercise rights and to complain — not just a mention of them. */}
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                {[
-                  { href: "/privacy", label: t.footerLink },
-                  { href: "/privacy/request", label: t.rightsLink },
-                  { href: "/privacy#grievance", label: t.complaintLink },
-                ].map((l) => (
-                  <Link
-                    key={l.href}
-                    href={l.href}
-                    target="_blank"
-                    rel="noopener"
-                    className="font-medium text-brand-soft underline underline-offset-4 hover:text-brand"
-                  >
-                    {l.label}
-                    <span className="sr-only"> (opens in a new tab)</span>
-                  </Link>
-                ))}
-                <span className="text-muted-foreground">· {t.act}</span>
-              </p>
-            </div>
-          </div>
+        <div className="mx-auto flex max-w-[1600px] flex-col gap-4 px-5 py-4 sm:px-8 lg:flex-row lg:items-center lg:gap-10">
+          {/* One flowing sentence with the links INLINE, as in the reference —
+              no heading, no icon. Keeps the bar to two lines on a desktop
+              width, which is what makes it read as a notice rather than a
+              panel. */}
+          <p
+            className="min-w-0 flex-1 text-[13px] leading-relaxed text-muted-foreground sm:text-sm"
+          >
+            {t.barText}{" "}
+            {/* Rule 3: the notice itself carries the routes to withdraw, to
+                exercise rights and to complain — not merely a mention of them.
+                New tab so following one never leaves the notice unreadable. */}
+            {[
+              { href: "/privacy", label: t.footerLink },
+              { href: "/privacy/request", label: t.rightsLink },
+              { href: "/privacy#grievance", label: t.complaintLink },
+            ].map((l, i) => (
+              <React.Fragment key={l.href}>
+                {i > 0 ? <span aria-hidden> · </span> : null}
+                <Link
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener"
+                  className="font-semibold text-brand-soft underline underline-offset-2 hover:text-brand"
+                >
+                  {l.label}
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </Link>
+              </React.Fragment>
+            ))}
+          </p>
 
-          {/* Actions. Reject is DOM-first for keyboard and screen-reader order,
-              and both are the same size and weight — the s.6(4) equal-ease test.
-              There is deliberately NO dismiss "X": closing is not a decision,
-              and it must not be a route past the question. */}
-          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center lg:gap-3">
+          {/* Actions, right-aligned. Reject is DOM-first for keyboard and
+              screen-reader order, and both buttons are identical in size AND
+              fill — the s.6(4) equal-ease test, which the reference bar also
+              satisfies by making both the same blue.
+
+              NO dismiss "X", unlike the reference. Under DPDP s.6 consent is a
+              clear affirmative action, so closing cannot be a route past the
+              question — an X would leave the visitor undecided while looking
+              like an answer. The language select stays for the same kind of
+              reason: s.5(3) requires the notice to be available in an Eighth
+              Schedule language. */}
+          <div className="flex shrink-0 flex-wrap items-center gap-2.5 sm:gap-3 lg:flex-nowrap">
             <select
               aria-label={t.languageLabel}
               value={langKey}
               onChange={(e) => setLangKey(e.target.value)}
-              className="order-last h-10 rounded-lg border border-border bg-surface px-2 text-xs font-medium text-foreground outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:order-first dark:bg-background/40"
+              className="h-10 rounded-md border border-border bg-surface px-2 text-xs font-medium text-foreground outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:bg-background/40"
             >
               {NOTICE_LANGUAGE_KEYS.map((k) => (
                 <option key={k} value={k} lang={NOTICE_LANGUAGES[k].lang}>
@@ -253,14 +258,14 @@ export function ConsentBanner() {
             <button
               type="button"
               onClick={() => setShowPrefs(true)}
-              className="h-10 whitespace-nowrap rounded-lg px-3 text-sm font-medium text-foreground/80 underline-offset-4 transition-colors hover:text-foreground hover:underline"
+              className="h-10 whitespace-nowrap px-2 text-sm font-semibold text-foreground underline-offset-4 transition-colors hover:underline"
             >
               {t.manage}
             </button>
-            <Button variant="outline" onClick={() => decide(false)} className="w-full sm:w-auto">
+            <Button onClick={() => decide(false)} className="min-w-[130px] flex-1 sm:flex-none">
               {t.reject}
             </Button>
-            <Button onClick={() => decide(true)} className="w-full sm:w-auto">
+            <Button onClick={() => decide(true)} className="min-w-[130px] flex-1 sm:flex-none">
               {t.accept}
             </Button>
           </div>

@@ -25,6 +25,9 @@ export type NoticeCopy = {
   act: string;
   body1: string;
   body2: string;
+  /** One-sentence bar copy, links appended inline after it. */
+  barText: string;
+  barLead: string;
   manage: string;
   reject: string;
   accept: string;
@@ -53,6 +56,9 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
     body1:
       "We'd like to measure how this site is used — pages viewed, how you arrived, device type — using a random identifier in your browser. It is first-party only: never shared with advertisers, and no IP address is stored with it.",
     body2: "The site works exactly the same if you decline.",
+    barText:
+      "We use first-party analytics on this website to understand how it is used — pages viewed, how you arrived and device type — using a random identifier in your browser. Nothing is measured until you choose, and the site works exactly the same either way. To learn more, please refer to the following:",
+    barLead: "",
     manage: "Manage preferences",
     reject: "Reject",
     accept: "Accept",
@@ -82,6 +88,9 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
     body1:
       "हम यह मापना चाहते हैं कि इस साइट का उपयोग कैसे किया जाता है — कौन से पृष्ठ देखे गए, आप यहाँ कैसे पहुँचे, और डिवाइस किस प्रकार का है — इसके लिए आपके ब्राउज़र में एक यादृच्छिक पहचानकर्ता का उपयोग किया जाता है। यह केवल हमारा अपना है: इसे विज्ञापनदाताओं के साथ कभी साझा नहीं किया जाता, और इसके साथ कोई IP पता संग्रहीत नहीं किया जाता।",
     body2: "यदि आप अस्वीकार करते हैं, तब भी साइट बिल्कुल वैसे ही काम करती है।",
+    barText:
+      "हम इस वेबसाइट पर यह समझने के लिए प्रथम-पक्ष विश्लेषण का उपयोग करते हैं कि इसका उपयोग कैसे किया जाता है — कौन से पृष्ठ देखे गए, आप यहाँ कैसे पहुँचे और डिवाइस किस प्रकार का है — इसके लिए आपके ब्राउज़र में एक यादृच्छिक पहचानकर्ता का उपयोग होता है। जब तक आप चुनाव नहीं करते, कुछ भी मापा नहीं जाता, और दोनों ही स्थितियों में साइट बिल्कुल वैसे ही काम करती है। अधिक जानने के लिए देखें:",
+    barLead: "",
     manage: "प्राथमिकताएँ प्रबंधित करें",
     reject: "अस्वीकार करें",
     accept: "स्वीकार करें",
@@ -111,6 +120,9 @@ export const NOTICE_LANGUAGES: Record<string, NoticeCopy> = {
     body1:
       "আমরা জানতে চাই এই সাইটটি কীভাবে ব্যবহৃত হয় — কোন পৃষ্ঠাগুলি দেখা হয়েছে, আপনি কীভাবে এসেছেন, কোন ধরনের ডিভাইস — এর জন্য আপনার ব্রাউজারে একটি এলোমেলো শনাক্তকারী ব্যবহার করা হয়। এটি সম্পূর্ণ আমাদের নিজস্ব: বিজ্ঞাপনদাতাদের সঙ্গে কখনও ভাগ করা হয় না, এবং এর সঙ্গে কোনও IP ঠিকানা সংরক্ষণ করা হয় না।",
     body2: "আপনি প্রত্যাখ্যান করলেও সাইটটি ঠিক একইভাবে কাজ করে।",
+    barText:
+      "আমরা এই ওয়েবসাইটে ফার্স্ট-পার্টি বিশ্লেষণ ব্যবহার করি — কোন পৃষ্ঠাগুলি দেখা হয়েছে, আপনি কীভাবে এসেছেন এবং কোন ধরনের ডিভাইস — এর জন্য আপনার ব্রাউজারে একটি এলোমেলো শনাক্তকারী ব্যবহার করা হয়। আপনি না বেছে নেওয়া পর্যন্ত কিছুই মাপা হয় না, এবং উভয় ক্ষেত্রেই সাইটটি একইভাবে কাজ করে। আরও জানতে দেখুন:",
+    barLead: "",
     manage: "পছন্দ পরিচালনা করুন",
     reject: "প্রত্যাখ্যান করুন",
     accept: "সম্মতি দিন",
