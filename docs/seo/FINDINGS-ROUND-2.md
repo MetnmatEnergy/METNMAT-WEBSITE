@@ -14,6 +14,14 @@ confirmed and is therefore not being acted on.
 
 ## 1. Confirmed — I re-measured each of these myself
 
+> **Status 2026-08-05 — P0, P1 (HEAD) and P1 (duplicate descriptions) are FIXED
+> and verified on production.** `/services` mobile LCP 8.93 s → **3.49 s**,
+> desktop 2.84 s → **0.82 s**, `lcp-lazy-loaded` passing in every run. Media
+> `HEAD` 404 → **200**, all 20 image-sitemap entries now HEAD-able. Duplicate
+> product descriptions 4 groups / 11 URLs → **0**, and over-length 63 → **0**.
+> Still open: 62 products with no image (photography), and mobile LCP is
+> improved but not yet under the 2.5 s threshold. See `SEO_CHANGELOG.md`.
+
 ### P0 · `/services` loads its hero imagery from Unsplash
 
 `/services` references `images.unsplash.com` **34 times**, with **16

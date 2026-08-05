@@ -68,9 +68,30 @@ explicit priority.
 Phase 3 did work on desktop: LCP 2.84 s → **2.35 s**, `lcp-lazy-loaded` passing.
 It was mobile that was untouched.
 
-**Verified locally:** `lcp-lazy-loaded = 1` across runs (was 0/0.5), LCP element
-eager, CLS 0.000. Absolute LCP is too noisy locally at this sample size to
-compare — production measurement follows.
+**Measured on production**, 3 runs per form factor, median with spread:
+
+| `/services` | baseline | Phase 3 (broken) | **now** |
+|---|---:|---:|---:|
+| Mobile LCP | 8.93 s | 10.78 s | **3.49 s** |
+| Mobile perf | — | 62 | **83** |
+| Desktop LCP | 2.84 s | 2.35 s | **0.82 s** |
+| Desktop perf | — | 79 | **94** |
+| `lcp-lazy-loaded` | 0 | 0, 0.5, 1 | **1, 1, 1** (both form factors) |
+| CLS | 0.000 | 0.000 | 0.000 |
+
+Mobile LCP down 61%, desktop down 71%, and the lazy-LCP audit now passes in
+every run on both form factors.
+
+Two honest caveats. **Mobile LCP 3.49 s is still above the 2.5 s "good"
+threshold** — much better, not yet passing; the remaining cost is transferring
+seven painted photographs on a throttled connection, and a responsive `srcset`
+so small viewports fetch smaller encodes is the next lever. And the mobile
+spread is still wide (min 3.47 s, max 7.40 s), so the median is the number to
+trust, not any single run.
+
+Phase 3 measuring *worse* than the baseline (10.78 s vs 8.93 s) is within that
+spread and is not claimed as a regression it caused — what is certain is that it
+did not fix mobile, because `lcp-lazy-loaded` was still failing.
 
 - `apps/website/src/frontend/components/ui/card-fan-carousel.tsx`
 
