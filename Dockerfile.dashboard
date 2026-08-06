@@ -71,28 +71,38 @@ RUN rm -rf apps/dashboard/.next/cache/webpack \
            apps/dashboard/.next/cache/swc \
            apps/dashboard/.next/cache/.tsbuildinfo
 
-# NOTE — devDependency pruning was attempted here and REVERTED (commit 0d1585b).
+# Reinstall production-only, now the build no longer needs devDependencies.
 #
-# WHAT FAILED: `pnpm prune --prod` exits 1 in a Dockerfile RUN —
-# ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY. Reproduced against a staged copy
-# of this workspace. Do NOT "fix" that by setting CI=true or
-# --config.confirmModulesPurge=false: that exits 0, prints "Already up to date",
-# and leaves apps/dashboard/node_modules an EMPTY DIRECTORY — payload, next,
-# sharp and @payloadcms/next all MODULE_NOT_FOUND. A green build producing a
-# container that cannot boot is far worse than the red build we got.
+# DO NOT replace this with `pnpm prune --prod`. That exits 1 in a Dockerfile RUN
+# (ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY) — and "fixing" that with CI=true
+# or --config.confirmModulesPurge=false is worse: it exits 0, prints "Already up
+# to date", and leaves apps/dashboard/node_modules an EMPTY DIRECTORY, with
+# payload, next, sharp and @payloadcms/next all MODULE_NOT_FOUND. A green build
+# producing a container that cannot boot beats a red build only in appearance.
+# Both behaviours were reproduced against a staged copy of this workspace.
 #
-# THE CORRECT MECHANISM (verified: exit 0, 24.6s, 0 downloads, "Lockfile is up
-# to date, resolution step is skipped") is a second prod-only install AFTER the
-# build, keeping the runtime stage's single COPY untouched:
+# A full reinstall is used instead of a prune because it is lockfile-driven and
+# therefore deterministic: measured exit 0 in 24.6s with 0 downloads, reporting
+# "Lockfile is up to date, resolution step is skipped". It runs AFTER
+# `pnpm --filter dashboard build` on purpose — next build runs the lint pass and
+# needs eslint present.
 #
-#   RUN rm -rf node_modules apps/dashboard/node_modules \
-#    && pnpm install --frozen-lockfile --filter dashboard... --prod \
-#    && test -e apps/dashboard/node_modules/next/package.json \
-#    && test -e apps/dashboard/node_modules/payload/package.json \
-#    && test -e apps/dashboard/node_modules/sharp/package.json
-#
-# The assertions are the point — they turn "silently broken image on a mutable
-# :latest tag" into "red build".
+# The assertions are the whole safety story. Without a Docker daemon here this
+# change cannot be tested before it ships, so the guards convert the failure
+# mode from "silently broken image on a mutable :latest tag" into "red build".
+# Note `require.resolve('payload')` resolves but `require.resolve(
+# 'payload/package.json')` does NOT — payload does not export that subpath, and
+# using it as a guard fails on a perfectly healthy tree.
+RUN rm -rf node_modules apps/dashboard/node_modules \
+ && pnpm install --frozen-lockfile --filter dashboard... --prod \
+ && test -e apps/dashboard/node_modules/next/package.json \
+ && test -e apps/dashboard/node_modules/payload/package.json \
+ && test -e apps/dashboard/node_modules/sharp/package.json \
+ && test -e apps/dashboard/node_modules/@payloadcms/next \
+ && node -e "require.resolve('payload',{paths:['/app/apps/dashboard']})" \
+ && node -e "require.resolve('next',{paths:['/app/apps/dashboard']})" \
+ && test -d apps/dashboard/.next/server \
+ && test -f apps/dashboard/.next/BUILD_ID
 #
 # WHAT IT IS ACTUALLY WORTH — and this corrects an earlier note here that said
 # ~33 MB with typescript as the big line. That was WRONG:
