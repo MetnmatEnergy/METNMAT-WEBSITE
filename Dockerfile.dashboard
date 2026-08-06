@@ -43,39 +43,26 @@ RUN pnpm --filter dashboard build
 # if a request ever needs them.
 RUN rm -rf apps/dashboard/.next/cache
 
-# Drop devDependencies now the build is done. Verified against the BUILT server
-# output before doing this — there is not a single runtime require of any of
-# them:
+# NOTE — devDependency pruning was attempted here and REVERTED (commit 0d1585b).
 #
-#     require("typescript")  0    require("eslint")            0
-#     require("@types/node") 0    require("eslint-config-next") 0
+# `pnpm prune --prod` failed the Docker build outright (build step 0, exit 1),
+# so the dashboard could not deploy at all until this was taken back out. The
+# build-log detail is not readable from the deploy service account
+# (`gcloud builds log` -> PERMISSION_DENIED), so the exact cause is not yet
+# established — the leading suspect is that `pnpm prune` does not operate
+# cleanly on a tree installed with `--filter dashboard...`, which is a PARTIAL
+# workspace install rather than a full one.
 #
-# Every "typescript" string in .next/server is a syntax-highlighting language
-# list, a Payload config FIELD named `typescript`, or Monaco's own bundled TS
-# services — never the npm package. The Payload config is compiled into the
-# server bundle at build time (collection slugs appear inlined), so nothing
-# loads payload.config.ts at runtime either.
+# Do not re-attempt this without a way to run the build locally. The prize is
+# small and was over-stated in the original audit: ~33 MB uncompressed
+# (typescript 23, eslint 4, eslint-config-next 1, @types/* 5) — roughly 3% of
+# the 982 MB of webpack cache already removed above. @next/swc is NOT part of
+# it; that arrives via `next`, which is a production dependency.
 #
-# Worth being clear about the size of this prize: ~33 MB uncompressed
-# (typescript 23, eslint 4, eslint-config-next 1, @types/* 5). It is NOT the
-# hundreds of MB an earlier reading suggested — @next/swc is pulled in by
-# `next`, which is a PRODUCTION dependency, so it ships either way.
-#
-# The `node -e require.resolve` is the guard that makes this safe to ship
-# without a local Docker daemon: if pruning breaks pnpm's symlink tree, the
-# BUILD fails here rather than the container failing to boot in production.
-# The guards check pnpm's SYMLINKS survived, which is the actual failure mode —
-# a broken link surfaces at runtime, not build time. `require.resolve` on the
-# package root is deliberately avoided: payload does not export ./package.json,
-# so that check fails even on a perfectly healthy tree.
-RUN pnpm prune --prod \
- && test -e apps/dashboard/node_modules/next \
- && test -e apps/dashboard/node_modules/payload \
- && test -e apps/dashboard/node_modules/@payloadcms \
- && test -e apps/dashboard/node_modules/sharp \
- && node -e "require.resolve('next/package.json',{paths:['./apps/dashboard']})" \
- && test -d apps/dashboard/.next/server \
- && test -f apps/dashboard/.next/BUILD_ID
+# Verified separately and still true, for whoever picks this up: nothing in the
+# built server output requires any devDependency at runtime — 0 occurrences of
+# require("typescript" | "eslint" | "@types/*"). So the idea is sound; only the
+# mechanism failed.
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 FROM node:22-slim AS runner
