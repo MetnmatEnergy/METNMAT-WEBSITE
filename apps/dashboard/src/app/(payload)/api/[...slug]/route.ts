@@ -7,8 +7,54 @@ import {
   REST_POST,
   REST_PUT,
 } from "@payloadcms/next/routes";
+import { MEDIA_CACHE_CONTROL, shouldCacheMedia } from "../../../../lib/media-cache";
 
-export const GET = REST_GET(config);
+/**
+ * Uploaded images were served with NO `Cache-Control` at all, so nothing —
+ * browser, CDN or proxy — was permitted to store them. Every view of every
+ * product photo woke a Cloud Run instance, spent CPU re-streaming bytes out of
+ * a private GCS bucket, and paid egress again for a file that never changes.
+ * A website static asset already returns `max-age=3600, immutable` and shows a
+ * real edge `Age`; media returned neither.
+ *
+ * ONLY `/api/media/file/**` is cached, and the narrowness is the security
+ * control, not fussiness. `media` is the one upload collection with
+ * `read: publicRead` (Media.ts:15) and it answers anonymously with 200. The
+ * others must never be handed to a shared cache: `documents` 403s anonymously,
+ * `enquiry-uploads` is staff/internal-key only, and `blog-submission-files` is
+ * commented "NEVER public — unpublished manuscripts". A `public` directive on
+ * any of those would let one CDN edge serve another user's private file.
+ *
+ * Non-200s are excluded too — caching a 404 for a year would outlive the
+ * upload that fixes it.
+ */
+const restGet = REST_GET(config);
+
+export const GET = async (
+  request: Request,
+  args: { params: Promise<{ slug: string[] }> },
+): Promise<Response> => {
+  const res = await restGet(request, args);
+
+  let pathname: string;
+  try {
+    pathname = new URL(request.url).pathname;
+  } catch {
+    return res;
+  }
+
+  const cacheable = shouldCacheMedia({
+    pathname,
+    status: res.status,
+    hasCacheControl: res.headers.has("cache-control"),
+  });
+  if (!cacheable) return res;
+
+  const headers = new Headers(res.headers);
+  headers.set("Cache-Control", MEDIA_CACHE_CONTROL);
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+};
+
 export const POST = REST_POST(config);
 export const DELETE = REST_DELETE(config);
 export const PATCH = REST_PATCH(config);

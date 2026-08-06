@@ -1,0 +1,45 @@
+# Cloud Build trigger: rmgpgab-metnmat-dashboard-asia-south1-MetnmatEnergy-METNMAT-obs
+#
+# Exported from the live trigger 2026-08-05, with `includedFiles` added.
+# Apply with:
+#   gcloud beta builds triggers import --source=infra/cloudbuild-triggers/dashboard.yaml --region=global
+# The `id` targets the EXISTING trigger so import updates it in place.
+#
+# Derived from the COPY lines in Dockerfile.dashboard:
+#
+#   COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+#   COPY apps/website/package.json    …   <- needed for workspace resolution
+#   COPY apps/dashboard/package.json  …
+#   COPY packages/types/package.json  …
+#   COPY packages/types  packages/types
+#   COPY apps/dashboard  apps/dashboard
+#
+# The dashboard is the service that benefits most from this filter: it was
+# rebuilt on every website-only commit, and its image is the largest in the
+# registry because its runtime stage copies the whole build workspace.
+createTime: '2026-06-17T07:46:02.944130858Z'
+description: Build and deploy to Cloud Run service metnmat-dashboard on push to "^main$"
+filename: cloudbuild.dashboard.deploy.yaml
+github:
+  name: METNMAT-WEBSITE
+  owner: MetnmatEnergy
+  push:
+    branch: ^main$
+id: 2abe92e4-8af7-49ff-938b-523ac0b1a090
+includeBuildLogs: INCLUDE_BUILD_LOGS_WITH_STATUS
+includedFiles:
+  - apps/dashboard/**
+  - packages/types/**
+  - apps/website/package.json
+  - pnpm-lock.yaml
+  - pnpm-workspace.yaml
+  - package.json
+  - turbo.json
+  - Dockerfile.dashboard
+  - cloudbuild.dashboard.deploy.yaml
+name: rmgpgab-metnmat-dashboard-asia-south1-MetnmatEnergy-METNMAT-obs
+resourceName: projects/metnmat-website/locations/global/triggers/2abe92e4-8af7-49ff-938b-523ac0b1a090
+serviceAccount: projects/metnmat-website/serviceAccounts/127977052991-compute@developer.gserviceaccount.com
+substitutions:
+  _REGION: asia-south1
+  _REPO: metnmat

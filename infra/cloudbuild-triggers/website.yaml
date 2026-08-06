@@ -1,0 +1,47 @@
+# Cloud Build trigger: metnmat-website-auto-deploy
+#
+# Exported from the live trigger 2026-08-05, with `includedFiles` added.
+# Apply with:
+#   gcloud beta builds triggers import --source=infra/cloudbuild-triggers/website.yaml --region=global
+# The `id` below targets the EXISTING trigger, so import updates it in place
+# rather than creating a duplicate. Do not remove it.
+#
+# WHY includedFiles: without it every push to main rebuilds and redeploys BOTH
+# applications. Measured on the last 20 commits, 8 touched only markdown and
+# still fired three container builds each.
+#
+# The list below is derived from the COPY lines in Dockerfile.website — these
+# are literally the build's inputs, so anything here can change the output and
+# anything absent cannot:
+#
+#   COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+#   COPY apps/website/package.json    …
+#   COPY apps/dashboard/package.json  …   <- yes, really: pnpm needs the whole
+#   COPY packages/types/package.json  …      workspace manifest set to resolve
+#   COPY packages/types  packages/types
+#   COPY apps/website    apps/website
+#
+# apps/dashboard/package.json is included deliberately. It is easy to leave out
+# and the failure is silent: the website image would keep building against a
+# stale dependency graph.
+createTime: '2026-06-18T09:54:40.572231259Z'
+filename: cloudbuild.website.deploy.yaml
+github:
+  name: METNMAT-WEBSITE
+  owner: MetnmatEnergy
+  push:
+    branch: ^main$
+id: f0f4d63f-7bee-4aef-9ce6-09feccacdd60
+includedFiles:
+  - apps/website/**
+  - packages/types/**
+  - apps/dashboard/package.json
+  - pnpm-lock.yaml
+  - pnpm-workspace.yaml
+  - package.json
+  - turbo.json
+  - Dockerfile.website
+  - cloudbuild.website.deploy.yaml
+name: metnmat-website-auto-deploy
+resourceName: projects/metnmat-website/locations/global/triggers/f0f4d63f-7bee-4aef-9ce6-09feccacdd60
+serviceAccount: projects/metnmat-website/serviceAccounts/127977052991-compute@developer.gserviceaccount.com
