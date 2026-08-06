@@ -28,7 +28,7 @@ RUN pnpm --filter dashboard build
 # Drop the build cache before it reaches the runtime stage.
 #
 # Measured on a real build of this workspace:
-#     .next/cache/webpack   982 MB      <- pure build accelerator
+#     .next/cache/webpack   982 MiB     <- pure build accelerator (local figure)
 #     .next/cache/eslint     44 KB
 #     .next/cache/swc         0 B
 #     .next  (everything else)  14 MB   <- what `next start` actually serves
@@ -38,10 +38,38 @@ RUN pnpm --filter dashboard build
 # Artifact Registry and pulling it on every cold start. turbo.json already
 # declares "!.next/cache/**" a non-output, so nothing downstream expects it.
 #
+# The 982 MiB above is a LOCAL measurement and overstates the container saving.
+# Broken down: server-production 652, client-production 191, edge-server 1 —
+# but client-development 86 and server-development 54 only exist because
+# `next dev` has run on this machine. A container only ever runs `next build`,
+# so the real saving there is the production entries: ~844 MiB.
+#
 # There is no .next/cache/fetch-cache or /images here, so no RUNTIME cache is
 # being discarded — only build scratch. Next recreates those directories itself
 # if a request ever needs them.
-RUN rm -rf apps/dashboard/.next/cache
+# Delete the big build caches BY NAME rather than the whole directory.
+#
+# `.next/cache` also holds `.rscinfo`, which caches the Server Actions
+# encryption key. Next generates that key at build time and embeds it in the
+# build output; `.rscinfo` is what lets a REBUILD reuse the same key. Payload's
+# admin is built on Server Actions (apps/dashboard/src/app/(payload)/layout.tsx
+# is "use server"), and a key that changes between revisions means an in-flight
+# action bound by the old revision can fail to decrypt on the new one during a
+# rollout.
+#
+# Today that is already happening and is NOT caused by this line: there is no
+# --cache-from or kaniko anywhere, so every Cloud Build run starts cold and
+# `.rscinfo` never survived between builds anyway. But deleting it wholesale
+# would silently defeat the fix if layer caching is ever added — which is on the
+# optimisation roadmap — so keep it.
+#
+# The real fix is to set NEXT_SERVER_ACTIONS_ENCRYPTION_KEY from Secret Manager
+# so the key is stable across builds AND across instances. Tracked separately;
+# it needs a secret created, which this service account cannot do.
+RUN rm -rf apps/dashboard/.next/cache/webpack \
+           apps/dashboard/.next/cache/eslint \
+           apps/dashboard/.next/cache/swc \
+           apps/dashboard/.next/cache/.tsbuildinfo
 
 # NOTE — devDependency pruning was attempted here and REVERTED (commit 0d1585b).
 #
@@ -56,7 +84,7 @@ RUN rm -rf apps/dashboard/.next/cache
 # Do not re-attempt this without a way to run the build locally. The prize is
 # small and was over-stated in the original audit: ~33 MB uncompressed
 # (typescript 23, eslint 4, eslint-config-next 1, @types/* 5) — roughly 3% of
-# the 982 MB of webpack cache already removed above. @next/swc is NOT part of
+# the ~844 MiB of webpack cache already removed above. @next/swc is NOT part of
 # it; that arrives via `next`, which is a production dependency.
 #
 # Verified separately and still true, for whoever picks this up: nothing in the
