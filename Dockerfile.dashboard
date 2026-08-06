@@ -25,6 +25,24 @@ COPY apps/dashboard  apps/dashboard
 RUN rm -f apps/dashboard/src/payload-types.ts
 RUN pnpm --filter dashboard build
 
+# Drop the build cache before it reaches the runtime stage.
+#
+# Measured on a real build of this workspace:
+#     .next/cache/webpack   982 MB      <- pure build accelerator
+#     .next/cache/eslint     44 KB
+#     .next/cache/swc         0 B
+#     .next  (everything else)  14 MB   <- what `next start` actually serves
+#
+# 98.7% of .next is a webpack cache that `next start` never opens, and the
+# runtime stage below copies /app wholesale — so every build was shipping it to
+# Artifact Registry and pulling it on every cold start. turbo.json already
+# declares "!.next/cache/**" a non-output, so nothing downstream expects it.
+#
+# There is no .next/cache/fetch-cache or /images here, so no RUNTIME cache is
+# being discarded — only build scratch. Next recreates those directories itself
+# if a request ever needs them.
+RUN rm -rf apps/dashboard/.next/cache
+
 # ── Runtime ──────────────────────────────────────────────────────────────────
 FROM node:22-slim AS runner
 WORKDIR /app
@@ -32,7 +50,13 @@ ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 RUN npm install -g pnpm@11.5.1
 
 # Bring the whole built workspace (node_modules + .next + config + source that
-# `next start` reads at runtime). Larger image, but reliable for Payload.
+# `next start` reads at runtime). Larger image, but reliable for Payload — and
+# the build cache has already been removed above, which is the bulk of it.
+#
+# This stays a single COPY on purpose. pnpm links every package from
+# node_modules/.pnpm via symlinks, so splitting it into selective COPYs risks
+# breaking module resolution at RUNTIME rather than at build time — the worst
+# possible place to find out, given the deployed tag is mutable.
 COPY --from=builder /app ./
 
 WORKDIR /app/apps/dashboard
