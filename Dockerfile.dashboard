@@ -73,24 +73,49 @@ RUN rm -rf apps/dashboard/.next/cache/webpack \
 
 # NOTE — devDependency pruning was attempted here and REVERTED (commit 0d1585b).
 #
-# `pnpm prune --prod` failed the Docker build outright (build step 0, exit 1),
-# so the dashboard could not deploy at all until this was taken back out. The
-# build-log detail is not readable from the deploy service account
-# (`gcloud builds log` -> PERMISSION_DENIED), so the exact cause is not yet
-# established — the leading suspect is that `pnpm prune` does not operate
-# cleanly on a tree installed with `--filter dashboard...`, which is a PARTIAL
-# workspace install rather than a full one.
+# WHAT FAILED: `pnpm prune --prod` exits 1 in a Dockerfile RUN —
+# ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY. Reproduced against a staged copy
+# of this workspace. Do NOT "fix" that by setting CI=true or
+# --config.confirmModulesPurge=false: that exits 0, prints "Already up to date",
+# and leaves apps/dashboard/node_modules an EMPTY DIRECTORY — payload, next,
+# sharp and @payloadcms/next all MODULE_NOT_FOUND. A green build producing a
+# container that cannot boot is far worse than the red build we got.
 #
-# Do not re-attempt this without a way to run the build locally. The prize is
-# small and was over-stated in the original audit: ~33 MB uncompressed
-# (typescript 23, eslint 4, eslint-config-next 1, @types/* 5) — roughly 3% of
-# the ~844 MiB of webpack cache already removed above. @next/swc is NOT part of
-# it; that arrives via `next`, which is a production dependency.
+# THE CORRECT MECHANISM (verified: exit 0, 24.6s, 0 downloads, "Lockfile is up
+# to date, resolution step is skipped") is a second prod-only install AFTER the
+# build, keeping the runtime stage's single COPY untouched:
 #
-# Verified separately and still true, for whoever picks this up: nothing in the
-# built server output requires any devDependency at runtime — 0 occurrences of
-# require("typescript" | "eslint" | "@types/*"). So the idea is sound; only the
-# mechanism failed.
+#   RUN rm -rf node_modules apps/dashboard/node_modules \
+#    && pnpm install --frozen-lockfile --filter dashboard... --prod \
+#    && test -e apps/dashboard/node_modules/next/package.json \
+#    && test -e apps/dashboard/node_modules/payload/package.json \
+#    && test -e apps/dashboard/node_modules/sharp/package.json
+#
+# The assertions are the point — they turn "silently broken image on a mutable
+# :latest tag" into "red build".
+#
+# WHAT IT IS ACTUALLY WORTH — and this corrects an earlier note here that said
+# ~33 MB with typescript as the big line. That was WRONG:
+#
+#   * Measured 707.4 MB -> 594.5 MB = 112.9 MB (16%, 8,702 files).
+#   * `typescript` (23 MB) is NOT recovered. It is in payload's PRODUCTION
+#     graph: @payloadcms/richtext-lexical -> ts-essentials -> typescript
+#     (optional peer, pnpm-lock.yaml:8559). Same story for @types/node (via
+#     payload -> @types/busboy) and @types/react (via @payloadcms/ui ->
+#     react-select -> @emotion/react). Only @types/react-dom is dashboard-only.
+#   * ~73 MB of the 113 MB is the workspace ROOT's devDeps (turbo, rolldown,
+#     lightningcss platform binaries), which `--filter dashboard...` pulls in.
+#   * The single biggest item in the image, @next/swc-* at 176.9 MB, is an
+#     optionalDependency of `next` and survives --prod untouched — even though
+#     `next start` provably never loads it. Pruning cannot reach it.
+#
+# STILL TRUE: nothing in the built server output requires a devDependency at
+# runtime. All 17 external require() specifiers in .next/server were resolved
+# against both a full and a real prod-only install: zero regressions.
+# payload.config.ts is webpack-compiled into .next/server/chunks/4894.js, and
+# Payload's generate:types / generateImportMap are both gated on
+# NODE_ENV !== 'production', so a prod container can never regenerate
+# importMap.js (CLAUDE.md gotcha #2 belongs to `next dev`, not to this image).
 
 # ── Runtime ──────────────────────────────────────────────────────────────────
 FROM node:22-slim AS runner
