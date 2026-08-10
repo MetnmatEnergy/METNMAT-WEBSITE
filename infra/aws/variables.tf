@@ -62,9 +62,23 @@ variable "enable_nat_gateway" {
     Decide this by checking the Atlas IP access list FIRST:
       - Atlas already allows 0.0.0.0/0  -> false is reasonable, and cheaper.
       - Atlas restricts by IP           -> keep true, or you cannot connect.
+
+    SET TO false ON 2026-08-10. The Atlas access list was confirmed to allow
+    0.0.0.0/0, so fixed egress IPs buy nothing here.
+
+    Worth stating plainly, because it looks like a security downgrade and is
+    not: Cloud Run has no stable egress IP either. That is almost certainly WHY
+    Atlas is open in the first place. Running tasks in public subnets is
+    therefore PARITY with the current production posture, not a regression from
+    it — and inbound is still blocked to everything except the ALB by security
+    group, which is the control that actually matters.
+
+    If the Atlas access list is ever tightened, flip this back to true and
+    re-apply. The private subnets are still created either way, so the change is
+    a routing swap rather than a rebuild.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "single_nat_gateway" {

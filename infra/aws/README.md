@@ -48,12 +48,17 @@ Target: account **976134557584** (METNMAT Innovations), region **ap-south-1** (M
 triple the largest fixed cost for no benefit. Host-based listener rules separate
 the services.
 
-**NAT Gateway is on by default, and it is probably your largest single cost.**
-It exists so egress comes from fixed Elastic IPs and the MongoDB Atlas access
-list can stay tight. If Atlas already allows `0.0.0.0/0`, set
-`enable_nat_gateway = false` and delete that entire line item — tasks then run in
-public subnets, but the security group still blocks all inbound except from the
-ALB. **Check the Atlas access list before you decide.**
+**NAT Gateway is OFF** (set 2026-08-10). It existed only so egress had fixed IPs
+for the MongoDB Atlas allowlist, and that allowlist was confirmed to be
+`0.0.0.0/0` — so it bought nothing while being the largest fixed cost in the
+stack. Tasks now run in public subnets with public IPs.
+
+This is parity with production today, not a downgrade: Cloud Run has no stable
+egress IP either, which is almost certainly why Atlas is open. Inbound is still
+blocked to everything except the ALB by security group, which is the control
+that actually matters. If Atlas is ever tightened, flip `enable_nat_gateway`
+back to `true` — the private subnets are still created, so it is a routing swap
+rather than a rebuild.
 
 **Execution role and task role are separate.** The execution role resolves
 secrets before the container starts; the task role is what the application code
@@ -82,8 +87,7 @@ Pricing API.
 
 | Item | Est. / month |
 |---|---|
-| **NAT Gateway** (1, `single_nat_gateway = true`) | **largest fixed item** |
-| ALB (fixed hourly + LCU) | second largest |
+| ALB (fixed hourly + LCU) | **largest fixed item** |
 | Fargate — 1.75 vCPU / 3.5 GB total, always on | moderate |
 | ECR, S3, Secrets Manager (22), CloudWatch | small |
 
