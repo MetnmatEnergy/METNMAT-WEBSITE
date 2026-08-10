@@ -61,19 +61,31 @@ jobs:
       website: ${{ steps.decide.outputs.website }}
       dashboard: ${{ steps.decide.outputs.dashboard }}
       configured: ${{ steps.guard.outputs.configured }}
+      auth: ${{ steps.guard.outputs.auth }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2 # need the parent commit to diff against
 
+      # Accepts EITHER auth method, so deploys are not blocked waiting for the
+      # OIDC role to exist. OIDC is preferred and wins when both are present;
+      # the bootstrap access keys are the fallback that lets images ship the
+      # moment ECR exists, without a second round-trip to set another secret.
       - name: Check AWS is configured
         id: guard
         run: |
           if [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "auth=oidc" >> "$GITHUB_OUTPUT"
+            echo "::notice::Using OIDC role (no long-lived key)."
+          elif [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "auth=keys" >> "$GITHUB_OUTPUT"
+            echo "::warning::Using bootstrap access keys. Set AWS_DEPLOY_ROLE_ARN to switch to short-lived OIDC credentials and then delete the key."
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::AWS_DEPLOY_ROLE_ARN is not set — skipping AWS deploy. Set it once the Terraform stack is applied."
+            echo "auth=none" >> "$GITHUB_OUTPUT"
+            echo "::notice::No AWS credentials — skipping deploy."
           fi
 
       - name: Decide which services changed
@@ -137,13 +149,29 @@ jobs:
       # AWS credentials. No access key is stored in this repository, so there is
       # nothing to leak or rotate. The trust policy pins both the repo AND the
       # branch — see infra/aws/iam.tf.
+      # Two mutually-exclusive credential paths. They MUST be separate steps:
+      # configure-aws-credentials fails outright if role-to-assume is passed as
+      # an empty string, so a single step guarded only by `configured` would
+      # break the access-key path at the exact moment it is needed.
       - name: Assume AWS role via OIDC
-        if: matrix.build == 'true'
+        if: matrix.build == 'true' && needs.plan.outputs.auth == 'oidc'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: gha-${{ github.run_id }}
+
+      # Bootstrap fallback so images can ship before the OIDC role exists.
+      # Temporary by design: once AWS_DEPLOY_ROLE_ARN is set, the step above
+      # wins and this one stops running, after which the access key can be
+      # deleted from both GitHub and IAM.
+      - name: Configure AWS credentials (bootstrap keys)
+        if: matrix.build == 'true' && needs.plan.outputs.auth == 'keys'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Log in to ECR
         if: matrix.build == 'true'

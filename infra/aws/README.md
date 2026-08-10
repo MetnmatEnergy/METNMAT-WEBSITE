@@ -2,9 +2,15 @@
 
 Target: account **976134557584** (METNMAT Innovations), region **ap-south-1** (Mumbai).
 
-**Nothing here has been applied.** A `terraform plan` has run cleanly against the
-real account (validate passed, account guard matched, **104 to add / 0 to change
-/ 0 to destroy**), but `apply` is a separate, deliberate act. Read §4 first.
+**Partially applied.** An apply on 2026-08-10 created ~92 resource instances and
+was then cancelled while waiting on ACM DNS validation. Certificate validation is
+now complete (4/4 records verified). Still missing: the HTTPS listener, the three
+listener rules, and the three ECS services.
+
+Those resources were created BEFORE remote state existed, so they must be adopted
+into the S3 backend before the next apply — see §4. Do not apply without doing
+that first; Terraform would otherwise try to recreate everything and collide on
+every globally-unique name.
 
 ---
 
@@ -33,7 +39,7 @@ real account (validate passed, account guard matched, **104 to add / 0 to change
 |---|---|
 | `versions.tf` | Provider, account guard rail, default tags |
 | `variables.tf` | Every tunable, with the cost trade-offs documented |
-| `network.tf` | VPC, subnets, NAT, security groups |
+| `network.tf` | VPC, subnets, security groups (NAT available, off by default) |
 | `platform.tf` | ECR, S3 media bucket, Secrets Manager, log groups |
 | `iam.tf` | Task/execution roles, GitHub OIDC |
 | `alb.tf` | Load balancer, target groups, ACM, listener rules |
@@ -165,8 +171,6 @@ curl -H "Host: www.metnmat.com" https://$(terraform output -raw alb_dns_name)/ap
    routing it here.
 2. **`importMap.js` needs an S3 entry** if and when storage switches — without
    it the admin renders blank. See `CLAUDE.md` gotcha #2.
-3. **Remote state is local.** Bootstrap the S3 backend after the first apply
-   (`versions.tf` carries the block, commented).
-4. **No WAF, no CloudFront.** GCP fronts the site with a load balancer and CDN
+3. **No WAF, no CloudFront.** GCP fronts the site with a load balancer and CDN
    today; this stack does not replicate that. Static assets will be served by the
    containers. Add CloudFront once the migration is stable.
