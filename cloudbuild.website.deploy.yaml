@@ -7,6 +7,21 @@
 #   roles/run.admin + roles/iam.serviceAccountUser (on payload-storage-sa)
 #   + roles/artifactregistry.writer + roles/logging.logWriter
 # The Compute Engine default SA already has these.
+#
+# IMAGE TAGS ARE IMMUTABLE ($COMMIT_SHA, not :latest).
+#
+# :latest is overwritten in place on every push, which means there is no
+# previous image to roll back TO — the bytes are simply gone. Cloud Run hides
+# this today because its revision history pins each revision to a digest, but
+# that safety net is Cloud Run's, not the registry's, and it does not exist on
+# ECS/App Runner. A SHA tag makes every deploy reproducible and every rollback
+# a real target on either cloud.
+#
+# CAVEAT: $COMMIT_SHA is populated by Cloud Build TRIGGERS. A manual
+# `gcloud builds submit` leaves it empty, producing an invalid `website:` tag
+# and a failed build. That is the safe direction — a loud failure rather than an
+# accidental overwrite — but pass it explicitly if you ever build by hand:
+#   gcloud builds submit --substitutions=COMMIT_SHA=$(git rev-parse HEAD)
 substitutions:
   _REGION: asia-south1
   _REPO: metnmat
@@ -21,7 +36,7 @@ steps:
       - -f
       - Dockerfile.website
       - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/website:latest
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/website:$COMMIT_SHA
       - --build-arg
       - NEXT_PUBLIC_SITE_URL=${_SITE_URL}
       - --build-arg
@@ -33,7 +48,7 @@ steps:
     id: push
     args:
       - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/website:latest
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/website:$COMMIT_SHA
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     id: deploy
     entrypoint: gcloud
@@ -41,7 +56,7 @@ steps:
       - run
       - deploy
       - metnmat-website
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/website:latest
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/website:$COMMIT_SHA
       - --region=${_REGION}
       - --quiet
 options:

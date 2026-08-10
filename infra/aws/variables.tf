@@ -151,13 +151,10 @@ variable "services" {
       priority          = 100
     }
     dashboard = {
-      cpu            = 1024
-      memory         = 2048
-      container_port = 8080
-      # NOTE: the dashboard has no /api/health route today. "/" returns a
-      # redirect, which an ALB treats as healthy given matcher "200-399".
-      # Adding a real health endpoint is tracked as a migration prerequisite.
-      health_check_path = "/"
+      cpu               = 1024
+      memory            = 2048
+      container_port    = 8080
+      health_check_path = "/api/health"
       desired_count     = 1
       priority          = 200
     }

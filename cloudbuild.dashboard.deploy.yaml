@@ -2,6 +2,16 @@
 # Image-only deploy: env vars, secrets and the runtime service account are inherited
 # from the existing metnmat-dashboard service. Build SA needs run.admin +
 # iam.serviceAccountUser (on payload-storage-sa) + artifactregistry.writer + logging.logWriter.
+#
+# IMAGE TAGS ARE IMMUTABLE ($COMMIT_SHA, not :latest) — see the matching note in
+# cloudbuild.website.deploy.yaml. :latest is overwritten in place on every push,
+# so there is no previous image to roll back to; Cloud Run's revision history
+# masks that today, and ECS/App Runner would not.
+#
+# CAVEAT: $COMMIT_SHA is set by Cloud Build TRIGGERS. A manual
+# `gcloud builds submit` leaves it empty and the build fails on an invalid tag.
+# Pass it explicitly if building by hand:
+#   gcloud builds submit --substitutions=COMMIT_SHA=$(git rev-parse HEAD)
 substitutions:
   _REGION: asia-south1
   _REPO: metnmat
@@ -13,13 +23,13 @@ steps:
       - -f
       - Dockerfile.dashboard
       - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:latest
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:$COMMIT_SHA
       - .
   - name: gcr.io/cloud-builders/docker
     id: push
     args:
       - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:latest
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:$COMMIT_SHA
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     id: deploy
     entrypoint: gcloud
@@ -27,7 +37,7 @@ steps:
       - run
       - deploy
       - metnmat-dashboard
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:latest
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/dashboard:$COMMIT_SHA
       - --region=${_REGION}
       - --quiet
 options:

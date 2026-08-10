@@ -40,8 +40,9 @@ resource "aws_lb_target_group" "service" {
     unhealthy_threshold = 3
     timeout             = 10
     interval            = 30
-    # 200-399 so a redirect counts as healthy. The dashboard's "/" returns a
-    # redirect to /admin, and it has no dedicated health route yet.
+    # Both services expose a real /api/health returning 200. 200-399 is kept
+    # rather than a strict 200 so a future redirect in front of a service
+    # cannot silently mark every task unhealthy.
     matcher = "200-399"
   }
 
