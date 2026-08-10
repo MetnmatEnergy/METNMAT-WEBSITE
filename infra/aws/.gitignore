@@ -1,0 +1,9 @@
+# Terraform state contains resource metadata and must never be committed.
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+tfplan
+# Real variable values. Only the .example is tracked.
+terraform.tfvars
+*.auto.tfvars

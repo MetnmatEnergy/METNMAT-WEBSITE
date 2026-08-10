@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars and adjust. NEVER put secret values here —
+# Secrets Manager entries are populated out-of-band, not through Terraform.
+
+aws_account_id = "976134557584"
+aws_region     = "ap-south-1"
+environment    = "prod"
+
+# THE COST DECISION. Check the MongoDB Atlas IP access list first:
+#   Atlas restricts by IP      -> keep true (fixed egress IPs)
+#   Atlas allows 0.0.0.0/0     -> false removes the largest fixed cost
+enable_nat_gateway = true
+single_nat_gateway = true
+
+# Set false for the first apply if you want to stand the stack up and validate
+# it before dealing with certificate validation at GoDaddy.
+create_acm_certificate = true
