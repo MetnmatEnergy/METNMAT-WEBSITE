@@ -8,77 +8,103 @@ Updated 2026-08-10.
 
 ---
 
-## 1. Billing gate — STILL DISABLED
+## 1. Billing gate — ROOT CAUSE CONFIRMED: the billing account is CLOSED
 
-### The evidence I could not obtain
+### The confirmed evidence
 
-The `gcloud beta billing projects describe metnmat-website` output was **not
-supplied** — the `[PASTE OUTPUT HERE]` placeholder arrived empty, for the second
-time. Nothing in this section is based on that command.
+Both halves are now known, and together they close the diagnosis.
 
-### What I tested instead
-
-Two independent billing-gated APIs, both against this project:
-
-| API | Result |
-|---|---|
-| `gcloud secrets list` | `This API method requires billing to be enabled. Please enable billing on project #metnmat-website` |
-| `gcloud artifacts repositories list` | blocked |
-| `gcloud run services list` (free tier) | **OK** |
-| `gcloud builds list` (free tier) | **OK** |
-| `www.metnmat.com`, `admin.metnmat.com` | **503** |
-
-**Verdict: `billingEnabled` is false for `metnmat-website`.** The error names the
-project explicitly, comes from Google rather than from inference, and the pattern
-— free-tier reads succeed, billing-gated reads fail — is exactly what a
-billing-disabled project produces.
-
-I want to be plain: you have twice reported billing as enabled, and Google's API
-twice disagreed. I am not doubting that you enabled *something*; I am reporting
-that this project is not seeing it.
-
-### The 503 remains attributable to billing
-
-Nothing observed contradicts it. Cloud Run configuration is intact (revisions
-`Ready`, traffic 100%, generation reconciled), so the containers are not failing
-— they are not being allowed to run.
-
-### Most likely explanations, in order
-
-1. **A budget with an enforcement hook.** A budget wired to Pub/Sub → a Cloud
-   Function calling `projects.updateBillingInfo` re-disables billing minutes
-   after you enable it. This is the only common mechanism that produces
-   "I enabled it and it went back," which now matches your reports twice.
-   **Check Billing → Budgets & alerts first.**
-2. **Enabled on the account, project never linked.** The account looks healthy;
-   the project shows disabled. Check the **My Projects** tab, not the account page.
-3. **Billing account delinquent.** A declined card leaves the account "open" but
-   unusable, and projects behave as unbilled.
-4. **Wrong project.** The error names `metnmat-website` specifically.
-
-### The command that settles it
-
-Run as an owner — **not** the deploy service account, which cannot read billing:
-
-```bash
-gcloud auth login
-gcloud beta billing projects describe metnmat-website
-```
-
-Expected on success:
-```yaml
-billingAccountName: billingAccounts/XXXXXX-XXXXXX-XXXXXX
-billingEnabled: true
+```console
+$ gcloud beta billing projects describe metnmat-website
+billingAccountName: billingAccounts/014E15-FE00E5-7180B6
+billingEnabled: true                    ← the LINK exists
 projectId: metnmat-website
+
+$ gcloud beta billing accounts describe 014E15-FE00E5-7180B6
+currencyCode: INR
+displayName: My Billing Account
+name: billingAccounts/014E15-FE00E5-7180B6
+open: false                             ← the ACCOUNT is closed
+parent: organizations/854572808936
 ```
 
-If `billingEnabled: false`, link it:
-```bash
-gcloud beta billing accounts list
-gcloud beta billing projects link metnmat-website --billing-account=XXXXXX-XXXXXX-XXXXXX
+### Why the two readings appeared to contradict each other
+
+They never did — they answer different questions:
+
+| Field | Question it answers | Value |
+|---|---|---|
+| `billingEnabled` | *Is a billing account attached to this project?* | `true` |
+| `open` | *Can that account actually pay?* | **`false`** |
+
+`billingEnabled: true` reports only the **link**. A project linked to a **closed**
+account behaves exactly as if it had no billing at all. That is why every
+billing-gated API kept reporting *"requires billing to be enabled"* while the
+project-level check looked healthy.
+
+### The causal chain, end to end
+
+```
+billing account 014E15-FE00E5-7180B6 is closed (open: false)
+   └─► project metnmat-website is effectively unbilled
+        ├─► billing-gated APIs refuse        (Secret Manager, Artifact Registry, Cloud Billing)
+        └─► Cloud Run cannot schedule containers
+             └─► all 3 services return 503, including static paths like /robots.txt
 ```
 
-Then re-check in 5 minutes. If it flips back to `false`, it is cause 1.
+Every observation fits, and none contradicts it:
+
+| Observation | Explained by |
+|---|---|
+| 503 on `/robots.txt`, not just dynamic routes | No container is running at all |
+| All 3 services, including the untouched chatbot | Project-wide, not service-specific |
+| Revisions `Ready`, traffic 100%, generation reconciled | Configuration is intact; only **execution** is stopped |
+| Free-tier reads OK, billing-gated reads blocked | The precise signature of an unbilled project |
+| 30-minute watcher saw no change | Not propagation lag |
+| 6 consecutive samples all 503 | Steady, not flapping |
+
+**This is not an application fault, a deployment fault, or a misconfiguration.**
+Nothing in the repository or in Cloud Run needs changing to recover.
+
+### Recovery path — owner action, not mine
+
+Per instruction, **no attempt was made to modify billing.**
+
+Reopening a closed account is done at **Billing → `014E15-FE00E5-7180B6`**, and
+typically requires a valid payment method plus settlement of any outstanding
+balance. Two details from the output matter:
+
+- **`parent: organizations/854572808936`** — the account belongs to an
+  organisation, so reopening may require **Billing Account Administrator** on the
+  org, not merely project ownership. If you are not that role, escalate to
+  whoever is.
+- **`displayName: "My Billing Account"`** is GCP's default name, which often
+  indicates a personal or trial-origin account. If it began as a free trial that
+  has expired or exhausted its credit, the fix is to **link the project to a new,
+  open billing account** rather than to revive this one:
+
+  ```bash
+  gcloud beta billing accounts list          # find one with open: true
+  gcloud beta billing projects link metnmat-website --billing-account=<OPEN_ACCOUNT_ID>
+  ```
+
+Once an **open** account is linked, Cloud Run should resume scheduling without a
+redeploy — the revisions are healthy and still pinned at 100% traffic.
+
+### ⚠️ Data-loss clock
+
+GCP shuts resources down when billing lapses and **eventually deletes them**.
+That exposure includes:
+
+- **`metnmat-media-prod`** — the GCS bucket holding every product image
+- Artifact Registry images (all rollback targets)
+- Secret Manager secrets (22, currently unreadable)
+
+**MongoDB Atlas is unaffected** — a separate vendor on separate billing. Products,
+orders, customers and invoices are not at risk from this outage.
+
+Restoring billing therefore protects **data**, not merely uptime, and is the
+single highest-priority action outstanding.
 
 ---
 
@@ -277,20 +303,49 @@ scenario in Blocker 1.
 
 ## 4. Readiness verdict
 
-**NOT READY.**
+**NOT READY. AWS migration is blocked.**
 
 | Gate | Status |
 |---|---|
-| GCP billing restored | ❌ **Blocking** |
-| Atlas snapshot taken | ❌ Not done |
+| GCP billing account **open** | ❌ **BLOCKING — `open: false`, root cause confirmed** |
+| Project→account link exists | ✅ `billingEnabled: true` |
+| A rollback-capable GCP environment | ❌ **BLOCKING — GCP cannot serve** |
+| Atlas snapshot taken | ❌ **Outstanding** |
+| GCS bucket copy + object count | ❌ **Outstanding** — blocked by billing |
 | Atlas IP allowlist confirmed | ❌ Unknown — also decides App Runner vs Fargate |
-| Storage design decided (Blocker 3) | ❌ **Blocking** |
-| GCS bucket copy + object count | ❌ Blocked by billing |
+| Storage design decided (Blocker 3) | ❌ **BLOCKING** |
 | AWS account / region / billing | ❌ Unknown |
 | Env vars sourced from the Phase 1 backup | ⚠️ Not yet built |
 
-Two hard blockers: **billing** (no rollback target without it) and **Blocker 3**
-(the dashboard cannot safely run on AWS until the storage fallback is resolved).
+### Why the migration cannot proceed
+
+The agreed strategy is a **parallel run**: stand AWS up beside a working GCP,
+prove it, switch DNS, and keep GCP as instant rollback. Every safety property of
+that plan depends on GCP being able to serve.
+
+With the billing account closed, **there is no rollback target.** Migrating now
+would convert a reversible, testable migration into a one-way emergency exit
+carrying live payments, customer accounts and order data — the opposite of what
+the brief requires.
+
+There is a second, quieter reason to wait: **the two mandatory data backups
+cannot be taken while billing is down.** A GCS bucket copy requires billing, and
+"zero data loss" cannot be asserted without one. Migrating before the backups
+exist would breach the brief's own hard requirement.
+
+### Order of operations from here
+
+1. **Reopen or replace the billing account** — restores service *and* stops the
+   data-deletion clock. Owner action.
+2. **Verify GCP is serving** — all three services returning 200.
+3. **Take the Atlas snapshot** and the **GCS bucket copy**; record object count
+   and byte total.
+4. **Resolve Blocker 3** (storage design) — the dashboard cannot safely boot on
+   AWS until then.
+5. **Confirm the Atlas IP allowlist** — decides App Runner vs Fargate.
+6. Only then reconsider Phase 2.
+
+Steps 1–3 are prerequisites under the brief's own rules, not preferences.
 
 ---
 
