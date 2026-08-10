@@ -1,0 +1,182 @@
+name: Terraform (AWS infrastructure)
+
+# Runs the infra/aws Terraform stack from GitHub Actions.
+#
+# WHY FROM CI RATHER THAN A LAPTOP
+# The runner already has Terraform and the AWS CLI, and — more importantly —
+# your credentials go into GitHub's encrypted secret store and are never pasted
+# into a chat, a file, or a shell history. Nobody but AWS and the runner sees
+# them.
+#
+# MANUAL ONLY. This never runs on push. Infrastructure changes are deliberate
+# acts, and an accidental `apply` on a merge is exactly the kind of surprise
+# this migration is trying to avoid.
+#
+# BOOTSTRAP CREDENTIALS ARE TEMPORARY. The stack it builds includes a GitHub
+# OIDC role, so once `apply` succeeds you can delete the access key and every
+# future deploy uses short-lived credentials with no stored secret. See §3 of
+# infra/aws/README.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What to run"
+        required: true
+        default: plan
+        type: choice
+        options: [plan, apply, output]
+      confirm:
+        description: "Type APPLY to confirm (ignored for plan/output)"
+        required: false
+        default: ""
+
+concurrency:
+  group: terraform-aws
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+  TF_IN_AUTOMATION: "true"
+  # Terraform reads these directly; they are never echoed.
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/aws
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify credentials are present
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] || [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "::error::AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set as repository secrets."
+            echo "Settings → Secrets and variables → Actions → New repository secret."
+            exit 1
+          fi
+
+      # Fails loudly if the key belongs to a different account than the one the
+      # provider asserts, before anything is created.
+      - name: Confirm the target account
+        run: |
+          set -euo pipefail
+          id=$(aws sts get-caller-identity --query Account --output text)
+          echo "Authenticated against account: $id"
+          if [ "$id" != "976134557584" ]; then
+            echo "::error::Expected account 976134557584 (METNMAT Innovations), got $id. Refusing to continue."
+            exit 1
+          fi
+
+      - name: Require explicit confirmation for apply
+        if: inputs.action == 'apply'
+        run: |
+          if [ "${{ inputs.confirm }}" != "APPLY" ]; then
+            echo "::error::Re-run with confirm=APPLY. This creates ~50 billable AWS resources."
+            exit 1
+          fi
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: Format check
+        run: terraform fmt -check -recursive -diff
+        continue-on-error: true # style only; must not block a real apply
+
+      - name: Init
+        run: terraform init -input=false
+
+      # This is the step that could not run locally — no terraform binary. It is
+      # the first real syntax and provider-schema validation this stack gets.
+      - name: Validate
+        run: terraform validate
+
+      - name: Plan
+        if: inputs.action != 'output'
+        run: terraform plan -input=false -no-color -out=tfplan 2>&1 | tee plan.txt
+
+      - name: Publish the plan
+        if: inputs.action != 'output'
+        run: |
+          {
+            echo "### Terraform plan"
+            echo '```'
+            tail -c 60000 plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Apply
+        if: inputs.action == 'apply'
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Outputs
+        if: inputs.action == 'apply' || inputs.action == 'output'
+        run: |
+          set -euo pipefail
+          {
+            echo "### Outputs"
+            echo ""
+            echo "**ALB hostname** — test the stack through this BEFORE touching DNS:"
+            echo '```'
+            terraform output -raw alb_dns_name 2>/dev/null || echo "(not created yet)"
+            echo '```'
+            echo ""
+            echo "**GitHub deploy role** — set as the AWS_DEPLOY_ROLE_ARN secret to activate deploy-aws.yml:"
+            echo '```'
+            terraform output -raw github_actions_role_arn 2>/dev/null || echo "(not created yet)"
+            echo '```'
+            echo ""
+            echo "**ACM validation records** — add these CNAMEs at GoDaddy. They do NOT affect live traffic:"
+            echo '```'
+            terraform output -json acm_validation_records 2>/dev/null || echo "(none)"
+            echo '```'
+            echo ""
+            echo "**Atlas allowlist IPs** — add to MongoDB Atlas. KEEP the existing GCP entries:"
+            echo '```'
+            terraform output -json atlas_allowlist_ips 2>/dev/null || echo "(none — NAT disabled)"
+            echo '```'
+            echo ""
+            echo "**ECR repositories:**"
+            echo '```'
+            terraform output -json ecr_repository_urls 2>/dev/null || echo "(none)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # State is LOCAL to the runner and disappears with it, so it must be kept
+      # or the next run cannot manage what this one created. Retained 90 days.
+      #
+      # It contains resource metadata — not secret VALUES, since every Secrets
+      # Manager entry is created with a placeholder and populated out-of-band —
+      # but treat the artifact as sensitive regardless.
+      - name: Upload state
+        if: always() && inputs.action == 'apply'
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state-${{ github.run_id }}
+          path: infra/aws/terraform.tfstate
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Next steps
+        if: inputs.action == 'apply'
+        run: |
+          {
+            echo ""
+            echo "### Next"
+            echo "1. Populate the 22 secrets — all created as \`PLACEHOLDER_SET_ME\`. Nothing starts until they hold real values."
+            echo "2. Add the Atlas allowlist IPs above."
+            echo "3. Set \`AWS_DEPLOY_ROLE_ARN\` from the role above, then push to build and deploy images."
+            echo "4. Test via the ALB hostname with a Host header — **not** via production DNS."
+            echo "5. DNS last."
+            echo ""
+            echo "> Download the state artifact and migrate it to an S3 backend before the next run."
+          } >> "$GITHUB_STEP_SUMMARY"
