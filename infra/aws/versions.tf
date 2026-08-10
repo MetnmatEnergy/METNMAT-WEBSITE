@@ -8,22 +8,27 @@ terraform {
     }
   }
 
-  # Remote state is deliberately NOT configured yet.
+  # Remote state in S3, with a DynamoDB lock table.
   #
-  # Bootstrapping it needs an S3 bucket + DynamoDB lock table that do not exist
-  # until the first apply, so wiring it here would make the first run fail. Run
-  # once with local state, then create the backend and migrate:
+  # This is not optional bookkeeping — running without it actively broke this
+  # stack. CI runners are ephemeral, so a local state file dies with the job.
+  # The first apply created 87 real AWS resources and then the runner was
+  # discarded; the next run started from EMPTY state, could not see any of them,
+  # and planned to create all 98 again. An apply at that point would have
+  # collided on every globally-unique name (the S3 bucket, the IAM roles, the
+  # ECR repos, all 22 secrets).
   #
-  #   backend "s3" {
-  #     bucket         = "metnmat-tfstate"
-  #     key            = "prod/terraform.tfstate"
-  #     region         = "ap-south-1"
-  #     dynamodb_table = "metnmat-tfstate-lock"
-  #     encrypt        = true
-  #   }
-  #
-  # Until then terraform.tfstate is a LOCAL file that contains resource metadata.
-  # It is gitignored. Do not commit it.
+  # The bucket and lock table are created by an idempotent step in
+  # .github/workflows/terraform-aws.yml BEFORE `terraform init` runs, which is
+  # how the chicken-and-egg is resolved: they cannot be managed by the very
+  # state they store.
+  backend "s3" {
+    bucket         = "metnmat-tfstate-976134557584"
+    key            = "prod/terraform.tfstate"
+    region         = "ap-south-1"
+    dynamodb_table = "metnmat-tfstate-lock"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
