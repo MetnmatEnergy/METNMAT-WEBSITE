@@ -28,9 +28,9 @@ Three independent applications plus external services.
                                           • Upstash Redis         — rate-limit store
 ```
 
-> **Note:** Supabase Storage was used during early development only. **Production media
+> **Note:** **Production media
 > lives in a private GCS bucket** (`metnmat-media-prod`), served through Payload at
-> `admin.metnmat.com/api/media/file/…`. The Supabase keys are migration-only, never deployed.
+> `admin.metnmat.com/api/media/file/…`. Object storage is selected by `STORAGE_PROVIDER` — see `docs/AWS-STORAGE-MIGRATION.md`.
 
 ### How they connect
 

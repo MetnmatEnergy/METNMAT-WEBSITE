@@ -47,7 +47,9 @@ Consolidated reference for all three services. **Never commit real secrets.** Pe
 | `RESEND_API_KEY` / `EMAIL_FROM` | — | Outbound CMS email (ticket replies, etc.). |
 
 **Recommended new keys (staged):** split `INTERNAL_API_KEY` → `CMS_ORDER_WRITE_KEY`, `CMS_TICKET_WRITE_KEY`, `CMS_REVALIDATE_KEY`, `CHATBOT_READ_KEY`; add `ALLOW_FIRST_USER_BOOTSTRAP` (default off in prod, AUTH-02).
-**Delete:** `apps/dashboard/.env.supabase.bak` (contains a live Supabase S3 secret — SEC-02).
+**SEC-02:** `apps/dashboard/.env.supabase.bak` is no longer in the working tree, but the
+Supabase S3 key it held must still be **revoked at the provider** — deleting the file does
+not invalidate the credential. Unconfirmed; treat as live until verified.
 
 ## Chatbot (`Metnmat-customer-agent-main` → `.env`) — template hardened (BOT-10)
 
@@ -69,7 +71,7 @@ Consolidated reference for all three services. **Never commit real secrets.** Pe
 
 ## Secrets that must be rotated (touched OneDrive-synced files — SEC-01/02)
 
-`MONGODB_URI` (Atlas user password) · `GROQ_API_KEY` · `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` · `RESEND_API_KEY` · `Meta_WA_accessToken` (+ FB/IG tokens) · `JWT_SECRET` · `PAYLOAD_SECRET` · `PAYLOAD_PIN_PEPPER` · `INTERNAL_API_KEY` · Supabase S3 access key (in `.env.supabase.bak`).
+`MONGODB_URI` (Atlas user password) · `GROQ_API_KEY` · `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` · `RESEND_API_KEY` · `Meta_WA_accessToken` (+ FB/IG tokens) · `JWT_SECRET` · `PAYLOAD_SECRET` · `PAYLOAD_PIN_PEPPER` · `INTERNAL_API_KEY` · legacy Supabase S3 access key (file removed; **revocation unconfirmed** — SEC-02).
 
 ## Analytics geography
 

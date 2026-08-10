@@ -20,7 +20,9 @@ Updated 2026-06-19. Cross-reference IDs live in `PRODUCTION_AUDIT_REPORT.md`.
 - ⛔ Brute-force protection in a shared store (Redis), keyed on trusted IP not raw XFF *(AUTH-06)*
 - ⛔ Auth cookie: always `Secure`, consider `__Host-`/`SameSite=Strict` *(AUTH-09)*
 - 🔒 Rotate all secrets that touched OneDrive `.env`; move to GCP Secret Manager *(SEC-01)*
-- 🔒 Delete `apps/dashboard/.env.supabase.bak` + revoke that Supabase S3 key *(SEC-02)*
+- 🔒 **Revoke the legacy Supabase S3 key** *(SEC-02)* — the `.env.supabase.bak` file is
+  gone from the working tree, but **deleting a file does not revoke a credential**, and
+  revocation has not been confirmed. Still open until someone checks Supabase.
 - ⛔ Fail-fast in production when `PAYLOAD_SECRET`/`MONGODB_URI`/`JWT_SECRET` are missing; remove empty fallbacks *(SEC-03/04)*
 - ⛔ Split `INTERNAL_API_KEY` into purpose-scoped keys + HMAC/timestamp/replay protection; constant-time compare *(SEC-06, KEY-01)*
 

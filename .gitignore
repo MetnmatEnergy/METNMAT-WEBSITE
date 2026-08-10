@@ -15,7 +15,7 @@ dist/
 .env
 .env*.local
 
-# backups (may contain secrets — e.g. .env.supabase.bak)
+# backups (may contain secrets)
 *.bak
 
 # logs
@@ -26,7 +26,6 @@ pnpm-debug.log*
 # misc
 .DS_Store
 *.pem
-.vercel
 .turbo
 coverage/
 next-env.d.ts

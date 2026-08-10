@@ -104,6 +104,6 @@ Auto stock-decrement on order-paid + SKU unique (needs duplicate cleanup) · `'w
 
 - **Live & verified:** website (`…00022-7b2`) + dashboard (`…00011-m5m`) — all auth/CMS/payment/upload/SEO/devops fixes are in production.
 - **Committed-on-disk, NOT live:** the entire chatbot hardening (deploy it to activate BOT-01/02/03/04/05/07/08 + today's `sendMessage` fix).
-- **Operator follow-ups:** strong-pepper migration (§3) · Razorpay webhook URL+secret in the Razorpay dashboard · rotate OneDrive secrets → Secret Manager · delete `apps/dashboard/.env.supabase.bak` · set chatbot Cloud Run env.
+- **Operator follow-ups:** strong-pepper migration (§3) · Razorpay webhook URL+secret in the Razorpay dashboard · rotate OneDrive secrets → Secret Manager · revoke the legacy Supabase S3 key (file removed, revocation unconfirmed) · set chatbot Cloud Run env.
 
 *Full per-fix evidence and the original 89 findings are in `CHANGELOG_PRODUCTION_FIXES.md` and the prior report history.*

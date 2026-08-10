@@ -83,7 +83,7 @@ const nextConfig = {
     // — Next re-encoded it on demand every time, inflating LCP to ~7s. A long TTL
     // serves it from cache with a long browser Cache-Control instead.
     minimumCacheTTL: 31536000,
-    // CMS/dashboard media host + Supabase storage, for any next/image usage.
+    // CMS/dashboard media host, for any next/image usage.
     // The CMS host is derived from NEXT_PUBLIC_CMS_URL so production media
     // (e.g. https://admin.metnmat.com) isn't blocked — falls back to localhost.
     remotePatterns: [
