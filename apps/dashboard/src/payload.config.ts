@@ -4,6 +4,8 @@ import { buildConfig } from "payload";
 import { mongooseAdapter } from "@payloadcms/db-mongodb";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { gcsStorage } from "@payloadcms/storage-gcs";
+import { s3Storage } from "@payloadcms/storage-s3";
+import { describeStorage, resolveStorageConfig } from "./lib/storage-config";
 import sharp from "sharp";
 
 import { Users } from "./collections/Users";
@@ -69,12 +71,18 @@ const trustedOrigins = Array.from(
   new Set([SELF_URL, (process.env.WEBSITE_URL || "").replace(/\/+$/, "")].filter(Boolean)),
 );
 
-// Object storage: Google Cloud Storage (private bucket; media served via Payload).
-// Enabled when GCS_BUCKET + GCS_PROJECT_ID are set. On Cloud Run the attached
-// service account supplies credentials automatically (no key file); locally use
-// GCS_KEY_FILENAME or `gcloud auth application-default login` (ADC).
-// Falls back to local disk only when unset (dev convenience).
-const useGCS = Boolean(process.env.GCS_BUCKET && process.env.GCS_PROJECT_ID);
+// Object storage. GCS is the default and remains the production provider; S3 is
+// available but INACTIVE unless STORAGE_PROVIDER=s3 is set explicitly.
+//
+// The provider decision, and whether its configuration is complete enough to
+// start, live in lib/storage-config.ts so they can be unit-tested without
+// booting Payload. The important behaviour change: a missing configuration in
+// production now THROWS instead of silently writing uploads to the container
+// filesystem, which is ephemeral on both Cloud Run and ECS/Fargate.
+const storage = resolveStorageConfig(process.env, {
+  isProduction: process.env.NODE_ENV === "production",
+  isBuildPhase: process.env.NEXT_PHASE === "phase-production-build",
+});
 
 /**
  * Fail-fast on missing required secrets — but only at real server runtime, never
@@ -115,19 +123,48 @@ const storageCollections = {
   "blog-submission-files": true,
 } as const;
 
-const storagePlugins = useGCS
-  ? [
-      gcsStorage({
-        enabled: true,
-        collections: storageCollections,
-        bucket: process.env.GCS_BUCKET || "",
-        options: {
-          projectId: process.env.GCS_PROJECT_ID,
-          keyFilename: process.env.GCS_KEY_FILENAME, // undefined → ADC
-        },
-      }),
-    ]
-  : [];
+// Exactly one adapter, chosen by the resolution above. `local` is only ever
+// returned in development or during `next build` — resolveStorageConfig throws
+// rather than return it at production runtime.
+const storagePlugins =
+  storage.provider === "gcs"
+    ? [
+        gcsStorage({
+          enabled: true,
+          collections: storageCollections,
+          bucket: storage.bucket,
+          options: {
+            projectId: storage.projectId,
+            keyFilename: storage.keyFilename, // undefined → ADC
+          },
+        }),
+      ]
+    : storage.provider === "s3"
+      ? [
+          s3Storage({
+            enabled: true,
+            collections: storageCollections,
+            bucket: storage.bucket,
+            config: {
+              region: storage.region,
+              ...(storage.endpoint ? { endpoint: storage.endpoint } : {}),
+              ...(storage.forcePathStyle ? { forcePathStyle: true } : {}),
+              // Omitted unless explicitly supplied, so the AWS SDK's default
+              // chain (ECS task role / instance profile) is used — the same
+              // shape as ADC on Cloud Run, and the reason no long-lived key
+              // needs to exist in a normal deployment.
+              ...(storage.accessKeyId && storage.secretAccessKey
+                ? {
+                    credentials: {
+                      accessKeyId: storage.accessKeyId,
+                      secretAccessKey: storage.secretAccessKey,
+                    },
+                  }
+                : {}),
+            },
+          }),
+        ]
+      : [];
 
 export default buildConfig({
   admin: {
@@ -229,6 +266,9 @@ export default buildConfig({
   globals,
   onInit: async (payload) => {
     assertProductionConfig(payload.logger);
+    // Names and bucket only — never a credential value.
+    if (storage.provider === "local") payload.logger.warn(describeStorage(storage));
+    else payload.logger.info(describeStorage(storage));
     payload.logger.info(`[config] trusted origins (cors/csrf): ${trustedOrigins.join(", ") || "(none)"}`);
     // Seeding must never take the CMS down: a transient DB error during seed
     // should log and let the admin/API still boot (it degrades to whatever data

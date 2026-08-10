@@ -18,6 +18,7 @@
     "@payloadcms/next": "3.85.1",
     "@payloadcms/richtext-lexical": "3.85.1",
     "@payloadcms/storage-gcs": "3.85.1",
+    "@payloadcms/storage-s3": "3.85.1",
     "@payloadcms/ui": "3.85.1",
     "cross-env": "^7.0.3",
     "graphql": "^16.9.0",
