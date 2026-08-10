@@ -1,0 +1,16 @@
+createTime: '2026-06-17T07:46:02.944130858Z'
+description: Build and deploy to Cloud Run service metnmat-dashboard on push to "^main$"
+filename: cloudbuild.dashboard.deploy.yaml
+github:
+  name: METNMAT-WEBSITE
+  owner: MetnmatEnergy
+  push:
+    branch: ^main$
+id: 2abe92e4-8af7-49ff-938b-523ac0b1a090
+includeBuildLogs: INCLUDE_BUILD_LOGS_WITH_STATUS
+name: rmgpgab-metnmat-dashboard-asia-south1-MetnmatEnergy-METNMAT-obs
+resourceName: projects/metnmat-website/locations/global/triggers/2abe92e4-8af7-49ff-938b-523ac0b1a090
+serviceAccount: projects/metnmat-website/serviceAccounts/127977052991-compute@developer.gserviceaccount.com
+substitutions:
+  _REGION: asia-south1
+  _REPO: metnmat

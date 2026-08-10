@@ -1,0 +1,11 @@
+createTime: '2026-06-18T09:54:40.572231259Z'
+filename: cloudbuild.website.deploy.yaml
+github:
+  name: METNMAT-WEBSITE
+  owner: MetnmatEnergy
+  push:
+    branch: ^main$
+id: f0f4d63f-7bee-4aef-9ce6-09feccacdd60
+name: metnmat-website-auto-deploy
+resourceName: projects/metnmat-website/locations/global/triggers/f0f4d63f-7bee-4aef-9ce6-09feccacdd60
+serviceAccount: projects/metnmat-website/serviceAccounts/127977052991-compute@developer.gserviceaccount.com

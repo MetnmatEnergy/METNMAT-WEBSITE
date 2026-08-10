@@ -1,0 +1,104 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/maxScale: '3'
+    run.googleapis.com/urls: '["https://metnmat-dashboard-127977052991.asia-south1.run.app","https://metnmat-dashboard-zrfgtoog2q-el.a.run.app"]'
+  labels:
+    cloud.googleapis.com/location: asia-south1
+    gcb-trigger-id: 2abe92e4-8af7-49ff-938b-523ac0b1a090
+    gcb-trigger-region: global
+    managed-by: gcp-cloud-build-deploy-cloud-run
+    run.googleapis.com/satisfiesPzs: 'true'
+  name: metnmat-dashboard
+  namespace: '127977052991'
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '3'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 579.0.0
+        run.googleapis.com/startup-cpu-boost: 'true'
+      labels:
+        client.knative.dev/nonce: dfxphnwchq
+        run.googleapis.com/startupProbeType: Default
+    spec:
+      containerConcurrency: 80
+      containers:
+      - env:
+        - name: WEBSITE_URL
+          value: https://www.metnmat.com
+        - name: EMAIL_FROM
+          value: METNMAT <onboarding@resend.dev>
+        - name: GCS_BUCKET
+          value: metnmat-media-prod
+        - name: GCS_PROJECT_ID
+          value: metnmat-website
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: MONGODB_URI
+        - name: PAYLOAD_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: PAYLOAD_SECRET
+        - name: PAYLOAD_PIN_PEPPER
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: PAYLOAD_PIN_PEPPER
+        - name: INTERNAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: INTERNAL_API_KEY
+        - name: OPEN_EXCHANGE_RATES_APP_ID
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: OPEN_EXCHANGE_RATES_APP_ID
+        - name: RESEND_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: RESEND_API_KEY
+        - name: CMS_URL
+          value: https://admin.metnmat.com
+        - name: CMS_OAUTH_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: CMS_OAUTH_KEY
+        - name: DIRECTOR_EMAIL
+          value: mk@metnmat.com
+        - name: DIRECTOR_NAME
+          value: Mukesh Kumar
+        - name: DIRECTOR_PIN
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: DIRECTOR_PIN
+        image: asia-south1-docker.pkg.dev/metnmat-website/metnmat/dashboard:latest
+        ports:
+        - containerPort: 8080
+          name: http1
+        resources:
+          limits:
+            cpu: '1'
+            memory: 1Gi
+        startupProbe:
+          failureThreshold: 1
+          periodSeconds: 240
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 240
+      serviceAccountName: payload-storage-sa@metnmat-website.iam.gserviceaccount.com
+      timeoutSeconds: 300
+  traffic:
+  - latestRevision: true
+    percent: 100

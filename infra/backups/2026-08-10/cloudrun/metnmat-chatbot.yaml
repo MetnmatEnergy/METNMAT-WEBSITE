@@ -1,0 +1,95 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/maxScale: '3'
+    run.googleapis.com/urls: '["https://metnmat-chatbot-127977052991.asia-south1.run.app","https://metnmat-chatbot-zrfgtoog2q-el.a.run.app"]'
+  labels:
+    cloud.googleapis.com/location: asia-south1
+    run.googleapis.com/satisfiesPzs: 'true'
+  name: metnmat-chatbot
+  namespace: '127977052991'
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '3'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 576.0.0
+        run.googleapis.com/startup-cpu-boost: 'true'
+      labels:
+        client.knative.dev/nonce: jfqlyunbkk
+        run.googleapis.com/startupProbeType: Default
+    spec:
+      containerConcurrency: 80
+      containers:
+      - env:
+        - name: PUBLIC_URL
+          value: https://chat.metnmat.com
+        - name: ALLOWED_ORIGINS
+          value: https://www.metnmat.com,https://metnmat.com
+        - name: FACEBOOK_GRAPH_API_VERSION
+          value: v20.0
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: MONGODB_URI
+        - name: GROQ_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: GROQ_API_KEY
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: JWT_SECRET
+        - name: Meta_WA_accessToken
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: Meta_WA_accessToken
+        - name: Meta_WA_SenderPhoneNumberId
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: Meta_WA_SenderPhoneNumberId
+        - name: Meta_WA_wabaId
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: Meta_WA_wabaId
+        - name: Meta_WA_VerfyToken
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: Meta_WA_VerfyToken
+        - name: UPSTASH_REDIS_REST_URL
+          value: https://advanced-zebra-41141.upstash.io
+        - name: UPSTASH_REDIS_REST_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: latest
+              name: UPSTASH_REDIS_REST_TOKEN
+        image: asia-south1-docker.pkg.dev/metnmat-website/metnmat/chatbot:latest
+        ports:
+        - containerPort: 8080
+          name: http1
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        startupProbe:
+          failureThreshold: 1
+          periodSeconds: 240
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 240
+      serviceAccountName: payload-storage-sa@metnmat-website.iam.gserviceaccount.com
+      timeoutSeconds: 300
+  traffic:
+  - percent: 100
+    revisionName: metnmat-chatbot-00006-7mt
