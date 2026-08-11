@@ -170,6 +170,54 @@ resource "aws_lb_listener" "https" {
   }
 }
 
+# The ZONE APEX, handled separately from service_domains.
+#
+# Without this rule, Host: metnmat.com matches no listener rule — the rules below
+# use exact host_header matching — and falls through to the HTTPS listener's
+# default action, a flat 404. Two things break at that moment:
+#   1. Anyone typing the bare domain gets an ALB error page, not the site.
+#   2. The apex -> www 308 in apps/website/src/middleware.ts never executes,
+#      because the request never reaches the application. That redirect is not
+#      cosmetic: it is what fixed the host-only-cookie trap that broke Google
+#      sign-in and persistent sessions (the OAuth state cookie was being set on
+#      the apex while redirect_uri pointed at www).
+#
+# Forwarded to the WEBSITE target group rather than answered with an ALB-level
+# redirect, deliberately: middleware.ts already owns canonical-host policy, and
+# duplicating it here would mean two places to keep in sync, with the ALB copy
+# unable to use 308.
+#
+# NOT added to var.service_domains, which would be the obvious-looking change:
+# that map feeds aws_acm_certificate.subject_alternative_names, and the apex is
+# already the certificate's domain_name (alb.tf, aws_acm_certificate.main). Adding
+# it there would duplicate it into the SAN list and force certificate
+# REPLACEMENT — re-validation, and an outage window on a live listener.
+#
+# Priority 50 sits above the service rules (100/200/300) and collides with none.
+#
+# STILL REQUIRED, AND NOT SOLVABLE IN THIS REPOSITORY: GoDaddy cannot point an
+# apex A record at an ALB — there is no ALIAS/ANAME record type there, and an ALB
+# has no static IP. This rule makes the ALB answer the apex correctly once
+# something can route it; getting traffic there needs Route 53 (alias record) or
+# CloudFront in front. See docs/aws-production-report.md.
+resource "aws_lb_listener_rule" "apex" {
+  count = var.create_acm_certificate ? 1 : 0
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = 50
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.service["website"].arn
+  }
+
+  condition {
+    host_header {
+      values = [var.root_domain]
+    }
+  }
+}
+
 resource "aws_lb_listener_rule" "host" {
   for_each = var.create_acm_certificate ? var.service_domains : {}
 
