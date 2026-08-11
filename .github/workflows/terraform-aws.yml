@@ -171,6 +171,34 @@ jobs:
           terraform state push -force /tmp/seed/terraform.tfstate
           echo "Now tracked remotely: $(terraform state list | wc -l) resources"
 
+      # Adopt resources that exist in AWS but not in state.
+      #
+      # Partial applies left several behind: the first apply was cancelled
+      # mid-run, and two later ones died on EntityAlreadyExists. Each time,
+      # anything created before the failure is real but unrecorded, and the next
+      # apply tries to create it again and hits 409.
+      #
+      # This is idempotent by construction: already in state -> skip; missing
+      # from AWS -> the import fails harmlessly and Terraform creates it
+      # normally. Safe to leave in permanently.
+      - name: Adopt pre-existing resources
+        run: |
+          set -uo pipefail
+          adopt() {
+            local addr="$1" id="$2"
+            if terraform state list 2>/dev/null | grep -qxF "$addr"; then
+              echo "  in state already: $addr"
+            elif terraform import -input=false "$addr" "$id" >/dev/null 2>&1; then
+              echo "  ADOPTED: $addr"
+            else
+              echo "  not present in AWS (will be created): $addr"
+            fi
+          }
+          # Named IAM identities left behind by the partial applies. The OIDC
+          # provider is deliberately NOT listed: it is read via a data source
+          # (count = 0 on the resource), so it needs no state entry at all.
+          adopt 'aws_iam_role.github_deploy' 'metnmat-github-deploy'
+
       # This is the step that could not run locally — no terraform binary. It is
       # the first real syntax and provider-schema validation this stack gets.
       - name: Validate
