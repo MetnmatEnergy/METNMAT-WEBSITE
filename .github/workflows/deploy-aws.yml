@@ -279,7 +279,16 @@ jobs:
           esac
 
           # ECS_CLUSTER is "metnmat-cluster"; the ALB is "metnmat-alb". Derive the
-          # shared prefix in bash — GitHub's ${{ }} cannot do parameter expansion.
+          # shared prefix in bash, because GitHub expression syntax has no
+          # parameter expansion.
+          #
+          # Do NOT write an empty GitHub expression anywhere in a run block, not
+          # even inside a shell comment: interpolation happens before the script
+          # is ever handed to bash, so a comment is not a comment to it, and an
+          # expression with nothing between the braces is a syntax error that
+          # rejects the ENTIRE workflow file. That is what happened here — the
+          # run was cancelled in 0s with "workflow file issue" and no job was
+          # created, which looks nothing like a script bug.
           ALB_NAME="${ECS_CLUSTER%-cluster}-alb"
           ALB=$(aws elbv2 describe-load-balancers --names "$ALB_NAME" \
                   --query 'LoadBalancers[0].DNSName' --output text 2>/dev/null) || ALB=""
