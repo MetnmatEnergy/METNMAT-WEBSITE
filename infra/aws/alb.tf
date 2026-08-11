@@ -123,13 +123,28 @@ resource "aws_lb_listener" "http" {
     redirect {
       port     = "443"
       protocol = "HTTPS"
-      # 308, not 301. A 301 permits the client to re-issue the request as GET,
-      # which silently DROPS the body of any POST that arrives over plain HTTP —
-      # a mis-configured Razorpay webhook or a form posted to http:// would be
-      # answered 200 by the redirect and never reach the application. 308 keeps
-      # the method and body intact. middleware.ts makes the same choice, for the
-      # same reason.
-      status_code = "HTTP_308"
+
+      # 301 is NOT a preference — it is the only real choice here. The ELBv2 API
+      # accepts exactly "HTTP_301" or "HTTP_302" for a redirect action, and
+      # anything else fails `terraform validate` outright:
+      #
+      #   Error: expected status_code to be one of ["HTTP_301" "HTTP_302"],
+      #          got HTTP_308
+      #
+      # That matters because a 301 lets a client re-issue the request as GET, so
+      # the body of a POST arriving over plain HTTP is dropped. middleware.ts
+      # deliberately uses 308 for its own apex->www redirect for exactly that
+      # reason — but middleware runs INSIDE the app, where 308 is available, and
+      # the ALB is in front of it.
+      #
+      # What actually covers the gap:
+      #   - next.config.mjs sends HSTS with `preload`, so a browser that has seen
+      #     the site once never issues plain HTTP again.
+      #   - Machine callers that would POST (the Razorpay webhook) are configured
+      #     with an https:// URL, so they never traverse this listener.
+      # If a plaintext POST ever becomes a real path, terminate it at CloudFront,
+      # which does support 307/308.
+      status_code = "HTTP_301"
     }
   }
 }

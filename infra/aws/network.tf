@@ -22,8 +22,8 @@ locals {
   # Where the tasks run. With NAT they sit private; without it they sit public
   # with a public IP, because a task with no NAT and no public IP cannot reach
   # MongoDB Atlas, Razorpay or Resend at all.
-  task_subnet_ids   = var.enable_nat_gateway ? aws_subnet.private[*].id : aws_subnet.public[*].id
-  assign_public_ip  = !var.enable_nat_gateway
+  task_subnet_ids  = var.enable_nat_gateway ? aws_subnet.private[*].id : aws_subnet.public[*].id
+  assign_public_ip = !var.enable_nat_gateway
 }
 
 resource "aws_vpc" "main" {

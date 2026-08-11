@@ -159,7 +159,7 @@ resource "aws_ecs_task_definition" "service" {
 
   container_definitions = jsonencode([
     {
-      name  = each.key
+      name = each.key
       # Placeholder only. CI replaces this with :$COMMIT_SHA on every deploy, and
       # the lifecycle block below stops Terraform from reverting it afterwards.
       image = "${aws_ecr_repository.service[each.key].repository_url}:bootstrap"

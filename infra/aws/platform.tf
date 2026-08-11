@@ -34,10 +34,10 @@ resource "aws_ecr_lifecycle_policy" "service" {
         rulePriority = 1
         description  = "Keep the 15 most recent tagged images"
         selection = {
-          tagStatus     = "tagged"
+          tagStatus      = "tagged"
           tagPatternList = ["*"]
-          countType     = "imageCountMoreThan"
-          countNumber   = 15
+          countType      = "imageCountMoreThan"
+          countNumber    = 15
         }
         action = { type = "expire" }
       },

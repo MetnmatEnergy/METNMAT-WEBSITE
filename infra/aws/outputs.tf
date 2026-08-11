@@ -3,7 +3,7 @@ output "alb_dns_name" {
     The load balancer hostname. This is how you test the AWS stack BEFORE any
     production DNS changes: point a hosts-file entry or a staging record at it.
   EOT
-  value = aws_lb.main.dns_name
+  value       = aws_lb.main.dns_name
 }
 
 output "alb_zone_id" {
@@ -39,7 +39,7 @@ output "atlas_allowlist_ips" {
     Empty when enable_nat_gateway = false — egress is then unstable and Atlas
     must allow 0.0.0.0/0.
   EOT
-  value = aws_eip.nat[*].public_ip
+  value       = aws_eip.nat[*].public_ip
 }
 
 output "ecr_repository_urls" {
