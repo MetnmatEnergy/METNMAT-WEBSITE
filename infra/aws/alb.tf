@@ -19,6 +19,24 @@ resource "aws_lb" "main" {
 
   # Guards against `terraform destroy` taking production offline by accident.
   enable_deletion_protection = true
+
+  # Without this there is NO record of an HTTP request anywhere in the stack.
+  # CloudWatch holds application stdout only, so a 502, a 404 or a spike of
+  # traffic against a path the app never logs leaves no trace at all — and after
+  # DNS cutover this is the only place a request is seen before it reaches a
+  # container. GCP's load balancer produced these; the stack did not replicate it.
+  access_logs {
+    bucket  = aws_s3_bucket.alb_logs.id
+    prefix  = "alb"
+    enabled = true
+  }
+
+  # AWS validates the bucket policy at the moment access logging is enabled, by
+  # writing a probe object. The reference above only makes Terraform order this
+  # after the BUCKET, not after its policy — so without this the apply races and
+  # fails with "Access Denied for bucket". Explicit, because the graph cannot
+  # infer it.
+  depends_on = [aws_s3_bucket_policy.alb_logs]
 }
 
 resource "aws_lb_target_group" "service" {
@@ -46,8 +64,13 @@ resource "aws_lb_target_group" "service" {
     matcher = "200-399"
   }
 
-  # Payload's boot runs a seed before it serves, so give it room to start.
-  deregistration_delay = 30
+  # How long the ALB keeps sending an in-flight request to a task that is being
+  # replaced. (The previous comment here described STARTUP, which this setting
+  # has nothing to do with — startup is health_check_grace_period_seconds on the
+  # service.) Too short and a deploy cuts off requests still being served; the
+  # admin runs long operations, so 30s was optimistic. 60s drains comfortably
+  # while keeping deploys quick.
+  deregistration_delay = 60
 
   # A target group cannot be destroyed while a listener rule references it;
   # create the replacement first.
@@ -98,9 +121,15 @@ resource "aws_lb_listener" "http" {
   default_action {
     type = "redirect"
     redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
+      port     = "443"
+      protocol = "HTTPS"
+      # 308, not 301. A 301 permits the client to re-issue the request as GET,
+      # which silently DROPS the body of any POST that arrives over plain HTTP —
+      # a mis-configured Razorpay webhook or a form posted to http:// would be
+      # answered 200 by the redirect and never reach the application. 308 keeps
+      # the method and body intact. middleware.ts makes the same choice, for the
+      # same reason.
+      status_code = "HTTP_308"
     }
   }
 }

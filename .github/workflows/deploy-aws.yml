@@ -253,6 +253,63 @@ jobs:
           wait-for-service-stability: true
           wait-for-minutes: 15
 
+      # ECS reporting "steady state" only means the container stayed up and the
+      # ALB health check passed. On 2026-08-11 that was true of a dashboard whose
+      # every Payload route returned 500 — /api/health answers without touching
+      # Mongo, by design, so a CMS that could not connect to its database
+      # deployed green and stayed in service.
+      #
+      # This is the step that closes that gap: hit the service through the ALB
+      # exactly as a visitor would, and fail the run if it cannot actually serve.
+      #
+      # --connect-to (rather than -H "Host:") sends the right SNI as well as the
+      # right Host header, so TLS is genuinely verified instead of skipped with -k.
+      - name: Verify the deployed service can serve
+        if: matrix.build == 'true'
+        run: |
+          set -uo pipefail
+          case "${{ matrix.service }}" in
+            # "/" rather than /api/health for the website: it exercises real SSR
+            # and would catch a render-time crash, which a static health route
+            # cannot. It stays 200 when the CMS is unreachable (the storefront
+            # degrades by design), so this is a floor, not a full check.
+            website)   HOST=www.metnmat.com;   PROBE=/ ;;
+            dashboard) HOST=admin.metnmat.com; PROBE=/api/ready  ;;
+            *)         echo "::notice::No probe defined for ${{ matrix.service }}."; exit 0 ;;
+          esac
+
+          # ECS_CLUSTER is "metnmat-cluster"; the ALB is "metnmat-alb". Derive the
+          # shared prefix in bash — GitHub's ${{ }} cannot do parameter expansion.
+          ALB_NAME="${ECS_CLUSTER%-cluster}-alb"
+          ALB=$(aws elbv2 describe-load-balancers --names "$ALB_NAME" \
+                  --query 'LoadBalancers[0].DNSName' --output text 2>/dev/null) || ALB=""
+          if [ -z "$ALB" ] || [ "$ALB" = "None" ]; then
+            echo "::warning::Could not resolve the ALB hostname — skipping the serve check."
+            exit 0
+          fi
+          echo "Probing https://$HOST$PROBE via $ALB"
+
+          # A task can pass its ALB health check before Payload has finished its
+          # boot seed, so retry rather than judging on the first response.
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /tmp/probe.txt -w '%{http_code}' --max-time 30 \
+                     --connect-to "$HOST:443:$ALB:443" "https://$HOST$PROBE" || echo 000)
+            echo "  attempt $i -> $code"
+            if [ "$code" = "200" ]; then
+              echo "::notice::${{ matrix.service }} is serving ($HOST$PROBE -> 200)."
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "::error::${{ matrix.service }} deployed but is NOT serving: $HOST$PROBE returned $code."
+          echo "Response body (first 500 chars):"
+          head -c 500 /tmp/probe.txt || true
+          echo ""
+          echo "Check the application log:  /ecs/metnmat/${{ matrix.service }}"
+          echo "Or run the 'Diagnose AWS service' workflow for ${{ matrix.service }}."
+          exit 1
+
       - name: Summary
         if: matrix.build == 'true'
         run: |

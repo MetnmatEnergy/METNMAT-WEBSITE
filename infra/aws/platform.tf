@@ -114,6 +114,72 @@ resource "aws_s3_bucket_lifecycle_configuration" "media" {
   }
 }
 
+# ── ALB access logs ──────────────────────────────────────────────────────────
+#
+# Separate from the media bucket on purpose: different retention, different
+# access, and access logs must never share a lifecycle policy with customer
+# files. Deliberately NOT versioned — these are append-only and never rewritten,
+# so versioning would only add cost.
+
+resource "aws_s3_bucket" "alb_logs" {
+  bucket = "${var.name_prefix}-alb-logs-${var.aws_account_id}"
+}
+
+resource "aws_s3_bucket_public_access_block" "alb_logs" {
+  bucket                  = aws_s3_bucket.alb_logs.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# Access logs are the classic bill that grows forever unnoticed. 90 days is long
+# enough to investigate an incident and short enough to stay negligible.
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = "expire-old-logs"
+    status = "Enabled"
+    filter {}
+    expiration {
+      days = 90
+    }
+  }
+}
+
+# ap-south-1 predates the log-delivery service principal, so the ALB writes as a
+# regional AWS-owned ACCOUNT. Hard-coding that account id is the usual mistake;
+# this data source resolves the correct one for whatever region is configured.
+data "aws_elb_service_account" "main" {}
+
+data "aws_iam_policy_document" "alb_logs" {
+  statement {
+    sid       = "AllowALBLogDelivery"
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.alb_logs.arn}/alb/AWSLogs/${var.aws_account_id}/*"]
+    principals {
+      type        = "AWS"
+      identifiers = [data.aws_elb_service_account.main.arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket     = aws_s3_bucket.alb_logs.id
+  policy     = data.aws_iam_policy_document.alb_logs.json
+  depends_on = [aws_s3_bucket_public_access_block.alb_logs]
+}
+
 # ── Secrets Manager ──────────────────────────────────────────────────────────
 
 resource "aws_secretsmanager_secret" "app" {

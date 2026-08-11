@@ -184,6 +184,17 @@ data "aws_iam_policy_document" "github_deploy" {
     resources = ["*"] # RegisterTaskDefinition cannot be resource-scoped
   }
 
+  # Read-only, and required by the post-deploy "can it actually serve?" probe in
+  # deploy-aws.yml, which needs the ALB's DNS name to reach the service the way a
+  # visitor would. Easy to miss: today the workflow runs on the bootstrap access
+  # key, which is broad enough to hide the omission — it would only fail once the
+  # deploy switches to this OIDC role, i.e. exactly when the key is deleted.
+  statement {
+    sid       = "ResolveAlbHostname"
+    actions   = ["elasticloadbalancing:DescribeLoadBalancers"]
+    resources = ["*"] # this Describe action does not support resource scoping
+  }
+
   # Required so the CI role can hand the task/execution roles to ECS. Scoped to
   # exactly these roles — unscoped iam:PassRole is a privilege-escalation hole.
   statement {

@@ -146,4 +146,10 @@ COPY --from=builder /app ./
 WORKDIR /app/apps/dashboard
 EXPOSE 8080
 # The start script hardcodes -p 3001; override to honour Cloud Run's $PORT (8080).
-CMD ["sh", "-c", "pnpm exec next start -p ${PORT:-8080}"]
+# --keepAliveTimeout MUST exceed the ALB's idle_timeout (300s). Node closes idle
+# keep-alive sockets after 5s by default; when the load balancer still considers
+# a pooled connection usable, it reuses one the origin has just closed and
+# answers 502. Intermittent and traffic-dependent, so it will not show up in
+# testing. `next start` ignores the KEEP_ALIVE_TIMEOUT env var that the website's
+# standalone server reads, so it has to come in as a flag here.
+CMD ["sh", "-c", "pnpm exec next start -p ${PORT:-8080} --keepAliveTimeout ${KEEP_ALIVE_TIMEOUT:-310000}"]
