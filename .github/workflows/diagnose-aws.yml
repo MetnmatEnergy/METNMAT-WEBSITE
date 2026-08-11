@@ -112,6 +112,50 @@ jobs:
           echo "Expect all three true. 'names db metnmat_cms' = False means the CMS is"
           echo "pointed at the WRONG database (likely the chatbot's) — see CLAUDE.md gotcha #1."
 
+      # WHERE DID THE VALUES ACTUALLY GO?
+      #
+      # Populating secrets "successfully" while ECS still sees PLACEHOLDER_SET_ME
+      # has three causes, and the operator cannot distinguish them from the
+      # console — in all three the screen looks correct:
+      #
+      #   1. WRONG REGION. Secrets Manager is REGIONAL. A secret created while the
+      #      console sat in us-east-1 is invisible to a task in ap-south-1. The
+      #      console remembers the last region used, so this is easy to hit and
+      #      impossible to see.
+      #   2. WRONG NAME. Creating "MONGODB_URI" instead of editing the existing
+      #      "metnmat/prod/MONGODB_URI" leaves a real value that nothing reads.
+      #   3. KEY/VALUE INSTEAD OF PLAINTEXT. The console's create flow defaults to
+      #      Key/value, which stores {"MONGODB_URI":"mongodb+srv://..."}. ECS
+      #      injects that whole JSON blob as the variable's value.
+      #
+      # Names and regions only. No value is ever read here.
+      - name: Locate stray secrets (names only, never values)
+        run: |
+          set -uo pipefail
+          echo "── secrets in ${{ env.AWS_REGION }} (the only region ECS reads) ──"
+          aws secretsmanager list-secrets --region "${{ env.AWS_REGION }}" \
+            --query 'SecretList[].Name' --output text 2>/dev/null \
+            | tr '\t' '\n' | sort | sed 's/^/  /' || echo "  (none / no permission)"
+
+          echo ""
+          echo "── same account, OTHER regions ──"
+          echo "Anything listed below is a secret ECS can never read."
+          found=0
+          for r in us-east-1 us-east-2 us-west-2 eu-west-1 eu-central-1 ap-south-2 ap-southeast-1 ap-southeast-2 ap-northeast-1; do
+            names=$(aws secretsmanager list-secrets --region "$r" \
+                      --query 'SecretList[].Name' --output text 2>/dev/null | tr '\t' ' ')
+            if [ -n "$names" ] && [ "$names" != "None" ]; then
+              echo "  $r: $names"
+              found=$((found+1))
+            fi
+          done
+          [ "$found" -eq 0 ] && echo "  (none — no secrets exist outside ${{ env.AWS_REGION }})"
+          echo ""
+          echo "Expected names are exactly: metnmat/prod/<NAME>."
+          echo "A name WITHOUT that prefix, or any secret in another region, is a"
+          echo "value that was saved but that nothing in this stack reads."
+          exit 0
+
       - name: ECS service state and recent events
         run: |
           set -uo pipefail
