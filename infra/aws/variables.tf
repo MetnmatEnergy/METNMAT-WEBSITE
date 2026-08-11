@@ -231,3 +231,20 @@ variable "secret_names" {
     "Meta_WA_VerfyToken",
   ]
 }
+
+variable "create_github_oidc_provider" {
+  description = <<-EOT
+    Whether to CREATE the GitHub Actions OIDC provider, or reuse one that
+    already exists in the account.
+
+    This is an account-wide singleton — AWS permits exactly one provider per
+    issuer URL — so creating it blindly fails with EntityAlreadyExists on any
+    account that has used GitHub Actions before. That is exactly what happened
+    on 2026-08-11.
+
+    Default false: look up the existing provider. Set true only for a fresh
+    account that has never registered one.
+  EOT
+  type        = bool
+  default     = false
+}

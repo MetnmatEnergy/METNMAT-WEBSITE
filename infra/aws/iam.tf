@@ -94,10 +94,31 @@ resource "aws_iam_role_policy" "dashboard_s3" {
 # Lets the CI workflow assume a role directly, with no long-lived AWS access key
 # stored in GitHub. Short-lived credentials, nothing to leak or rotate.
 
+# The GitHub OIDC provider is an ACCOUNT-WIDE singleton, not a per-stack
+# resource: AWS allows exactly one per issuer URL. Creating it unconditionally
+# failed with
+#
+#   EntityAlreadyExists: Provider with url
+#   https://token.actions.githubusercontent.com already exists
+#
+# because one was already registered in this account. So: look it up, and only
+# create it when it genuinely is not there. Defaults to reusing the existing
+# one, which is the common case for any account that has used GitHub Actions
+# before.
+data "aws_iam_openid_connect_provider" "github" {
+  count = var.create_github_oidc_provider ? 0 : 1
+  url   = "https://token.actions.githubusercontent.com"
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
+  count           = var.create_github_oidc_provider ? 1 : 0
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+}
+
+locals {
+  github_oidc_arn = var.create_github_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : data.aws_iam_openid_connect_provider.github[0].arn
 }
 
 data "aws_iam_policy_document" "github_assume" {
@@ -106,7 +127,7 @@ data "aws_iam_policy_document" "github_assume" {
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github.arn]
+      identifiers = [local.github_oidc_arn]
     }
 
     condition {
