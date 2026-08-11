@@ -85,9 +85,21 @@ const storage = resolveStorageConfig(process.env, {
 });
 
 /**
+ * The value Terraform writes into every AWS Secrets Manager secret at creation
+ * (infra/aws/platform.tf). Committed to this repository, therefore PUBLIC — which
+ * makes it more dangerous than an unset variable, not less: an empty secret fails
+ * closed, this one fails open. Treated as missing below.
+ *
+ * On 2026-08-11 all 22 secrets in production held this string while every health
+ * signal reported the stack as healthy.
+ */
+const PLACEHOLDER_SECRET = "PLACEHOLDER_SET_ME";
+
+/**
  * Fail-fast on missing required secrets — but only at real server runtime, never
- * during `next build` (Cloud Run injects secrets at container start, not at build
- * time, so a build-time throw would break the image). onInit runs at boot.
+ * during `next build` (the container image is built without runtime secrets, so a
+ * build-time throw would break the image rather than catch a misconfiguration).
+ * onInit runs at boot, which is where this belongs.
  */
 function assertProductionConfig(logger: { warn: (m: string) => void }): void {
   if (process.env.NODE_ENV !== "production") return;
@@ -102,11 +114,16 @@ function assertProductionConfig(logger: { warn: (m: string) => void }): void {
     "CMS_URL (or NEXT_PUBLIC_SERVER_URL)": process.env.CMS_URL || process.env.NEXT_PUBLIC_SERVER_URL,
   };
   const missing = Object.entries(required)
-    .filter(([, v]) => !v || !v.trim())
+    .filter(([, v]) => !v || !v.trim() || v.trim() === PLACEHOLDER_SECRET)
     .map(([k]) => k);
   if (missing.length) {
     throw new Error(
-      `[config] Missing required production env var(s): ${missing.join(", ")}. Refusing to start insecure.`,
+      `[config] Missing or placeholder required production env var(s): ${missing.join(", ")}. ` +
+        `Refusing to start insecure. A variable still set to ${PLACEHOLDER_SECRET} is the value Terraform ` +
+        `writes at secret creation (infra/aws/platform.tf) — it is committed to this repository and therefore ` +
+        `public, so PAYLOAD_SECRET holding it means admin JWTs can be forged. Populate the real values in ` +
+        `AWS Secrets Manager under metnmat/prod/<NAME>, then REDEPLOY: ECS resolves secrets only at task ` +
+        `start, so updating a secret does not affect a running task.`,
     );
   }
   if ((process.env.PAYLOAD_PIN_PEPPER || "").length < 16) {
