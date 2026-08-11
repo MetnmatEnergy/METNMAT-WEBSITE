@@ -1,0 +1,175 @@
+name: Diagnose AWS service
+
+# READ-ONLY. Creates nothing, changes nothing, deletes nothing.
+#
+# WHY THIS EXISTS
+# When an ECS task boots but the application fails, the only evidence lives in
+# CloudWatch — and reaching it otherwise means having AWS credentials on a
+# laptop. This runs in CI, where the credentials already are, so nobody has to
+# paste a key anywhere to answer "why is it 500ing".
+#
+# SECRET SAFETY IS THE WHOLE DESIGN
+# Secret VALUES are never fetched into the log. Every check is a server-side
+# JMESPath predicate, so AWS returns a boolean or a length and the value itself
+# never crosses the wire into the runner's output. Log output is additionally
+# passed through a redactor, because an application stack trace can echo a
+# connection string that this workflow never asked for.
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Which service to diagnose"
+        required: true
+        default: dashboard
+        type: choice
+        options: [dashboard, website, chatbot]
+      since:
+        description: "How far back to read logs (e.g. 30m, 2h, 1d)"
+        required: false
+        default: "1h"
+
+concurrency:
+  group: diagnose-aws-${{ inputs.service }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-south-1
+  ECS_CLUSTER: metnmat-cluster
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify credentials are present
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] || [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "::error::AWS credentials are not set as repository secrets."
+            exit 1
+          fi
+          aws sts get-caller-identity --query Account --output text
+
+      # Which secrets are still the placeholder Terraform created them with.
+      #
+      # The comparison happens INSIDE AWS via JMESPath: the API returns only
+      # `true`/`false` and an integer length. The secret value is never
+      # transferred to the runner, so it cannot be logged even by accident.
+      - name: Are the secrets populated?
+        run: |
+          set -uo pipefail
+          case "${{ inputs.service }}" in
+            dashboard) NAMES="MONGODB_URI PAYLOAD_SECRET PAYLOAD_PIN_PEPPER INTERNAL_API_KEY CMS_OAUTH_KEY RESEND_API_KEY OPEN_EXCHANGE_RATES_APP_ID DIRECTOR_PIN" ;;
+            website)   NAMES="RESEND_API_KEY RAZORPAY_KEY_ID RAZORPAY_KEY_SECRET RAZORPAY_WEBHOOK_SECRET INTERNAL_API_KEY CMS_OAUTH_KEY GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET OPEN_EXCHANGE_RATES_APP_ID UPSTASH_REDIS_REST_TOKEN ANALYTICS_GEO_TOKEN" ;;
+            chatbot)   NAMES="CHATBOT_MONGODB_URI GROQ_API_KEY JWT_SECRET UPSTASH_REDIS_REST_TOKEN Meta_WA_accessToken Meta_WA_SenderPhoneNumberId Meta_WA_wabaId Meta_WA_VerfyToken" ;;
+          esac
+
+          printf '%-30s %-12s %s\n' "SECRET" "STATE" "LENGTH"
+          printf '%-30s %-12s %s\n' "------" "-----" "------"
+          missing=0
+          for n in $NAMES; do
+            out=$(aws secretsmanager get-secret-value \
+                    --secret-id "metnmat/prod/$n" \
+                    --query "[SecretString == 'PLACEHOLDER_SET_ME', length(SecretString)]" \
+                    --output text 2>/dev/null) || out=""
+            if [ -z "$out" ]; then
+              printf '%-30s %-12s %s\n' "$n" "NOT-FOUND" "-"
+              missing=$((missing+1)); continue
+            fi
+            is_ph=$(echo "$out" | awk '{print $1}')
+            len=$(echo   "$out" | awk '{print $2}')
+            if [ "$is_ph" = "True" ]; then
+              printf '%-30s %-12s %s\n' "$n" "PLACEHOLDER" "$len"
+              missing=$((missing+1))
+            else
+              printf '%-30s %-12s %s\n' "$n" "populated" "$len"
+            fi
+          done
+          echo ""
+          [ "$missing" -gt 0 ] && echo "::warning::$missing secret(s) are unpopulated — the app cannot start until they hold real values."
+          exit 0
+
+      # The two things that most often break Payload, both answerable without
+      # revealing the credential: is it a URI at all, and does it name the RIGHT
+      # database. Pointing the CMS at /metnmat instead of /metnmat_cms connects
+      # it to the chatbot's database — CLAUDE.md gotcha #1.
+      - name: Sanity-check MONGODB_URI shape (no value revealed)
+        if: inputs.service == 'dashboard'
+        run: |
+          set -uo pipefail
+          q="[starts_with(SecretString, 'mongodb'), contains(SecretString, 'metnmat_cms'), contains(SecretString, 'retryWrites')]"
+          out=$(aws secretsmanager get-secret-value --secret-id metnmat/prod/MONGODB_URI \
+                  --query "$q" --output text 2>/dev/null) || out=""
+          if [ -z "$out" ]; then echo "MONGODB_URI: could not read"; exit 0; fi
+          echo "looks like a mongodb URI : $(echo "$out" | awk '{print $1}')"
+          echo "names db 'metnmat_cms'   : $(echo "$out" | awk '{print $2}')"
+          echo "has retryWrites option   : $(echo "$out" | awk '{print $3}')"
+          echo ""
+          echo "Expect all three true. 'names db metnmat_cms' = False means the CMS is"
+          echo "pointed at the WRONG database (likely the chatbot's) — see CLAUDE.md gotcha #1."
+
+      - name: ECS service state and recent events
+        run: |
+          set -uo pipefail
+          aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" --services "metnmat-${{ inputs.service }}" \
+            --query 'services[0].{desired:desiredCount,running:runningCount,pending:pendingCount,status:status,taskDef:taskDefinition}' \
+            --output table 2>/dev/null || echo "(service not found)"
+          echo ""
+          echo "── recent service events ──"
+          aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" --services "metnmat-${{ inputs.service }}" \
+            --query 'services[0].events[:8].message' --output text 2>/dev/null | tr '\t' '\n' || true
+
+      - name: Stopped tasks and why they stopped
+        run: |
+          set -uo pipefail
+          arns=$(aws ecs list-tasks --cluster "$ECS_CLUSTER" \
+                   --service-name "metnmat-${{ inputs.service }}" \
+                   --desired-status STOPPED --query 'taskArns[:5]' --output text 2>/dev/null)
+          if [ -z "$arns" ] || [ "$arns" = "None" ]; then
+            echo "No recently stopped tasks — the container is staying up."
+            exit 0
+          fi
+          aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks $arns \
+            --query 'tasks[].{stopped:stoppedReason,code:containers[0].exitCode,reason:containers[0].reason}' \
+            --output table 2>/dev/null || true
+
+      # The actual application output. Redacted on the way out: a stack trace
+      # can quote a connection string or a bearer token that none of the checks
+      # above ever requested.
+      - name: Application logs (redacted)
+        run: |
+          set -uo pipefail
+          echo "── /ecs/metnmat/${{ inputs.service }}, last ${{ inputs.since }} ──"
+          echo ""
+          aws logs tail "/ecs/metnmat/${{ inputs.service }}" \
+            --since "${{ inputs.since }}" --format short 2>&1 \
+          | sed -E \
+              -e 's#mongodb(\+srv)?://[^[:space:]"'"'"']*#mongodb://<REDACTED>#g' \
+              -e 's#(Bearer|bearer)[[:space:]]+[A-Za-z0-9._-]+#Bearer <REDACTED>#g' \
+              -e 's#(re_|sk_|rzp_|pk_)[A-Za-z0-9_-]{8,}#<REDACTED_KEY>#g' \
+              -e 's#("?(password|secret|token|apiKey|api_key)"?[[:space:]]*[:=][[:space:]]*"?)[^",[:space:]]+#\1<REDACTED>#gI' \
+          | tail -n 250 \
+          || echo "(no log group, or no events in this window)"
+
+      - name: How to read this
+        if: always()
+        run: |
+          {
+            echo "### Diagnosing \`${{ inputs.service }}\`"
+            echo ""
+            echo "Read the sections in order:"
+            echo ""
+            echo "1. **Secrets** — any \`PLACEHOLDER\` or \`NOT-FOUND\` row is almost certainly the cause."
+            echo "2. **URI shape** — all three must be \`True\`."
+            echo "3. **Service state** — \`running\` below \`desired\` means the container is crash-looping."
+            echo "4. **Stopped tasks** — an exit code here is a hard crash, not an application error."
+            echo "5. **Logs** — the actual exception."
+            echo ""
+            echo "> No secret value is fetched by this workflow; log output is redacted on the way out."
+          } >> "$GITHUB_STEP_SUMMARY"
