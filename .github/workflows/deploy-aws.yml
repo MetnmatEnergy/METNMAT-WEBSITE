@@ -196,6 +196,21 @@ jobs:
           # rebuild of the same SHA is rejected rather than silently replacing
           # the image — which is what makes rollback meaningful.
           tags: ${{ steps.ecr.outputs.registry }}/metnmat/${{ matrix.service }}:${{ github.sha }}
+          # NEXT_PUBLIC_* are INLINED INTO THE CLIENT BUNDLE at build time, not
+          # read at runtime — so they cannot be supplied by ECS environment
+          # variables the way every other setting is. Omitting them does not
+          # fail the build: next.config.mjs falls back to http://localhost:3001,
+          # and the deploy "succeeds" while shipping a site whose browser code
+          # calls a CMS on the visitor's own machine. The GCP pipeline passes
+          # these via --build-arg (cloudbuild.website.deploy.yaml); this one had
+          # not been given them.
+          #
+          # Harmless for the dashboard, whose Dockerfile declares no such ARGs —
+          # Docker ignores build args a Dockerfile does not consume.
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=https://www.metnmat.com
+            NEXT_PUBLIC_CMS_URL=https://admin.metnmat.com
+            NEXT_PUBLIC_CHATBOT_URL=https://chat.metnmat.com
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
           provenance: false
