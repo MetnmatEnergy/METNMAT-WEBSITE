@@ -31,9 +31,22 @@ Dashboard extras: `pnpm --filter dashboard generate:types|generate:importmap`.
 
 ## Deploy
 
-Push to `main` → **Cloud Build** → **Cloud Run** (`asia-south1`). No PR gate; GitHub Actions
-`ci.yml` runs but does **not** block the deploy. Website deploys take ~3–5 min.
-Images are pushed to a mutable `:latest` tag.
+**Migrating GCP → AWS. Both paths exist in the repo; read `deploy/README.md` before touching
+either.**
+
+*Today (GCP, currently dark):* push to `main` → **Cloud Build** → **Cloud Run** (`asia-south1`).
+No PR gate; `ci.yml` runs but does **not** block. Website deploys take ~3–5 min, images pushed to
+a mutable `:latest` tag. ⚠ The GCP project is **billing-disabled**, so every service 503s at the
+Google Frontend while reporting healthy in the control plane, and the three Cloud Build triggers
+are queued — they fire the moment billing returns.
+
+*Target (AWS):* `deploy-website-ec2.yml` — build on a GitHub runner, artifact to private S3,
+release over SSM onto the shared EC2, `pm2 reload metnmat-website`, health check, auto-rollback.
+Inert until `AWS_DEPLOY_ROLE_ARN` (secret) + `EC2_INSTANCE_ID` + `ARTIFACT_BUCKET` (vars) are set.
+**Never `pm2 restart all`** — the internal command-center dashboard shares that instance.
+
+`deploy-aws.yml` (ECS/Fargate) and `infra/aws/{ecs,alb,network}.tf` are **superseded**: that
+infrastructure was deleted and must not be recreated.
 
 ## Data
 
@@ -54,12 +67,21 @@ Images are pushed to a mutable `:latest` tag.
 3. **`loading.tsx` breaks 404 status codes.** A Suspense boundary streams the shell and commits
    HTTP 200, so a later `notFound()` renders 404 content inside a 200 → soft-404. This is why
    `/shop` has no `loading.tsx`.
-4. **Seed runs on every boot** (`payload.config.ts` `onInit`). `pruneStale` deletes products whose
-   slug isn't in the bundled catalogue, and `cleanupMalformed` deletes slug-less products.
-   Products auto-generate slugs specifically to survive this.
-5. **`DIRECTOR_RESET=true` deletes every staff account except the director on each deploy.** Set it
-   once, then remove it.
-6. **Settings globals are re-seeded on boot** — edit `seed.ts`, not the admin, for those.
+4. **Seed runs on every boot** (`payload.config.ts` `onInit`) — but it is create-if-missing, not
+   sync. Staff edits survive: products are never updated once created, and every global seeds only
+   when unset (hardened 2026-07-13, "catalog ownership = CMS staff"). The destructive path is
+   opt-in — `SEED_PRUNE_PLACEHOLDERS=true` makes `pruneStale` delete products and categories whose
+   slug isn't in the bundled catalogue. The only unconditional deletion is `cleanupMalformed`,
+   which removes products with an empty or missing slug; products auto-generate slugs specifically
+   to survive it.
+5. **`DIRECTOR_RESET=true` deletes every staff account except the director on every boot** — not
+   just on deploy, so a PM2 memory-restart triggers it too. Never leave it in server config; run it
+   as a deliberate one-off. `deploy/bin/with-secrets.sh` refuses to inherit it.
+6. **Globals seed only when unset**, so admin edits persist: `company`/`contact`/`social`/`seo` via
+   `seedGlobalIfUnset`, and `homepage`/`navigation`/`commerce` behind their own emptiness checks.
+   The corollary is what actually bites — to change a value already set on prod you need a one-shot
+   migration in `seed.ts` (see `rebrandHomepageCopy`, `refineHeroHeadline`), because editing the
+   seed data alone will never overwrite it.
 7. **The CDN clamps browser `max-age` to ~3600** regardless of what the app sends.
 8. **Payload only generates `imageSizes` at upload time.** Changing the ladder does not touch
    existing media.
@@ -82,6 +104,18 @@ Images are pushed to a mutable `:latest` tag.
 
 ## Current state
 
+🔴 **As of 2026-08-12 the production site is DOWN.** `www`, apex, `admin` and the chatbot all
+return 503 from Google Frontend because GCP billing is disabled — Cloud Run reports every service
+`Ready` with 100% traffic, but requests never reach a container, so control-plane health is not
+evidence here. Restoring billing ends the outage *and* unblocks the media copy. Ironically the only
+METNMAT site currently serving is the legacy `metnmat.in`.
+
+⚠ **All production media is in GCS and is the only copy** (`gs://metnmat-media-prod`: product
+photography, blog/project covers, datasheets, customer RFQ attachments). The project is in a
+billing grace period; the S3 bucket is empty. The five derivative sizes per image are generated at
+upload only and **cannot be rebuilt**. Copy procedure: `deploy/bin/migrate-media.sh`.
+
 See `docs/upgrade/AUDIT.md` for the full Phase 0 audit, findings register and Lighthouse
-baselines. Two P0s are open, both concerning the legacy **`metnmat.in`** site, which is still
-live, fully indexable and self-canonical with no redirects to `.com`.
+baselines, and `deploy/README.md` for the migration runbook. Two P0s remain open, both concerning
+the legacy **`metnmat.in`** site, which is still live, fully indexable and self-canonical with no
+redirects to `.com`.
