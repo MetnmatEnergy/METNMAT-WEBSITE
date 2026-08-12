@@ -1,4 +1,10 @@
+import { fileURLToPath } from "node:url";
+
 import { legacyRedirects } from "./legacy-redirects.mjs";
+
+// Monorepo root, two levels up from apps/website. Needed by the standalone
+// build below; computed here so the standalone branch stays a one-liner.
+const MONOREPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 // The CMS/dashboard host (serves uploaded media/documents) + Google Cloud Storage,
 // so browser <img> tags and fetches to them aren't blocked by CSP.
@@ -73,7 +79,15 @@ const nextConfig = {
   // Self-contained build for Docker (AWS/GCP/Render). Opt-in via env because it
   // creates symlinks, which Windows (without Developer Mode) + OneDrive block.
   // Enable in CI/Docker with: NEXT_OUTPUT=standalone
-  ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" } : {}),
+  //
+  // outputFileTracingRoot must accompany it in this repo. pnpm installs into a
+  // symlinked store at the WORKSPACE root, so tracing rooted at apps/website
+  // silently omits hoisted dependencies — producing a standalone bundle that
+  // builds clean and then dies on the server with "Cannot find module". Only
+  // set on the standalone path so ordinary builds are byte-for-byte unchanged.
+  ...(process.env.NEXT_OUTPUT === "standalone"
+    ? { output: "standalone", outputFileTracingRoot: MONOREPO_ROOT }
+    : {}),
   // Transpile the shared TS workspace package.
   transpilePackages: ["@metnmat/types"],
   images: {

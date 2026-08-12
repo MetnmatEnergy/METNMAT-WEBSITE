@@ -1,0 +1,18 @@
+# Line endings.
+#
+# Development happens on Windows; the deployment target is Linux. Without this,
+# a shell script committed from a Windows checkout carries CRLF, and the kernel
+# then reads the shebang as "/usr/bin/env bash\r" — which fails on the server
+# with the singularly unhelpful:
+#
+#     bash: line 1: /tmp/release.sh: cannot execute: required file not found
+#
+# The scripts under deploy/bin are fetched from S3 and executed on the EC2, so
+# they must be LF regardless of who committed them or how their git is
+# configured.
+
+* text=auto
+
+*.sh        text eol=lf
+Caddyfile   text eol=lf
+*.Caddyfile text eol=lf

@@ -1,0 +1,278 @@
+name: Deploy website to EC2
+
+# Builds the public website on a GitHub runner and releases it to the shared
+# EC2 instance via S3 + SSM. This replaces the ECS/Fargate pipeline, which
+# targeted infrastructure that has since been deleted.
+#
+# The shape, and why:
+#
+#   runner: install -> test -> build -> package -> upload to private S3
+#   EC2:    SSM pulls the artifact, unpacks beside the live release, swaps a
+#           symlink, reloads ONE pm2 process, health-checks, rolls back on fail
+#
+# The production server never compiles anything. `next build` peaks well above
+# a gigabyte, and this box has ~834 MB free while also serving the internal
+# command-center dashboard. Building here would evict that app from memory.
+#
+# Nothing in this workflow can restart the dashboard: it names a single pm2
+# process and writes only under /home/ec2-user/web.
+#
+# INERT UNTIL CONFIGURED. Without the AWS settings below every job exits with a
+# notice instead of a failure, so this can merge while AWS is still being set
+# up without turning the repo red.
+#
+#   secret  AWS_DEPLOY_ROLE_ARN   role assumed via OIDC (preferred)
+#   var     EC2_INSTANCE_ID       i-0123456789abcdef0
+#   var     ARTIFACT_BUCKET       private bucket for build artifacts
+
+on:
+  push:
+    branches: [main]
+    # Path filters are the point. The GCP triggers have none, so a docs-only
+    # commit currently rebuilds and redeploys both applications.
+    paths:
+      - "apps/website/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - "turbo.json"
+      - "deploy/**"
+      - ".github/workflows/deploy-website-ec2.yml"
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to deploy (blank = current HEAD). Use to roll forward/back."
+        required: false
+        type: string
+
+concurrency:
+  # Two deploys racing to move the same symlink is how you end up serving a
+  # half-swapped release. Queue them; never cancel one mid-swap.
+  group: deploy-website-ec2
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+  ARTIFACT_PREFIX: website
+  APP_NAME: metnmat-website
+  APP_ROOT: /home/ec2-user/web
+  APP_PORT: "3100"
+  # Baked into the client bundle at BUILD time — NEXT_PUBLIC_* cannot be
+  # supplied at runtime, so it cannot live in Secrets Manager with the others.
+  # This is the public hostname, so it does not change at DNS cutover.
+  CMS_URL: https://admin.metnmat.com
+
+permissions:
+  contents: read
+  id-token: write # OIDC; without this the role assumption fails
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.guard.outputs.configured }}
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Check AWS is configured
+        id: guard
+        run: |
+          if [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ] \
+          && [ -n "${{ vars.EC2_INSTANCE_ID }}" ] \
+          && [ -n "${{ vars.ARTIFACT_BUCKET }}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Not configured for EC2 deploy — set AWS_DEPLOY_ROLE_ARN (secret), EC2_INSTANCE_ID and ARTIFACT_BUCKET (vars). Skipping."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.guard.outputs.configured == 'true'
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+
+      - name: Resolve deploy SHA
+        id: resolve
+        if: steps.guard.outputs.configured == 'true'
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+        if: steps.guard.outputs.configured == 'true'
+        with:
+          version: 11.5.1
+
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.configured == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        if: steps.guard.outputs.configured == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # Next's own cache, keyed on the lockfile + source. Repeat builds of an
+      # unchanged tree drop from minutes to seconds.
+      - name: Restore Next.js build cache
+        if: steps.guard.outputs.configured == 'true'
+        uses: actions/cache@v4
+        with:
+          path: apps/website/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/website/src/**') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+
+      # The commit gate from CLAUDE.md, run before anything is published.
+      - name: Typecheck
+        if: steps.guard.outputs.configured == 'true'
+        run: pnpm typecheck
+
+      - name: Lint
+        if: steps.guard.outputs.configured == 'true'
+        run: pnpm lint
+
+      - name: Test
+        if: steps.guard.outputs.configured == 'true'
+        run: pnpm test
+
+      - name: Build
+        if: steps.guard.outputs.configured == 'true'
+        env:
+          NEXT_OUTPUT: standalone
+          NEXT_PUBLIC_CMS_URL: ${{ env.CMS_URL }}
+          NODE_ENV: production
+        run: pnpm --filter website build
+
+      # Next writes the standalone server, its static assets and public/ to
+      # three different places. Assembling them here — rather than on the
+      # server — means the artifact is the whole runnable app.
+      - name: Assemble release
+        if: steps.guard.outputs.configured == 'true'
+        run: |
+          set -euo pipefail
+          cd apps/website
+          cp -r .next/standalone release
+          mkdir -p release/apps/website/.next
+          cp -r .next/static release/apps/website/.next/static
+          [ -d public ] && cp -r public release/apps/website/public
+
+          # Fail on the runner, not on the server. If the monorepo layout ever
+          # changes, this is where it should break — with the tree in front of
+          # you, before anything is published.
+          if [ ! -f release/apps/website/server.js ]; then
+            echo "::error::server.js not at the expected path. Standalone layout:"
+            find release -maxdepth 3 -name server.js
+            exit 1
+          fi
+          [ -f release/apps/website/.next/BUILD_ID ] || { echo "::error::BUILD_ID missing"; exit 1; }
+
+          tar -czf web-build.tgz -C release .
+          echo "artifact: $(du -h web-build.tgz | cut -f1)"
+
+      - name: Assume AWS role
+        if: steps.guard.outputs.configured == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-website-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload artifact and release script
+        if: steps.guard.outputs.configured == 'true'
+        run: |
+          set -euo pipefail
+          DEST="s3://${{ vars.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_PREFIX }}/${{ steps.resolve.outputs.sha }}"
+          aws s3 cp apps/website/web-build.tgz "$DEST/web-build.tgz" --only-show-errors
+          # Shipped with the artifact so the release logic is versioned with the
+          # code it releases, instead of drifting on the server.
+          aws s3 cp deploy/bin/release.sh "$DEST/release.sh" --only-show-errors
+          echo "uploaded to $DEST"
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.configured == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assume AWS role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-deploy-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # SSM, not SSH. No inbound port is opened, no key is held in GitHub, and
+      # every command is recorded in CloudTrail against the assumed role.
+      - name: Release via SSM
+        id: ssm
+        env:
+          SHA: ${{ needs.build.outputs.sha }}
+        run: |
+          set -euo pipefail
+          CMD=$(aws ssm send-command \
+            --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "deploy website $SHA" \
+            --timeout-seconds 900 \
+            --parameters commands="[
+              \"set -euo pipefail\",
+              \"export ARTIFACT_BUCKET='${{ vars.ARTIFACT_BUCKET }}'\",
+              \"export ARTIFACT_PREFIX='${{ env.ARTIFACT_PREFIX }}'\",
+              \"export APP_NAME='${{ env.APP_NAME }}'\",
+              \"export APP_ROOT='${{ env.APP_ROOT }}'\",
+              \"export APP_PORT='${{ env.APP_PORT }}'\",
+              \"aws s3 cp s3://${{ vars.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_PREFIX }}/$SHA/release.sh /tmp/release.sh --only-show-errors\",
+              \"chmod +x /tmp/release.sh\",
+              \"sudo -E -u ec2-user bash /tmp/release.sh $SHA\"
+            ]" \
+            --query 'Command.CommandId' --output text)
+          echo "command-id=$CMD" >> "$GITHUB_OUTPUT"
+          echo "SSM command $CMD dispatched"
+
+          # `wait command-executed` exits non-zero on failure, which is what we
+          # want — but it swallows the output, so capture it either way.
+          set +e
+          aws ssm wait command-executed \
+            --command-id "$CMD" --instance-id "${{ vars.EC2_INSTANCE_ID }}"
+          WAIT_RC=$?
+          set -e
+
+          echo "--- release output ---"
+          aws ssm get-command-invocation \
+            --command-id "$CMD" --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+            --query 'StandardOutputContent' --output text || true
+          echo "--- stderr ---"
+          aws ssm get-command-invocation \
+            --command-id "$CMD" --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+            --query 'StandardErrorContent' --output text || true
+
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$CMD" --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+            --query 'Status' --output text)
+          echo "status: $STATUS"
+          if [ "$STATUS" != "Success" ] || [ $WAIT_RC -ne 0 ]; then
+            echo "::error::Release failed ($STATUS). The script rolls back automatically; check the output above to confirm it did."
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        env:
+          SHA: ${{ needs.build.outputs.sha }}
+        run: |
+          {
+            echo "### Website deploy"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Commit | \`$SHA\` |"
+            echo "| Instance | \`${{ vars.EC2_INSTANCE_ID }}\` |"
+            echo "| Process | \`${{ env.APP_NAME }}\` |"
+            echo "| Result | ${{ job.status }} |"
+            echo ""
+            echo "Roll back by re-running this workflow with an earlier SHA, or on the box:"
+            echo '```bash'
+            echo "ln -sfn \$(readlink -f ${{ env.APP_ROOT }}/previous) ${{ env.APP_ROOT }}/current.tmp"
+            echo "mv -Tf ${{ env.APP_ROOT }}/current.tmp ${{ env.APP_ROOT }}/current"
+            echo "pm2 reload ${{ env.APP_NAME }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

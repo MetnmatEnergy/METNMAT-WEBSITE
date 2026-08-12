@@ -1,5 +1,22 @@
-name: Deploy to AWS
+name: Deploy to AWS (ECS — SUPERSEDED)
 
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ SUPERSEDED. Do not use. Kept only as reference until the EC2 path is      │
+# │ proven in production, then delete this file and infra/aws/{ecs,alb,       │
+# │ network}.tf along with it.                                               │
+# │                                                                          │
+# │ The ECS/Fargate + ALB infrastructure this deploys to HAS BEEN DELETED,    │
+# │ and the migration blueprint (§2, §18) is explicit that it must not be     │
+# │ recreated: it cost more than the entire rest of the platform while        │
+# │ serving no traffic.                                                      │
+# │                                                                          │
+# │ Replacement:  .github/workflows/deploy-website-ec2.yml                    │
+# │                                                                          │
+# │ The push trigger is removed below. It previously fired on the same paths  │
+# │ as the replacement workflow, so leaving it would mean two pipelines       │
+# │ deploying the same commit to two different places.                       │
+# └──────────────────────────────────────────────────────────────────────────┘
+#
 # Builds and deploys the website and dashboard to ECS Fargate in ap-south-1.
 #
 # THIS RUNS ALONGSIDE THE EXISTING GCP PIPELINE. It does not touch Cloud Build,
@@ -13,22 +30,9 @@ name: Deploy to AWS
 # The chatbot is NOT here: it deploys from a separate repository.
 
 on:
-  push:
-    branches: [main]
-    # Path filters are the point. The GCP triggers have none, so a documentation
-    # commit currently rebuilds and redeploys BOTH applications — measured at 8
-    # of the last 20 commits. Do not repeat that here.
-    paths:
-      - "apps/website/**"
-      - "apps/dashboard/**"
-      - "packages/**"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "package.json"
-      - "turbo.json"
-      - "Dockerfile.website"
-      - "Dockerfile.dashboard"
-      - ".github/workflows/deploy-aws.yml"
+  # Push trigger deliberately removed — see the banner above. This workflow now
+  # only runs if a human explicitly dispatches it, which should not happen: the
+  # ECS cluster and ALB it targets no longer exist.
   workflow_dispatch:
     inputs:
       service:

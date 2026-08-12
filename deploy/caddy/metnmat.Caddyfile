@@ -1,0 +1,68 @@
+# Caddy site blocks for the METNMAT public website and CMS.
+#
+# APPEND these to the existing Caddyfile on the EC2 — do not replace it. The
+# command-center dashboard already has a block there and must be left exactly
+# as it is; this file adds siblings, it does not rewrite neighbours.
+#
+#   sudo cp metnmat.Caddyfile /etc/caddy/conf.d/metnmat.caddy
+#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy        # reload, not restart — no dropped conns
+#
+# ⚠ ORDER MATTERS. Caddy obtains a certificate on first request for a hostname,
+#   via an HTTP-01 challenge that Let's Encrypt sends to whatever IP the name
+#   resolves to. While metnmat.com still points at GCP, that challenge reaches
+#   Google and fails. So: add these blocks, THEN move DNS. Between the DNS move
+#   and the first successful issuance there is a window of TLS errors for real
+#   users — see deploy/README.md § "Cutover" for how to shrink it.
+
+metnmat.com, www.metnmat.com {
+	# The apex→www 308 lives in the Next.js middleware, not here, because it is
+	# not merely cosmetic: an apex/www split previously produced host-only
+	# cookies that broke Google sign-in and persistent sessions. Keeping the
+	# redirect in one place (middleware) means the cookie domain and the
+	# redirect can never disagree. Caddy passes both names through untouched.
+	reverse_proxy 127.0.0.1:3100 {
+		# Next.js reads these to build absolute URLs and to decide whether the
+		# request arrived over TLS. Without them every generated absolute URL
+		# is http://127.0.0.1:3100 — which breaks canonical tags, Open Graph
+		# images, OAuth redirect URIs and the sitemap.
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up Host {host}
+	}
+
+	encode zstd gzip
+
+	log {
+		output file /var/log/caddy/metnmat-website.log {
+			roll_size 20mb
+			roll_keep 5
+		}
+	}
+}
+
+admin.metnmat.com {
+	reverse_proxy 127.0.0.1:3200 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up Host {host}
+	}
+
+	# Media streams through the CMS (/api/media/file/<filename>) because the S3
+	# bucket is private and holds unpublished manuscripts and customer RFQ
+	# attachments. Uploads of datasheets and RFQ attachments therefore pass
+	# through Caddy, whose default request body cap would reject the larger
+	# ones with a 413.
+	request_body {
+		max_size 50MB
+	}
+
+	encode zstd gzip
+
+	log {
+		output file /var/log/caddy/metnmat-cms.log {
+			roll_size 20mb
+			roll_keep 5
+		}
+	}
+}
