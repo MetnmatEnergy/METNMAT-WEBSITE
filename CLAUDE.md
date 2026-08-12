@@ -116,6 +116,8 @@ billing grace period; the S3 bucket is empty. The five derivative sizes per imag
 upload only and **cannot be rebuilt**. Copy procedure: `deploy/bin/migrate-media.sh`.
 
 See `docs/upgrade/AUDIT.md` for the full Phase 0 audit, findings register and Lighthouse
-baselines, and `deploy/README.md` for the migration runbook. Two P0s remain open, both concerning
-the legacy **`metnmat.in`** site, which is still live, fully indexable and self-canonical with no
-redirects to `.com`.
+baselines, and `deploy/README.md` for the migration runbook. **AUDIT.md is a dated snapshot
+(2026-07-31) — several findings have since been fixed; read its "Status since this audit" section
+before acting on any row.** Of its two P0s, one remains: `metnmat.in` is still live, fully
+indexable and self-canonical. The other (no redirect map) is resolved on the side we control —
+`next.config.mjs` now ships 122 legacy redirects from `legacy-redirects.mjs`.

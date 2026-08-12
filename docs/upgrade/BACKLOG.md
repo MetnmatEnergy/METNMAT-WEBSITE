@@ -4,7 +4,7 @@ Out-of-scope items found during a phase. Logged, not fixed (operating rule 5).
 
 | Found in | Severity | Item | Note |
 |---|---|---|---|
-| Phase 0 | P3 | Dead `apps/website/src/backend/` stub layer (`getDb()` throws) | Delete with `/api/products` |
+| ~~Phase 0~~ | ~~P3~~ | ~~Dead `apps/website/src/backend/` stub layer (`getDb()` throws)~~ | **RESOLVED (verified 2026-08-12)** — `getDb` is gone, `/api/products` deleted, and `backend/` is now live code: `lib/rate-limit`, and the `*.service.ts` CMS clients |
 | Phase 0 | P3 | `packages/types` has no tsconfig — not typechecked by turbo | |
 | Phase 0 | P3 | `apps/dashboard/scripts/` excluded from typecheck | |
 | Phase 0 | P3 | Legacy `.eslintrc.json` + `next lint` | Breaks on Next 16 / ESLint 10 |

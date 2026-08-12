@@ -5,6 +5,11 @@
 
 > Every row below was observed. Anything not observed is marked `UNVERIFIED`.
 
+> ⚠️ **This is a dated snapshot, not live state.** Findings below were true on 2026-07-31 and
+> several have since been fixed. The rows are left as originally observed — this is a record of an
+> audit, and rewriting it would falsify that. **See [§11 Status since this audit](#11-status-since-this-audit)
+> before acting on any row.**
+
 ---
 
 ## 1. Stack
@@ -144,3 +149,47 @@ Hydration: **one** real issue — `site-footer.tsx:164` renders `new Date().getF
 2. **Legacy content gap (P1-4/P1-5).** 11 page types + 26 blog posts don't exist on `.com`. Migrate the content, or redirect to the nearest relevant page and accept the loss?
 3. **`COMPANY_GSTIN` / `COMPANY_CIN` (P1-2)** — I need the real values set as Cloud Run env vars (by you; I won't handle them).
 4. **Staging.** There is none. Phases that write data can't be tested safely without it.
+
+---
+
+## 11. Status since this audit
+
+Re-verified **2026-08-12** against the current tree and live probes. Findings above are unchanged;
+this section records what has moved since.
+
+### Resolved
+
+| # | Original finding | Now | Evidence |
+|---|---|---|---|
+| **P0-2** | No redirect map on either side | **Resolved on `.com`** | `next.config.mjs` `redirects()` ships **122** entries from `legacy-redirects.mjs`. The Wix side still has none — that half needs Wix access. |
+| **P1-1** | `products` drafts readable anonymously | **Fixed** | `Products.ts:39` → `read: publishedRead` |
+| **P2-2** | 4 unauthenticated **unthrottled** routes | **Fixed** | `/api/search`, `/api/products/resolve`, `/api/product-by-sku`, `/api/geo` all call `limitRate()` from `backend/lib/rate-limit` |
+| **P2-3** | `/api/products` public stub endpoint | **Deleted** | route file gone |
+| **P2-12** | `images.unsplash.com` in CSP, absent from `remotePatterns` | **Fixed** | allowance removed; the 8 service photos are self-hosted under `public/services/` |
+| BACKLOG P3 | "Dead `backend/` stub layer (`getDb()` throws)" | **Stale** | no `getDb` remains, and `backend/lib` now holds the live rate limiter |
+
+### Still open — re-confirmed today
+
+| # | Finding | Evidence |
+|---|---|---|
+| **P0-1** | `metnmat.in` live, indexable, self-canonical | probed 2026-08-12: `200`. With `.com` down it is the only METNMAT site serving. |
+| **P2-7** | Duplicate Cloud Build trigger still enabled | `gcloud builds triggers list --region=global` → all **3** enabled, none disabled |
+| §8 | Footer year baked at build | still `new Date().getFullYear()`, now `site-footer.tsx:166` (was `:164`) |
+| P2-6 | No Payload `rateLimit` | `payload.config.ts` has none — the CMS is still directly reachable for anonymous create |
+
+### Could not verify — production is down
+
+`P1-2` (GSTIN/CIN env vars), `P1-3` (image ladder on live assets), §5 live media claims and §7
+Lighthouse baselines all need a reachable site or GCP access. **Every service 503s** because GCP
+billing is disabled. Re-run these after billing is restored — and note §7's baselines were taken on
+Cloud Run, so they are not a valid comparison for the AWS stack.
+
+### Superseded by the migration
+
+§2 "Platform: GCP Cloud Run" and §1's `@payloadcms/storage-gcs` row describe the *outgoing*
+architecture. `CACHING.md`'s central premise — the CDN clamping browser `max-age` to ~3600 — is a
+Cloud CDN behaviour with **no equivalent in the AWS target**, which ships no CDN initially. See
+`deploy/README.md`.
+
+`RELEASE.md` is a historical per-phase record and holds up, with one caveat: the gate command in
+its header (`qa-crawl.mjs https://www.metnmat.com`) cannot pass while the site is down.
