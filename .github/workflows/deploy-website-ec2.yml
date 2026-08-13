@@ -71,9 +71,20 @@ env:
   APP_ROOT: /home/ec2-user/web
   APP_PORT: "3100"
   # Baked into the client bundle at BUILD time — NEXT_PUBLIC_* cannot be
-  # supplied at runtime, so it cannot live in Secrets Manager with the others.
-  # This is the public hostname, so it does not change at DNS cutover.
+  # supplied at runtime, so these cannot live in Secrets Manager with the
+  # others. All are public hostnames, so none changes at DNS cutover.
   CMS_URL: https://admin.metnmat.com
+  # Load-bearing, not cosmetic. middleware.ts derives the canonical host from
+  # NEXT_PUBLIC_SITE_URL and, when it is unset, canonicalHost() returns null and
+  # the apex→www 308 is skipped ENTIRELY. That split is what previously produced
+  # host-only auth cookies: sessions did not survive a tab close and Google
+  # sign-in failed, because the OAuth state cookie landed on the apex while
+  # redirect_uri pointed at www. Verified live after cutover — the apex answered
+  # 200 instead of redirecting, because this was missing from the build.
+  SITE_URL: https://www.metnmat.com
+  # Two components reference the chatbot. Left pointing at the existing service;
+  # it has not migrated and lives in a separate repository.
+  CHATBOT_URL: https://chat.metnmat.com
 
 permissions:
   contents: read
@@ -184,6 +195,8 @@ jobs:
         env:
           NEXT_OUTPUT: standalone
           NEXT_PUBLIC_CMS_URL: ${{ env.CMS_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ env.SITE_URL }}
+          NEXT_PUBLIC_CHATBOT_URL: ${{ env.CHATBOT_URL }}
           NODE_ENV: production
         run: pnpm --filter website build
 
