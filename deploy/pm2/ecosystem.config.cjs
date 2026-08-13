@@ -41,6 +41,18 @@ module.exports = {
         NODE_ENV: "production",
         PORT: 3100,
         HOSTNAME: LOOPBACK,
+        APP_NAME: "metnmat-website",
+
+        // What THIS app cannot start without, checked by with-secrets.sh before
+        // node is exec'd. metnmat/prod/* is one pool shared with the CMS and the
+        // WhatsApp worker, so the wrapper must not fail on a secret this app
+        // never reads — an unpopulated chatbot token is not the website's
+        // problem.
+        //
+        // INTERNAL_API_KEY only: it is what instrumentation.ts throws on at
+        // startup. NEXT_PUBLIC_CMS_URL is the other thing it checks, but that is
+        // inlined at BUILD time and cannot come from Secrets Manager at all.
+        REQUIRED_SECRETS: "INTERNAL_API_KEY",
       },
 
       // Cap the V8 heap below the PM2 restart threshold so a leak surfaces as

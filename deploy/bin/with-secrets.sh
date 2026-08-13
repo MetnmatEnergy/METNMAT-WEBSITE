@@ -18,6 +18,10 @@ set -Eeuo pipefail
 
 SECRET_PREFIX="${SECRET_PREFIX:-metnmat/prod/}"
 AWS_REGION="${AWS_REGION:-ap-south-1}"
+# Only used to make an error message actionable. Defaulted because this script
+# runs under `set -u`, where an unset reference is itself a fatal error — and a
+# crash inside the error path is the worst place to have one.
+APP_NAME="${APP_NAME:-the app}"
 
 log() { echo "[secrets] $*" >&2; }
 
@@ -95,10 +99,31 @@ done
 # Names only, never values — the one logging rule that matters here.
 log "loaded $loaded secret(s)"
 
+# A placeholder is never exported — the app sees the variable as unset, which is
+# the honest representation and lets its own fail-fast decide.
+#
+# Failing here on ANY placeholder was wrong: metnmat/prod/* is one pool shared by
+# the website, the CMS and the WhatsApp worker, so an unpopulated chatbot token
+# would have blocked the website from starting over config it never reads. What
+# each app actually requires is the app's business, so it declares it.
 if [ -n "$placeholders" ]; then
-  log "FATAL: still set to PLACEHOLDER_SET_ME:$placeholders"
-  log "  That value is public (it is committed in infra/). Populate the real"
-  log "  values in Secrets Manager, then 'pm2 reload' — no redeploy needed."
+  log "not populated (still PLACEHOLDER_SET_ME), NOT exported:$placeholders"
+fi
+
+# REQUIRED_SECRETS is a space-separated list set by the caller (see
+# ecosystem.config.cjs). Empty means "trust the application's own startup
+# checks" — the website already throws in instrumentation.ts when what it needs
+# is absent, and the CMS in assertProductionConfig.
+missing_required=""
+for req in ${REQUIRED_SECRETS:-}; do
+  eval "v=\${$req:-}"
+  [ -n "$v" ] || missing_required="$missing_required $req"
+done
+
+if [ -n "$missing_required" ]; then
+  log "FATAL: required secret(s) missing or still placeholder:$missing_required"
+  log "  Populate them in Secrets Manager, then 'pm2 reload $APP_NAME' —"
+  log "  no redeploy needed, values are read at process start."
   exit 78
 fi
 
