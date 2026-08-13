@@ -1,8 +1,8 @@
 name: Pre-flight (AWS readiness)
 
 # Runs deploy/bin/preflight.sh against the real AWS account, before the first
-# release. Manual only — this is something you run when you want an answer, not
-# on every push.
+# release. Dispatch it when you want an answer; it also runs automatically when
+# the check itself changes.
 #
 # Run it HERE rather than on a laptop. The checks are only meaningful when made
 # by the identity that will actually deploy: a developer's credentials are
@@ -14,6 +14,17 @@ name: Pre-flight (AWS readiness)
 
 on:
   workflow_dispatch:
+  # Also on push, but only when the check itself changes. Pre-flight is
+  # read-only — its one write is a probe object it deletes again — so running it
+  # is free of consequence, and a check that has just been edited is exactly
+  # when you want to see its output. It doubles as a standing environment
+  # monitor: if the instance role, the bucket or the secrets drift, the next
+  # push to this path says so.
+  push:
+    branches: [main]
+    paths:
+      - "deploy/bin/preflight.sh"
+      - ".github/workflows/preflight-aws.yml"
 
 permissions:
   contents: read
@@ -76,11 +87,17 @@ jobs:
       - name: Run pre-flight
         run: |
           chmod +x deploy/bin/preflight.sh
-          # Tee so the result lands in the run summary as well as the log —
-          # the summary is what someone reads when deciding whether to deploy.
-          set -o pipefail
+
+          # `set +e` around the run is load-bearing. GitHub executes this block
+          # as `bash -e`, so a failing pre-flight would abort the step HERE —
+          # before the summary below is written. The result: no summary on
+          # exactly the runs where you need one, which is what happened on the
+          # first real failure. PIPESTATUS[0] takes the script's status rather
+          # than tee's.
+          set +e
           ./deploy/bin/preflight.sh 2>&1 | tee preflight.out
-          rc=$?
+          rc=${PIPESTATUS[0]}
+          set -e
           {
             echo "### Pre-flight"
             echo ""
