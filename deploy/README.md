@@ -31,6 +31,30 @@ suggested it did, but the deploy identity cannot see it. Live listing on
 neither is Terraform-managed — `platform.tf` defines only the media and
 alb-logs buckets). Set the `ARTIFACT_BUCKET` repository variable to override.
 
+## Pre-flight: green (2026-08-12)
+
+`27 passed · 5 warnings · 0 failed` — *Ready, with warnings.*
+
+Verified against the live account, by the identity that deploys:
+
+```
+✓ every secret the website requires is populated (INTERNAL_API_KEY)
+✓ instance role can GetObject from the artifact bucket
+✓ instance role can read Secrets Manager        (granted by instance-role-policy.json)
+✓ SSM agent online · port 3100 free · /home/ec2-user/web exists · caddy running
+✓ DIRECTOR_RESET / SEED_PRUNE_PLACEHOLDERS unset on the box
+```
+
+All five warnings are expected and none blocks the website: 21 secrets still
+placeholder (CMS and chatbot only), media bucket empty (both wait on GCP
+billing), t3.small shared with the dashboard, ~649 MB free, and an IAM user
+rather than an OIDC role.
+
+**The website needs exactly one of the 22 secrets to boot** — `INTERNAL_API_KEY`,
+per `instrumentation.ts`. It does not wait on Razorpay, Resend, WhatsApp or any
+CMS value. `REQUIRED_SECRETS` in `pm2/ecosystem.config.cjs` and the same list in
+`bin/preflight.sh` encode that, and must be kept in step with each other.
+
 ## Measured on the instance (2026-08-12, bootstrap report)
 
 ```
