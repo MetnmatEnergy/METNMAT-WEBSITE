@@ -15,6 +15,7 @@ not step 12.
 
 | Path | What it is | Runs where |
 |---|---|---|
+| `bin/preflight.sh` | Verifies everything the first release needs — run this before deploying | GitHub runner (via OIDC) |
 | `bin/release.sh` | Download → verify → swap → reload → health-check → rollback | EC2, via SSM |
 | `bin/with-secrets.sh` | Loads `metnmat/prod/*` into the env, then execs the app | EC2, at process start |
 | `bin/migrate-media.sh` | GCS → S3 copy with count + byte verification | Anywhere with both CLIs |
@@ -123,7 +124,12 @@ the filename, and the five derivative sizes per image **cannot be regenerated**
    `secretsmanager:GetSecretValue` + `ListSecrets` scoped to `metnmat/prod/*`.
 9. 🔴 Set the repo settings the workflow needs — secret `AWS_DEPLOY_ROLE_ARN`,
    vars `EC2_INSTANCE_ID` and `ARTIFACT_BUCKET`. Until these exist the workflow
-   is inert and exits with a notice.
+   is inert and exits with a notice. Then dispatch **Pre-flight (AWS readiness)**
+   and fix everything it reports before step 10. It checks the things that fail
+   expensively — SSM agent offline, instance role denied on S3 or Secrets
+   Manager, port 3100 taken, secrets still on `PLACEHOLDER_SET_ME`, and whether
+   the box actually has the memory. Run it from Actions, not a laptop: it must
+   be the deploy role asking, or it will pass checks the real deploy then fails.
 10. Push to `main`, or dispatch **Deploy website to EC2** manually. The build
     runs the full gate (typecheck, lint, test) before anything is published.
 11. 🔴 Append `caddy/metnmat.Caddyfile` to the instance's Caddy config,

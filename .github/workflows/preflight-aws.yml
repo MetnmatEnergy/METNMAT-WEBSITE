@@ -1,0 +1,67 @@
+name: Pre-flight (AWS readiness)
+
+# Runs deploy/bin/preflight.sh against the real AWS account, before the first
+# release. Manual only — this is something you run when you want an answer, not
+# on every push.
+#
+# Run it HERE rather than on a laptop. The checks are only meaningful when made
+# by the identity that will actually deploy: a developer's credentials are
+# usually broader than the deploy role, so a local run can pass every check the
+# real pipeline then fails on. This job assumes the same role the deploy uses.
+#
+# Read-only apart from one probe object written to and deleted from the artifact
+# bucket. It never starts, stops or reloads anything.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check configuration
+        id: guard
+        run: |
+          missing=""
+          [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ] || missing="$missing AWS_DEPLOY_ROLE_ARN(secret)"
+          [ -n "${{ vars.EC2_INSTANCE_ID }}" ]        || missing="$missing EC2_INSTANCE_ID(var)"
+          [ -n "${{ vars.ARTIFACT_BUCKET }}" ]        || missing="$missing ARTIFACT_BUCKET(var)"
+          if [ -n "$missing" ]; then
+            echo "::error::Not configured yet — set:$missing"
+            echo "Pre-flight cannot run until these exist. That is itself the first finding." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-preflight-${{ github.run_id }}
+          aws-region: ap-south-1
+
+      - name: Run pre-flight
+        env:
+          AWS_REGION: ap-south-1
+          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
+        run: |
+          chmod +x deploy/bin/preflight.sh
+          # Tee so the result lands in the run summary as well as the log —
+          # the summary is what someone reads when deciding whether to deploy.
+          set -o pipefail
+          ./deploy/bin/preflight.sh 2>&1 | tee preflight.out
+          rc=$?
+          {
+            echo "### Pre-flight"
+            echo ""
+            echo '```'
+            # Strip ANSI colour, which renders as escape noise in the summary.
+            sed 's/\x1b\[[0-9;]*m//g' preflight.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
