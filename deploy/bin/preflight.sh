@@ -243,6 +243,13 @@ else
 fi
 aws s3 ls "s3://$ARTIFACT_BUCKET/" --region $AWS_REGION >/dev/null 2>&1 && echo "role_s3_list ok" || echo "role_s3_list DENIED"
 aws secretsmanager list-secrets --region $AWS_REGION --filters Key=name,Values=$SECRET_PREFIX --max-results 1 >/dev/null 2>&1 && echo "role_secrets ok" || echo "role_secrets DENIED"
+echo "--- is the website actually serving? ---"
+# The deploy's own health check proves the app answered once, at release time.
+# This answers a different question: is it still answering NOW. Same Host header
+# the release uses, so the app renders as it will in production while the
+# connection stays on the box.
+code="\$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: www.metnmat.com' http://127.0.0.1:$APP_PORT/ 2>/dev/null || true)"
+echo "serving_status=\$code"
 echo "--- pm2 processes ---"
 pm2 jlist 2>/dev/null | tr ',' '\n' | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | sed 's/^/pm2:/' || echo "pm2 not running"
 echo "--- caddy ---"
@@ -307,6 +314,13 @@ REMOTE
       echo "$out" | grep -o 'disk_use=[0-9]*%' | cut -d= -f2 | while read -r d; do
         [ "${d%\%}" -ge 80 ] && hmm "disk at $d" || ok "disk at $d"
       done
+
+      serving="$(echo "$out" | grep -o 'serving_status=[0-9]*' | cut -d= -f2)"
+      case "$serving" in
+        200) ok "website is serving on 127.0.0.1:$APP_PORT (HTTP 200)" ;;
+        000|"") hmm "nothing answering on 127.0.0.1:$APP_PORT — expected before the first deploy" ;;
+        *)   no "website answered HTTP $serving on 127.0.0.1:$APP_PORT" ;;
+      esac
 
       running="$(echo "$out" | grep '^pm2:' | cut -d: -f2 | tr '\n' ' ')"
       [ -n "$running" ] && info "pm2 processes already running: $running"
