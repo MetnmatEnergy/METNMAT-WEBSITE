@@ -95,11 +95,27 @@ log "symlink swapped to $SHA"
 # ── 5. Reload ONLY this app ────────────────────────────────────────────────
 # `pm2 reload <name>` — never `restart all`, which would bounce the dashboard
 # and the WhatsApp worker's siblings along with it.
-if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
-  pm2 reload "$APP_NAME" --update-env || fail "pm2 reload failed"
+# Always act on the ECOSYSTEM FILE, never on the bare process name.
+# `pm2 reload <name>` reuses the definition already registered with the pm2
+# daemon and never re-reads ecosystem.config.cjs — so a corrected interpreter,
+# script path or NODE_OPTIONS is silently ignored. That is exactly how a stale
+# `node_args` survived being fixed on disk and crash-looped two deploys running.
+# `--only` keeps every one of these scoped to this app; the dashboard is never
+# named, so it cannot be reloaded, restarted or deleted by any of them.
+ECO="$APP_ROOT/ecosystem.config.cjs"
+[ -f "$ECO" ] || fail "no ecosystem file at $ECO — did the artifact carry _deploy/?"
+
+if pm2 describe "$APP_NAME" 2>/dev/null | grep -qi "online"; then
+  log "reloading $APP_NAME from $ECO"
+  pm2 reload "$ECO" --only "$APP_NAME" --update-env || fail "pm2 reload failed"
 else
-  log "first deploy — starting $APP_NAME"
-  pm2 start "$APP_ROOT/ecosystem.config.cjs" --only "$APP_NAME"
+  # Not online: either never started, or sitting errored after a crash loop. A
+  # broken definition cannot be reloaded out of existence — reload would just
+  # re-apply it — so drop it and start clean. Deleting by NAME touches only this
+  # app.
+  log "$APP_NAME is not online — deleting any stale definition and starting clean"
+  pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
+  pm2 start "$ECO" --only "$APP_NAME" --update-env || fail "pm2 start failed"
 fi
 pm2 save >/dev/null 2>&1 || true
 
@@ -126,7 +142,20 @@ if [ "$code" != "200" ]; then
     log "rolling back to $(basename "$ROLLBACK_TO")"
     ln -sfn "$ROLLBACK_TO" "$CURRENT.tmp"
     mv -Tf "$CURRENT.tmp" "$CURRENT"
-    pm2 reload "$APP_NAME" --update-env || true
+
+    # Put the PREVIOUS release's runtime config back too. Step 2b installed the
+    # new release's config into $APP_ROOT before the health check, so moving the
+    # symlink alone would roll back the code while leaving the configuration
+    # that may well be what broke it.
+    if [ -f "$ROLLBACK_TO/_deploy/ecosystem.config.cjs" ]; then
+      install -m 0644 "$ROLLBACK_TO/_deploy/ecosystem.config.cjs" "$APP_ROOT/ecosystem.config.cjs"
+      install -m 0755 "$ROLLBACK_TO/_deploy/with-secrets.sh"      "$APP_ROOT/bin/with-secrets.sh"
+      log "restored the previous release's runtime config"
+    fi
+
+    # From the file, for the same reason as the forward path: a reload by name
+    # would re-apply the definition that just failed.
+    pm2 reload "$ECO" --only "$APP_NAME" --update-env || true
     sleep 5
     back="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
       -H "Host: $HEALTH_HOST" "http://127.0.0.1:$APP_PORT$HEALTH_PATH" || true)"
