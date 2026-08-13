@@ -210,12 +210,56 @@ else
       info "site block removed again; Caddy is untouched"
       sudo caddy validate --config "$CADDY_MAIN" 2>&1 | head -5 | sed 's/^/         /'
     fi
+  elif [ "${ALLOW_CADDYFILE_EDIT:-false}" = "true" ]; then
+    # Opt-in, because this is the file serving the dashboard. Made safe by being
+    # reversible: back up first, validate after, restore on any failure. The
+    # change itself is one line and adds no hostname — it only tells Caddy to
+    # read a directory it is not currently reading.
+    BACKUP="$CADDY_MAIN.bak.$(date +%Y%m%d-%H%M%S)"
+    sudo cp -p "$CADDY_MAIN" "$BACKUP" || fail "could not back up $CADDY_MAIN"
+    ok "backed up main Caddyfile to $BACKUP"
+
+    # Appended, not prepended: a Caddyfile may open with a global options block,
+    # and inserting above that would break it. A well-formed file ends after its
+    # last site block, so the end is top-level scope.
+    printf '\n# Added by deploy/bin/bootstrap-server.sh — loads the website/CMS site blocks.\nimport %s/*.caddy\n' \
+      "$CADDY_CONF_D" | sudo tee -a "$CADDY_MAIN" >/dev/null \
+      || { sudo cp -p "$BACKUP" "$CADDY_MAIN"; fail "could not append the import; original restored"; }
+
+    # Install the site block BEFORE validating: an import of a directory with no
+    # matching files is fine, but validating the end state is the point.
+    STAGED="$(mktemp)"
+    if [ "${PUBLIC_TLS:-false}" = "true" ]; then
+      grep -v '# PRE-CUTOVER' "$CADDY_SRC" > "$STAGED"
+    else
+      cp "$CADDY_SRC" "$STAGED"
+      info "pre-cutover mode: 'tls internal' retained, no ACME requests"
+    fi
+    sudo install -m 0644 "$STAGED" "$CADDY_CONF_D/metnmat-website.caddy"
+    rm -f "$STAGED"
+
+    if sudo caddy validate --config "$CADDY_MAIN" >/dev/null 2>&1; then
+      ok "config validates with the import and site blocks in place"
+      if sudo systemctl reload caddy; then
+        ok "caddy reloaded — the dashboard's own routes are unchanged"
+      else
+        sudo cp -p "$BACKUP" "$CADDY_MAIN"
+        sudo rm -f "$CADDY_CONF_D/metnmat-website.caddy"
+        sudo systemctl reload caddy || true
+        fail "reload failed; Caddyfile and site block reverted"
+      fi
+    else
+      sudo cp -p "$BACKUP" "$CADDY_MAIN"
+      sudo rm -f "$CADDY_CONF_D/metnmat-website.caddy"
+      fail "config does NOT validate — Caddyfile restored from backup, site block removed, Caddy never reloaded"
+    fi
   else
     hmm "the main Caddyfile does not import conf.d — REFUSING to edit it"
     info "it currently serves the dashboard, so this script will not rewrite it."
-    info "add this one line yourself, then re-run:"
+    info "either add this line yourself and re-run:"
     info "    import $CADDY_CONF_D/*.caddy"
-    info "the site block that would have been installed is at: $CADDY_SRC"
+    info "or re-run with allow_caddyfile_edit=true, which backs the file up,"
+    info "appends that line, validates, and restores the backup if anything fails."
   fi
 fi
 

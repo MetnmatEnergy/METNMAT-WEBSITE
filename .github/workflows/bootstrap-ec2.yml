@@ -30,6 +30,11 @@ on:
         required: false
         default: false
         type: boolean
+      allow_caddyfile_edit:
+        description: "Append 'import conf.d/*.caddy' to the MAIN Caddyfile (the one serving the dashboard). Backed up first, validated after, restored on any failure."
+        required: false
+        default: false
+        type: boolean
       public_tls:
         description: "CUTOVER ONLY. Strip 'tls internal' so Caddy requests real Let's Encrypt certificates. Only after DNS points at this instance — earlier, every ACME attempt fails and burns rate limit."
         required: false
@@ -191,6 +196,7 @@ jobs:
           MODE: ${{ inputs.mode }}
           WITH_CADDY: ${{ inputs.install_caddy_config }}
           PUBLIC_TLS: ${{ inputs.public_tls }}
+          ALLOW_EDIT: ${{ inputs.allow_caddyfile_edit }}
         run: |
           set -euo pipefail
           BUCKET="${{ env.ARTIFACT_BUCKET }}"
@@ -219,7 +225,7 @@ jobs:
             echo "chmod +x /tmp/bootstrap-server.sh"
             # `env` rather than a bare VAR=value: sudo treats a leading
             # assignment as the command name otherwise.
-            echo "sudo -u ec2-user env CADDY_SRC='$CADDY_SRC' PUBLIC_TLS='$PUBLIC_TLS' bash /tmp/bootstrap-server.sh $ARG"
+            echo "sudo -u ec2-user env CADDY_SRC='$CADDY_SRC' PUBLIC_TLS='$PUBLIC_TLS' ALLOW_CADDYFILE_EDIT='$ALLOW_EDIT' bash /tmp/bootstrap-server.sh $ARG"
           } > remote-cmd.sh
 
           echo "--- remote script ---"
