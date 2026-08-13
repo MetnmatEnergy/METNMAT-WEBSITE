@@ -19,7 +19,17 @@ not step 12.
 | Instance **Name** tag | `metnmat-website` |
 | Instance role | `metnmat-dashboard-role` (has `AmazonSSMManagedInstanceCore`) |
 | Public IP | `15.206.25.71` — ⚠ not confirmed to be an **Elastic** IP |
-| Artifact bucket | `metnmat-deploy-artifacts-website` · versioned · public access blocked · 0 objects |
+| AWS account | `976134557584`, deploy identity `iam::…:user/metnmat-migration` |
+| Artifact bucket | `metnmat-deploy-artifacts-976134557584` |
+| Media bucket | `metnmat-media-prod` — exists in ap-south-1, empty until the GCS copy runs |
+
+⚠️ **`metnmat-deploy-artifacts-website` does not exist** — a console screenshot
+suggested it did, but the deploy identity cannot see it. Live listing on
+2026-08-12 found five buckets, two of which could serve as the artifact store:
+`metnmat-deploy-artifacts-976134557584` (used — clean, account-scoped) and
+`metnmat-deploy-artifacts-website-976134557584-ap-south-1-an` (unclear origin;
+neither is Terraform-managed — `platform.tf` defines only the media and
+alb-logs buckets). Set the `ARTIFACT_BUCKET` repository variable to override.
 
 ⚠️ **Resolve before deploying: is this the shared dashboard box, or a second instance?**
 The blueprint's central cost decision is to reuse the existing dashboard server, and §18

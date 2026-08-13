@@ -41,7 +41,7 @@ permissions:
 # Settings -> Secrets, where they belong, and appear nowhere in this file.
 env:
   EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID || 'i-0b7f49ca3e9852d4b' }}
-  ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'metnmat-deploy-artifacts-website' }}
+  ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'metnmat-deploy-artifacts-976134557584' }}
   AWS_REGION: ap-south-1
 
 jobs:
