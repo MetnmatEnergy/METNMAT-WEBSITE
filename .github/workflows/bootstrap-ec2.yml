@@ -30,6 +30,15 @@ permissions:
   contents: read
   id-token: write
 
+# Repository variables win when set; these are the fallback so the workflow is
+# runnable without them. Both are non-sensitive infrastructure identifiers, not
+# credentials — an instance id and a bucket name. The credentials stay in
+# Settings -> Secrets, where they belong, and appear nowhere in this file.
+env:
+  EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID || 'i-0b7f49ca3e9852d4b' }}
+  ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'metnmat-deploy-artifacts-website' }}
+  AWS_REGION: ap-south-1
+
 jobs:
   bootstrap:
     runs-on: ubuntu-latest
@@ -48,8 +57,8 @@ jobs:
           echo "auth=$auth" >> "$GITHUB_OUTPUT"
           missing=""
           [ -n "$auth" ]                       || missing="$missing AWS-credentials(secrets)"
-          [ -n "${{ vars.EC2_INSTANCE_ID }}" ] || missing="$missing EC2_INSTANCE_ID(var)"
-          [ -n "${{ vars.ARTIFACT_BUCKET }}" ] || missing="$missing ARTIFACT_BUCKET(var)"
+          [ -n "${{ env.EC2_INSTANCE_ID }}" ] || missing="$missing EC2_INSTANCE_ID(var)"
+          [ -n "${{ env.ARTIFACT_BUCKET }}" ] || missing="$missing ARTIFACT_BUCKET(var)"
           if [ -n "$missing" ]; then
             echo "::error::Not configured yet — set:$missing"
             exit 1
@@ -76,7 +85,7 @@ jobs:
       - name: Stage scripts
         run: |
           set -euo pipefail
-          DEST="s3://${{ vars.ARTIFACT_BUCKET }}/bootstrap"
+          DEST="s3://${{ env.ARTIFACT_BUCKET }}/bootstrap"
           aws s3 cp deploy/bin/bootstrap-server.sh   "$DEST/bootstrap-server.sh" --only-show-errors
           aws s3 cp deploy/caddy/metnmat.Caddyfile   "$DEST/metnmat.Caddyfile"   --only-show-errors
           echo "staged to $DEST"
@@ -87,8 +96,8 @@ jobs:
           WITH_CADDY: ${{ inputs.install_caddy_config }}
         run: |
           set -euo pipefail
-          BUCKET="${{ vars.ARTIFACT_BUCKET }}"
-          INSTANCE="${{ vars.EC2_INSTANCE_ID }}"
+          BUCKET="${{ env.ARTIFACT_BUCKET }}"
+          INSTANCE="${{ env.EC2_INSTANCE_ID }}"
 
           if [ "$MODE" = "report" ]; then ARG="--report"; else ARG=""; fi
           if [ "$MODE" = "prepare" ] && [ "$WITH_CADDY" = "true" ]; then

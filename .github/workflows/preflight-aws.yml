@@ -19,6 +19,14 @@ permissions:
   contents: read
   id-token: write
 
+# Repository variables win when set; these are the fallback so the workflow is
+# runnable without them. Non-sensitive infrastructure identifiers only — the
+# credentials live in Settings -> Secrets and appear nowhere in this file.
+env:
+  EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID || 'i-0b7f49ca3e9852d4b' }}
+  ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'metnmat-deploy-artifacts-website' }}
+  AWS_REGION: ap-south-1
+
 jobs:
   preflight:
     runs-on: ubuntu-latest
@@ -38,8 +46,8 @@ jobs:
 
           missing=""
           [ -n "$auth" ]                       || missing="$missing AWS_DEPLOY_ROLE_ARN-or-AWS_ACCESS_KEY_ID/SECRET(secrets)"
-          [ -n "${{ vars.EC2_INSTANCE_ID }}" ] || missing="$missing EC2_INSTANCE_ID(var)"
-          [ -n "${{ vars.ARTIFACT_BUCKET }}" ] || missing="$missing ARTIFACT_BUCKET(var)"
+          [ -n "${{ env.EC2_INSTANCE_ID }}" ] || missing="$missing EC2_INSTANCE_ID(var)"
+          [ -n "${{ env.ARTIFACT_BUCKET }}" ] || missing="$missing ARTIFACT_BUCKET(var)"
           if [ -n "$missing" ]; then
             echo "::error::Not configured yet — set:$missing"
             echo "Pre-flight cannot run until these exist. That is itself the first finding." >> "$GITHUB_STEP_SUMMARY"
@@ -62,11 +70,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
+      # No step-level env needed: the workflow-level block above already exports
+      # AWS_REGION, EC2_INSTANCE_ID and ARTIFACT_BUCKET to every step, which is
+      # exactly what preflight.sh reads.
       - name: Run pre-flight
-        env:
-          AWS_REGION: ap-south-1
-          EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
-          ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
         run: |
           chmod +x deploy/bin/preflight.sh
           # Tee so the result lands in the run summary as well as the log —
