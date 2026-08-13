@@ -282,7 +282,23 @@ REMOTE
       echo "$out" | grep -q "MISSING node" && no "node missing on the instance"   || ok "node present"
       echo "$out" | grep -q "MISSING pm2"  && no "pm2 missing on the instance"    || ok "pm2 present"
       echo "$out" | grep -q "MISSING aws"  && no "aws cli missing — release.sh needs it to fetch the artifact" || ok "aws cli present on instance"
-      echo "$out" | grep -q "PORT_TAKEN"   && no "port $APP_PORT already in use"  || ok "port $APP_PORT free"
+
+      # Needed by the port and memory checks below, so read it before them.
+      running="$(echo "$out" | grep '^pm2:' | cut -d: -f2 | tr '\n' ' ')"
+      deployed=0
+      case " $running " in *" $APP_NAME "*) deployed=1 ;; esac
+
+      # A busy port is only a problem if something ELSE holds it. Once the site
+      # is deployed, our own process holding 3100 is the desired state — failing
+      # on it made pre-flight report "not ready to deploy" about a system that
+      # was already serving.
+      if echo "$out" | grep -q "PORT_TAKEN"; then
+        [ "$deployed" = "1" ] \
+          && ok "port $APP_PORT held by $APP_NAME (deployed)" \
+          || no "port $APP_PORT is in use by something other than $APP_NAME"
+      else
+        ok "port $APP_PORT free"
+      fi
       echo "$out" | grep -q "approot MISSING" && no "$APP_ROOT does not exist"    || ok "$APP_ROOT exists"
       # s3:GetObject is the only one release.sh needs — a failure here blocks
       # every deploy.
@@ -301,15 +317,23 @@ REMOTE
       echo "$out" | grep -q "role_secrets DENIED" && no "instance role cannot list secrets — with-secrets.sh will fail closed" || ok "instance role can read Secrets Manager"
       echo "$out" | grep -q "DANGER" && no "$(echo "$out" | grep DANGER)" || ok "DIRECTOR_RESET / SEED_PRUNE_PLACEHOLDERS unset on the box"
 
-      # Three bands, not two. A pass/fail at 600 MB reports 637 MB as fine, and
-      # it is not fine: the website's own estimate tops out at 600, so that is
-      # 37 MB of headroom on a box whose dashboard process is documented as
-      # growing. Silence there would be the wrong signal.
+      # The question changes once the site is deployed. BEFORE, the number has to
+      # cover the website's whole 400-600 MB footprint. AFTER, that footprint is
+      # already paid — what is left is headroom, and judging it against a budget
+      # already spent reports a healthy box as failing.
       avail="$(echo "$out" | grep -o 'mem_avail=[0-9]*' | cut -d= -f2)"
       if [ -n "$avail" ]; then
-        if   [ "$avail" -lt "$MIN_FREE_MB" ];   then no  "only ${avail} MB available — a Next.js website needs 400-600 MB"
-        elif [ "$avail" -lt 800 ];              then hmm "${avail} MB available — enough to start, but the website alone may need up to 600 MB. Expect to resize to t3.medium; the CMS certainly will not fit."
-        else                                         ok  "memory available: ${avail} MB"; fi
+        if [ "$deployed" = "1" ]; then
+          # Blueprint §12's own resize trigger is sustained availability under
+          # ~200 MB, and that is the line that matters here.
+          if   [ "$avail" -lt 200 ]; then no  "${avail} MB headroom with the site running — at the blueprint's resize threshold; move to t3.medium"
+          elif [ "$avail" -lt 400 ]; then hmm "${avail} MB headroom with the site running — thin. Watch for swap and unexplained pm2 restarts."
+          else                            ok  "${avail} MB headroom with the site running"; fi
+        else
+          if   [ "$avail" -lt "$MIN_FREE_MB" ]; then no  "only ${avail} MB available — a Next.js website needs 400-600 MB"
+          elif [ "$avail" -lt 800 ];            then hmm "${avail} MB available — enough to start, but the website alone may need up to 600 MB. Expect to resize to t3.medium; the CMS certainly will not fit."
+          else                                       ok  "memory available: ${avail} MB"; fi
+        fi
       fi
       echo "$out" | grep -o 'disk_use=[0-9]*%' | cut -d= -f2 | while read -r d; do
         [ "${d%\%}" -ge 80 ] && hmm "disk at $d" || ok "disk at $d"
@@ -322,8 +346,8 @@ REMOTE
         *)   no "website answered HTTP $serving on 127.0.0.1:$APP_PORT" ;;
       esac
 
-      running="$(echo "$out" | grep '^pm2:' | cut -d: -f2 | tr '\n' ' ')"
-      [ -n "$running" ] && info "pm2 processes already running: $running"
+      # $running was read earlier — the port and memory checks depend on it.
+      [ -n "$running" ] && info "pm2 processes running: $running"
       echo "$running" | grep -q "metnmat-dashboard" \
         && info "the command-center dashboard IS on this box — never 'pm2 restart all'"
 
