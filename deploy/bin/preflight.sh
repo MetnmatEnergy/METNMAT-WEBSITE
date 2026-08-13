@@ -197,6 +197,23 @@ if [ -n "$INSTANCE_ID" ]; then
     && ok "instance profile attached" && info "$profile" \
     || no "no instance profile — the app cannot read S3 or Secrets Manager without one"
 
+  # Gates the t3.medium resize. Resizing stops and starts the instance, and a
+  # DEFAULT public IP is released on stop — the box comes back on a different
+  # address while DNS still points at the old one. With the site live and every
+  # hostname (www, apex, admin, chat) resolving to this address, that is a real
+  # outage, not a theoretical one. An Elastic IP survives the stop/start.
+  eip="$(aws ec2 describe-addresses --region "$AWS_REGION" \
+    --filters "Name=instance-id,Values=$INSTANCE_ID" \
+    --query 'Addresses[0].PublicIp' --output text 2>/dev/null)"
+  pub="$(aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" \
+    --query 'Reservations[0].Instances[0].PublicIpAddress' --output text 2>/dev/null)"
+  if [ -n "$eip" ] && [ "$eip" != "None" ]; then
+    ok "public IP $eip is an ELASTIC IP — survives the stop/start a resize requires"
+  else
+    no "public IP ${pub:-unknown} is NOT elastic — a resize would release it and the box would return on a different address, breaking DNS for every hostname"
+    info "allocate an Elastic IP and associate it BEFORE resizing, or the resize causes an outage"
+  fi
+
   # The single most common cause of a deploy that hangs forever.
   ping="$(aws ssm describe-instance-information --region "$AWS_REGION" \
     --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
@@ -271,7 +288,7 @@ echo "--- caddy routing (through :443, Host header, self-signed accepted) ---"
 # \${c:-000} rather than \`|| echo 000\`: on failure curl still prints 000 via -w
 # AND returns non-zero, so the fallback appended a second 000 and produced the
 # nonsense value "000000".
-for h in www.metnmat.com metnmat.com admin.metnmat.com command-center.metnmat.com; do
+for h in www.metnmat.com metnmat.com admin.metnmat.com command-center.metnmat.com chat.metnmat.com; do
   c="\$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 --resolve "\$h:443:127.0.0.1" "https://\$h/" 2>/dev/null)"
   echo "route:\$h=\${c:-000}"
 done
@@ -407,6 +424,15 @@ REMOTE
               no "DASHBOARD REGRESSION: command-center answered $code — it worked before these blocks were added" ;;
             admin.metnmat.com:502|admin.metnmat.com:503)
               hmm "admin.metnmat.com routes but returns $code — expected: nothing listens on 3200 until the CMS is deployed" ;;
+            # DNS for chat was pointed here too, but the chatbot lives in a
+            # separate repository and no Caddy block exists for it. With no
+            # block, the TLS handshake itself is refused — visitors get a
+            # connection error rather than a page, which is the worst of the
+            # available failures.
+            chat.metnmat.com:000)
+              no "chat.metnmat.com resolves HERE but nothing serves it — no Caddy block, so TLS is refused outright" ;;
+            chat.metnmat.com:*)
+              hmm "chat.metnmat.com answered $code" ;;
             *:200)
               ok "$host routes correctly (200)" ;;
             *:000)
