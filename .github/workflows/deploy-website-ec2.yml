@@ -72,18 +72,30 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       configured: ${{ steps.guard.outputs.configured }}
+      auth: ${{ steps.guard.outputs.auth }}
       sha: ${{ steps.resolve.outputs.sha }}
     steps:
       - name: Check AWS is configured
         id: guard
         run: |
-          if [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ] \
-          && [ -n "${{ vars.EC2_INSTANCE_ID }}" ] \
-          && [ -n "${{ vars.ARTIFACT_BUCKET }}" ]; then
+          # Two auth paths. OIDC is preferred and wins when both exist: it issues
+          # short-lived credentials with nothing durable to leak. Access keys are
+          # the bootstrap fallback so deploys can run before the OIDC role
+          # exists — enter them in Settings → Secrets, never in a file or a chat.
+          auth=""
+          if [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ]; then
+            auth="oidc"
+          elif [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            auth="keys"
+          fi
+
+          if [ -n "$auth" ] && [ -n "${{ vars.EC2_INSTANCE_ID }}" ] && [ -n "${{ vars.ARTIFACT_BUCKET }}" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "auth=$auth" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deploying with $auth credentials."
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Not configured for EC2 deploy — set AWS_DEPLOY_ROLE_ARN (secret), EC2_INSTANCE_ID and ARTIFACT_BUCKET (vars). Skipping."
+            echo "::notice::Not configured — need EC2_INSTANCE_ID + ARTIFACT_BUCKET (vars) and either AWS_DEPLOY_ROLE_ARN or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY (secrets). Skipping."
           fi
 
       - uses: actions/checkout@v4
@@ -169,12 +181,23 @@ jobs:
           tar -czf web-build.tgz -C release .
           echo "artifact: $(du -h web-build.tgz | cut -f1)"
 
-      - name: Assume AWS role
-        if: steps.guard.outputs.configured == 'true'
+      - name: Assume AWS role (OIDC)
+        if: steps.guard.outputs.configured == 'true' && steps.guard.outputs.auth == 'oidc'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           role-session-name: gha-website-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Temporary by design: once AWS_DEPLOY_ROLE_ARN exists the step above wins
+      # and this stops running, after which the access key should be deleted
+      # from both GitHub and IAM.
+      - name: Configure AWS credentials (bootstrap keys)
+        if: steps.guard.outputs.configured == 'true' && steps.guard.outputs.auth == 'keys'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Upload artifact and release script
@@ -193,11 +216,20 @@ jobs:
     if: needs.build.outputs.configured == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Assume AWS role
+      - name: Assume AWS role (OIDC)
+        if: needs.build.outputs.auth == 'oidc'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           role-session-name: gha-deploy-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure AWS credentials (bootstrap keys)
+        if: needs.build.outputs.auth == 'keys'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       # SSM, not SSH. No inbound port is opened, no key is held in GitHub, and

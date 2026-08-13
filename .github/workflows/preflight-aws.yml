@@ -28,20 +28,38 @@ jobs:
       - name: Check configuration
         id: guard
         run: |
+          auth=""
+          if [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ]; then
+            auth="oidc"
+          elif [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            auth="keys"
+          fi
+          echo "auth=$auth" >> "$GITHUB_OUTPUT"
+
           missing=""
-          [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ] || missing="$missing AWS_DEPLOY_ROLE_ARN(secret)"
-          [ -n "${{ vars.EC2_INSTANCE_ID }}" ]        || missing="$missing EC2_INSTANCE_ID(var)"
-          [ -n "${{ vars.ARTIFACT_BUCKET }}" ]        || missing="$missing ARTIFACT_BUCKET(var)"
+          [ -n "$auth" ]                       || missing="$missing AWS_DEPLOY_ROLE_ARN-or-AWS_ACCESS_KEY_ID/SECRET(secrets)"
+          [ -n "${{ vars.EC2_INSTANCE_ID }}" ] || missing="$missing EC2_INSTANCE_ID(var)"
+          [ -n "${{ vars.ARTIFACT_BUCKET }}" ] || missing="$missing ARTIFACT_BUCKET(var)"
           if [ -n "$missing" ]; then
             echo "::error::Not configured yet — set:$missing"
             echo "Pre-flight cannot run until these exist. That is itself the first finding." >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Assume AWS role (OIDC)
+        if: steps.guard.outputs.auth == 'oidc'
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           role-session-name: gha-preflight-${{ github.run_id }}
+          aws-region: ap-south-1
+
+      - name: Configure AWS credentials (bootstrap keys)
+        if: steps.guard.outputs.auth == 'keys'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
       - name: Run pre-flight

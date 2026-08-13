@@ -11,6 +11,40 @@ container. Restoring billing ends the outage *and* unblocks the media copy —
 it is one action that fixes two problems, which is why it is step 1 below and
 not step 12.
 
+## Confirmed environment (2026-08-12)
+
+| | |
+|---|---|
+| EC2 instance | `i-0b7f49ca3e9852d4b` · t3.small · ap-south-1 |
+| Instance **Name** tag | `metnmat-website` |
+| Instance role | `metnmat-dashboard-role` (has `AmazonSSMManagedInstanceCore`) |
+| Public IP | `15.206.25.71` — ⚠ not confirmed to be an **Elastic** IP |
+| Artifact bucket | `metnmat-deploy-artifacts-website` · versioned · public access blocked · 0 objects |
+
+⚠️ **Resolve before deploying: is this the shared dashboard box, or a second instance?**
+The blueprint's central cost decision is to reuse the existing dashboard server, and §18
+forbids a second EC2 outright. But this instance is Name-tagged `metnmat-website`, not
+`metnmat-dashboard` — while carrying `metnmat-dashboard-role`. Both readings are possible
+(a new instance built from the dashboard's role, or the original renamed) and they lead to
+different deployments:
+
+- **If it is the shared box:** the §12 memory arithmetic applies (~834 MB free), `pm2 reload`
+  must always be named, and the CMS cannot be added without a resize.
+- **If it is a second, website-only instance:** the blueprint's "INR 0 new fixed cost" is
+  wrong — you are paying for two t3.smalls — but the website has the full ~1.9 GB to itself
+  and the dashboard is no longer at risk from a bad deploy.
+
+`preflight.sh` answers it: its PM2 section lists the processes already running. If
+`metnmat-dashboard` appears, it is shared.
+
+⚠️ **Bucket versioning is on.** The blueprint assumes a 14-day artifact expiry. With
+versioning enabled, a lifecycle rule must expire **noncurrent** versions too, or deleted
+artifacts are retained and billed indefinitely.
+
+⚠️ **Confirm the public IP is Elastic.** If it is a default public IP it changes on
+stop/start, which would break DNS after any instance restart — including the resize in
+step 11.
+
 ## What is in here
 
 | Path | What it is | Runs where |
