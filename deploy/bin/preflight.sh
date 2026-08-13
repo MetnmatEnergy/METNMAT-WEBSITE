@@ -283,6 +283,19 @@ echo "--- dangerous env ---"
 for v in DIRECTOR_RESET SEED_PRUNE_PLACEHOLDERS; do [ -n "\${!v:-}" ] && echo "DANGER \$v is set" || echo "\$v unset"; done
 REMOTE
 )
+  # Runs as ec2-user, not root. SSM executes as root by default, and that made
+  # two checks lie:
+  #
+  #   pm2 jlist     — pm2 keeps a daemon PER USER. Root's daemon owns nothing, so
+  #                   the process list came back EMPTY, and every check deriving
+  #                   from it (is the port ours, is the site deployed, how should
+  #                   free memory be judged) silently took its pre-deploy branch.
+  #   [ -w APP_ROOT ] — root can write anywhere, so this passed unconditionally
+  #                   and told us nothing about ec2-user, who actually deploys.
+  #
+  # ec2-user is the identity release.sh runs under, so it is the identity whose
+  # view of the box is worth reporting.
+  #
   # Base64 the script rather than escaping it into JSON. The payload then
   # contains nothing that needs quoting — no quotes, no backslashes, no newlines
   # — so the three layers of escaping (shell -> JSON -> remote shell) collapse to
@@ -291,7 +304,7 @@ REMOTE
 
   cid="$(aws ssm send-command --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" \
     --document-name "AWS-RunShellScript" --comment "preflight" --timeout-seconds 120 \
-    --parameters commands="[\"echo $b64 | base64 -d | bash\"]" \
+    --parameters commands="[\"echo $b64 | base64 -d | sudo -u ec2-user bash\"]" \
     --query 'Command.CommandId' --output text 2>/dev/null)"
 
   if [ -z "$cid" ]; then
