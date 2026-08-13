@@ -262,9 +262,18 @@ echo "--- caddy routing (through :443, Host header, self-signed accepted) ---"
 # command-center is the REGRESSION check and the most important line here: it is
 # the dashboard, it was already working, and nothing this migration does may
 # break it.
+# --resolve, NOT a Host header. Caddy selects the site block by TLS SNI, and SNI
+# comes from the URL's hostname — so `https://127.0.0.1/ -H "Host: x"` sends SNI
+# "127.0.0.1", matches nothing, and the handshake is refused before any header is
+# read. Every hostname then looks dead, including ones that are demonstrably
+# fine. --resolve keeps the connection on loopback while sending the real name.
+#
+# \${c:-000} rather than `|| echo 000`: on failure curl still prints 000 via -w
+# AND returns non-zero, so the fallback appended a second 000 and produced the
+# nonsense value "000000".
 for h in www.metnmat.com metnmat.com admin.metnmat.com command-center.metnmat.com; do
-  c="\$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 -H "Host: \$h" https://127.0.0.1/ 2>/dev/null || echo 000)"
-  echo "route:\$h=\$c"
+  c="\$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 --resolve "\$h:443:127.0.0.1" "https://\$h/" 2>/dev/null)"
+  echo "route:\$h=\${c:-000}"
 done
 echo "--- pm2 processes ---"
 pm2 jlist 2>/dev/null | tr ',' '\n' | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | sed 's/^/pm2:/' || echo "pm2 not running"
@@ -295,6 +304,14 @@ REMOTE
     if [ -z "$out" ]; then
       no "SSM command produced no output"
     else
+      # Raw output, always. Two checks silently took the wrong branch because a
+      # value they depend on parsed as empty, and there was no way to see that
+      # from the verdicts alone — the verdicts are derived from exactly this.
+      if [ "${PREFLIGHT_RAW:-true}" = "true" ]; then
+        echo "  ── raw instance output ──"
+        printf '%s\n' "$out" | sed 's/^/    │ /'
+        echo "  ── end raw ──"
+      fi
       echo "$out" | grep -q "MISSING node" && no "node missing on the instance"   || ok "node present"
       echo "$out" | grep -q "MISSING pm2"  && no "pm2 missing on the instance"    || ok "pm2 present"
       echo "$out" | grep -q "MISSING aws"  && no "aws cli missing — release.sh needs it to fetch the artifact" || ok "aws cli present on instance"
