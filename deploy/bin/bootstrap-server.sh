@@ -238,14 +238,33 @@ else
     sudo install -m 0644 "$STAGED" "$CADDY_CONF_D/metnmat-website.caddy"
     rm -f "$STAGED"
 
+    # `caddy validate` checks SYNTAX. It does not check that paths the config
+    # names are writable, so a block whose `log` directive points at a directory
+    # that does not exist validates cleanly and then fails to load. Create the
+    # log directory, owned by whoever the service actually runs as, before
+    # asking Caddy to accept the config.
+    CADDY_USER="$(sudo systemctl show -p User --value caddy 2>/dev/null)"
+    [ -n "$CADDY_USER" ] || CADDY_USER=caddy
+    sudo mkdir -p /var/log/caddy
+    sudo chown -R "$CADDY_USER" /var/log/caddy 2>/dev/null \
+      && ok "/var/log/caddy exists and is owned by '$CADDY_USER'" \
+      || hmm "could not chown /var/log/caddy to '$CADDY_USER'"
+
     if sudo caddy validate --config "$CADDY_MAIN" >/dev/null 2>&1; then
       ok "config validates with the import and site blocks in place"
-      if sudo systemctl reload caddy; then
+      if reload_err="$(sudo systemctl reload caddy 2>&1)"; then
         ok "caddy reloaded — the dashboard's own routes are unchanged"
       else
+        # Print WHY before reverting. Without this the failure reports only
+        # that a reload failed, which is the one thing already known.
+        no "reload failed — reason below, then reverting"
+        [ -n "$reload_err" ] && printf '%s\n' "$reload_err" | sed 's/^/         /'
+        echo "         --- journalctl -u caddy (last 20) ---"
+        sudo journalctl -u caddy -n 20 --no-pager 2>/dev/null | sed 's/^/         /' || true
+
         sudo cp -p "$BACKUP" "$CADDY_MAIN"
         sudo rm -f "$CADDY_CONF_D/metnmat-website.caddy"
-        sudo systemctl reload caddy || true
+        sudo systemctl reload caddy >/dev/null 2>&1 || true
         fail "reload failed; Caddyfile and site block reverted"
       fi
     else
