@@ -157,7 +157,11 @@ if [ -n "$INSTANCE_ID" ]; then
   itype="$(aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" \
     --query 'Reservations[0].Instances[0].InstanceType' --output text 2>/dev/null)"
   info "type: ${itype:-unknown}"
-  [ "$itype" = "t3.small" ] && hmm "t3.small has ~834 MB free with the dashboard running; the blueprint expects website+CMS to exceed it (§12)"
+  # Deliberately does not quote a free-memory figure here. The blueprint's 834 MB
+  # was already stale by 180 MB when measured on 2026-08-12, because the
+  # dashboard process grows. Section 5 reads the live number off the box; that
+  # is the one to trust.
+  [ "$itype" = "t3.small" ] && hmm "t3.small (2 GB) shared with the dashboard — see the measured figure in section 5, not the blueprint's"
 
   profile="$(aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$INSTANCE_ID" \
     --query 'Reservations[0].Instances[0].IamInstanceProfile.Arn' --output text 2>/dev/null)"
@@ -238,10 +242,15 @@ REMOTE
       echo "$out" | grep -q "role_secrets DENIED" && no "instance role cannot list secrets — with-secrets.sh will fail closed" || ok "instance role can read Secrets Manager"
       echo "$out" | grep -q "DANGER" && no "$(echo "$out" | grep DANGER)" || ok "DIRECTOR_RESET / SEED_PRUNE_PLACEHOLDERS unset on the box"
 
+      # Three bands, not two. A pass/fail at 600 MB reports 637 MB as fine, and
+      # it is not fine: the website's own estimate tops out at 600, so that is
+      # 37 MB of headroom on a box whose dashboard process is documented as
+      # growing. Silence there would be the wrong signal.
       avail="$(echo "$out" | grep -o 'mem_avail=[0-9]*' | cut -d= -f2)"
       if [ -n "$avail" ]; then
-        if [ "$avail" -ge "$MIN_FREE_MB" ]; then ok "memory available: ${avail} MB"
-        else no "only ${avail} MB available — a Next.js website needs 400-600 MB (blueprint §12)"; fi
+        if   [ "$avail" -lt "$MIN_FREE_MB" ];   then no  "only ${avail} MB available — a Next.js website needs 400-600 MB"
+        elif [ "$avail" -lt 800 ];              then hmm "${avail} MB available — enough to start, but the website alone may need up to 600 MB. Expect to resize to t3.medium; the CMS certainly will not fit."
+        else                                         ok  "memory available: ${avail} MB"; fi
       fi
       echo "$out" | grep -o 'disk_use=[0-9]*%' | cut -d= -f2 | while read -r d; do
         [ "${d%\%}" -ge 80 ] && hmm "disk at $d" || ok "disk at $d"

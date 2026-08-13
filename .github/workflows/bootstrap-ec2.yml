@@ -30,6 +30,11 @@ on:
         required: false
         default: false
         type: boolean
+      fix_instance_role:
+        description: "Attach deploy/aws/instance-role-policy.json to the instance's role (read-only: artifact bucket + metnmat/prod secrets). Required before the first deploy."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -84,6 +89,42 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
+
+      # Pre-flight found the instance role could reach neither the artifact
+      # bucket nor Secrets Manager. That is not a bug in the role — it was built
+      # for the dashboard, which needs neither. release.sh fetches the artifact
+      # as the instance, and with-secrets.sh reads metnmat/prod/* as the
+      # instance, so both need granting before any deploy can work.
+      #
+      # Opt-in, because this modifies an IAM role that a live production app
+      # runs under. The policy is read-only and scoped to two named resources;
+      # it grants nothing the dashboard could use to reach anything new.
+      - name: Grant the instance role what the deploy needs
+        if: inputs.fix_instance_role
+        run: |
+          set -euo pipefail
+          INSTANCE="${{ env.EC2_INSTANCE_ID }}"
+
+          # Derived, never hardcoded: the profile comes from the instance and
+          # the role from the profile, so this cannot silently target the wrong
+          # role if the instance is ever rebuilt.
+          PROFILE_ARN="$(aws ec2 describe-instances --instance-ids "$INSTANCE" \
+            --query 'Reservations[0].Instances[0].IamInstanceProfile.Arn' --output text)"
+          PROFILE="${PROFILE_ARN##*/}"
+          ROLE="$(aws iam get-instance-profile --instance-profile-name "$PROFILE" \
+            --query 'InstanceProfile.Roles[0].RoleName' --output text)"
+          echo "instance $INSTANCE -> profile $PROFILE -> role $ROLE"
+
+          echo "--- policy to attach ---"
+          cat deploy/aws/instance-role-policy.json
+
+          aws iam put-role-policy \
+            --role-name "$ROLE" \
+            --policy-name metnmat-website-deploy \
+            --policy-document file://deploy/aws/instance-role-policy.json
+
+          echo "attached inline policy 'metnmat-website-deploy' to $ROLE"
+          echo "IAM is eventually consistent — a check immediately after this can still fail."
 
       # Staged through S3 rather than inlined into the SSM parameter: the same
       # quoting problem release.sh documents. S3 carries bytes; JSON does not.
