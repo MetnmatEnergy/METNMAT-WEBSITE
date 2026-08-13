@@ -11,8 +11,9 @@ name: Deploy website to EC2
 #           symlink, reloads ONE pm2 process, health-checks, rolls back on fail
 #
 # The production server never compiles anything. `next build` peaks well above
-# a gigabyte, and this box has ~834 MB free while also serving the internal
-# command-center dashboard. Building here would evict that app from memory.
+# a gigabyte, and this box has ~650 MB free (measured 2026-08-12) while also
+# serving the internal command-center dashboard. Building here would evict that
+# app from memory.
 #
 # Nothing in this workflow can restart the dashboard: it names a single pm2
 # process and writes only under /home/ec2-user/web.
@@ -55,6 +56,17 @@ concurrency:
 env:
   AWS_REGION: ap-south-1
   ARTIFACT_PREFIX: website
+  # Repository variables win when set. These fallbacks exist because the
+  # variables read as empty on the first attempt — GitHub keeps ENVIRONMENT
+  # variables separate from REPOSITORY variables, and `vars.*` only resolves the
+  # former when a job declares `environment:`. Both values are non-sensitive
+  # infrastructure identifiers; the credentials stay in Settings -> Secrets.
+  #
+  # Held back until pre-flight was green, deliberately: this workflow triggers
+  # on push, so adding them earlier would have made the first production deploy
+  # a side effect of an unrelated commit.
+  EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID || 'i-0b7f49ca3e9852d4b' }}
+  ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'metnmat-deploy-artifacts-976134557584' }}
   APP_NAME: metnmat-website
   APP_ROOT: /home/ec2-user/web
   APP_PORT: "3100"
@@ -89,7 +101,7 @@ jobs:
             auth="keys"
           fi
 
-          if [ -n "$auth" ] && [ -n "${{ vars.EC2_INSTANCE_ID }}" ] && [ -n "${{ vars.ARTIFACT_BUCKET }}" ]; then
+          if [ -n "$auth" ] && [ -n "${{ env.EC2_INSTANCE_ID }}" ] && [ -n "${{ env.ARTIFACT_BUCKET }}" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
             echo "auth=$auth" >> "$GITHUB_OUTPUT"
             echo "::notice::Deploying with $auth credentials."
@@ -221,7 +233,7 @@ jobs:
         if: steps.guard.outputs.configured == 'true'
         run: |
           set -euo pipefail
-          DEST="s3://${{ vars.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_PREFIX }}/${{ steps.resolve.outputs.sha }}"
+          DEST="s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_PREFIX }}/${{ steps.resolve.outputs.sha }}"
           aws s3 cp apps/website/web-build.tgz "$DEST/web-build.tgz" --only-show-errors
           # Shipped with the artifact so the release logic is versioned with the
           # code it releases, instead of drifting on the server.
@@ -258,18 +270,18 @@ jobs:
         run: |
           set -euo pipefail
           CMD=$(aws ssm send-command \
-            --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
+            --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --comment "deploy website $SHA" \
             --timeout-seconds 900 \
             --parameters commands="[
               \"set -euo pipefail\",
-              \"export ARTIFACT_BUCKET='${{ vars.ARTIFACT_BUCKET }}'\",
+              \"export ARTIFACT_BUCKET='${{ env.ARTIFACT_BUCKET }}'\",
               \"export ARTIFACT_PREFIX='${{ env.ARTIFACT_PREFIX }}'\",
               \"export APP_NAME='${{ env.APP_NAME }}'\",
               \"export APP_ROOT='${{ env.APP_ROOT }}'\",
               \"export APP_PORT='${{ env.APP_PORT }}'\",
-              \"aws s3 cp s3://${{ vars.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_PREFIX }}/$SHA/release.sh /tmp/release.sh --only-show-errors\",
+              \"aws s3 cp s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_PREFIX }}/$SHA/release.sh /tmp/release.sh --only-show-errors\",
               \"chmod +x /tmp/release.sh\",
               \"sudo -E -u ec2-user bash /tmp/release.sh $SHA\"
             ]" \
@@ -281,21 +293,21 @@ jobs:
           # want — but it swallows the output, so capture it either way.
           set +e
           aws ssm wait command-executed \
-            --command-id "$CMD" --instance-id "${{ vars.EC2_INSTANCE_ID }}"
+            --command-id "$CMD" --instance-id "${{ env.EC2_INSTANCE_ID }}"
           WAIT_RC=$?
           set -e
 
           echo "--- release output ---"
           aws ssm get-command-invocation \
-            --command-id "$CMD" --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+            --command-id "$CMD" --instance-id "${{ env.EC2_INSTANCE_ID }}" \
             --query 'StandardOutputContent' --output text || true
           echo "--- stderr ---"
           aws ssm get-command-invocation \
-            --command-id "$CMD" --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+            --command-id "$CMD" --instance-id "${{ env.EC2_INSTANCE_ID }}" \
             --query 'StandardErrorContent' --output text || true
 
           STATUS=$(aws ssm get-command-invocation \
-            --command-id "$CMD" --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+            --command-id "$CMD" --instance-id "${{ env.EC2_INSTANCE_ID }}" \
             --query 'Status' --output text)
           echo "status: $STATUS"
           if [ "$STATUS" != "Success" ] || [ $WAIT_RC -ne 0 ]; then
@@ -314,7 +326,7 @@ jobs:
             echo "| | |"
             echo "|---|---|"
             echo "| Commit | \`$SHA\` |"
-            echo "| Instance | \`${{ vars.EC2_INSTANCE_ID }}\` |"
+            echo "| Instance | \`${{ env.EC2_INSTANCE_ID }}\` |"
             echo "| Process | \`${{ env.APP_NAME }}\` |"
             echo "| Result | ${{ job.status }} |"
             echo ""
