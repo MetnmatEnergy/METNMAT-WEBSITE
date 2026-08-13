@@ -33,6 +33,10 @@ MEDIA_BUCKET="${MEDIA_BUCKET:-metnmat-media-prod}"
 SECRET_PREFIX="${SECRET_PREFIX:-metnmat/prod/}"
 APP_ROOT="${APP_ROOT:-/home/ec2-user/web}"
 APP_PORT="${APP_PORT:-3100}"
+# Must match the pm2 process name in ecosystem.config.cjs. Used to tell "our own
+# app holds port 3100" apart from "something else does", so a wrong value here
+# turns a healthy deployed box into a reported failure.
+APP_NAME="${APP_NAME:-metnmat-website}"
 EXPECTED_SECRETS="${EXPECTED_SECRETS:-22}"
 # What the WEBSITE cannot start without. Must mirror REQUIRED_SECRETS in
 # ecosystem.config.cjs — if the two disagree, this check passes a deploy the
