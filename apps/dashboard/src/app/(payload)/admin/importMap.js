@@ -32,13 +32,27 @@ import { default as default_5bb2f6096a92e2f61cc9ec9ae0fca71e } from '../../../ad
 import { default as default_a5a338611b4a2fc3303c9dc046438703 } from '../../../admin/NavLogo'
 import { default as default_8111ae29cf52208bf19d3f279ff19eeb } from '../../../admin/NavShortcuts'
 import { default as default_cdbd8f4edb65b040e69c1cb1b024ac33 } from '../../../admin/SiteAnalyticsView'
-// GCS is enabled in PRODUCTION (env-gated) — its client upload handler must stay
-// in the committed import map even when a local dev run (GCS off) regenerates
-// this file without it. WITHOUT this entry the whole admin renders BLANK on prod
-// (the storage-gcs plugin registers a ROOT admin provider referencing this key;
-// a missing importMap entry makes that provider unresolvable and blanks /admin +
-// /admin/login). Re-add this import + map entry if a regen/dev run drops them.
+// BOTH storage client upload handlers are kept here on purpose, and the reason
+// is the same for each: whichever storage plugin is active registers a ROOT
+// admin provider referencing its clientHandler key, and if that key is missing
+// from this map the provider is unresolvable and the WHOLE admin renders BLANK
+// — /admin and /admin/login both. It is not a broken upload button; it is a
+// white screen.
+//
+// Only one plugin is ever active (STORAGE_PROVIDER selects it in
+// payload.config.ts), so the inactive handler costs one unused import. That is
+// a trivial price for making the failure impossible in either direction:
+//
+//   STORAGE_PROVIDER=gcs -> needs the Gcs key   (GCP, the outgoing provider)
+//   STORAGE_PROVIDER=s3  -> needs the S3 key    (AWS, verified at
+//                           storage-s3/dist/index.js:31)
+//
+// A local dev run or `payload generate:importmap` regenerates this file with
+// only the currently-configured handler and silently drops the other. If that
+// happens, re-add BOTH lines below by hand. Never commit a version missing
+// either one.
 import { GcsClientUploadHandler as GcsClientUploadHandler_06e62ca02c7c441053a9b643e5545934 } from '@payloadcms/storage-gcs/client'
+import { S3ClientUploadHandler as S3ClientUploadHandler_1f4b9d7c3ea28065b1c47d9e02fa63b8 } from '@payloadcms/storage-s3/client'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -78,5 +92,6 @@ export const importMap = {
   "/admin/NavShortcuts#default": default_8111ae29cf52208bf19d3f279ff19eeb,
   "/admin/SiteAnalyticsView#default": default_cdbd8f4edb65b040e69c1cb1b024ac33,
   "@payloadcms/storage-gcs/client#GcsClientUploadHandler": GcsClientUploadHandler_06e62ca02c7c441053a9b643e5545934,
+  "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_1f4b9d7c3ea28065b1c47d9e02fa63b8,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }
