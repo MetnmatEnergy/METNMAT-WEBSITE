@@ -489,6 +489,35 @@ case "$mongo_db" in
   *)                hmm "MONGODB_URI targets '$mongo_db' — expected 'metnmat_cms'" ;;
 esac
 
+# PLACEHOLDER_SET_ME is not the only unusable value. A secret can be populated,
+# non-empty, pass every "is it set" check — and still be a development value
+# that should never reach production. PAYLOAD_SECRET signs admin JWTs, so a
+# guessable one means forgeable admin sessions; a dev Razorpay key means no real
+# payments. Matched on shape, reported by NAME. No value is printed.
+weak=""
+for s in PAYLOAD_SECRET PAYLOAD_PIN_PEPPER INTERNAL_API_KEY RAZORPAY_KEY_ID; do
+  v="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
+    --secret-id "${SECRET_PREFIX}${s}" --query SecretString --output text 2>/dev/null || true)"
+  [ -z "$v" ] && continue
+  case "$v" in
+    *change-me*|*change_me*|dev-*|*dev-only*|*localhost*|rzp_test_*|test-*|*CHANGEME*)
+      weak="$weak $s" ;;
+  esac
+  # A pepper or signing secret short enough to brute-force is as bad as a
+  # guessable one. 5970 is a PIN, not a pepper.
+  case "$s" in
+    PAYLOAD_SECRET|PAYLOAD_PIN_PEPPER)
+      [ "${#v}" -lt 16 ] && weak="$weak ${s}(too-short:${#v}-chars)" ;;
+  esac
+done
+if [ -n "$weak" ]; then
+  no "secret(s) hold DEVELOPMENT or weak values:$weak"
+  info "populated is not the same as correct — these pass every 'is it set' check"
+  info "PAYLOAD_SECRET signs admin JWTs; a guessable one means forgeable admin sessions"
+else
+  ok "no development-looking values among the security-critical secrets"
+fi
+
 # The CMS wants 500-800 MB on top of whatever is already resident.
 if [ -n "${avail:-}" ]; then
   if [ "$avail" -lt 800 ]; then
