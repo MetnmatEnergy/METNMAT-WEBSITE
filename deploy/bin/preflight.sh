@@ -202,7 +202,22 @@ echo "--- app root ---"
 [ -d "$APP_ROOT" ] && echo "approot exists" || echo "approot MISSING"
 [ -w "$APP_ROOT" ] 2>/dev/null && echo "approot writable" || echo "approot not writable by this user"
 echo "--- instance role can reach S3/secrets ---"
-aws s3 ls "s3://$ARTIFACT_BUCKET/" --region $AWS_REGION >/dev/null 2>&1 && echo "role_s3 ok" || echo "role_s3 DENIED"
+# GetObject and ListBucket are DIFFERENT permissions and only one of them
+# matters. release.sh does \`aws s3 cp s3://bucket/key\` — GetObject. Testing
+# with \`aws s3 ls\` tests ListBucket, which the deploy never uses, and reporting
+# that as "cannot read the artifact bucket" sends someone hunting a permission
+# that was never missing. Test both, label them apart.
+if aws s3 cp "s3://$ARTIFACT_BUCKET/bootstrap/bootstrap-server.sh" /tmp/.role-probe --region $AWS_REGION >/dev/null 2>&1; then
+  echo "role_s3_get ok"; rm -f /tmp/.role-probe
+elif aws s3api head-object --bucket "$ARTIFACT_BUCKET" --key bootstrap/bootstrap-server.sh --region $AWS_REGION >/dev/null 2>&1; then
+  echo "role_s3_get ok"
+else
+  # No probe object yet is not a permission failure — say so rather than
+  # implying a denial.
+  aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" --region $AWS_REGION >/dev/null 2>&1 \
+    && echo "role_s3_get UNTESTED" || echo "role_s3_get DENIED"
+fi
+aws s3 ls "s3://$ARTIFACT_BUCKET/" --region $AWS_REGION >/dev/null 2>&1 && echo "role_s3_list ok" || echo "role_s3_list DENIED"
 aws secretsmanager list-secrets --region $AWS_REGION --filters Key=name,Values=$SECRET_PREFIX --max-results 1 >/dev/null 2>&1 && echo "role_secrets ok" || echo "role_secrets DENIED"
 echo "--- pm2 processes ---"
 pm2 jlist 2>/dev/null | tr ',' '\n' | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | sed 's/^/pm2:/' || echo "pm2 not running"
@@ -238,7 +253,20 @@ REMOTE
       echo "$out" | grep -q "MISSING aws"  && no "aws cli missing — release.sh needs it to fetch the artifact" || ok "aws cli present on instance"
       echo "$out" | grep -q "PORT_TAKEN"   && no "port $APP_PORT already in use"  || ok "port $APP_PORT free"
       echo "$out" | grep -q "approot MISSING" && no "$APP_ROOT does not exist"    || ok "$APP_ROOT exists"
-      echo "$out" | grep -q "role_s3 DENIED"      && no "instance role cannot read the artifact bucket" || ok "instance role can read S3"
+      # s3:GetObject is the only one release.sh needs — a failure here blocks
+      # every deploy.
+      if echo "$out" | grep -q "role_s3_get DENIED"; then
+        no "instance role denied s3:GetObject on the artifact bucket — release.sh cannot fetch the build"
+      elif echo "$out" | grep -q "role_s3_get UNTESTED"; then
+        hmm "s3:GetObject untested — no probe object in the bucket yet. Run bootstrap once to stage one."
+      else
+        ok "instance role can GetObject from the artifact bucket"
+      fi
+      # ListBucket is convenience for humans debugging on the box, not a
+      # blocker, so it warns rather than fails.
+      echo "$out" | grep -q "role_s3_list DENIED" \
+        && hmm "instance role cannot s3:ListBucket — deploys still work (they GetObject by exact key); only manual browsing on the box is affected" \
+        || ok "instance role can list the artifact bucket"
       echo "$out" | grep -q "role_secrets DENIED" && no "instance role cannot list secrets — with-secrets.sh will fail closed" || ok "instance role can read Secrets Manager"
       echo "$out" | grep -q "DANGER" && no "$(echo "$out" | grep DANGER)" || ok "DIRECTOR_RESET / SEED_PRUNE_PLACEHOLDERS unset on the box"
 
