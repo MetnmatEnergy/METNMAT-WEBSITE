@@ -178,6 +178,14 @@ jobs:
           fi
           [ -f release/apps/website/.next/BUILD_ID ] || { echo "::error::BUILD_ID missing"; exit 1; }
 
+          # Ship the runtime config INSIDE the artifact so it is versioned with
+          # the code it runs. A config copied onto the box once drifts silently:
+          # the repo says one thing, the server does another, and the difference
+          # only shows up during an incident. release.sh installs these.
+          mkdir -p release/_deploy
+          cp ../../deploy/pm2/ecosystem.config.cjs release/_deploy/
+          cp ../../deploy/bin/with-secrets.sh      release/_deploy/
+
           tar -czf web-build.tgz -C release .
           echo "artifact: $(du -h web-build.tgz | cut -f1)"
 

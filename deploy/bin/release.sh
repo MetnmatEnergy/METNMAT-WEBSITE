@@ -59,6 +59,24 @@ tar -xzf "$TMP/web-build.tgz" -C "$TARGET" || fail "artifact did not unpack — 
 [ -f "$TARGET/apps/website/server.js" ]      || fail "server.js missing — wrong archive layout"
 log "artifact verified (BUILD_ID $(cat "$TARGET/apps/website/.next/BUILD_ID"))"
 
+# ── 2b. Install the runtime config that shipped with this release ──────────
+# These live in $APP_ROOT rather than inside the release, because PM2 reads the
+# ecosystem file by absolute path and the wrapper must survive a rollback that
+# swaps the release directory underneath it. Copying them out on every deploy
+# keeps them in step with the code without making them part of the swap.
+mkdir -p "$APP_ROOT/bin" "$APP_ROOT/logs"
+if [ -d "$TARGET/_deploy" ]; then
+  install -m 0644 "$TARGET/_deploy/ecosystem.config.cjs" "$APP_ROOT/ecosystem.config.cjs"
+  install -m 0755 "$TARGET/_deploy/with-secrets.sh"      "$APP_ROOT/bin/with-secrets.sh"
+  log "runtime config installed from artifact"
+else
+  # An artifact built before _deploy existed. Only fatal on a first deploy,
+  # where there is nothing already on the box to fall back to.
+  [ -f "$APP_ROOT/ecosystem.config.cjs" ] \
+    || fail "artifact has no _deploy/ and no ecosystem.config.cjs exists — rebuild from a current commit"
+  log "artifact predates _deploy/ — keeping the config already on the box"
+fi
+
 # ── 3. Record what is live now, so rollback has a target ───────────────────
 ROLLBACK_TO=""
 if [ -L "$CURRENT" ]; then

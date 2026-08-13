@@ -1,0 +1,146 @@
+name: Bootstrap EC2 (one-time server prep)
+
+# Prepares the shared EC2 for the website — blueprint steps 2, 3 and 8.
+# Manual only, and idempotent: re-running is how you apply a Caddy change.
+#
+# Run this BEFORE the first deploy. release.sh assumes /home/ec2-user/web exists
+# and that pm2 is installed; without this the first deploy dies at `pm2 start`.
+#
+# Start with mode=report. It changes nothing and answers the question the
+# instance metadata cannot: whether the command-center dashboard shares this
+# box, which decides the website's memory budget and how careful every later
+# pm2 command has to be.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "report = inspect only, change nothing. prepare = create dirs and install config."
+        required: true
+        default: report
+        type: choice
+        options: [report, prepare]
+      install_caddy_config:
+        description: "Also install the Caddy site blocks (prepare mode only). Safe before DNS moves — certificates are only issued once DNS points here."
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check configuration
+        id: guard
+        run: |
+          auth=""
+          if [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ]; then
+            auth="oidc"
+          elif [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            auth="keys"
+          fi
+          echo "auth=$auth" >> "$GITHUB_OUTPUT"
+          missing=""
+          [ -n "$auth" ]                       || missing="$missing AWS-credentials(secrets)"
+          [ -n "${{ vars.EC2_INSTANCE_ID }}" ] || missing="$missing EC2_INSTANCE_ID(var)"
+          [ -n "${{ vars.ARTIFACT_BUCKET }}" ] || missing="$missing ARTIFACT_BUCKET(var)"
+          if [ -n "$missing" ]; then
+            echo "::error::Not configured yet — set:$missing"
+            exit 1
+          fi
+
+      - name: Assume AWS role (OIDC)
+        if: steps.guard.outputs.auth == 'oidc'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-bootstrap-${{ github.run_id }}
+          aws-region: ap-south-1
+
+      - name: Configure AWS credentials (bootstrap keys)
+        if: steps.guard.outputs.auth == 'keys'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      # Staged through S3 rather than inlined into the SSM parameter: the same
+      # quoting problem release.sh documents. S3 carries bytes; JSON does not.
+      - name: Stage scripts
+        run: |
+          set -euo pipefail
+          DEST="s3://${{ vars.ARTIFACT_BUCKET }}/bootstrap"
+          aws s3 cp deploy/bin/bootstrap-server.sh   "$DEST/bootstrap-server.sh" --only-show-errors
+          aws s3 cp deploy/caddy/metnmat.Caddyfile   "$DEST/metnmat.Caddyfile"   --only-show-errors
+          echo "staged to $DEST"
+
+      - name: Run on the instance
+        env:
+          MODE: ${{ inputs.mode }}
+          WITH_CADDY: ${{ inputs.install_caddy_config }}
+        run: |
+          set -euo pipefail
+          BUCKET="${{ vars.ARTIFACT_BUCKET }}"
+          INSTANCE="${{ vars.EC2_INSTANCE_ID }}"
+
+          if [ "$MODE" = "report" ]; then ARG="--report"; else ARG=""; fi
+          if [ "$MODE" = "prepare" ] && [ "$WITH_CADDY" = "true" ]; then
+            CADDY_SRC="/tmp/metnmat.Caddyfile"
+          else
+            CADDY_SRC=""
+          fi
+
+          # Built as a here-doc then base64'd, so nothing needs escaping through
+          # the shell -> JSON -> remote-shell sandwich.
+          remote=$(cat <<EOF
+set -euo pipefail
+aws s3 cp s3://$BUCKET/bootstrap/bootstrap-server.sh /tmp/bootstrap-server.sh --only-show-errors
+aws s3 cp s3://$BUCKET/bootstrap/metnmat.Caddyfile   /tmp/metnmat.Caddyfile   --only-show-errors
+chmod +x /tmp/bootstrap-server.sh
+export CADDY_SRC="$CADDY_SRC"
+sudo -E -u ec2-user CADDY_SRC="$CADDY_SRC" bash /tmp/bootstrap-server.sh $ARG
+EOF
+)
+          b64="$(printf '%s' "$remote" | base64 | tr -d '\n')"
+
+          CMD=$(aws ssm send-command \
+            --instance-ids "$INSTANCE" \
+            --document-name "AWS-RunShellScript" \
+            --comment "bootstrap $MODE" \
+            --timeout-seconds 600 \
+            --parameters commands="[\"echo $b64 | base64 -d | bash\"]" \
+            --query 'Command.CommandId' --output text)
+          echo "SSM command $CMD"
+
+          set +e
+          aws ssm wait command-executed --command-id "$CMD" --instance-id "$INSTANCE"
+          rc=$?
+          set -e
+
+          out="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$INSTANCE" \
+            --query 'StandardOutputContent' --output text 2>/dev/null)"
+          err="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$INSTANCE" \
+            --query 'StandardErrorContent' --output text 2>/dev/null)"
+          status="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$INSTANCE" \
+            --query 'Status' --output text)"
+
+          echo "$out"
+          [ -n "$err" ] && { echo "--- stderr ---"; echo "$err"; }
+
+          {
+            echo "### Bootstrap — \`$MODE\`"
+            echo ""
+            echo '```'
+            echo "$out"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "status: $status"
+          [ "$status" = "Success" ] && [ $rc -eq 0 ] || { echo "::error::Bootstrap failed ($status)"; exit 1; }

@@ -49,7 +49,8 @@ step 11.
 
 | Path | What it is | Runs where |
 |---|---|---|
-| `bin/preflight.sh` | Verifies everything the first release needs — run this before deploying | GitHub runner (via OIDC) |
+| `bin/preflight.sh` | Verifies everything the first release needs — run this before deploying | GitHub runner |
+| `bin/bootstrap-server.sh` | One-time server prep: directories, PM2 boot persistence, Caddy blocks | EC2, via SSM |
 | `bin/release.sh` | Download → verify → swap → reload → health-check → rollback | EC2, via SSM |
 | `bin/with-secrets.sh` | Loads `metnmat/prod/*` into the env, then execs the app | EC2, at process start |
 | `bin/migrate-media.sh` | GCS → S3 copy with count + byte verification | Anywhere with both CLIs |
@@ -151,8 +152,15 @@ the filename, and the five derivative sizes per image **cannot be regenerated**
 
 ### Phase 3 — stand up the website on EC2
 
-7. 🔴 Create `/home/ec2-user/web/{releases,logs,bin}` and copy
-   `bin/with-secrets.sh` + `pm2/ecosystem.config.cjs` onto the instance.
+7. Dispatch **Bootstrap EC2** with `mode=report` first — it changes nothing and
+   tells you whether the dashboard shares this box, which sets the memory
+   budget. Then run it with `mode=prepare` to create
+   `/home/ec2-user/web/{releases,logs,bin}`. Add `install_caddy_config=true`
+   when you want the site blocks in as well; that is safe before DNS moves,
+   since Caddy only requests certificates once a name resolves here.
+   `ecosystem.config.cjs` and `with-secrets.sh` are **not** copied manually —
+   they ship inside every release artifact and `release.sh` installs them, so
+   the config on the box can never drift from the code it runs.
 8. 🔴 Grant the instance role: `s3:GetObject` on the artifact bucket,
    `s3:GetObject/PutObject` on the media bucket, and
    `secretsmanager:GetSecretValue` + `ListSecrets` scoped to `metnmat/prod/*`.
