@@ -448,6 +448,56 @@ else
   hmm "s3://$MEDIA_BUCKET not reachable — expected if media migration has not started"
 fi
 
+# ── 7. CMS readiness ───────────────────────────────────────────────────────
+# Separate from the website's checks on purpose: the CMS is a different app with
+# different requirements, and "the website is fine" says nothing about whether
+# the CMS could start. These four are what payload.config.ts
+# assertProductionConfig() throws on — it refuses to boot without them, and
+# refuses on PLACEHOLDER_SET_ME specifically, because that literal is committed
+# in infra/ and therefore public.
+sec "7. CMS readiness (not yet deployed)"
+
+CMS_REQUIRED="MONGODB_URI PAYLOAD_SECRET PAYLOAD_PIN_PEPPER CMS_URL"
+cms_missing=""
+for s in $CMS_REQUIRED; do
+  v="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
+    --secret-id "${SECRET_PREFIX}${s}" --query SecretString --output text 2>/dev/null || true)"
+  if [ -z "$v" ] || [ "$v" = "PLACEHOLDER_SET_ME" ]; then
+    cms_missing="$cms_missing $s"
+  fi
+done
+
+if [ -n "$cms_missing" ]; then
+  no "CMS cannot boot — required secret(s) unset or placeholder:$cms_missing"
+  info "assertProductionConfig() throws on these; the process would exit at start"
+else
+  ok "all four secrets the CMS requires are populated"
+fi
+
+# The DB NAME is the whole bug in gotcha #1 — /metnmat is the chatbot's
+# database, and pointing the CMS at it empties the shop and 500s depth=1
+# queries. Checked without reading or printing the URI: the suffix alone is
+# enough, and it is not a credential.
+mongo_db="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
+  --secret-id "${SECRET_PREFIX}MONGODB_URI" --query SecretString --output text 2>/dev/null \
+  | sed -n 's#.*/\([A-Za-z0-9_-]*\)?.*#\1#p')"
+case "$mongo_db" in
+  "")               : ;;
+  metnmat_cms)      ok "MONGODB_URI targets the production database (metnmat_cms)" ;;
+  metnmat)          no "MONGODB_URI targets '/metnmat' — that is the CHATBOT's database. The shop will be empty and depth=1 queries will 500." ;;
+  *_dev|*dev*)      no "MONGODB_URI targets '$mongo_db' — a DEVELOPMENT database, not production" ;;
+  *)                hmm "MONGODB_URI targets '$mongo_db' — expected 'metnmat_cms'" ;;
+esac
+
+# The CMS wants 500-800 MB on top of whatever is already resident.
+if [ -n "${avail:-}" ]; then
+  if [ "$avail" -lt 800 ]; then
+    no "${avail} MB free — the CMS needs 500-800 MB. Resize to t3.medium before deploying it."
+  else
+    ok "${avail} MB free — enough headroom to attempt the CMS"
+  fi
+fi
+
 # ── Summary ────────────────────────────────────────────────────────────────
 printf '\n\033[1mSummary\033[0m  \033[32m%d passed\033[0m · \033[33m%d warnings\033[0m · \033[31m%d failed\033[0m\n' "$pass" "$warn" "$fail"
 
