@@ -263,12 +263,12 @@ echo "--- caddy routing (through :443, Host header, self-signed accepted) ---"
 # the dashboard, it was already working, and nothing this migration does may
 # break it.
 # --resolve, NOT a Host header. Caddy selects the site block by TLS SNI, and SNI
-# comes from the URL's hostname — so `https://127.0.0.1/ -H "Host: x"` sends SNI
+# comes from the URL's hostname — so \`https://127.0.0.1/ -H "Host: x"\` sends SNI
 # "127.0.0.1", matches nothing, and the handshake is refused before any header is
 # read. Every hostname then looks dead, including ones that are demonstrably
 # fine. --resolve keeps the connection on loopback while sending the real name.
 #
-# \${c:-000} rather than `|| echo 000`: on failure curl still prints 000 via -w
+# \${c:-000} rather than \`|| echo 000\`: on failure curl still prints 000 via -w
 # AND returns non-zero, so the fallback appended a second 000 and produced the
 # nonsense value "000000".
 for h in www.metnmat.com metnmat.com admin.metnmat.com command-center.metnmat.com; do
@@ -276,7 +276,9 @@ for h in www.metnmat.com metnmat.com admin.metnmat.com command-center.metnmat.co
   echo "route:\$h=\${c:-000}"
 done
 echo "--- pm2 processes ---"
-pm2 jlist 2>/dev/null | tr ',' '\n' | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | sed 's/^/pm2:/' || echo "pm2 not running"
+# sort -u: pm2 jlist carries "name" twice per app (top level and inside
+# pm2_env), so without it every process is listed twice.
+pm2 jlist 2>/dev/null | tr ',' '\n' | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | sort -u | sed 's/^/pm2:/' || echo "pm2 not running"
 echo "--- caddy ---"
 systemctl is-active caddy 2>/dev/null | sed 's/^/caddy:/' || echo "caddy:absent"
 echo "--- dangerous env ---"
