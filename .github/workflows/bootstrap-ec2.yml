@@ -25,6 +25,11 @@ on:
         required: false
         default: false
         type: boolean
+      create_bucket:
+        description: "Create the artifact bucket if it does not exist (private, versioned, encrypted). Leave false to just diagnose."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -83,11 +88,56 @@ jobs:
       # Staged through S3 rather than inlined into the SSM parameter: the same
       # quoting problem release.sh documents. S3 carries bytes; JSON does not.
       - name: Stage scripts
+        env:
+          CREATE_BUCKET: ${{ inputs.create_bucket }}
         run: |
           set -euo pipefail
-          DEST="s3://${{ env.ARTIFACT_BUCKET }}/bootstrap"
-          aws s3 cp deploy/bin/bootstrap-server.sh   "$DEST/bootstrap-server.sh" --only-show-errors
-          aws s3 cp deploy/caddy/metnmat.Caddyfile   "$DEST/metnmat.Caddyfile"   --only-show-errors
+          BUCKET="${{ env.ARTIFACT_BUCKET }}"
+          REGION="${{ env.AWS_REGION }}"
+
+          echo "identity: $(aws sts get-caller-identity --query Arn --output text)"
+
+          # A bare `aws s3 cp` failing with NoSuchBucket says nothing about WHY.
+          # The bucket may be in another region, in another account, or named
+          # slightly differently — and a console screenshot cannot distinguish
+          # those. Listing what this identity can actually see does.
+          if ! aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+            echo "::warning::Bucket '$BUCKET' is not reachable by these credentials."
+            echo ""
+            echo "Buckets this identity CAN see (name -> region):"
+            for b in $(aws s3api list-buckets --query 'Buckets[].Name' --output text); do
+              loc="$(aws s3api get-bucket-location --bucket "$b" --query LocationConstraint --output text 2>/dev/null || echo '?')"
+              [ "$loc" = "None" ] && loc="us-east-1"
+              printf '  %-45s %s\n' "$b" "$loc"
+            done
+            echo ""
+
+            if [ "$CREATE_BUCKET" = "true" ]; then
+              echo "create_bucket=true — creating $BUCKET in $REGION"
+              aws s3api create-bucket --bucket "$BUCKET" --region "$REGION" \
+                --create-bucket-configuration LocationConstraint="$REGION"
+              # Private and versioned from the first second, not as a follow-up
+              # step someone forgets: this bucket carries deploy artifacts.
+              aws s3api put-public-access-block --bucket "$BUCKET" \
+                --public-access-block-configuration \
+                  BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+              aws s3api put-bucket-versioning --bucket "$BUCKET" \
+                --versioning-configuration Status=Enabled
+              aws s3api put-bucket-encryption --bucket "$BUCKET" \
+                --server-side-encryption-configuration \
+                  '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+              echo "created: private, versioned, encrypted"
+            else
+              echo "::error::Bucket not found. Either the name/region above differs from what you expect, or the bucket is in another AWS account. Re-run with create_bucket=true to create it, or correct ARTIFACT_BUCKET."
+              exit 1
+            fi
+          else
+            echo "bucket reachable: $BUCKET"
+          fi
+
+          DEST="s3://$BUCKET/bootstrap"
+          aws s3 cp deploy/bin/bootstrap-server.sh "$DEST/bootstrap-server.sh" --only-show-errors
+          aws s3 cp deploy/caddy/metnmat.Caddyfile "$DEST/metnmat.Caddyfile"   --only-show-errors
           echo "staged to $DEST"
 
       - name: Run on the instance
