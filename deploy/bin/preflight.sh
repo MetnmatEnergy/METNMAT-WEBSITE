@@ -34,6 +34,10 @@ SECRET_PREFIX="${SECRET_PREFIX:-metnmat/prod/}"
 APP_ROOT="${APP_ROOT:-/home/ec2-user/web}"
 APP_PORT="${APP_PORT:-3100}"
 EXPECTED_SECRETS="${EXPECTED_SECRETS:-22}"
+# What the WEBSITE cannot start without. Must mirror REQUIRED_SECRETS in
+# ecosystem.config.cjs — if the two disagree, this check passes a deploy the
+# wrapper then refuses, or fails one it would have allowed.
+REQUIRED_SECRETS="${REQUIRED_SECRETS:-INTERNAL_API_KEY}"
 # Blueprint §12: website needs 400-600 MB. Warn below this.
 MIN_FREE_MB="${MIN_FREE_MB:-600}"
 
@@ -129,11 +133,31 @@ else
   done
   [ "$readable" -gt 0 ] && ok "$readable secret(s) readable by this identity" || no "no secret VALUES readable — check secretsmanager:GetSecretValue"
 
-  if [ -n "$placeholders" ]; then
-    no "still PLACEHOLDER_SET_ME:$placeholders"
-    info "that literal is committed in infra/ and therefore public; the CMS refuses to boot on it"
+  # metnmat/prod/* is ONE pool shared by the website, the CMS and the WhatsApp
+  # worker. Failing on any placeholder in it means reporting "not ready to
+  # deploy the website" because a chatbot token is unset — which is not true and
+  # blocks a deploy that would work. Split by what this app actually reads; the
+  # same distinction with-secrets.sh enforces at boot.
+  req_bad=""; other_bad=""; other_n=0
+  for p in $placeholders; do
+    case " $REQUIRED_SECRETS " in
+      *" $p "*) req_bad="$req_bad $p" ;;
+      *)        other_bad="$other_bad $p"; other_n=$((other_n + 1)) ;;
+    esac
+  done
+
+  if [ -n "$req_bad" ]; then
+    no "secret(s) the website REQUIRES still hold the placeholder:$req_bad"
+    info "PLACEHOLDER_SET_ME is committed in infra/ and therefore public"
+    info "populate in Secrets Manager, then 'pm2 reload' — no redeploy needed"
   else
-    ok "no secret holds the placeholder"
+    ok "every secret the website requires is populated ($REQUIRED_SECRETS)"
+  fi
+
+  if [ -n "$other_bad" ]; then
+    hmm "$other_n other secret(s) still placeholder — the CMS and chatbot need these, the website does not"
+    info "$other_bad"
+    info "expected until GCP billing is restored and the real values can be copied across"
   fi
   [ -n "$empties" ] && hmm "empty or unreadable:$empties"
 
