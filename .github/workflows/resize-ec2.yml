@@ -1,0 +1,197 @@
+name: Resize EC2 instance
+
+# Changes the instance type. This STOPS and STARTS the instance, so it is an
+# outage: the public website, the Payload CMS and the internal command-center
+# dashboard all go down for the duration, typically 2-4 minutes.
+#
+# Two preconditions are checked and will ABORT the run, because either one turns
+# a short planned outage into a long unplanned one:
+#
+#   1. An Elastic IP must be associated. A default public IP is RELEASED on
+#      stop, so the instance returns on a different address while DNS still
+#      points at the old one. Every hostname — www, apex, admin, chat — resolves
+#      to this instance today.
+#   2. pm2 must have a systemd unit. Without it nothing restarts the apps after
+#      boot, and the instance comes back healthy and serving nothing.
+#
+# Requires typing RESIZE to confirm. Everything else in this repository is
+# reversible or read-only; this is neither while it runs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      instance_type:
+        description: "Target instance type"
+        required: true
+        default: t3.medium
+        type: choice
+        options: [t3.medium, t3.large, t3.small]
+      confirm:
+        description: "Type RESIZE to confirm you accept a few minutes of downtime on ALL sites"
+        required: true
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID || 'i-0b7f49ca3e9852d4b' }}
+  AWS_REGION: ap-south-1
+
+jobs:
+  resize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The `secrets` context is not dependably available in a step-level `if:`,
+      # so the auth choice is computed here and read from step outputs — the
+      # same pattern the other workflows use, and one that is known to work.
+      - name: Confirm intent and choose auth
+        id: guard
+        run: |
+          if [ "${{ inputs.confirm }}" != "RESIZE" ]; then
+            echo "::error::Not confirmed. Type RESIZE in the confirm field to proceed."
+            exit 1
+          fi
+          if [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ]; then
+            echo "auth=oidc" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "auth=keys" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::No AWS credentials configured."
+            exit 1
+          fi
+          echo "confirmed"
+
+      - name: Assume AWS role (OIDC)
+        if: steps.guard.outputs.auth == 'oidc'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-resize-${{ github.run_id }}
+          aws-region: ap-south-1
+
+      - name: Configure AWS credentials (bootstrap keys)
+        if: steps.guard.outputs.auth == 'keys'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Preconditions
+        run: |
+          set -euo pipefail
+          I="${{ env.EC2_INSTANCE_ID }}"
+
+          CURRENT="$(aws ec2 describe-instances --instance-ids "$I" \
+            --query 'Reservations[0].Instances[0].InstanceType' --output text)"
+          echo "current type: $CURRENT   target: ${{ inputs.instance_type }}"
+          if [ "$CURRENT" = "${{ inputs.instance_type }}" ]; then
+            echo "::error::Instance is already ${{ inputs.instance_type }} — nothing to do."
+            exit 1
+          fi
+
+          EIP="$(aws ec2 describe-addresses --filters "Name=instance-id,Values=$I" \
+            --query 'Addresses[0].PublicIp' --output text 2>/dev/null || echo None)"
+          if [ -z "$EIP" ] || [ "$EIP" = "None" ]; then
+            echo "::error::No Elastic IP associated. A stop would release the current address and every hostname pointing here would break. Allocate and associate an EIP first."
+            exit 1
+          fi
+          echo "elastic ip: $EIP (survives stop/start)"
+
+          # pm2 must restart the apps on boot, or the instance returns serving
+          # nothing and the outage lasts until someone logs in.
+          CMD=$(aws ssm send-command --instance-ids "$I" \
+            --document-name "AWS-RunShellScript" --comment "resize precondition" \
+            --parameters commands='["systemctl list-unit-files | grep -c \"^pm2-\" || true"]' \
+            --query 'Command.CommandId' --output text)
+          aws ssm wait command-executed --command-id "$CMD" --instance-id "$I" || true
+          UNITS="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" \
+            --query 'StandardOutputContent' --output text | tr -d '[:space:]')"
+          if [ "${UNITS:-0}" = "0" ]; then
+            echo "::error::pm2 has no systemd unit. After a stop/start nothing would restart the website, CMS or dashboard. Run: pm2 startup systemd -u ec2-user --hp /home/ec2-user (then pm2 save)."
+            exit 1
+          fi
+          echo "pm2 systemd units present: $UNITS"
+
+      - name: Stop, resize, start
+        run: |
+          set -euo pipefail
+          I="${{ env.EC2_INSTANCE_ID }}"
+
+          echo "::group::stopping"
+          aws ec2 stop-instances --instance-ids "$I" >/dev/null
+          aws ec2 wait instance-stopped --instance-ids "$I"
+          echo "stopped"
+          echo "::endgroup::"
+
+          aws ec2 modify-instance-attribute --instance-id "$I" \
+            --instance-type "{\"Value\": \"${{ inputs.instance_type }}\"}"
+          echo "instance type set to ${{ inputs.instance_type }}"
+
+          echo "::group::starting"
+          aws ec2 start-instances --instance-ids "$I" >/dev/null
+          aws ec2 wait instance-running --instance-ids "$I"
+          echo "running"
+          echo "::endgroup::"
+
+          # instance-running only means the hypervisor started it. SSM coming
+          # online is the first evidence the OS is actually up.
+          echo "waiting for the SSM agent"
+          for i in $(seq 1 40); do
+            PING="$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=$I" \
+              --query 'InstanceInformationList[0].PingStatus' --output text 2>/dev/null || true)"
+            [ "$PING" = "Online" ] && { echo "ssm online after $((i*15))s"; break; }
+            sleep 15
+          done
+
+      - name: Verify everything came back
+        run: |
+          set -euo pipefail
+          I="${{ env.EC2_INSTANCE_ID }}"
+
+          NEWTYPE="$(aws ec2 describe-instances --instance-ids "$I" \
+            --query 'Reservations[0].Instances[0].InstanceType' --output text)"
+          echo "instance type now: $NEWTYPE"
+
+          # Built with echo lines, not a here-doc: a here-doc body must start at
+          # column 0, and column 0 ends the YAML block scalar this lives in.
+          {
+            echo "sleep 20"
+            echo "free -m | awk '/^Mem:/{print \"mem_total=\"\$2\" mem_avail=\"\$7}'"
+            echo "pm2 jlist 2>/dev/null | tr ',' '\\n' | grep -o '\"name\":\"[^\"]*\"' | cut -d'\"' -f4 | sort -u | sed 's/^/pm2:/'"
+            echo "for h in www.metnmat.com command-center.metnmat.com; do echo \"route:\$h=\$(curl -sk -o /dev/null -w '%{http_code}' --max-time 15 --resolve \$h:443:127.0.0.1 https://\$h/ || echo 000)\"; done"
+          } > check.sh
+          B64="$(base64 -w0 < check.sh)"
+
+          CMD=$(aws ssm send-command --instance-ids "$I" \
+            --document-name "AWS-RunShellScript" --comment "post-resize verify" \
+            --timeout-seconds 300 \
+            --parameters commands="[\"echo $B64 | base64 -d | sudo -u ec2-user bash\"]" \
+            --query 'Command.CommandId' --output text)
+          aws ssm wait command-executed --command-id "$CMD" --instance-id "$I" || true
+          OUT="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" \
+            --query 'StandardOutputContent' --output text)"
+          echo "$OUT"
+
+          fail=0
+          echo "$OUT" | grep -q 'pm2:metnmat-website'   || { echo "::error::metnmat-website did not restart"; fail=1; }
+          echo "$OUT" | grep -q 'pm2:metnmat-dashboard' || { echo "::error::metnmat-dashboard did not restart — the internal tool is down"; fail=1; }
+          echo "$OUT" | grep -q 'route:www.metnmat.com=200' || { echo "::error::website is not serving"; fail=1; }
+          echo "$OUT" | grep -qE 'route:command-center.metnmat.com=(200|30[0-9])' || { echo "::error::dashboard is not serving"; fail=1; }
+
+          {
+            echo "### Resize to $NEWTYPE"
+            echo ""
+            echo '```'
+            echo "$OUT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          [ "$fail" = "0" ] || exit 1
+          echo "all applications came back and are serving"
