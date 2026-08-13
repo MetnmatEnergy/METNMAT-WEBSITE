@@ -9,6 +9,25 @@ Run the gate yourself:
 node apps/website/scripts/qa-crawl.mjs https://www.metnmat.com
 ```
 
+> ⚠️ **Dated record (through 2026-08-03), verified against GCP Cloud Run.** This
+> is a per-phase account of work that shipped, and the commit SHAs against each
+> phase are the durable part — they stay true regardless of where the site runs.
+> Three caveats before using it as a status report:
+>
+> 1. **The gate command above cannot pass right now.** Every service 503s while
+>    GCP billing is disabled. A failing crawl today says nothing about the work
+>    recorded here.
+> 2. **Phase 8's performance numbers are Cloud Run measurements.** They are not a
+>    valid before/after for the AWS stack — different runtime, no CDN, single
+>    instance. Re-baseline after cutover rather than comparing against them. The
+>    caveat already noted in `BACKLOG.md` still applies too: mobile Lighthouse
+>    varied ±20 points run to run, so compare page weight, not scores.
+> 3. **"Needs the site owner" (bottom) is the only live section** — those items
+>    are open until someone does them. Everything above it is history.
+>
+> For what has changed since, see `AUDIT.md` §11 (several Phase 0 findings are
+> now closed) and `deploy/README.md` (the GCP → AWS migration).
+
 ---
 
 ## Phases

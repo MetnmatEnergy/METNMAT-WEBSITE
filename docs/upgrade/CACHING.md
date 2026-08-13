@@ -7,6 +7,37 @@ not what the code intends. Re-measure with:
 curl -sI https://www.metnmat.com/<path> | grep -iE 'cache-control|x-nextjs-cache'
 ```
 
+> ⚠️ **Dated snapshot (2026-07-31), measured on GCP.** Two things to know before
+> trusting a number here:
+>
+> 1. **It cannot be re-measured right now.** Every service 503s while GCP billing
+>    is disabled, so the `curl` above returns nothing useful.
+> 2. **Half the reasoning below is Cloud-Run-specific and does not survive the
+>    AWS move** (`deploy/README.md`). Specifically:
+>    - **"The CDN clamps browser `max-age` to ~3600"** is Cloud CDN behaviour.
+>      The AWS target ships **no CDN**, so there is no edge — and `s-maxage=60`,
+>      described below as "the number that actually governs", governs **nothing**
+>      once nothing shared sits in front of the app.
+>    - Finding **P2-1** in `AUDIT.md` ("ISR HTML served with browser
+>      `max-age=3600`") should **close itself at cutover**. Verified 2026-08-12:
+>      the app never sets `max-age` on HTML — `next.config.mjs` sets
+>      `Cache-Control` only for immutable static assets and `no-store` API
+>      routes. Next emits `s-maxage=60, stale-while-revalidate`; the
+>      `public, max-age=3600` is the CDN's addition, as P2-1 says. With no CDN,
+>      browsers get no explicit freshness lifetime and stop holding HTML for an
+>      hour. Confirm it with a `curl -sI` after cutover rather than assuming.
+>    - The trade is throughput, not freshness: `s-maxage=60` loses its consumer,
+>      so every request reaches the single EC2. Freshness is unaffected —
+>      `revalidateTag("cms")` acts on Next's own ISR cache, which is in-process.
+>    - **"A cold Cloud Run instance re-optimises from scratch"** becomes a
+>      different problem, not a solved one: PM2 keeps one long-lived process, so
+>      the image cache survives requests — but it lives inside the release
+>      directory, and each deploy swaps in a fresh one. The cache is lost per
+>      *release* rather than per *instance*.
+>
+> The freshness machinery (tagged fetches, `revalidateTag("cms")`) is application
+> logic and carries over unchanged.
+
 ## Measured today
 
 | Route | `Cache-Control` | Cached? |
