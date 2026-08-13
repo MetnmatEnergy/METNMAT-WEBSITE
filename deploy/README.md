@@ -75,11 +75,21 @@ PM2 caps here are sized to the measured number (heap 448 MB, restart at 560 MB) 
 kernel OOM killer — which would pick its own victim, possibly the dashboard — is never
 reached first. **The resize to t3.medium is now evidence-backed, not precautionary.**
 
-⚠️ **The instance runs Node 20; the GCP Dockerfiles pin Node 22.** The deploy workflow
-builds on Node 20 to match the runtime. Building on a newer major than you deploy onto
-fails at request time on the server rather than in CI. If the instance moves to 22, change
-`setup-node` in the same commit. This matters more for the CMS later: `sharp` is a native
-module and its ABI is tied to the Node major.
+⚠️ **Node majors differ between build and runtime, and cannot currently be aligned.**
+The instance runs **Node 20.20.2**; the deploy builds on **Node 22**. Matching the runtime
+was tried and fails outright: pnpm 11.5.1 (pinned by `packageManager`) requires Node
+≥22.13 and dies on 20 with `No such built-in module: node:sqlite`. The build tool sets the
+floor, not the app.
+
+Tolerable because root `engines` declares `>=20`, the website bundle carries no native
+modules (`sharp` is dashboard-only, so no ABI is compiled against the wrong major), and
+GCP already builds *and* runs this app on `node:22`.
+
+**The clean fix is to move the instance to Node 22** so the two match — but that box also
+runs the command-center dashboard on Node 20, so it is a decision for whoever owns that
+app. Until then, treat any "works in CI, fails on the server" report as this split until
+proven otherwise. It matters more when the CMS moves: `sharp` *is* native and its ABI is
+tied to the Node major.
 
 ⚠️ **Bucket versioning is on.** The blueprint assumes a 14-day artifact expiry. With
 versioning enabled, a lifecycle rule must expire **noncurrent** versions too, or deleted

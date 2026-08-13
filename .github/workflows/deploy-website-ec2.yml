@@ -125,19 +125,30 @@ jobs:
         with:
           version: 11.5.1
 
-      # 20, not 22, because that is what the EC2 runs (verified 2026-08-12:
-      # node v20.20.2). Building on a newer major than you deploy onto is how
-      # you ship a bundle that references APIs the runtime does not have, and
-      # the failure lands at request time on the server rather than here. Root
-      # engines allows ">=20". The GCP Dockerfiles pin node:22 for BOTH build
-      # and runtime, which is why this never surfaced there — that pair is
-      # matched and this one was not.
+      # 22 for the BUILD; the instance runs 20. That split is forced, not chosen.
       #
-      # If the instance is ever moved to 22, change this in the same commit.
+      # Matching the runtime was tried first and cannot work: pnpm 11.5.1 — the
+      # version this repo pins via packageManager — requires Node >=22.13 and
+      # dies on 20 with `No such built-in module: node:sqlite`. The build tool
+      # sets the floor here, not the application.
+      #
+      # What makes the split acceptable rather than merely unavoidable:
+      #   - root engines declares ">=20", so the app supports the runtime it
+      #     lands on
+      #   - the website bundle has no native modules (sharp is dashboard-only),
+      #     so there is no ABI compiled against the wrong major
+      #   - GCP already builds AND runs this app on node:22, so 22 is the
+      #     version it is actually exercised against
+      #
+      # It is still a split, and splits are where "works in CI" starts. The
+      # clean fix is to move the instance to Node 22 so build and runtime match
+      # — a change that touches the dashboard sharing this box, so it belongs to
+      # whoever owns that, not to this workflow. Until then this is the only
+      # combination that both builds and runs.
       - uses: actions/setup-node@v4
         if: steps.guard.outputs.configured == 'true'
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install
