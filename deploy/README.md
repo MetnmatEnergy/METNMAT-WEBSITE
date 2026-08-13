@@ -31,21 +31,31 @@ suggested it did, but the deploy identity cannot see it. Live listing on
 neither is Terraform-managed — `platform.tf` defines only the media and
 alb-logs buckets). Set the `ARTIFACT_BUCKET` repository variable to override.
 
-⚠️ **Resolve before deploying: is this the shared dashboard box, or a second instance?**
-The blueprint's central cost decision is to reuse the existing dashboard server, and §18
-forbids a second EC2 outright. But this instance is Name-tagged `metnmat-website`, not
-`metnmat-dashboard` — while carrying `metnmat-dashboard-role`. Both readings are possible
-(a new instance built from the dashboard's role, or the original renamed) and they lead to
-different deployments:
+## Measured on the instance (2026-08-12, bootstrap report)
 
-- **If it is the shared box:** the §12 memory arithmetic applies (~834 MB free), `pm2 reload`
-  must always be named, and the CMS cannot be added without a resize.
-- **If it is a second, website-only instance:** the blueprint's "INR 0 new fixed cost" is
-  wrong — you are paying for two t3.smalls — but the website has the full ~1.9 GB to itself
-  and the dashboard is no longer at risk from a bad deploy.
+```
+node v20.20.2 · pm2 7.0.3 · caddy v2.11.4 · aws-cli 2.33.15 · tar · curl
+pm2 processes: metnmat-dashboard
+memory: 1909 MB total, 654 MB available
+disk:   9.5G used of 30G (32%)
+```
 
-`preflight.sh` answers it: its PM2 section lists the processes already running. If
-`metnmat-dashboard` appears, it is shared.
+✅ **It is the shared box.** The Name tag says `metnmat-website`, but
+`metnmat-dashboard` is running on it. The blueprint's §2 decision holds and its
+discipline applies in full: **never `pm2 restart all`**, always name the process.
+
+⚠️ **654 MB available, not the 834 MB in §12.** The blueprint records the dashboard's
+Next.js process as "gradually growing", and this is that growth showing up — 180 MB gone.
+A website needing 400–600 MB against 654 MB and falling is not a configuration problem.
+PM2 caps here are sized to the measured number (heap 448 MB, restart at 560 MB) so the
+kernel OOM killer — which would pick its own victim, possibly the dashboard — is never
+reached first. **The resize to t3.medium is now evidence-backed, not precautionary.**
+
+⚠️ **The instance runs Node 20; the GCP Dockerfiles pin Node 22.** The deploy workflow
+builds on Node 20 to match the runtime. Building on a newer major than you deploy onto
+fails at request time on the server rather than in CI. If the instance moves to 22, change
+`setup-node` in the same commit. This matters more for the CMS later: `sharp` is a native
+module and its ABI is tied to the Node major.
 
 ⚠️ **Bucket versioning is on.** The blueprint assumes a 14-day artifact expiry. With
 versioning enabled, a lifecycle rule must expire **noncurrent** versions too, or deleted

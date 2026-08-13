@@ -113,10 +113,19 @@ jobs:
         with:
           version: 11.5.1
 
+      # 20, not 22, because that is what the EC2 runs (verified 2026-08-12:
+      # node v20.20.2). Building on a newer major than you deploy onto is how
+      # you ship a bundle that references APIs the runtime does not have, and
+      # the failure lands at request time on the server rather than here. Root
+      # engines allows ">=20". The GCP Dockerfiles pin node:22 for BOTH build
+      # and runtime, which is why this never surfaced there — that pair is
+      # matched and this one was not.
+      #
+      # If the instance is ever moved to 22, change this in the same commit.
       - uses: actions/setup-node@v4
         if: steps.guard.outputs.configured == 'true'
         with:
-          node-version: 22
+          node-version: 20
           cache: pnpm
 
       - name: Install

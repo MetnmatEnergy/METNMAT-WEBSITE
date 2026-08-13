@@ -45,14 +45,21 @@ module.exports = {
 
       // Cap the V8 heap below the PM2 restart threshold so a leak surfaces as
       // GC pressure first and a clean restart second, rather than as the kernel
-      // OOM killer choosing a victim — which on this box could be the
-      // dashboard rather than the process actually at fault.
-      node_args: "--max-old-space-size=512",
+      // OOM killer choosing a victim — which on this box WOULD be a real risk:
+      // measured 2026-08-12, the command-center dashboard shares this instance.
+      node_args: "--max-old-space-size=448",
 
-      // Restart if RSS exceeds this. Note the honest limitation recorded in the
-      // migration blueprint §12: this manages the symptom, it does not create
-      // capacity. Sustained hits here mean resize the instance.
-      max_memory_restart: "700M",
+      // Restart if RSS exceeds this. Both numbers are sized against MEASURED
+      // headroom, not the blueprint's: §12 recorded 834 MB available, the live
+      // instance reports 654 MB and the dashboard process is documented as
+      // "gradually growing". A threshold above available memory is worse than
+      // none at all — the kernel OOM killer reaches the process first, and it
+      // picks its own victim rather than the one at fault.
+      //
+      // This manages the symptom. It does not create capacity: a website needing
+      // 400-600 MB against 654 MB available, shrinking, is not a configuration
+      // problem. Sustained restarts here mean resize to t3.medium.
+      max_memory_restart: "560M",
 
       // A crash loop should stop, not hammer the box that is also serving the
       // dashboard.

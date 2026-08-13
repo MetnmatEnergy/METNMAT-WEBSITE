@@ -84,6 +84,18 @@ if command -v free >/dev/null 2>&1; then
 fi
 df -h / 2>/dev/null | awk 'NR==2{printf "         disk: %s used of %s (%s)\n", $3, $2, $5}'
 
+# Port availability belongs in the report, not after it: "is 3100 free" is
+# diagnostic information, and a report that omits it sends you into `prepare`
+# without knowing whether the deploy can bind at all.
+if (ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null) | grep -q ":$APP_PORT "; then
+  case "$running" in
+    *"$APP_NAME"*) ok "port $APP_PORT held by $APP_NAME (already deployed)" ;;
+    *)             no "port $APP_PORT is held by something else" ;;
+  esac
+else
+  ok "port $APP_PORT free"
+fi
+
 if [ "$REPORT_ONLY" = "1" ]; then
   printf '\nreport only — nothing was changed\n'
   exit 0
