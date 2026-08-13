@@ -43,6 +43,14 @@ module.exports = {
         HOSTNAME: LOOPBACK,
         APP_NAME: "metnmat-website",
 
+        // The heap cap travels as NODE_OPTIONS, NOT as pm2's `node_args`.
+        // `node_args` is passed to the INTERPRETER, and the interpreter here is
+        // /bin/bash (the script is the secrets wrapper, not a .js file). bash
+        // received `--max-old-space-size=448`, rejected it as an invalid option,
+        // and crash-looped the first deploy. NODE_OPTIONS is read by node
+        // itself, so it survives being exec'd from inside the wrapper.
+        NODE_OPTIONS: "--max-old-space-size=448",
+
         // What THIS app cannot start without, checked by with-secrets.sh before
         // node is exec'd. metnmat/prod/* is one pool shared with the CMS and the
         // WhatsApp worker, so the wrapper must not fail on a secret this app
@@ -55,11 +63,12 @@ module.exports = {
         REQUIRED_SECRETS: "INTERNAL_API_KEY",
       },
 
-      // Cap the V8 heap below the PM2 restart threshold so a leak surfaces as
-      // GC pressure first and a clean restart second, rather than as the kernel
-      // OOM killer choosing a victim — which on this box WOULD be a real risk:
-      // measured 2026-08-12, the command-center dashboard shares this instance.
-      node_args: "--max-old-space-size=448",
+      // The V8 heap cap lives in env.NODE_OPTIONS above — see the note there for
+      // why `node_args` cannot be used with a shell interpreter. Its purpose is
+      // unchanged: keep the heap below the PM2 restart threshold so a leak shows
+      // up as GC pressure and then a clean restart, rather than as the kernel
+      // OOM killer choosing a victim — which on this box WOULD be a real risk,
+      // since the command-center dashboard shares it.
 
       // Restart if RSS exceeds this. Both numbers are sized against MEASURED
       // headroom, not the blueprint's: §12 recorded 834 MB available, the live
