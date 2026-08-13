@@ -250,6 +250,18 @@ echo "--- is the website actually serving? ---"
 # connection stays on the box.
 code="\$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: www.metnmat.com' http://127.0.0.1:$APP_PORT/ 2>/dev/null || true)"
 echo "serving_status=\$code"
+echo "--- caddy routing (through :443, Host header, self-signed accepted) ---"
+# Proves the site blocks actually route, rather than merely that Caddy accepted
+# the config. -k because pre-cutover the certificate is from Caddy's internal
+# CA; what is being tested is routing, not trust.
+#
+# command-center is the REGRESSION check and the most important line here: it is
+# the dashboard, it was already working, and nothing this migration does may
+# break it.
+for h in www.metnmat.com metnmat.com admin.metnmat.com command-center.metnmat.com; do
+  c="\$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 -H "Host: \$h" https://127.0.0.1/ 2>/dev/null || echo 000)"
+  echo "route:\$h=\$c"
+done
 echo "--- pm2 processes ---"
 pm2 jlist 2>/dev/null | tr ',' '\n' | grep -o '"name":"[^"]*"' | cut -d'"' -f4 | sed 's/^/pm2:/' || echo "pm2 not running"
 echo "--- caddy ---"
@@ -345,6 +357,29 @@ REMOTE
         000|"") hmm "nothing answering on 127.0.0.1:$APP_PORT — expected before the first deploy" ;;
         *)   no "website answered HTTP $serving on 127.0.0.1:$APP_PORT" ;;
       esac
+
+      # Caddy routing, per hostname. Each has a different "correct" answer, so a
+      # blanket 200-or-fail would be wrong.
+      if echo "$out" | grep -q '^route:'; then
+        for line in $(echo "$out" | grep '^route:' | tr -d ' '); do
+          host="${line#route:}"; host="${host%%=*}"
+          code="${line##*=}"
+          case "$host:$code" in
+            command-center.metnmat.com:200|command-center.metnmat.com:30*)
+              ok "dashboard still routing ($code) — unaffected by the new blocks" ;;
+            command-center.metnmat.com:*)
+              no "DASHBOARD REGRESSION: command-center answered $code — it worked before these blocks were added" ;;
+            admin.metnmat.com:502|admin.metnmat.com:503)
+              hmm "admin.metnmat.com routes but returns $code — expected: nothing listens on 3200 until the CMS is deployed" ;;
+            *:200)
+              ok "$host routes correctly (200)" ;;
+            *:000)
+              no "$host did not answer at all — Caddy is not serving this hostname" ;;
+            *)
+              hmm "$host answered $code" ;;
+          esac
+        done
+      fi
 
       # $running was read earlier — the port and memory checks depend on it.
       [ -n "$running" ] && info "pm2 processes running: $running"
