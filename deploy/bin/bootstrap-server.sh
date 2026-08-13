@@ -84,6 +84,25 @@ if command -v free >/dev/null 2>&1; then
 fi
 df -h / 2>/dev/null | awk 'NR==2{printf "         disk: %s used of %s (%s)\n", $3, $2, $5}'
 
+# Whether the main Caddyfile imports conf.d decides whether the site blocks can
+# be installed at all — the install path refuses to edit that file, because it
+# is what currently serves the dashboard. Reporting it here means finding out
+# before attempting, not during.
+if command -v caddy >/dev/null 2>&1; then
+  if sudo test -f "$CADDY_MAIN" 2>/dev/null; then
+    if sudo grep -qE '^\s*import\s+(conf\.d/|/etc/caddy/conf\.d/)' "$CADDY_MAIN" 2>/dev/null; then
+      ok "main Caddyfile imports conf.d — site blocks can be installed"
+    else
+      hmm "main Caddyfile does NOT import conf.d — add: import $CADDY_CONF_D/*.caddy"
+      info "the install path will refuse to edit that file; it serves the dashboard"
+    fi
+    sudo grep -cE '^\s*[a-z0-9.*-]+\.metnmat\.com' "$CADDY_MAIN" 2>/dev/null \
+      | sed 's/^/         hostnames in the main Caddyfile: /'
+  else
+    hmm "no Caddyfile at $CADDY_MAIN"
+  fi
+fi
+
 # Port availability belongs in the report, not after it: "is 3100 free" is
 # diagnostic information, and a report that omits it sends you into `prepare`
 # without knowing whether the deploy can bind at all.
@@ -155,9 +174,28 @@ else
   sudo mkdir -p "$CADDY_CONF_D" 2>/dev/null
   if sudo test -f "$CADDY_MAIN" && sudo grep -qE '^\s*import\s+(conf\.d/|/etc/caddy/conf\.d/)' "$CADDY_MAIN"; then
     ok "main Caddyfile imports conf.d"
-    sudo install -m 0644 "$CADDY_SRC" "$CADDY_CONF_D/metnmat-website.caddy" \
+
+    # The site blocks ship with `tls internal` so that installing them causes no
+    # ACME traffic while DNS still points at GCP — see the comment in the
+    # Caddyfile. PUBLIC_TLS=true strips those lines, which is the cutover
+    # action: run it once DNS resolves here and Caddy will request real
+    # certificates on the next request per hostname.
+    STAGED="$(mktemp)"
+    if [ "${PUBLIC_TLS:-false}" = "true" ]; then
+      grep -v '# PRE-CUTOVER' "$CADDY_SRC" > "$STAGED"
+      ok "PUBLIC_TLS=true — public ACME certificates enabled"
+      info "Caddy will request certificates on first request per hostname;"
+      info "this only succeeds once DNS points at this instance"
+    else
+      cp "$CADDY_SRC" "$STAGED"
+      info "pre-cutover mode: 'tls internal' retained, no ACME requests will be made"
+      info "re-run with PUBLIC_TLS=true after DNS moves to switch to real certificates"
+    fi
+
+    sudo install -m 0644 "$STAGED" "$CADDY_CONF_D/metnmat-website.caddy" \
       && ok "installed $CADDY_CONF_D/metnmat-website.caddy" \
       || fail "could not write the site block"
+    rm -f "$STAGED"
 
     # Validate BEFORE reloading. An invalid config on reload leaves Caddy
     # serving the old one, but a validate failure tells you now rather than

@@ -16,6 +16,15 @@
 #   users — see deploy/README.md § "Cutover" for how to shrink it.
 
 metnmat.com, www.metnmat.com {
+	# PRE-CUTOVER ONLY — removed automatically when bootstrap-server.sh runs with
+	# PUBLIC_TLS=true. Caddy requests a certificate the moment a site block
+	# exists, via an ACME challenge Let's Encrypt sends to whatever IP the name
+	# resolves to. That is still GCP, so every attempt fails, and failed
+	# validations count against a per-hostname rate limit. Burning them now buys
+	# nothing and risks throttled issuance during the cutover itself. `internal`
+	# uses Caddy's own CA instead: routing is live and testable over loopback,
+	# with no ACME traffic at all.
+	tls internal # PRE-CUTOVER
 	# The apex→www 308 lives in the Next.js middleware, not here, because it is
 	# not merely cosmetic: an apex/www split previously produced host-only
 	# cookies that broke Google sign-in and persistent sessions. Keeping the
@@ -42,6 +51,8 @@ metnmat.com, www.metnmat.com {
 }
 
 admin.metnmat.com {
+	tls internal # PRE-CUTOVER
+
 	reverse_proxy 127.0.0.1:3200 {
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-Host {host}
