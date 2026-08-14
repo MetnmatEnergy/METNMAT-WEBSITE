@@ -302,21 +302,36 @@ done
 # driver that echoes the connection string cannot leak it into a CI log.
 echo "--- mongo auth ---"
 MU="\$(aws secretsmanager get-secret-value --region $AWS_REGION --secret-id ${SECRET_PREFIX}MONGODB_URI --query SecretString --output text 2>/dev/null || true)"
-MDRV=/home/ec2-user/cms/current/node_modules/mongodb
+# Payload reaches Mongo through @payloadcms/db-mongodb -> mongoose, so the
+# driver is NOT hoisted to the top level of pnpm deploy output. Looking only
+# there reported "no-driver" on a box that has it. Search the pnpm store too.
+CMSROOT=/home/ec2-user/cms/current
+MDRV=""
+for cand in "\$CMSROOT/node_modules/mongodb" \$(find "\$CMSROOT/node_modules/.pnpm" -maxdepth 3 -type d -path '*/node_modules/mongodb' 2>/dev/null | head -1); do
+  [ -d "\$cand" ] && { MDRV="\$cand"; break; }
+done
 if [ -z "\$MU" ]; then
   echo "mongo_auth=no-secret"
-elif [ ! -d "\$MDRV" ]; then
+elif [ -z "\$MDRV" ]; then
   echo "mongo_auth=no-driver"
 else
-  MU="\$MU" MDRV="\$MDRV" timeout 30 node -e '
+  # Inspects BOTH candidate databases by name. Which database belongs to which
+  # application is a question of fact, and the collections in them answer it —
+  # a Payload database has users/products/media, a chatbot's does not.
+  # Collection names are not credentials.
+  MU="\$MU" MDRV="\$MDRV" timeout 40 node -e '
     const {MongoClient}=require(process.env.MDRV);
     const c=new MongoClient(process.env.MU,{serverSelectionTimeoutMS:8000});
     const scrub=s=>String(s).replace(/mongodb(\+srv)?:\/\/\S+/gi,"[uri]").slice(0,140);
     c.connect().then(async()=>{
       const db=c.db(); await db.command({ping:1});
       console.log("mongo_auth=ok db="+db.databaseName);
-      const n=await db.listCollections().toArray();
-      console.log("mongo_collections="+n.length);
+      for (const name of [db.databaseName,"metnmat","metnmat_cms","metnmat_cms_dev"]) {
+        try {
+          const cols=(await c.db(name).listCollections().toArray()).map(x=>x.name).sort();
+          console.log("mongo_db_"+name+"="+cols.length+" ["+cols.slice(0,14).join(",")+"]");
+        } catch(e){ console.log("mongo_db_"+name+"=unreadable"); }
+      }
       await c.close(); process.exit(0);
     }).catch(e=>{ console.log("mongo_auth=fail name="+e.name+" msg="+scrub(e.message)); process.exit(0); });
   ' 2>/dev/null || echo "mongo_auth=probe-error"
@@ -487,9 +502,17 @@ REMOTE
         ok)         ok "MongoDB authenticated — $(echo "$out" | grep -o 'mongo_auth=ok db=[^ ]*' | sed 's/.*db=//') ($(echo "$out" | grep -o 'mongo_collections=[0-9]*' | cut -d= -f2) collections)" ;;
         fail)       no "MongoDB REFUSED the credential — ${mmsg#mongo_auth=fail }" ;;
         no-secret)  no "MONGODB_URI is not set, so nothing could be tested" ;;
-        no-driver)  hmm "mongodb driver not on the box yet — deploy the CMS once, then this check becomes meaningful" ;;
+        no-driver)  hmm "mongodb driver not found on the box — deploy the CMS once, then this check becomes meaningful" ;;
         *)          hmm "MongoDB auth probe did not report (${mauth:-no output})" ;;
       esac
+
+      # Which database belongs to which application, settled by what is IN them
+      # rather than by what any document claims. A Payload database has users,
+      # products and media; a chatbot's does not.
+      if echo "$out" | grep -q '^mongo_db_'; then
+        echo "  contents of each candidate database:"
+        echo "$out" | grep '^mongo_db_' | sed 's/^mongo_db_/    /' | sed 's/=/ -> /'
+      fi
 
       # Distinguishes "the CMS is not deployed" from "it is deployed and
       # broken" — a 502 at the edge looks identical for both, and they need
@@ -574,10 +597,17 @@ mongo_db="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
 case "$mongo_db" in
   "")               : ;;
   metnmat_cms)      ok "MONGODB_URI targets metnmat_cms" ;;
-  # A genuine incompatibility, not a naming preference: the chatbot's database
-  # holds a different schema entirely, so the shop reads empty and depth=1
-  # queries 500 (CLAUDE.md gotcha #1).
-  metnmat)          no "MONGODB_URI targets '/metnmat' — the CHATBOT's database, a different schema. The shop reads empty and depth=1 queries 500." ;;
+  # CLAUDE.md gotcha #1 and its Data table say /metnmat is the CHATBOT's
+  # database and must never be the CMS's. That claim is now disputed by the
+  # operator, who says /metnmat is in fact the CMS and website database and the
+  # documentation has it backwards.
+  #
+  # This is a question of fact, not preference, and this session has already
+  # found several stale claims in CLAUDE.md — so it is downgraded to a warning
+  # and the collection listing above is the evidence that settles it. Restore
+  # the hard failure once the answer is known, pointing at whichever database
+  # turns out NOT to be Payload's.
+  metnmat)          hmm "MONGODB_URI targets '/metnmat'. CLAUDE.md calls this the chatbot's database; the operator says it is the CMS's. See the collection listing above — a Payload database contains users/products/media." ;;
   # Warning, not failure. Any Mongo database works technically; which one to
   # point at is a data decision, and the operator's to make. The consequence is
   # what matters, so state it and move on.
