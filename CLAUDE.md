@@ -52,8 +52,8 @@ infrastructure was deleted and must not be recreated.
 
 | | |
 |---|---|
-| CMS DB | MongoDB Atlas **`metnmat_cms`** |
-| Chatbot DB | **`metnmat`** — *different database, do not point the CMS at it* |
+| CMS DB | MongoDB Atlas **`metnmat_cms`** — 53 collections, 9+ matching `src/collections/*.ts` (`audit-logs`, `blog-authors`, `analytics-events`…). Dev copy: `metnmat_cms_dev` (47). |
+| Chatbot DB | **`metnmat`** — *different database, do not point the CMS at it*. 236 collections: `agent_usage`, `ai_reply_drafts`, `amazon_financial_events`, `amazon_settlement_*`. Verified by inspection 2026-08-14. |
 | Media | Private GCS bucket via `@payloadcms/storage-gcs`, served through the CMS at `/api/media/file/<filename>` |
 | Website → CMS | REST over `NEXT_PUBLIC_CMS_URL`; GraphQL is disabled |
 
@@ -61,6 +61,13 @@ infrastructure was deleted and must not be recreated.
 
 1. **`/metnmat` vs `/metnmat_cms`.** Pointing the CMS at `/metnmat` connects it to the *chatbot's*
    database — the shop goes empty and `depth=1` queries 500. The DB name is the whole bug.
+   Re-confirmed by inspection 2026-08-14 after the opposite was asserted in good faith: `metnmat`
+   holds 236 collections of `agent_usage`/`ai_reply_drafts`/`amazon_*`, while `metnmat_cms` holds 53
+   that map to `src/collections/`. **It is not only a wrong read** — `seed()` runs in `onInit`, so a
+   CMS booted against `/metnmat` *writes* Payload collections into the chatbot's database.
+   `metnmat` already contains `_posts_versions`/`_products_versions`/`_projects_versions`, which is
+   the residue of this having happened before. `deploy/bin/preflight.sh` now fails on it and prints
+   the collection listing, so the question is settled by evidence rather than by argument.
 2. **`importMap.js` must contain exactly 2 `GcsClientUploadHandler` entries.** A *running*
    `next dev` strips it to 0 and the prod CMS renders blank. Stop dev, `git checkout` the file,
    verify the count, never stage a 0.
