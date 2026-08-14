@@ -606,6 +606,53 @@ else
   ok "no advisory findings on the security-critical secrets"
 fi
 
+# ── MONGODB_URI shape ──────────────────────────────────────────────────────
+# Prompted by a real failure: the CMS booted, reached Atlas, and was refused
+# with "bad auth : authentication failed". That is Atlas rejecting a credential,
+# not a network or allowlist problem — the connection got far enough to be told
+# no. So the useful question is whether the stored URI is well-formed, and every
+# check below answers it WITHOUT printing the value.
+raw_uri="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
+  --secret-id "${SECRET_PREFIX}MONGODB_URI" --query SecretString --output text 2>/dev/null || true)"
+
+if [ -n "$raw_uri" ]; then
+  # Pasting into a console field very often carries a newline or a space, and
+  # both land inside the password as far as the driver is concerned.
+  case "$raw_uri" in
+    *[[:space:]]) no  "MONGODB_URI has TRAILING whitespace — it becomes part of the password and auth fails" ;;
+    [[:space:]]*) no  "MONGODB_URI has LEADING whitespace" ;;
+    *)            ok  "MONGODB_URI has no surrounding whitespace" ;;
+  esac
+
+  # A value stored WITH quotes is a different string from the one you meant.
+  case "$raw_uri" in
+    \"*\"|\'*\') no "MONGODB_URI is wrapped in quotes — store the bare value, not a quoted one" ;;
+  esac
+
+  case "$raw_uri" in
+    mongodb+srv://*|mongodb://*) ok "MONGODB_URI scheme is valid" ;;
+    *) no "MONGODB_URI does not start with mongodb:// or mongodb+srv://" ;;
+  esac
+
+  # The classic silent breaker. Anything in the userinfo section beyond
+  # unreserved characters must be percent-encoded; an unescaped @ or # ends the
+  # userinfo early and the driver sends a truncated password.
+  # Split at the LAST @, not the first. `%%@*` cuts at the first one, which
+  # truncates exactly the passwords this check exists to catch — the same blind
+  # spot the driver has, which is why an unescaped @ fails as "bad auth" rather
+  # than as a parse error. Caught by a test case that reported OK when it should
+  # not have.
+  rest="${raw_uri#*://}"
+  userinfo="${rest%@*}"
+  pw="${userinfo#*:}"
+  case "$pw" in
+    *[@/?\#\[\]%]*) no "MONGODB_URI password contains a character that must be percent-encoded (@ / ? # [ ] %) — the driver truncates it and auth fails" ;;
+    "")             no "MONGODB_URI has no password in the userinfo section" ;;
+    *)              ok "MONGODB_URI password needs no percent-encoding" ;;
+  esac
+  info "user '${userinfo%%:*}' — verify in Atlas that this user exists, its password matches, and it has access to database '$mongo_db'"
+fi
+
 # The CMS wants 500-800 MB on top of whatever is already resident.
 if [ -n "${avail:-}" ]; then
   if [ "$avail" -lt 800 ]; then
