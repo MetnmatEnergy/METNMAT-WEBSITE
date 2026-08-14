@@ -295,6 +295,10 @@ done
 echo "--- cms on :3200 ---"
 cms="\$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: admin.metnmat.com' http://127.0.0.1:3200/admin 2>/dev/null)"
 echo "cms_status=\${cms:-000}"
+# When a process exists but does not answer, the log is the only thing that says
+# why. Cheap enough to always emit, and the alternative is another round trip.
+echo "--- cms recent log ---"
+pm2 logs metnmat-cms --lines 25 --nostream 2>&1 | tail -25 | sed 's/^/cmslog: /' || echo "cmslog: (no log)"
 echo "--- pm2 processes ---"
 # sort -u: pm2 jlist carries "name" twice per app (top level and inside
 # pm2_env), so without it every process is listed twice.
@@ -454,7 +458,9 @@ REMOTE
         *" metnmat-cms "*)
           case "$cms_code" in
             200|302|307) ok "CMS process running and answering $cms_code on :3200" ;;
-            *)           no "CMS process is running but :3200 answers ${cms_code:-nothing} — check pm2 logs metnmat-cms" ;;
+            *)
+              no "CMS process is running but :3200 answers ${cms_code:-nothing}"
+              echo "$out" | grep '^cmslog:' | sed 's/^cmslog:/       /' | tail -25 ;;
           esac ;;
         *)
           hmm "CMS is not deployed (no metnmat-cms process) — admin.metnmat.com will 502" ;;
