@@ -97,34 +97,65 @@ module.exports = {
     },
 
     // ── metnmat-cms ─────────────────────────────────────────────────────────
-    // Deliberately commented out. The blueprint (§12) sequences the CMS AFTER
-    // the website has been measured for a few days, because the memory
-    // arithmetic does not fit both on a t3.small:
-    //
-    //   available 834 MB  vs  website 400–600 MB + CMS 500–800 MB
-    //
-    // Uncomment only after the instance has been resized to t3.medium, or after
-    // measurement proves the headroom exists.
-    //
-    // ⚠ Before enabling, read deploy/README.md § "Environment variables that
-    //   must never be set". Two variables mutate production data on every CMS
-    //   boot, and PM2 restarts count as boots.
-    //
-    // {
-    //   name: "metnmat-cms",
-    //   script: "apps/dashboard/server.js",
-    //   cwd: "/home/ec2-user/cms/current",
-    //   exec_mode: "fork",
-    //   instances: 1,
-    //   env: { NODE_ENV: "production", PORT: 3200, HOSTNAME: LOOPBACK },
-    //   node_args: "--max-old-space-size=768",
-    //   max_memory_restart: "1000M",
-    //   max_restarts: 10,
-    //   min_uptime: "60s",
-    //   error_file: "/home/ec2-user/cms/logs/cms.error.log",
-    //   out_file: "/home/ec2-user/cms/logs/cms.out.log",
-    //   merge_logs: true,
-    //   time: true,
-    // },
+    // Enabled after the t3.medium resize. Measured immediately after it:
+    // 3835 MB total, 2915 MB available, against a CMS wanting 500-800 MB. On the
+    // previous t3.small (568 MB free) this could not have run, which is why it
+    // stayed commented out until the instance changed.
+    {
+      name: "metnmat-cms",
+
+      // NOT a server.js. Payload has no Next standalone output
+      // (Dockerfile.dashboard:3), so unlike the website there is no
+      // self-contained entrypoint — the CMS runs through the next CLI against a
+      // full node_modules produced by `pnpm deploy`. Started via the secrets
+      // wrapper for the same reason the website is.
+      script: "/home/ec2-user/cms/bin/with-secrets.sh",
+      interpreter: "/bin/bash",
+      args: "node_modules/.bin/next start --port 3200 --hostname 127.0.0.1",
+      cwd: "/home/ec2-user/cms/current",
+
+      exec_mode: "fork",
+      instances: 1,
+
+      env: {
+        NODE_ENV: "production",
+        APP_NAME: "metnmat-cms",
+
+        // Storage is CONFIGURATION, not a secret, so it lives here rather than
+        // in Secrets Manager. No access key: omitting credentials is what makes
+        // the AWS SDK use the instance role, which is the whole point of
+        // granting it (deploy/aws/instance-role-policy.json).
+        STORAGE_PROVIDER: "s3",
+        S3_BUCKET: "metnmat-media-prod",
+        S3_REGION: "ap-south-1",
+
+        // Exactly what payload.config.ts assertProductionConfig() throws on. It
+        // refuses to start without these, so failing here — before node is
+        // exec'd — turns a crash loop into one clear message.
+        REQUIRED_SECRETS: "MONGODB_URI PAYLOAD_SECRET PAYLOAD_PIN_PEPPER CMS_URL",
+
+        // Via NODE_OPTIONS, not pm2's node_args: node_args goes to the
+        // INTERPRETER, which here is bash, and bash rejects it. That mistake
+        // crash-looped the website's first deploy.
+        NODE_OPTIONS: "--max-old-space-size=1024",
+      },
+
+      // Sized to the post-resize measurement. Payload's admin build is heavier
+      // than the storefront, and image uploads spike it further via sharp.
+      max_memory_restart: "1400M",
+
+      // Longer than the website's: Payload connects to MongoDB Atlas and runs
+      // seed() inside onInit before it serves anything, so a healthy boot is
+      // genuinely slower and a 30s floor would call it a crash.
+      max_restarts: 10,
+      min_uptime: "60s",
+      restart_delay: 4000,
+      autorestart: true,
+
+      error_file: "/home/ec2-user/cms/logs/cms.error.log",
+      out_file: "/home/ec2-user/cms/logs/cms.out.log",
+      merge_logs: true,
+      time: true,
+    },
   ],
 };

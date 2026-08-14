@@ -10,7 +10,7 @@
 #   usage: release.sh <git-sha>
 #
 # Contract with the workflow: s3://$ARTIFACT_BUCKET/$ARTIFACT_PREFIX/<sha>/
-# contains web-build.tgz. Everything else is derived here.
+# contains $ARTIFACT_NAME. Everything else is derived here.
 #
 # The dashboard (command-center) shares this server. Nothing below may touch it:
 # no `pm2 restart all`, no global installs, no writes outside $APP_ROOT.
@@ -24,8 +24,24 @@ APP_ROOT="${APP_ROOT:-/home/ec2-user/web}"
 APP_PORT="${APP_PORT:-3100}"
 HEALTH_PATH="${HEALTH_PATH:-/}"
 HEALTH_HOST="${HEALTH_HOST:-www.metnmat.com}"
+# Space-separated list of acceptable statuses. The website serves 200 at /; the
+# CMS is checked at /admin, which also serves 200, but Payload redirects some
+# paths and a deploy that is genuinely healthy must not fail on a 3xx. Listing
+# them beats hardcoding one and beats accepting anything non-5xx.
+HEALTH_OK_CODES="${HEALTH_OK_CODES:-200}"
 ARTIFACT_BUCKET="${ARTIFACT_BUCKET:?ARTIFACT_BUCKET not set}"
 ARTIFACT_PREFIX="${ARTIFACT_PREFIX:-website}"
+ARTIFACT_NAME="${ARTIFACT_NAME:-web-build.tgz}"
+
+# The two files that prove an artifact is complete. They differ per app because
+# the two apps have genuinely different shapes: the website ships a Next
+# STANDALONE bundle (self-contained server.js), while Payload has no standalone
+# output, so the CMS ships `pnpm deploy` output plus .next and is started
+# through the next CLI. Parameterised rather than duplicated — one release
+# script, two apps, so a fix to the swap or rollback logic cannot land in one
+# and be forgotten in the other.
+BUILD_ID_PATH="${BUILD_ID_PATH:-apps/website/.next/BUILD_ID}"
+APP_ENTRY_PATH="${APP_ENTRY_PATH:-apps/website/server.js}"
 # How long to give the app to come up before declaring failure.
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-90}"
 
@@ -45,19 +61,19 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 log "downloading artifact for $SHA"
-aws s3 cp "s3://$ARTIFACT_BUCKET/$ARTIFACT_PREFIX/$SHA/web-build.tgz" "$TMP/web-build.tgz" --only-show-errors \
+aws s3 cp "s3://$ARTIFACT_BUCKET/$ARTIFACT_PREFIX/$SHA/$ARTIFACT_NAME" "$TMP/$ARTIFACT_NAME" --only-show-errors \
   || fail "artifact download failed — does s3://$ARTIFACT_BUCKET/$ARTIFACT_PREFIX/$SHA/ exist?"
 
 rm -rf "$TARGET"
 mkdir -p "$TARGET"
-tar -xzf "$TMP/web-build.tgz" -C "$TARGET" || fail "artifact did not unpack — truncated upload?"
+tar -xzf "$TMP/$ARTIFACT_NAME" -C "$TARGET" || fail "artifact did not unpack — truncated upload?"
 
 # ── 2. Verify the artifact is complete BEFORE touching the live symlink ────
 # A truncated tar can still extract "successfully". BUILD_ID is written last by
 # next build, so its presence is a cheap end-marker; server.js is what PM2 runs.
-[ -f "$TARGET/apps/website/.next/BUILD_ID" ] || fail "BUILD_ID missing — artifact is incomplete, refusing to deploy"
-[ -f "$TARGET/apps/website/server.js" ]      || fail "server.js missing — wrong archive layout"
-log "artifact verified (BUILD_ID $(cat "$TARGET/apps/website/.next/BUILD_ID"))"
+[ -f "$TARGET/$BUILD_ID_PATH" ]  || fail "$BUILD_ID_PATH missing — artifact is incomplete, refusing to deploy"
+[ -e "$TARGET/$APP_ENTRY_PATH" ] || fail "$APP_ENTRY_PATH missing — wrong archive layout"
+log "artifact verified (BUILD_ID $(cat "$TARGET/$BUILD_ID_PATH"))"
 
 # ── 2b. Install the runtime config that shipped with this release ──────────
 # These live in $APP_ROOT rather than inside the release, because PM2 reads the
@@ -125,17 +141,22 @@ pm2 save >/dev/null 2>&1 || true
 # mask a completely broken release. The Host header makes the app render as it
 # will in production (canonical-host middleware, absolute URLs) while the
 # connection stays on the box.
-log "waiting for $APP_NAME on :$APP_PORT (timeout ${HEALTH_TIMEOUT}s)"
+healthy() {
+  for want in $HEALTH_OK_CODES; do [ "$1" = "$want" ] && return 0; done
+  return 1
+}
+
+log "waiting for $APP_NAME on :$APP_PORT$HEALTH_PATH (accept: $HEALTH_OK_CODES, timeout ${HEALTH_TIMEOUT}s)"
 deadline=$(( SECONDS + HEALTH_TIMEOUT ))
 code=""
 until [ "$SECONDS" -ge "$deadline" ]; do
   code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
     -H "Host: $HEALTH_HOST" "http://127.0.0.1:$APP_PORT$HEALTH_PATH" || true)"
-  [ "$code" = "200" ] && break
+  healthy "$code" && break
   sleep 3
 done
 
-if [ "$code" != "200" ]; then
+if ! healthy "$code"; then
   log "health check FAILED (last status: ${code:-no response})"
 
   if [ -n "$ROLLBACK_TO" ]; then
@@ -160,7 +181,7 @@ if [ "$code" != "200" ]; then
     back="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
       -H "Host: $HEALTH_HOST" "http://127.0.0.1:$APP_PORT$HEALTH_PATH" || true)"
     log "post-rollback status: ${back:-no response}"
-    [ "$back" = "200" ] || log "ROLLBACK DID NOT RESTORE SERVICE — manual intervention required"
+    healthy "$back" || log "ROLLBACK DID NOT RESTORE SERVICE — manual intervention required"
   else
     log "no previous release to roll back to (first deploy)"
   fi

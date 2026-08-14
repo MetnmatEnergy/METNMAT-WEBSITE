@@ -1,0 +1,260 @@
+name: Deploy CMS to EC2
+
+# Builds Payload and releases it to the shared EC2 alongside the website.
+#
+# NOT a copy of deploy-website-ec2.yml, because the two artifacts are shaped
+# differently and no amount of similarity in the workflow can hide that:
+#
+#   website — Next STANDALONE output. A self-contained server.js with only the
+#             traced dependencies. Tens of megabytes.
+#   CMS     — Payload has NO standalone output (Dockerfile.dashboard:3). It runs
+#             through the next CLI and needs a real node_modules, produced by
+#             `pnpm deploy --prod`. Hundreds of megabytes, several minutes.
+#
+# `--legacy` is required: since pnpm 10, `pnpm deploy` refuses to run on a
+# workspace without inject-workspace-packages and exits with
+# ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE.
+#
+# Manual only. The website deploys on push because it is low-risk and frequent;
+# the CMS is neither, and it is the only writer to the production database.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to deploy (blank = HEAD)"
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-cms-ec2
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+  ARTIFACT_PREFIX: cms
+  ARTIFACT_NAME: cms-build.tgz
+  APP_NAME: metnmat-cms
+  APP_ROOT: /home/ec2-user/cms
+  APP_PORT: "3200"
+  EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID || 'i-0b7f49ca3e9852d4b' }}
+  ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'metnmat-deploy-artifacts-976134557584' }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      auth: ${{ steps.guard.outputs.auth }}
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Check AWS is configured
+        id: guard
+        run: |
+          auth=""
+          if [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ]; then
+            auth="oidc"
+          elif [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            auth="keys"
+          fi
+          [ -n "$auth" ] || { echo "::error::No AWS credentials configured."; exit 1; }
+          echo "auth=$auth" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+
+      - name: Resolve deploy SHA
+        id: resolve
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.1
+
+      # 22 because pnpm 11.5.1 requires >=22.13 and dies on 20 with
+      # "No such built-in module: node:sqlite". The instance runs 20; root
+      # engines allows >=20. Unlike the website, the CMS DOES carry a native
+      # module — sharp — so this split is worth watching: if the admin throws a
+      # sharp load error at runtime, this line is the first suspect.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      # STORAGE_PROVIDER is set at BUILD time as well as run time because
+      # payload.config.ts chooses the storage plugin when the config is
+      # evaluated, and that decides which client upload handler the admin
+      # expects to find in the import map.
+      - name: Build
+        env:
+          NODE_ENV: production
+          STORAGE_PROVIDER: s3
+          S3_BUCKET: metnmat-media-prod
+          S3_REGION: ap-south-1
+          CMS_URL: https://admin.metnmat.com
+          WEBSITE_URL: https://www.metnmat.com
+        run: pnpm --filter dashboard build
+
+      - name: Assemble release
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/cms-release"
+          rm -rf "$OUT"
+
+          # Produces a directory with a REAL node_modules rather than the
+          # workspace's symlinks into the pnpm store — a tar of the symlinked
+          # tree would arrive on the server pointing at paths that do not exist.
+          pnpm deploy --filter dashboard --prod --legacy "$OUT"
+
+          # .next is not part of `pnpm deploy` output; it is build output.
+          # Copied WITHOUT cache/ — that is ~1.2 GB of incremental build state
+          # the runtime never reads.
+          mkdir -p "$OUT/.next"
+          for d in server static types; do
+            [ -d "apps/dashboard/.next/$d" ] && cp -r "apps/dashboard/.next/$d" "$OUT/.next/$d"
+          done
+          find apps/dashboard/.next -maxdepth 1 -type f -exec cp {} "$OUT/.next/" \;
+          [ -d apps/dashboard/public ] && cp -r apps/dashboard/public "$OUT/public"
+
+          # Runtime config travels inside the artifact, same as the website, so
+          # the config on the box cannot drift from the code it runs.
+          mkdir -p "$OUT/_deploy"
+          cp deploy/pm2/ecosystem.config.cjs "$OUT/_deploy/"
+          cp deploy/bin/with-secrets.sh       "$OUT/_deploy/"
+
+          # Fail on the runner, with the tree in front of you.
+          [ -f "$OUT/.next/BUILD_ID" ]           || { echo "::error::BUILD_ID missing"; exit 1; }
+          [ -e "$OUT/node_modules/.bin/next" ]   || { echo "::error::next CLI missing from the deploy output"; exit 1; }
+          [ -d "$OUT/node_modules/payload" ]     || { echo "::error::payload missing from the deploy output"; exit 1; }
+          [ -d "$OUT/node_modules/sharp" ]       || { echo "::error::sharp missing — image processing would fail at upload"; exit 1; }
+
+          tar -czf cms-build.tgz -C "$OUT" .
+          echo "artifact: $(du -h cms-build.tgz | cut -f1)"
+
+      - name: Assume AWS role (OIDC)
+        if: steps.guard.outputs.auth == 'oidc'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-cms-${{ github.run_id }}
+          aws-region: ap-south-1
+
+      - name: Configure AWS credentials (bootstrap keys)
+        if: steps.guard.outputs.auth == 'keys'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Upload artifact and release script
+        run: |
+          set -euo pipefail
+          DEST="s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_PREFIX }}/${{ steps.resolve.outputs.sha }}"
+          aws s3 cp cms-build.tgz     "$DEST/${{ env.ARTIFACT_NAME }}" --only-show-errors
+          aws s3 cp deploy/bin/release.sh "$DEST/release.sh"           --only-show-errors
+          echo "uploaded to $DEST"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assume AWS role (OIDC)
+        if: needs.build.outputs.auth == 'oidc'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-cms-deploy-${{ github.run_id }}
+          aws-region: ap-south-1
+
+      - name: Configure AWS credentials (bootstrap keys)
+        if: needs.build.outputs.auth == 'keys'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Release via SSM
+        env:
+          SHA: ${{ needs.build.outputs.sha }}
+        run: |
+          set -euo pipefail
+          I="${{ env.EC2_INSTANCE_ID }}"
+
+          # Built line by line, never a here-doc: a here-doc body must start at
+          # column 0, and column 0 ends the YAML block scalar this lives in.
+          {
+            echo "set -euo pipefail"
+            echo "export ARTIFACT_BUCKET='${{ env.ARTIFACT_BUCKET }}'"
+            echo "export ARTIFACT_PREFIX='${{ env.ARTIFACT_PREFIX }}'"
+            echo "export ARTIFACT_NAME='${{ env.ARTIFACT_NAME }}'"
+            echo "export APP_NAME='${{ env.APP_NAME }}'"
+            echo "export APP_ROOT='${{ env.APP_ROOT }}'"
+            echo "export APP_PORT='${{ env.APP_PORT }}'"
+            # Payload serves the login page at /admin; / redirects there.
+            echo "export HEALTH_PATH='/admin'"
+            echo "export HEALTH_HOST='admin.metnmat.com'"
+            echo "export HEALTH_OK_CODES='200 302 307'"
+            # The CMS boots slower than the website: it connects to Atlas and
+            # runs seed() inside onInit before serving anything.
+            echo "export HEALTH_TIMEOUT='180'"
+            echo "export BUILD_ID_PATH='.next/BUILD_ID'"
+            echo "export APP_ENTRY_PATH='node_modules/.bin/next'"
+            echo "mkdir -p ${{ env.APP_ROOT }}/releases ${{ env.APP_ROOT }}/logs ${{ env.APP_ROOT }}/bin"
+            echo "aws s3 cp s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_PREFIX }}/$SHA/release.sh /tmp/release-cms.sh --only-show-errors"
+            echo "bash /tmp/release-cms.sh $SHA"
+          } > remote.sh
+          echo "--- remote script ---"; cat remote.sh
+          B64="$(base64 -w0 < remote.sh)"
+
+          CMD=$(aws ssm send-command --instance-ids "$I" \
+            --document-name "AWS-RunShellScript" \
+            --comment "deploy cms $SHA" --timeout-seconds 1200 \
+            --parameters commands="[\"echo $B64 | base64 -d | sudo -u ec2-user bash\"]" \
+            --query 'Command.CommandId' --output text)
+          echo "SSM command $CMD"
+
+          set +e
+          aws ssm wait command-executed --command-id "$CMD" --instance-id "$I"
+          WAIT_RC=$?
+          set -e
+
+          OUT="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" \
+            --query 'StandardOutputContent' --output text || true)"
+          ERR="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" \
+            --query 'StandardErrorContent' --output text || true)"
+          STATUS="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" \
+            --query 'Status' --output text)"
+
+          echo "$OUT"
+          [ -n "$ERR" ] && { echo "--- stderr ---"; echo "$ERR"; }
+
+          {
+            echo "### CMS deploy — \`$STATUS\`"
+            echo ""
+            echo '```'
+            echo "$OUT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$STATUS" != "Success" ] || [ $WAIT_RC -ne 0 ]; then
+            echo "::error::CMS release failed ($STATUS). release.sh rolls back automatically; check above."
+            exit 1
+          fi
