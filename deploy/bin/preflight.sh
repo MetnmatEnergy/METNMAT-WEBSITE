@@ -499,7 +499,12 @@ REMOTE
       mauth="$(echo "$out" | grep -o 'mongo_auth=[^ ]*' | cut -d= -f2)"
       mmsg="$(echo "$out" | grep -o 'mongo_auth=fail.*' | head -1)"
       case "$mauth" in
-        ok)         ok "MongoDB authenticated — $(echo "$out" | grep -o 'mongo_auth=ok db=[^ ]*' | sed 's/.*db=//') ($(echo "$out" | grep -o 'mongo_collections=[0-9]*' | cut -d= -f2) collections)" ;;
+        ok)
+          mdb="$(echo "$out" | grep -o 'mongo_auth=ok db=[^ ]*' | sed 's/.*db=//')"
+          # Count comes from the per-database listing; the old parse read a
+          # variable that no longer exists and printed "( collections)".
+          mcount="$(echo "$out" | grep -o "^mongo_db_${mdb}=[0-9]*" | head -1 | cut -d= -f2)"
+          ok "MongoDB authenticated — connected to '${mdb}' (${mcount:-?} collections)" ;;
         fail)       no "MongoDB REFUSED the credential — ${mmsg#mongo_auth=fail }" ;;
         no-secret)  no "MONGODB_URI is not set, so nothing could be tested" ;;
         no-driver)  hmm "mongodb driver not found on the box — deploy the CMS once, then this check becomes meaningful" ;;
@@ -597,17 +602,23 @@ mongo_db="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
 case "$mongo_db" in
   "")               : ;;
   metnmat_cms)      ok "MONGODB_URI targets metnmat_cms" ;;
-  # CLAUDE.md gotcha #1 and its Data table say /metnmat is the CHATBOT's
-  # database and must never be the CMS's. That claim is now disputed by the
-  # operator, who says /metnmat is in fact the CMS and website database and the
-  # documentation has it backwards.
+  # Settled by inspection on 2026-08-14, not by documentation:
   #
-  # This is a question of fact, not preference, and this session has already
-  # found several stale claims in CLAUDE.md — so it is downgraded to a warning
-  # and the collection listing above is the evidence that settles it. Restore
-  # the hard failure once the answer is known, pointing at whichever database
-  # turns out NOT to be Payload's.
-  metnmat)          hmm "MONGODB_URI targets '/metnmat'. CLAUDE.md calls this the chatbot's database; the operator says it is the CMS's. See the collection listing above — a Payload database contains users/products/media." ;;
+  #   metnmat      236 collections — agent_usage, ai_reply_drafts,
+  #                amazon_financial_events, amazon_order_snapshots,
+  #                amazon_pii_audit_logs, amazon_settlement_* … the chatbot and
+  #                Amazon-integration system.
+  #   metnmat_cms   53 collections — analytics-events, analytics-sessions,
+  #                audit-logs, blog-authors, blog-categories, blog-content-types,
+  #                blog-reactions, blog-slug-redirects, blog-submission-files …
+  #                nine of which map 1:1 to files in src/collections/.
+  #
+  # So CLAUDE.md gotcha #1 is correct and the hard failure stands. Note that
+  # metnmat ALSO holds _posts_versions/_products_versions/_projects_versions —
+  # Payload version collections that have no business there. That is the residue
+  # of this exact mistake having been made before, which is presumably why the
+  # gotcha was written.
+  metnmat)          no "MONGODB_URI targets '/metnmat' — verified by inspection to be the CHATBOT/Amazon system (236 collections: agent_usage, ai_reply_drafts, amazon_*). Payload's data is in metnmat_cms (53 collections matching src/collections/). Pointing the CMS here reads an empty shop AND writes Payload collections into another app's database." ;;
   # Warning, not failure. Any Mongo database works technically; which one to
   # point at is a data decision, and the operator's to make. The consequence is
   # what matters, so state it and move on.
