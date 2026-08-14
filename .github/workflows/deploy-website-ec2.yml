@@ -315,10 +315,23 @@ jobs:
 
           # `wait command-executed` exits non-zero on failure, which is what we
           # want — but it swallows the output, so capture it either way.
+          # Polled, not `aws ssm wait command-executed`. That waiter gives up
+          # after ~100 seconds and then reports InProgress, which reads as a
+          # failed deploy while the release is still running perfectly. The
+          # website's artifact is small enough that it has never hit the limit;
+          # the CMS deploy hit it on its first run. Fixing it here too rather
+          # than waiting for a slow release to make this the same bug twice.
           set +e
-          aws ssm wait command-executed \
-            --command-id "$CMD" --instance-id "${{ env.EC2_INSTANCE_ID }}"
-          WAIT_RC=$?
+          WAIT_RC=1
+          for i in $(seq 1 90); do   # 90 x 10s = 15 minutes
+            S="$(aws ssm get-command-invocation --command-id "$CMD" \
+              --instance-id "${{ env.EC2_INSTANCE_ID }}" --query 'Status' --output text 2>/dev/null || echo Pending)"
+            case "$S" in
+              Success)                    WAIT_RC=0; break ;;
+              Failed|Cancelled|TimedOut)  WAIT_RC=1; break ;;
+            esac
+            sleep 10
+          done
           set -e
 
           echo "--- release output ---"

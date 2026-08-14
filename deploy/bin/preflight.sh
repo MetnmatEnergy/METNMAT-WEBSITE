@@ -292,6 +292,9 @@ for h in www.metnmat.com metnmat.com admin.metnmat.com command-center.metnmat.co
   c="\$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 --resolve "\$h:443:127.0.0.1" "https://\$h/" 2>/dev/null)"
   echo "route:\$h=\${c:-000}"
 done
+echo "--- cms on :3200 ---"
+cms="\$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: admin.metnmat.com' http://127.0.0.1:3200/admin 2>/dev/null)"
+echo "cms_status=\${cms:-000}"
 echo "--- pm2 processes ---"
 # sort -u: pm2 jlist carries "name" twice per app (top level and inside
 # pm2_env), so without it every process is listed twice.
@@ -442,6 +445,20 @@ REMOTE
           esac
         done
       fi
+
+      # Distinguishes "the CMS is not deployed" from "it is deployed and
+      # broken" — a 502 at the edge looks identical for both, and they need
+      # completely different responses.
+      cms_code="$(echo "$out" | grep -o 'cms_status=[0-9]*' | cut -d= -f2)"
+      case " $running " in
+        *" metnmat-cms "*)
+          case "$cms_code" in
+            200|302|307) ok "CMS process running and answering $cms_code on :3200" ;;
+            *)           no "CMS process is running but :3200 answers ${cms_code:-nothing} — check pm2 logs metnmat-cms" ;;
+          esac ;;
+        *)
+          hmm "CMS is not deployed (no metnmat-cms process) — admin.metnmat.com will 502" ;;
+      esac
 
       # $running was read earlier — the port and memory checks depend on it.
       [ -n "$running" ] && info "pm2 processes running: $running"

@@ -231,17 +231,29 @@ jobs:
             --query 'Command.CommandId' --output text)
           echo "SSM command $CMD"
 
-          set +e
-          aws ssm wait command-executed --command-id "$CMD" --instance-id "$I"
-          WAIT_RC=$?
-          set -e
+          # Polled rather than `aws ssm wait command-executed`. That waiter gives
+          # up after roughly 100 seconds (20 attempts, 5s apart) and then reports
+          # the command as InProgress — which this workflow treated as a failure
+          # on its first run, while the release was still perfectly healthy and
+          # running. A 210 MB artifact to download and unpack, plus a Payload
+          # boot that connects to Atlas and runs seed(), is minutes not seconds.
+          STATUS="Pending"
+          for i in $(seq 1 120); do   # 120 x 10s = 20 minutes
+            STATUS="$(aws ssm get-command-invocation --command-id "$CMD" \
+              --instance-id "$I" --query 'Status' --output text 2>/dev/null || echo Pending)"
+            case "$STATUS" in
+              Success|Failed|Cancelled|TimedOut) break ;;
+            esac
+            [ $((i % 6)) -eq 0 ] && echo "  still $STATUS after $((i*10))s"
+            sleep 10
+          done
+          WAIT_RC=0
+          [ "$STATUS" = "Success" ] || WAIT_RC=1
 
           OUT="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" \
             --query 'StandardOutputContent' --output text || true)"
           ERR="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" \
             --query 'StandardErrorContent' --output text || true)"
-          STATUS="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" \
-            --query 'Status' --output text)"
 
           echo "$OUT"
           [ -n "$ERR" ] && { echo "--- stderr ---"; echo "$ERR"; }
