@@ -751,6 +751,20 @@ if [ -n "$raw_uri" ]; then
     "")             no "MONGODB_URI has no password in the userinfo section" ;;
     *)              ok "MONGODB_URI password is not a placeholder and needs no percent-encoding" ;;
   esac
+  # authSource defaults to the database named in the PATH, not to admin. Atlas
+  # database users live in admin, so a URI ending /metnmat_cms authenticates
+  # against metnmat_cms and fails with "bad auth" even when the password is
+  # perfect. Only a warning: a user created inside that database authenticates
+  # correctly without it, and this URI did work against /metnmat, which is what
+  # a database-scoped user looks like.
+  case "$raw_uri" in
+    *authSource=*) ok "MONGODB_URI sets authSource explicitly" ;;
+    *)
+      if [ -n "$mongo_db" ] && [ "$mongo_db" != "admin" ]; then
+        hmm "MONGODB_URI has no authSource, so the driver authenticates against '$mongo_db'. Atlas users live in 'admin' — if auth fails with a correct password, append &authSource=admin"
+      fi ;;
+  esac
+
   info "user '${userinfo%%:*}' — verify in Atlas that this user exists, its password matches, and it has access to database '$mongo_db'"
 fi
 
