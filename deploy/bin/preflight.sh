@@ -292,6 +292,35 @@ for h in www.metnmat.com metnmat.com admin.metnmat.com command-center.metnmat.co
   c="\$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 --resolve "\$h:443:127.0.0.1" "https://\$h/" 2>/dev/null)"
   echo "route:\$h=\${c:-000}"
 done
+# Actually authenticate to Atlas, from the instance, using the same driver the
+# CMS uses. Shape checks catch a malformed URI; only a real connection catches a
+# wrong password — which is what "bad auth" turned out to be. Doing it here means
+# knowing before a reload, rather than learning from a crash-looping deploy.
+#
+# The URI is fetched by the INSTANCE via its own role and never leaves it. The
+# error message is truncated and stripped of anything resembling a URI, so a
+# driver that echoes the connection string cannot leak it into a CI log.
+echo "--- mongo auth ---"
+MU="\$(aws secretsmanager get-secret-value --region $AWS_REGION --secret-id ${SECRET_PREFIX}MONGODB_URI --query SecretString --output text 2>/dev/null || true)"
+MDRV=/home/ec2-user/cms/current/node_modules/mongodb
+if [ -z "\$MU" ]; then
+  echo "mongo_auth=no-secret"
+elif [ ! -d "\$MDRV" ]; then
+  echo "mongo_auth=no-driver"
+else
+  MU="\$MU" MDRV="\$MDRV" timeout 30 node -e '
+    const {MongoClient}=require(process.env.MDRV);
+    const c=new MongoClient(process.env.MU,{serverSelectionTimeoutMS:8000});
+    const scrub=s=>String(s).replace(/mongodb(\+srv)?:\/\/\S+/gi,"[uri]").slice(0,140);
+    c.connect().then(async()=>{
+      const db=c.db(); await db.command({ping:1});
+      console.log("mongo_auth=ok db="+db.databaseName);
+      const n=await db.listCollections().toArray();
+      console.log("mongo_collections="+n.length);
+      await c.close(); process.exit(0);
+    }).catch(e=>{ console.log("mongo_auth=fail name="+e.name+" msg="+scrub(e.message)); process.exit(0); });
+  ' 2>/dev/null || echo "mongo_auth=probe-error"
+fi
 echo "--- cms on :3200 ---"
 cms="\$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: admin.metnmat.com' http://127.0.0.1:3200/admin 2>/dev/null)"
 echo "cms_status=\${cms:-000}"
@@ -449,6 +478,18 @@ REMOTE
           esac
         done
       fi
+
+      # The authoritative answer on the credential. Shape checks above can only
+      # say "well-formed"; this says "Atlas accepted it".
+      mauth="$(echo "$out" | grep -o 'mongo_auth=[^ ]*' | cut -d= -f2)"
+      mmsg="$(echo "$out" | grep -o 'mongo_auth=fail.*' | head -1)"
+      case "$mauth" in
+        ok)         ok "MongoDB authenticated — $(echo "$out" | grep -o 'mongo_auth=ok db=[^ ]*' | sed 's/.*db=//') ($(echo "$out" | grep -o 'mongo_collections=[0-9]*' | cut -d= -f2) collections)" ;;
+        fail)       no "MongoDB REFUSED the credential — ${mmsg#mongo_auth=fail }" ;;
+        no-secret)  no "MONGODB_URI is not set, so nothing could be tested" ;;
+        no-driver)  hmm "mongodb driver not on the box yet — deploy the CMS once, then this check becomes meaningful" ;;
+        *)          hmm "MongoDB auth probe did not report (${mauth:-no output})" ;;
+      esac
 
       # Distinguishes "the CMS is not deployed" from "it is deployed and
       # broken" — a 502 at the edge looks identical for both, and they need
