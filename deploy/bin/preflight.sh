@@ -505,7 +505,20 @@ REMOTE
           # variable that no longer exists and printed "( collections)".
           mcount="$(echo "$out" | grep -o "^mongo_db_${mdb}=[0-9]*" | head -1 | cut -d= -f2)"
           ok "MongoDB authenticated — connected to '${mdb}' (${mcount:-?} collections)" ;;
-        fail)       no "MongoDB REFUSED the credential — ${mmsg#mongo_auth=fail }" ;;
+        fail)
+          no "MongoDB REFUSED the credential — ${mmsg#mongo_auth=fail }"
+          # "bad auth" has three usual causes and they are not equally likely,
+          # so listing them beats a bare failure.
+          case "$mmsg" in
+            *"bad auth"*|*Authentication*)
+              info "1. the password is an unsubstituted <placeholder> (see the URI shape check above)"
+              info "2. the password is simply wrong or has been rotated in Atlas"
+              info "3. authSource: with no ?authSource= the driver authenticates against the"
+              info "   database named in the path. An Atlas user lives in 'admin', so a URI"
+              info "   ending /metnmat_cms authenticates against metnmat_cms and fails even"
+              info "   with the correct password. Add ?authSource=admin if the user is an"
+              info "   Atlas database user rather than one created inside that database." ;;
+          esac ;;
         no-secret)  no "MONGODB_URI is not set, so nothing could be tested" ;;
         no-driver)  hmm "mongodb driver not found on the box — deploy the CMS once, then this check becomes meaningful" ;;
         *)          hmm "MongoDB auth probe did not report (${mauth:-no output})" ;;
@@ -728,9 +741,15 @@ if [ -n "$raw_uri" ]; then
   userinfo="${rest%@*}"
   pw="${userinfo#*:}"
   case "$pw" in
+    # Atlas's Connect dialog hands out a TEMPLATE — mongodb+srv://user:<db_password>@…
+    # — and expects the placeholder to be substituted. Pasted as-is it is a
+    # perfectly well-formed URI that fails with "bad auth", giving no hint that
+    # the password was never filled in. Checked before the encoding rules
+    # because angle brackets would otherwise read as an encoding problem.
+    *[\<\>]*)       no "MONGODB_URI password still contains < > — this is Atlas's unsubstituted template placeholder (e.g. <db_password>), not a password" ;;
     *[@/?\#\[\]%]*) no "MONGODB_URI password contains a character that must be percent-encoded (@ / ? # [ ] %) — the driver truncates it and auth fails" ;;
     "")             no "MONGODB_URI has no password in the userinfo section" ;;
-    *)              ok "MONGODB_URI password needs no percent-encoding" ;;
+    *)              ok "MONGODB_URI password is not a placeholder and needs no percent-encoding" ;;
   esac
   info "user '${userinfo%%:*}' — verify in Atlas that this user exists, its password matches, and it has access to database '$mongo_db'"
 fi
