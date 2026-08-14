@@ -1,0 +1,129 @@
+name: Reload an app (pick up new secrets)
+
+# Restarts one pm2 app so it re-reads AWS Secrets Manager, without rebuilding or
+# redeploying anything.
+#
+# Secrets are fetched by deploy/bin/with-secrets.sh at PROCESS START, not at
+# build time, so a changed or newly-created secret takes effect on the next
+# reload. Rebuilding to pick one up would take fifteen minutes to produce a
+# byte-identical artifact.
+#
+# Scoped by name throughout. The command-center dashboard shares this instance
+# and is never named, so it cannot be reloaded, restarted or deleted here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Which app to reload"
+        required: true
+        default: metnmat-cms
+        type: choice
+        options: [metnmat-cms, metnmat-website]
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID || 'i-0b7f49ca3e9852d4b' }}
+  AWS_REGION: ap-south-1
+
+jobs:
+  reload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Choose auth
+        id: guard
+        run: |
+          if [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ]; then
+            echo "auth=oidc" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+            echo "auth=keys" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::No AWS credentials configured."; exit 1
+          fi
+
+      - name: Assume AWS role (OIDC)
+        if: steps.guard.outputs.auth == 'oidc'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-reload-${{ github.run_id }}
+          aws-region: ap-south-1
+
+      - name: Configure AWS credentials (bootstrap keys)
+        if: steps.guard.outputs.auth == 'keys'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Reload and verify
+        env:
+          APP: ${{ inputs.app }}
+        run: |
+          set -euo pipefail
+          I="${{ env.EC2_INSTANCE_ID }}"
+
+          case "$APP" in
+            metnmat-cms)     ROOT=/home/ec2-user/cms; PORT=3200; HOST=admin.metnmat.com; PATHQ=/admin ;;
+            metnmat-website) ROOT=/home/ec2-user/web; PORT=3100; HOST=www.metnmat.com;   PATHQ=/ ;;
+            *) echo "::error::unknown app $APP"; exit 1 ;;
+          esac
+
+          # Built with echoes, not a here-doc: a here-doc body must start at
+          # column 0, and column 0 ends the YAML block scalar this lives in.
+          {
+            echo "set -uo pipefail"
+            # From the ecosystem FILE, not the bare name — reload by name reuses
+            # the definition already registered with the daemon and ignores any
+            # change to the file. --only keeps this to one app.
+            echo "pm2 reload $ROOT/ecosystem.config.cjs --only $APP --update-env || pm2 start $ROOT/ecosystem.config.cjs --only $APP --update-env"
+            echo "for i in \$(seq 1 40); do"
+            echo "  c=\$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: $HOST' http://127.0.0.1:$PORT$PATHQ 2>/dev/null)"
+            echo "  case \"\$c\" in 200|302|307) echo \"health=\$c\"; break ;; esac"
+            echo "  sleep 5"
+            echo "done"
+            echo "echo \"final=\${c:-000}\""
+            echo "echo '--- recent log ---'"
+            echo "pm2 logs $APP --lines 20 --nostream 2>&1 | tail -20"
+          } > remote.sh
+          B64="$(base64 -w0 < remote.sh)"
+
+          CMD=$(aws ssm send-command --instance-ids "$I" \
+            --document-name "AWS-RunShellScript" --comment "reload $APP" \
+            --timeout-seconds 600 \
+            --parameters commands="[\"echo $B64 | base64 -d | sudo -u ec2-user bash\"]" \
+            --query 'Command.CommandId' --output text)
+          echo "SSM command $CMD"
+
+          # Polled, not `ssm wait command-executed` — that gives up after ~100s
+          # and reports InProgress, which reads as a failure while the app is
+          # still starting.
+          STATUS=Pending
+          for i in $(seq 1 60); do
+            STATUS="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" \
+              --query 'Status' --output text 2>/dev/null || echo Pending)"
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break ;; esac
+            sleep 5
+          done
+
+          OUT="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" \
+            --query 'StandardOutputContent' --output text || true)"
+          echo "$OUT"
+
+          {
+            echo "### Reload \`$APP\` — $STATUS"
+            echo ""
+            echo '```'
+            echo "$OUT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          FINAL="$(echo "$OUT" | grep -oE 'final=[0-9]+' | tail -1 | cut -d= -f2)"
+          case "${FINAL:-000}" in
+            200|302|307) echo "$APP is serving ($FINAL)" ;;
+            *) echo "::error::$APP reloaded but answers ${FINAL:-nothing} on :$PORT$PATHQ — see the log above"; exit 1 ;;
+          esac
