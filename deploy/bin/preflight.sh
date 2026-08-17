@@ -825,7 +825,7 @@ fi
 # instance — so a pass here plus a denied IAM check above means the values exist
 # but the box cannot see them.
 cb_missing=""
-for s in MONGODB_URI GROQ_API_KEY PINECONE_API_KEY AGENT_API_KEY JWT_SECRET; do
+for s in MONGODB_URI OPENAI_API_KEY PINECONE_API_KEY AGENT_API_KEY JWT_SECRET; do
   v="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
     --secret-id "metnmat/chatbot/${s}" --query SecretString --output text 2>/dev/null || true)"
   { [ -z "$v" ] || [ "$v" = "PLACEHOLDER_SET_ME" ]; } && cb_missing="$cb_missing $s"
