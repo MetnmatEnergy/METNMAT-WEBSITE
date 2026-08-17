@@ -336,6 +336,27 @@ else
     }).catch(e=>{ console.log("mongo_auth=fail name="+e.name+" msg="+scrub(e.message)); process.exit(0); });
   ' 2>/dev/null || echo "mongo_auth=probe-error"
 fi
+# Chatbot prerequisites. Its deploy aborts on both of these, but only AFTER a
+# 5-10 minute build, so checking them here turns two wasted runs into one
+# read-only answer.
+echo "--- chatbot prerequisites ---"
+if command -v bun >/dev/null 2>&1; then
+  echo "chat_bun=\$(bun --version 2>/dev/null | head -1)"
+elif [ -x /home/ec2-user/.bun/bin/bun ]; then
+  # pm2 runs with a non-login PATH, so ~/.bun may exist without being on PATH
+  # here. The ecosystem file sets PATH explicitly for exactly this reason.
+  echo "chat_bun=\$(/home/ec2-user/.bun/bin/bun --version 2>/dev/null | head -1)-not-on-PATH"
+else
+  echo "chat_bun=absent"
+fi
+# Can the INSTANCE ROLE read the chatbot's own secret prefix? It is a different
+# prefix from metnmat/prod/*, granted by a separate statement, so this can fail
+# while the CMS works perfectly.
+if aws secretsmanager list-secrets --region $AWS_REGION --filters Key=name,Values=metnmat/chatbot/ --max-results 1 >/dev/null 2>&1; then
+  echo "chat_iam=ok"
+else
+  echo "chat_iam=denied"
+fi
 echo "--- cms on :3200 ---"
 cms="\$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: admin.metnmat.com' http://127.0.0.1:3200/admin 2>/dev/null)"
 echo "cms_status=\${cms:-000}"
@@ -775,6 +796,58 @@ if [ -n "${avail:-}" ]; then
   else
     ok "${avail} MB free — enough headroom to attempt the CMS"
   fi
+fi
+
+# ── 8. Chatbot readiness ───────────────────────────────────────────────────
+# Deployed from a SEPARATE repository (MetnmatEnergy/METNMAT-chatbot) onto this
+# same instance, port 3002. Its two prerequisites both abort its deploy after the
+# build, so they are worth knowing before spending one.
+sec "8. Chatbot readiness (separate repo, port 3002)"
+
+if [ -n "${out:-}" ]; then
+  cbun="$(echo "$out" | grep -o 'chat_bun=[^ ]*' | cut -d= -f2)"
+  case "$cbun" in
+    absent)        no  "bun is not installed for ec2-user — the chatbot runs 'bun run index.ts' and cannot start. Install: curl -fsSL https://bun.sh/install | bash" ;;
+    *not-on-PATH)  hmm "bun ${cbun%-not-on-PATH} exists but is not on this shell's PATH — fine, the pm2 entry sets PATH explicitly" ;;
+    "")            hmm "could not determine whether bun is installed" ;;
+    *)             ok  "bun $cbun installed" ;;
+  esac
+
+  case "$(echo "$out" | grep -o 'chat_iam=[a-z]*' | cut -d= -f2)" in
+    ok)     ok "instance role can read metnmat/chatbot/* " ;;
+    denied) no "instance role CANNOT read metnmat/chatbot/* — with-secrets.sh will fail on a permission error, which reads like a missing secret. Apply: Bootstrap EC2 -> fix_instance_role=true" ;;
+    *)      hmm "chatbot IAM check did not report" ;;
+  esac
+fi
+
+# The five the chatbot cannot start without, per REQUIRED_SECRETS in its
+# ecosystem file. Read from the runner, which has broader access than the
+# instance — so a pass here plus a denied IAM check above means the values exist
+# but the box cannot see them.
+cb_missing=""
+for s in MONGODB_URI GROQ_API_KEY PINECONE_API_KEY AGENT_API_KEY JWT_SECRET; do
+  v="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
+    --secret-id "metnmat/chatbot/${s}" --query SecretString --output text 2>/dev/null || true)"
+  { [ -z "$v" ] || [ "$v" = "PLACEHOLDER_SET_ME" ]; } && cb_missing="$cb_missing $s"
+done
+if [ -n "$cb_missing" ]; then
+  no "chatbot required secret(s) missing under metnmat/chatbot/:$cb_missing"
+else
+  ok "all five secrets the chatbot requires are populated"
+fi
+
+# Its database is metnmat, the CMS's is metnmat_cms. Getting these the wrong way
+# round points one app at the other's data.
+cb_uri="$(aws secretsmanager get-secret-value --region "$AWS_REGION" \
+  --secret-id "metnmat/chatbot/MONGODB_URI" --query SecretString --output text 2>/dev/null || true)"
+if [ -n "$cb_uri" ]; then
+  cb_db="$(printf '%s' "$cb_uri" | sed -n 's#.*/\([A-Za-z0-9_-]*\)?.*#\1#p')"
+  case "$cb_db" in
+    metnmat)      ok "chatbot MONGODB_URI targets metnmat (correct — its agent_usage/amazon_* data)" ;;
+    metnmat_cms*) no "chatbot MONGODB_URI targets '$cb_db' — that is the CMS's database, not the chatbot's" ;;
+    "")           : ;;
+    *)            hmm "chatbot MONGODB_URI targets '$cb_db' — expected 'metnmat'" ;;
+  esac
 fi
 
 # ── Summary ────────────────────────────────────────────────────────────────
