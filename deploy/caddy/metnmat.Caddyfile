@@ -50,6 +50,37 @@ metnmat.com, www.metnmat.com {
 	}
 }
 
+chat.metnmat.com {
+	tls internal # PRE-CUTOVER
+
+	# The chatbot (metnmat_customer_agent) is a SEPARATE codebase and is not
+	# deployed here yet. This block exists anyway, because DNS for this hostname
+	# already points at this instance and without a block Caddy refuses the TLS
+	# handshake outright — visitors get a browser security error, which is a worse
+	# failure than a page saying nothing is here.
+	#
+	# With the block: a valid certificate and a clean 502 until something listens
+	# on 3002, then it simply starts working with no Caddy change.
+	#
+	# 3002 keeps the port map contiguous and collision-free:
+	#   3000 command-center dashboard   3100 website
+	#   3200 Payload CMS                3002 chatbot
+	reverse_proxy 127.0.0.1:3002 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up Host {host}
+	}
+
+	encode zstd gzip
+
+	log {
+		output file /var/log/caddy/metnmat-chat.log {
+			roll_size 20mb
+			roll_keep 5
+		}
+	}
+}
+
 admin.metnmat.com {
 	tls internal # PRE-CUTOVER
 
