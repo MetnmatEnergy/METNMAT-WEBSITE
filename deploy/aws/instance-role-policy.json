@@ -20,6 +20,12 @@
       "Resource": "arn:aws:secretsmanager:ap-south-1:976134557584:secret:metnmat/prod/*"
     },
     {
+      "Sid": "ReadChatbotSecretValues",
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+      "Resource": "arn:aws:secretsmanager:ap-south-1:976134557584:secret:metnmat/chatbot/*"
+    },
+    {
       "Sid": "ListSecretsCannotBeResourceScoped",
       "Effect": "Allow",
       "Action": ["secretsmanager:ListSecrets"],
