@@ -379,9 +379,9 @@ fi
 # "instance role can read metnmat/chatbot/*" while every read was being denied.
 # Same mistake as testing s3 ListBucket and calling it GetObject.
 cbtest="$(aws secretsmanager list-secrets --region $AWS_REGION --filters Key=name,Values=metnmat/chatbot/ --max-results 1 --query "SecretList[0].Name" --output text 2>/dev/null || true)"
-if [ -z "$cbtest" ] || [ "$cbtest" = "None" ]; then
+if [ -z "\$cbtest" ] || [ "\$cbtest" = "None" ]; then
   echo "chat_iam=no-secrets"
-elif aws secretsmanager get-secret-value --region $AWS_REGION --secret-id "$cbtest" --query SecretString --output text >/dev/null 2>&1; then
+elif aws secretsmanager get-secret-value --region $AWS_REGION --secret-id "\$cbtest" --query SecretString --output text >/dev/null 2>&1; then
   echo "chat_iam=ok"
 else
   echo "chat_iam=denied"
