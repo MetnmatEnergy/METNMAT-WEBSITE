@@ -84,6 +84,13 @@ jobs:
             # From the ecosystem FILE, not the bare name — reload by name reuses
             # the definition already registered with the daemon and ignores any
             # change to the file. --only keeps this to one app.
+            # WHICH release is being restarted. A reload restarts whatever
+            # current points at — and a failed deploy ROLLS BACK, so after one
+            # the symlink points at the previous release. Reloading then
+            # restarts code that predates the fix you just shipped, and the log
+            # shows an error you already solved. That cost a cycle; printing the
+            # SHA makes it obvious.
+            echo "echo \"release=$(readlink -f $ROOT/current 2>/dev/null | sed \"s#.*/##\")\""
             echo "pm2 reload $ROOT/ecosystem.config.cjs --only $APP --update-env || pm2 start $ROOT/ecosystem.config.cjs --only $APP --update-env"
             echo "for i in \$(seq 1 40); do"
             echo "  c=\$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: $HOST' http://127.0.0.1:$PORT$PATHQ 2>/dev/null)"
