@@ -352,7 +352,15 @@ fi
 # Can the INSTANCE ROLE read the chatbot's own secret prefix? It is a different
 # prefix from metnmat/prod/*, granted by a separate statement, so this can fail
 # while the CMS works perfectly.
-if aws secretsmanager list-secrets --region $AWS_REGION --filters Key=name,Values=metnmat/chatbot/ --max-results 1 >/dev/null 2>&1; then
+# GetSecretValue, NOT ListSecrets. Those are separate grants and the policy
+# grants ListSecrets on "*", so a list call succeeds even when the role cannot
+# read a single value — which is exactly what happened: this reported
+# "instance role can read metnmat/chatbot/*" while every read was being denied.
+# Same mistake as testing s3 ListBucket and calling it GetObject.
+cbtest="$(aws secretsmanager list-secrets --region $AWS_REGION --filters Key=name,Values=metnmat/chatbot/ --max-results 1 --query "SecretList[0].Name" --output text 2>/dev/null || true)"
+if [ -z "$cbtest" ] || [ "$cbtest" = "None" ]; then
+  echo "chat_iam=no-secrets"
+elif aws secretsmanager get-secret-value --region $AWS_REGION --secret-id "$cbtest" --query SecretString --output text >/dev/null 2>&1; then
   echo "chat_iam=ok"
 else
   echo "chat_iam=denied"
@@ -814,7 +822,8 @@ if [ -n "${out:-}" ]; then
   esac
 
   case "$(echo "$out" | grep -o 'chat_iam=[a-z]*' | cut -d= -f2)" in
-    ok)     ok "instance role can read metnmat/chatbot/* " ;;
+    ok)         ok "instance role can GetSecretValue on metnmat/chatbot/*" ;;
+    no-secrets) hmm "no secrets exist under metnmat/chatbot/ yet — nothing to test the grant against" ;;
     denied) no "instance role CANNOT read metnmat/chatbot/* — with-secrets.sh will fail on a permission error, which reads like a missing secret. Apply: Bootstrap EC2 -> fix_instance_role=true" ;;
     *)      hmm "chatbot IAM check did not report" ;;
   esac
