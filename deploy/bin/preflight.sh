@@ -339,6 +339,27 @@ fi
 # Chatbot prerequisites. Its deploy aborts on both of these, but only AFTER a
 # 5-10 minute build, so checking them here turns two wasted runs into one
 # read-only answer.
+# The CHATBOT's credential, tested with the same driver. Its URI lives under a
+# different prefix and can drift independently — resetting a database user's
+# password for the CMS silently invalidates every other copy of it, and this is
+# the check that says so instead of leaving it to a failed deploy.
+CBU="$(aws secretsmanager get-secret-value --region $AWS_REGION --secret-id metnmat/chatbot/MONGODB_URI --query SecretString --output text 2>/dev/null || true)"
+case "$CBU" in
+  "{"*) CBU="$(printf %s "$CBU" | sed -n 's/.*"MONGODB_URI"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')" ;;
+esac
+if [ -n "$CBU" ] && [ -n "$MDRV" ]; then
+  CBU="$CBU" MDRV="$MDRV" timeout 40 node -e '
+    const {MongoClient}=require(process.env.MDRV);
+    const c=new MongoClient(process.env.CBU,{serverSelectionTimeoutMS:8000});
+    const scrub=s=>String(s).replace(/mongodb(\+srv)?:\/\/\S+/gi,"[uri]").slice(0,120);
+    c.connect().then(async()=>{const db=c.db();await db.command({ping:1});
+      console.log("chat_mongo=ok db="+db.databaseName);await c.close();process.exit(0);})
+     .catch(e=>{console.log("chat_mongo=fail msg="+scrub(e.message));process.exit(0);});
+  ' 2>/dev/null || echo "chat_mongo=probe-error"
+else
+  echo "chat_mongo=skipped"
+fi
+
 echo "--- chatbot prerequisites ---"
 if command -v bun >/dev/null 2>&1; then
   echo "chat_bun=\$(bun --version 2>/dev/null | head -1)"
@@ -827,6 +848,20 @@ if [ -n "${out:-}" ]; then
     denied) no "instance role CANNOT read metnmat/chatbot/* — with-secrets.sh will fail on a permission error, which reads like a missing secret. Apply: Bootstrap EC2 -> fix_instance_role=true" ;;
     *)      hmm "chatbot IAM check did not report" ;;
   esac
+  # The CMS and the chatbot hold SEPARATE copies of the same database user's
+  # credential. Resetting that user's password to fix one silently invalidates
+  # the other, and nothing warns you until a deploy fails on "bad auth".
+  cbm="$(echo "$out" | grep -o 'chat_mongo=[^ ]*' | cut -d= -f2)"
+  case "$cbm" in
+    ok)      ok "chatbot MongoDB credential accepted (db $(echo "$out" | grep -o 'chat_mongo=ok db=[^ ]*' | sed 's/.*db=//'))" ;;
+    fail)    no "chatbot MongoDB credential REJECTED by Atlas"
+             info "$(echo "$out" | grep -o 'chat_mongo=fail msg=.*' | sed 's/chat_mongo=fail msg=//' | cut -c1-100)"
+             info "metnmat/prod/MONGODB_URI and metnmat/chatbot/MONGODB_URI are separate copies —"
+             info "a password reset for one does not update the other." ;;
+    skipped) hmm "chatbot MongoDB not probed (no URI stored, or no driver on the box yet)" ;;
+    *)       : ;;
+  esac
+
 fi
 
 # The five the chatbot cannot start without, per REQUIRED_SECRETS in its
