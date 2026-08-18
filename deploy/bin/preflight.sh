@@ -343,12 +343,12 @@ fi
 # different prefix and can drift independently — resetting a database user's
 # password for the CMS silently invalidates every other copy of it, and this is
 # the check that says so instead of leaving it to a failed deploy.
-CBU="$(aws secretsmanager get-secret-value --region $AWS_REGION --secret-id metnmat/chatbot/MONGODB_URI --query SecretString --output text 2>/dev/null || true)"
-case "$CBU" in
-  "{"*) CBU="$(printf %s "$CBU" | sed -n 's/.*"MONGODB_URI"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')" ;;
+CBU="\$(aws secretsmanager get-secret-value --region $AWS_REGION --secret-id metnmat/chatbot/MONGODB_URI --query SecretString --output text 2>/dev/null || true)"
+case "\$CBU" in
+  "{"*) CBU="\$(printf %s "\$CBU" | sed -n 's/.*"MONGODB_URI"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')" ;;
 esac
-if [ -n "$CBU" ] && [ -n "$MDRV" ]; then
-  CBU="$CBU" MDRV="$MDRV" timeout 40 node -e '
+if [ -n "\$CBU" ] && [ -n "\$MDRV" ]; then
+  CBU="\$CBU" MDRV="\$MDRV" timeout 40 node -e '
     const {MongoClient}=require(process.env.MDRV);
     const c=new MongoClient(process.env.CBU,{serverSelectionTimeoutMS:8000});
     const scrub=s=>String(s).replace(/mongodb(\+srv)?:\/\/\S+/gi,"[uri]").slice(0,120);
