@@ -19,7 +19,7 @@ on:
         required: true
         default: metnmat-cms
         type: choice
-        options: [metnmat-cms, metnmat-website]
+        options: [metnmat-cms, metnmat-website, metnmat-chatbot]
 
 permissions:
   contents: read
@@ -70,6 +70,10 @@ jobs:
           case "$APP" in
             metnmat-cms)     ROOT=/home/ec2-user/cms; PORT=3200; HOST=admin.metnmat.com; PATHQ=/admin ;;
             metnmat-website) ROOT=/home/ec2-user/web; PORT=3100; HOST=www.metnmat.com;   PATHQ=/ ;;
+            # Deployed from MetnmatEnergy/METNMAT-chatbot, but reloaded from
+            # here because this is where the reload workflow lives. Its
+            # ecosystem file sets PATH for bun; this only names the process.
+            metnmat-chatbot) ROOT=/home/ec2-user/chat; PORT=3002; HOST=chat.metnmat.com; PATHQ=/ ;;
             *) echo "::error::unknown app $APP"; exit 1 ;;
           esac
 
