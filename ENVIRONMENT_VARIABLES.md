@@ -3,7 +3,7 @@
 Consolidated reference for all three services. **Never commit real secrets.** Per-app templates live at:
 `apps/website/.env.example`, `apps/dashboard/.env.example` *(new)*, and `Metnmat-customer-agent-main/.env.example`.
 
-> 🔒 In production these should come from **GCP Secret Manager** (`--set-secrets` on Cloud Run), not on-disk `.env` files. Every value that has lived in an OneDrive-synced `.env` must be **rotated** (see `PRODUCTION_AUDIT_REPORT.md` §10).
+> 🔒 In production these come from **AWS Secrets Manager** (`metnmat/prod/*` and `metnmat/chatbot/*`, fetched at process start by `deploy/bin/with-secrets.sh`), never from on-disk `.env` files. `NEXT_PUBLIC_*` are the exception — they are baked into the client bundle at BUILD time and are set in the deploy workflow. Every value that has lived in an OneDrive-synced `.env` must be **rotated**.
 
 ---
 
@@ -41,8 +41,9 @@ Consolidated reference for all three services. **Never commit real secrets.** Pe
 | `WEBSITE_URL` | ✅ | Public website origin (allowed to read the CMS cross-origin). |
 | `INTERNAL_API_KEY` | ✅ (prod) | Must match the website's value. |
 | `CHATBOT_DB_NAME` | ✅ (sync) | Mongo DB the chatbot product sync writes to (`metnmat`). |
-| `GCS_BUCKET` / `GCS_PROJECT_ID` | ✅ (prod storage) | Enables GCS object storage. **Bucket must be private** (UBLA, no `allUsers`, UPLOAD-03). |
-| `GCS_KEY_FILENAME` | — | Local key file; leave unset on Cloud Run (uses attached SA / ADC). |
+| `STORAGE_PROVIDER` | ✅ (prod storage) | `s3`. **Defaults to `gcs` when unset** — set at both run time (PM2 ecosystem) and build time (deploy workflow). |
+| `S3_BUCKET` / `S3_REGION` | ✅ (prod storage) | `metnmat-media-prod` / `ap-south-1`. Bucket is private; media is served through the CMS, never directly. |
+| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | ❌ **leave unset** | Omitting them makes the AWS SDK use the **EC2 instance role**, which is the whole design. Setting them reintroduces a long-lived credential that does not otherwise exist. |
 | `OPEN_EXCHANGE_RATES_APP_ID` | — | ₹/$ rate for staff. |
 | `RESEND_API_KEY` / `EMAIL_FROM` | — | Outbound CMS email (ticket replies, etc.). |
 

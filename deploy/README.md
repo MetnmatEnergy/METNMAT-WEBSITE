@@ -1,15 +1,23 @@
-# GCP → AWS migration: runbook
+# AWS EC2 runbook (migration complete)
 
-Implements the Website / CMS Migration Blueprint (12 Aug 2026): the public
-website and Payload CMS move from GCP Cloud Run onto the existing AWS EC2
-instance, running under PM2 behind Caddy.
+> ## ✅ Migration complete — 2026-08-20
+>
+> The website, Payload CMS and chatbot all run on the AWS EC2 instance under PM2 behind Caddy,
+> serving publicly with real certificates. **GCP is abandoned**, not paused: the project stays
+> billing-disabled, its Cloud Build triggers are irrelevant, and Cloud Run is **not** a rollback
+> target. Rollback is a symlink swap on the instance, handled automatically by `release.sh`.
+>
+> This file was written as a *migration* runbook and is kept because the environment facts,
+> the environment-variable contract and the operational procedures below remain accurate and
+> load-bearing. **The phase ordering in "Order of operations" is history, not instructions** —
+> Phases 1, 3 and 4 are done, and Phase 2 (media copy) was deliberately cancelled.
+>
+> For day-to-day operations start at [`../HANDOVER.md`](../HANDOVER.md). For gotchas and the data
+> model, [`../CLAUDE.md`](../CLAUDE.md).
 
-**Current status: the site is down.** `www.metnmat.com`, `admin.metnmat.com`
-and the chatbot all return 503 from Google Frontend because GCP billing is
-disabled. Cloud Run reports every service healthy; the requests never reach a
-container. Restoring billing ends the outage *and* unblocks the media copy —
-it is one action that fixes two problems, which is why it is step 1 below and
-not step 12.
+Originally implemented the Website / CMS Migration Blueprint (12 Aug 2026): the public website and
+Payload CMS moving from GCP Cloud Run onto the existing AWS EC2 instance, running under PM2 behind
+Caddy. The chatbot followed on 2026-08-20 from its own repository.
 
 ## Confirmed environment (2026-08-12)
 
@@ -160,12 +168,26 @@ bundle and cannot come from Secrets Manager:
 
 ---
 
-## Order of operations
+## Order of operations — HISTORY, not instructions
+
+> 🗄️ **All of this is done or cancelled.** It is kept as the record of how the migration ran and
+> why particular choices were made. Do not work through it.
+>
+> | Phase | Outcome |
+> |---|---|
+> | 1 — end the outage | **Superseded.** The outage ended by moving off GCP entirely, not by restoring GCP billing. Steps 4–6 below (re-authenticate `energy@`, disable Cloud Build triggers, restore billing) were never needed and should not be done. |
+> | 2 — copy the media | **Cancelled by decision.** GCS media was not migrated; the catalogue is being uploaded fresh to S3. `migrate-media.sh` still exists but is not part of the plan. |
+> | 3 — website on EC2 | **Done** 2026-08-14. |
+> | 4 — cutover | **Done** 2026-08-20, chatbot included. |
+>
+> **One item from Phase 1 is still genuinely open:** confirming MongoDB Atlas backup / PITR is
+> enabled. It is the only recovery path for the CMS database and nothing in this migration
+> protects it. See "Still open" at the end of this file.
 
 Steps marked 🔴 need console access or credentials and **cannot be automated
 from this repo**.
 
-### Phase 1 — end the outage (do first)
+### Phase 1 — end the outage (historical)
 
 1. 🔴 **Rotate the leaked AWS key.** An `AKIA…` key and its secret were pasted
    into a chat transcript. IAM → Users → Security credentials → Make inactive →
@@ -261,8 +283,8 @@ exercises the same code paths on the connection that actually matters.
 blueprint's own numbers — 834 MB available against 400–600 MB for the website
 plus 500–800 MB for the CMS — say both do not fit. "Do not upgrade
 preemptively" is right when you lack evidence; here the evidence already
-exists. The CMS entry in `ecosystem.config.cjs` is commented out for this
-reason. Also worth investigating rather than accepting: the blueprint records
+exists. (Resolved: the instance was resized to t3.medium on 2026-08-20 and the CMS entry in
+`ecosystem.config.cjs` was enabled; both apps now run there.) Also worth investigating rather than accepting: the blueprint records
 the dashboard's Next.js process at "734 MB **and gradually growing**", which is
 a leak, and a leak on a box you are about to fill is what turns a tight fit
 into an OOM cascade.
@@ -278,23 +300,41 @@ trigger to reverse, not as a feature you never had.
 
 ## Still open
 
-- **The chatbot is in scope, and the blueprint says "NEEDS VERIFICATION".** The
-  website embeds it (`frontend/components/chat/chat-widget.tsx`,
-  `chat-cart-bridge.tsx`). Decommission GCP without moving it and the storefront
-  ships a broken widget. It deploys from a separate repository, so it is a
-  separate migration — but it cannot be dropped from the billing decision.
-- **`metnmat.in` is missing from the blueprint entirely.** It is live, fully
-  indexable, self-canonical, with no redirect to `.com` — and right now, with
-  `.com` down, it is the only live face of the brand. You are about to do DNS
-  work; that is the moment to add the redirect.
-- **`next.config.mjs` still allow-lists `https://storage.googleapis.com`** in
-  its CSP. Media streams through the CMS so the browser should never hit
-  storage directly, which suggests this is vestigial — but confirm no URL
-  depends on it before removing, after the S3 switch.
-- **The CMS import map.** Switching the storage adapter changes its entries.
-  Regenerate with **no dev server running** (a live `next dev` rewrites it to
-  zero handlers and the production admin then renders blank), count the entries,
-  and deploy that change on its own.
-- **Delete `deploy-aws.yml`, `terraform-aws.yml` and `infra/aws/{ecs,alb,network}.tf`**
-  once EC2 is proven. They are neutered, not removed — that is a call for you,
-  not me.
+Reviewed 2026-08-21. Items that were open during the migration and are now closed are kept with
+their resolution, because "why is this not a problem any more" is the question a reader actually
+has.
+
+**Genuinely open**
+
+- 🔴 **Confirm MongoDB Atlas backup / PITR is enabled.** The only recovery path for the CMS
+  database. Nothing in this migration protects it, and nothing on the instance would help — the
+  data does not live there. Highest-value unchecked item on this list.
+- 🔴 **`metnmat.in` is still live, fully indexable and self-canonical**, with no redirect to
+  `.com`. It now competes with a working `.com` for the same content and splits ranking
+  authority — worse than when `.com` was down, not better. A 301 to the `.com` equivalent
+  closes it; `legacy-redirects.mjs` already maps 122 paths for the receiving side.
+- 🟡 **No uptime monitoring or alerting.** Nothing notices when a service dies, and one has died
+  unattended. Any external monitor against the four URLs in `HANDOVER.md` §7 would close this.
+- 🟡 **Seven optional secrets still hold placeholders.** Google sign-in, WhatsApp/Messenger and
+  analytics geo stay dark until set. Everything each app *requires* is populated; `preflight.sh`
+  reports the two groups separately so this cannot be confused with a broken deploy.
+- 🟡 **Memory headroom is thin** — roughly 400 MB across four applications. Mitigated by a 2 GB
+  swapfile and `sharp.concurrency(1)`, not solved. If the catalogue upload or ordinary traffic
+  pushes it further, the answer is a larger instance, not more tuning.
+
+**Closed**
+
+- ~~The chatbot is in scope and unmigrated.~~ Deployed 2026-08-20 from
+  `MetnmatEnergy/METNMAT-chatbot`; `chat.metnmat.com` serves with a real certificate and the
+  website's widget loads from it.
+- ~~`next.config.mjs` still allow-lists `https://storage.googleapis.com`.~~ Removed. Media is
+  served through the CMS, so the browser never contacts object storage directly — and S3 does
+  not replace the entry.
+- ~~The CMS import map changes with the storage adapter.~~ Done: it carries both
+  `GcsClientUploadHandler` and `S3ClientUploadHandler`, four entries total. The trap remains
+  live — a running `next dev` rewrites it to zero and `/admin` then renders blank — so verify
+  with `grep -c ClientUploadHandler` before staging.
+- ~~Delete `deploy-aws.yml`, `terraform-aws.yml` and `infra/aws/{ecs,alb,network}.tf`.~~ Decided:
+  **kept, not deleted.** `terraform-aws.yml` now refuses `apply`, and `infra/aws` is the only
+  record of the ~92 resources the cancelled 2026-08-10 apply created — which is what an audit for
+  orphaned, still-billing resources reads. Deleting would save nothing and lose that.

@@ -4,56 +4,54 @@ Handover document for **METNMAT Research & Innovations** — production website,
 dashboard (CMS), and AI customer-support chatbot.
 
 > **Audience:** the engineering team that will own and deploy this project.
-> Everything needed to run it in production is in this document. No prior context required.
+> No prior context required.
 >
-> **Production runs entirely on Google Cloud Run** (project `metnmat-website`, region
-> `asia-south1` / Mumbai). The step-by-step infra runbook is `DEPLOY-GCP.md` in the
-> chatbot repo (`Metnmat-customer-agent-main/DEPLOY-GCP.md`); this file is the high-level
-> map. Full env-var reference: `ENVIRONMENT_VARIABLES.md`.
+> **Production runs on a single AWS EC2 instance** in `ap-south-1` (Mumbai), behind Caddy.
+> Migrated off Google Cloud Run on **2026-08-20**; GCP is dead and must not be revived.
+> Deep detail lives in [`CLAUDE.md`](CLAUDE.md) (gotchas, data model) and
+> [`deploy/README.md`](deploy/README.md) (runbook). Env reference:
+> [`ENVIRONMENT_VARIABLES.md`](ENVIRONMENT_VARIABLES.md).
 
 ---
 
 ## 1. What this project is
 
-Three independent applications plus external services.
+Three applications plus external services.
 
 ```
 3 codebases                              External services (production)
-─────────────────────────────────       ──────────────────────────────────
-1. Website   — public marketing + shop   • MongoDB Atlas         — database
-2. Dashboard — admin CMS (Payload)        • Google Cloud Storage  — media/assets (private bucket)
-3. Chatbot   — AI customer agent          • Resend                — transactional email
-                                          • Groq                  — chatbot AI model
-                                          • Razorpay              — payments
-                                          • Upstash Redis         — rate-limit store
+─────────────────────────────────        ──────────────────────────────────
+1. Website   — public marketing + shop   • MongoDB Atlas    — database
+2. Dashboard — admin CMS (Payload)       • AWS S3           — media (private bucket)
+3. Chatbot   — AI customer agent         • Resend           — transactional email
+                                         • Razorpay         — payments
+                                         • OpenAI           — chat + embeddings
+                                         • Pinecone         — vector search
+                                         • Upstash Redis    — rate limiting
 ```
-
-> **Note:** **Production media
-> lives in a private GCS bucket** (`metnmat-media-prod`), served through Payload at
-> `admin.metnmat.com/api/media/file/…`. Object storage is selected by `STORAGE_PROVIDER` — see `docs/AWS-STORAGE-MIGRATION.md`.
 
 ### How they connect
 
-```
-                ┌──────────────── WEBSITE (Next.js) ────────────────┐
-   visitor ───▶ │  content/images ──▶ Dashboard (CMS)               │
-                │  chat bubble    ──▶ Chatbot (/widget.js)          │
-                │  quote/order    ──▶ Resend (email) · Razorpay (pay)│
-                └───────────────────────────────────────────────────┘
-   DASHBOARD ──▶ MongoDB Atlas (metnmat_cms) + GCS (media)
-   CHATBOT   ──▶ MongoDB Atlas (metnmat)     + Groq (AI)
-```
+The website never talks to MongoDB. It reads the CMS over REST (`NEXT_PUBLIC_CMS_URL`);
+GraphQL is disabled. Media is uploaded to S3 by the CMS and served back through the CMS at
+`/api/media/file/<filename>`. The chatbot is independent of both and uses its **own database**.
 
-The three apps are **separate Cloud Run services**. They communicate over HTTPS via URLs
-only — they are **never** merged into one folder or one deployment.
+### Live URLs and the shared instance
 
-### Live URLs
+Everything runs on **one** box: `i-0b7f49ca3e9852d4b` · t3.medium · `ap-south-1` ·
+Elastic IP `15.206.25.71` · AWS account `976134557584`. Caddy terminates TLS and routes by
+hostname.
 
-| Service | Cloud Run service | Public domain |
+| Port | PM2 process | Public domain |
 |---|---|---|
-| Website | `metnmat-website` | `metnmat.com` / `www.metnmat.com` |
-| Dashboard (CMS) | `metnmat-dashboard` | `admin.metnmat.com` |
-| Chatbot | `metnmat-chatbot` | `chat.metnmat.com` |
+| 3100 | `metnmat-website` | `www.metnmat.com` (apex 308s to `www`) |
+| 3200 | `metnmat-cms` | `admin.metnmat.com` |
+| 3002 | `metnmat-chatbot` | `chat.metnmat.com` |
+| 3000 | `metnmat-dashboard` | ⚠️ **internal command-center — a DIFFERENT project** |
+
+> ### 🚨 Never run `pm2 restart all`
+> Port 3000 hosts an unrelated internal tool that shares this instance. Every command in this
+> repository names its process explicitly or uses `--only`. Keep it that way.
 
 ---
 
@@ -61,197 +59,249 @@ only — they are **never** merged into one folder or one deployment.
 
 | App | Repo / folder | Framework | Local port |
 |-----|---------------|-----------|-----------|
-| **Website** | `METNMAT-WEBSITE` monorepo → `apps/website` | Next.js 15 / React 19 | 3000 |
-| **Dashboard (CMS)** | `METNMAT-WEBSITE` monorepo → `apps/dashboard` | Next.js 15 + Payload CMS 3 | 3001 |
-| **Chatbot** | `Metnmat-customer-agent-main` (separate repo) | Bun + Express + Mastra | 3002 (3001 default) |
+| **Website** | `MetnmatEnergy/METNMAT-WEBSITE` → `apps/website` | Next.js 15 / React 19 | 3000 |
+| **Dashboard (CMS)** | same monorepo → `apps/dashboard` | Next.js 15 + Payload CMS 3 | 3001 |
+| **Chatbot** | `MetnmatEnergy/METNMAT-chatbot` | Bun + Express + Mastra | 3002 |
 
-- The **website + dashboard** live in one **pnpm monorepo** (`METNMAT-WEBSITE` on GitHub:
-  `MetnmatEnergy/METNMAT-WEBSITE`), managed by Turborepo.
-- The **chatbot** is a **separate repository** (its own `package.json`, Bun runtime, and
-  `deploy/` scripts).
-  - ⚠️ **The chatbot is currently NOT under git version control.** Initialise it and push it
-    to the company GitHub org before relying on it in production — there is no history or
-    rollback today, and it holds live secrets on disk. (See `PRODUCTION_AUDIT_REPORT.md`
-    DEVOPS-01.)
+Website + dashboard share one **pnpm 11.5.1 + Turborepo** monorepo. The chatbot is a separate
+repository with its own Bun runtime and its own deploy workflow — it is now under git with full
+history (this was an open audit item and is closed).
 
 ---
 
-## 3. Prerequisites (for whoever builds/deploys)
+## 3. Prerequisites
 
-- **Node.js** ≥ 20 (developed on 22.x)
-- **pnpm** 11.5.1 (`npm i -g pnpm@11.5.1`) — for the monorepo
-- **Bun** ≥ 1.2 (`https://bun.sh`) — for the chatbot
-- **Google Cloud SDK** (`gcloud`) + access to the `metnmat-website` GCP project (billing enabled)
-- Accounts (company-owned): GitHub, GCP, MongoDB Atlas, Resend, Groq, Razorpay, Upstash
+- **Node.js** ≥ 20 (developed on 22.x) and **pnpm** 11.5.1 — monorepo
+- **Bun** ≥ 1.3 — chatbot (installed per-user on the instance at `~/.bun`)
+- **AWS access** to account `976134557584` — for Secrets Manager and SSM, not for deploying
+- Company-owned accounts: GitHub, AWS, MongoDB Atlas, Resend, OpenAI, Pinecone, Razorpay, Upstash
+
+You do **not** need SSH. All instance access is via **AWS Systems Manager (SSM)**, so there is no
+key to distribute or rotate and no port 22 exposed.
 
 ---
 
-## 4. How deployment works (CI/CD)
+## 4. How deployment works
 
-Production is **Google Cloud Run**. Images are built by **Cloud Build**, stored in
-**Artifact Registry** (`asia-south1-docker.pkg.dev/metnmat-website/metnmat/…`), with
-secrets in **Secret Manager** and a dedicated least-privilege runtime service account
-(`payload-storage-sa`).
+**Every deploy is manual.** Nothing ships on push — `workflow_dispatch` only. This is deliberate:
+one instance serves four applications, including one that belongs to another team.
 
-There are **three deploy paths — know which one applies:**
-
-### Path A — GitHub Actions CI (quality gate, NOT a deploy)
-`.github/workflows/ci.yml` runs `lint → typecheck → test → build` on every push to `main`
-and every PR. **It does not deploy.** It only tells you whether the code is healthy.
-
-### Path B — Cloud Build push-to-`main` triggers (auto-deploy: website + dashboard)
-On every push to `main`, Cloud Build triggers build the image and `gcloud run deploy` it:
-
-| Trigger | Config file | Service |
+| Workflow | What it deploys | Repo |
 |---|---|---|
-| `metnmat-website-auto-deploy` | `cloudbuild.website.deploy.yaml` | `metnmat-website` |
-| `rmgpgab-metnmat-dashboard-…` | `cloudbuild.dashboard.deploy.yaml` | `metnmat-dashboard` |
+| `deploy-website-ec2.yml` | website | this one |
+| `deploy-cms-ec2.yml` | CMS | this one |
+| `deploy-chatbot-ec2.yml` | chatbot | `METNMAT-chatbot` |
 
-- The deploy is **image-only**: env vars, secrets, and the runtime service account are
-  **inherited** from the existing service. **Adding a new env var or secret is NOT picked up
-  by a push** — you must run `gcloud run services update …` (or the deploy script) once.
-- `NEXT_PUBLIC_*` values are **baked into the website image at build time** (client bundle +
-  CSP headers). Changing a public URL requires a rebuild with new `--build-arg`, not just a
-  Cloud Run env change. The trigger hard-codes the production domains, so this only matters
-  if domains change.
-- ⚠️ **Known cleanup item:** a second, auto-generated "Deploy to Cloud Run" trigger
-  (`rmgpgab-metnmat-website-…`, no config file → builds the root `Dockerfile`) **also**
-  deploys the website on every push. So today **two triggers race to deploy the website**.
-  Both build a correct image, but it doubles build minutes and the winning revision is
-  nondeterministic. **Fix:** disable one of the two (keep `metnmat-website-auto-deploy`):
-  `gcloud builds triggers update rmgpgab-metnmat-website-asia-south1-MetnmatEnergy-METNMAT-WExqs --region=global` … or delete it in Cloud Console → Cloud Build → Triggers.
+All three follow the same shape:
 
-### Path C — Manual script (the chatbot, and break-glass for all three)
-`Metnmat-customer-agent-main/deploy/deploy-gcp.ps1` is the idempotent one-shot that can
-build + deploy any/all services, push secrets, create infra, and map domains. **The chatbot
-only goes live this way** (it has no auto-deploy trigger).
-
-```powershell
-cd C:\Users\ritik\OneDrive\Desktop\Metnmat-customer-agent-main\deploy
-.\deploy-gcp.ps1 -Only chatbot      # build + deploy just the chatbot
-.\deploy-gcp.ps1 -SkipBuild         # redeploy existing images (config/secret change)
-.\deploy-gcp.ps1                     # full build + deploy of all three
+```
+build on a GitHub runner → upload artifact to private S3 → release over SSM
+  → pm2 reload <app> from the ecosystem FILE → health check → auto-rollback on failure
 ```
 
-### Branch protection (do this — see §10)
-Because Path A (CI) and Path B (deploy) fire **independently**, a change that fails lint or
-tests **still deploys** as long as its Docker build succeeds. Protect `main` so nothing
-merges red. Setup steps in §10.
+Releases are timestamped directories with a `current` symlink, so rollback is a symlink swap and
+does not rebuild. **Rollback restores the previous release's configuration as well as its code** —
+an earlier version restored only code and silently reintroduced a fixed bug.
+
+`ci.yml` runs lint → typecheck → test → build on pushes and PRs. It is a **quality gate, not a
+deploy**, and does not currently block merges (see §10).
+
+### Supporting workflows
+
+| Workflow | Use |
+|---|---|
+| `preflight-aws.yml` | ~50 checks across IAM, secrets, instance, Caddy, DB, memory. **Run this first when anything looks wrong.** |
+| `bootstrap-ec2.yml` | One-time server prep: directories, swap, PM2 boot persistence, Caddy config, instance role |
+| `reload-app.yml` | Restart one app so it re-reads Secrets Manager |
+| `resize-ec2.yml` | Change instance type |
+| `diagnose-aws.yml` | Broad read-only AWS inventory |
+
+⚠️ **`bootstrap-ec2.yml` requires `public_tls: true` on every run that installs the Caddy config.**
+Left false it stages `tls internal` over site blocks currently serving real certificates. The
+script now refuses to downgrade, but do not rely on that.
+
+### Superseded — do not use
+
+`deploy-aws.yml` (ECS/Fargate) and `infra/aws/*` describe infrastructure that **was deleted**.
+Applying that Terraform would build a second, parallel copy of the platform and collide with the
+live one. `terraform-aws.yml` refuses `apply`; `plan` and `output` still work, because those files
+are the only record of what a cancelled 2026-08-10 apply created and are what an orphaned-resource
+audit reads. GCP Cloud Build / Cloud Run are likewise dead (project billing disabled).
 
 ---
 
-## 5. Shipping a change safely (runbook)
+## 5. Shipping a change safely
 
-**Website / dashboard code change:**
-1. Branch off `main`; make the change.
-2. Locally mirror CI: `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
-3. Open a PR; let GitHub Actions CI go green.
-4. Merge to `main` → Cloud Build auto-builds & deploys (~5–15 min).
-5. Watch it: `gcloud builds list --region=global --limit=5`.
-6. Smoke-test the live URL.
-7. **Rollback if needed** (instant, no rebuild):
-   `gcloud run services update-traffic metnmat-website --to-revisions=<PREV_REVISION>=100 --region=asia-south1`
-   (list revisions: `gcloud run revisions list --service=metnmat-website --region=asia-south1`).
-8. If you **added a secret/env var**, attach it once with `gcloud run services update` — the push alone won't apply it.
+**Website / CMS code change:**
 
-**Chatbot code change:** edit → `./deploy-gcp.ps1 -Only chatbot`. (Commit it to git first.)
+1. Branch off `main` and make the change.
+2. Mirror CI locally — this is the only gate between an edit and production:
+   ```bash
+   pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm test && pnpm build
+   ```
+3. Open a PR, let CI go green, merge to `main`.
+4. **Run the deploy workflow manually** (Actions → *Deploy website to EC2* / *Deploy CMS to EC2*).
+5. Smoke-test the live URL.
+6. **Rollback:** automatic on a failed health check. To roll back a *healthy but wrong* release,
+   re-run the deploy workflow against the previous commit.
 
-**Content / product / price change (no code):** edit in `admin.metnmat.com` → live
-immediately, **no deploy** (Payload writes to Mongo; the website reads it).
+**Chatbot:** same, from the `METNMAT-chatbot` repo.
 
----
+**Changed a secret?** Secrets are read at **process start**, not build time — so run
+`reload-app.yml`, not a rebuild. A rebuild would take fifteen minutes to produce a byte-identical
+artifact.
 
-## 6. Environment variables
-
-The full, authoritative list is in **`ENVIRONMENT_VARIABLES.md`**. In production these come
-from **GCP Secret Manager** (referenced via `--set-secrets` on Cloud Run), never on-disk
-`.env` files. Summary of where each app's values live:
-
-- **Website** (`metnmat-website`): `INTERNAL_API_KEY`, `RAZORPAY_*`, `RESEND_API_KEY`,
-  `QUOTE_*`, `OPEN_EXCHANGE_RATES_APP_ID`, `UPSTASH_REDIS_REST_*`,
-  `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (Google sign-in). `NEXT_PUBLIC_*` are
-  build-time args. `INTERNAL_API_KEY` **must match the dashboard's**.
-
-  **Google Sign-In setup:** create a *Web* OAuth client in Google Cloud Console
-  (APIs & Services → Credentials) with Authorized redirect URIs
-  `https://www.metnmat.com/api/account/google/callback` (prod) and
-  `http://localhost:3000/api/account/google/callback` (dev). Put the Client ID +
-  secret in `deploy/secrets.env` (or Secret Manager) → the deploy attaches them to
-  `metnmat-website`. Until both are set the "Continue with Google" button shows a
-  graceful error; everything else is unaffected.
-- **Dashboard** (`metnmat-dashboard`): `MONGODB_URI`, `PAYLOAD_SECRET`, `PAYLOAD_PIN_PEPPER`,
-  `INTERNAL_API_KEY`, `GCS_BUCKET`/`GCS_PROJECT_ID`, `CMS_URL`, `WEBSITE_URL`, `RESEND_API_KEY`.
-- **Chatbot** (`metnmat-chatbot`): `MONGODB_URI`, `GROQ_API_KEY`, `JWT_SECRET`,
-  `ALLOWED_ORIGINS`, `PUBLIC_URL`, `UPSTASH_REDIS_REST_*`, `Meta_WA_*`.
-
-> Every value that ever lived in an OneDrive-synced `.env` / `secrets.env` must be **rotated**
-> (see `PRODUCTION_AUDIT_REPORT.md` and `ENVIRONMENT_VARIABLES.md`).
+**Content / product / price change:** edit in `admin.metnmat.com` — live immediately, no deploy.
+CMS writes to Mongo; the website reads it and revalidates by cache tag.
 
 ---
 
-## 7. Post-deploy verification checklist
+## 6. Environment variables and secrets
 
-- [ ] All three Cloud Run services return HTTP 200 (`gcloud run services list --region=asia-south1`).
-- [ ] Dashboard `/admin` loads; you can log in; products / categories present.
-- [ ] Website loads; product pages show images (proves Website→Dashboard→GCS link).
-- [ ] Submit a quote/order → confirmation email arrives (proves Resend).
-- [ ] Money path: shop → cart → checkout → pay (Razorpay) → confirmation.
-- [ ] Chatbot `/health` returns `ready`; chat bubble appears bottom-right on the website.
-- [ ] Send the bot "what products do you sell?" → real product answer (proves Groq + Mongo).
-- [ ] `INTERNAL_API_KEY` is identical in website and dashboard.
-- [ ] All "public URL" env vars / build-args point to the real domains, not localhost.
+Authoritative list: [`ENVIRONMENT_VARIABLES.md`](ENVIRONMENT_VARIABLES.md). Mapping to AWS:
+[`docs/AWS-SECRETS-MAPPING.md`](docs/AWS-SECRETS-MAPPING.md).
+
+In production, values come from **AWS Secrets Manager**, fetched at process start by
+`deploy/bin/with-secrets.sh`. There are no on-disk `.env` files in production.
+
+| Prefix | Consumers |
+|---|---|
+| `metnmat/prod/*` | website + CMS |
+| `metnmat/chatbot/*` | chatbot only |
+
+The chatbot has its **own prefix for a reason**: it needs a different `MONGODB_URI`. Its data lives
+in database `metnmat`; the CMS lives in `metnmat_cms`. Sharing a prefix would guarantee one of them
+points at the other's data — which has happened before and left stray Payload collections in the
+chatbot's database.
+
+**Authentication to AWS is by EC2 instance role** (`metnmat-dashboard-role`), for both S3 media and
+Secrets Manager. **No AWS access keys exist on the instance.** Setting `S3_ACCESS_KEY_ID` /
+`S3_SECRET_ACCESS_KEY` would defeat this — leave them unset.
+
+`NEXT_PUBLIC_*` values are **baked into the client bundle at build time** and cannot be supplied at
+runtime; they are set in the deploy workflow, not in Secrets Manager.
+
+### Two variables that must never be server configuration
+
+| Variable | Why |
+|---|---|
+| `DIRECTOR_RESET=true` | Deletes every staff account except the director **on every boot** — including an unattended PM2 memory-restart. Run as a deliberate one-off only. |
+| `SEED_PRUNE_PLACEHOLDERS=true` | Deletes products and categories whose slug isn't in the bundled catalogue. |
+
+`with-secrets.sh` refuses to inherit either.
 
 ---
 
-## 8. Known constraints & production notes
+## 7. Post-deploy verification
 
-- **Image-only auto-deploy** — see §4 Path B. New secrets/env vars need a one-time `gcloud run services update`.
-- **Two website triggers race** — see §4; disable the duplicate.
-- **Chatbot is not in git** — no rollback/history; `git init` + push to the company org (DEVOPS-01).
-- **Customer sessions are stateless JWTs** — logout clears the `mm-customer` cookie but an issued token stays valid until its 7-day expiry; there is no server-side revocation. If force-logout / revoke-on-password-reset is ever needed, add a `tokenVersion` field to the `customers` collection and check it in an auth hook (don't re-enable Payload sessions).
-- **Rate-limit client IP** uses the left-most `X-Forwarded-For` hop (`backend/lib/rate-limit.ts`), which a client can spoof to evade per-IP limits. Low impact today (the OAuth callback is gated by the CSRF state cookie first), but for stricter limiting derive the trusted hop for your exact Cloud Run / load-balancer `XFF` shape.
-- **`PAYLOAD_PIN_PEPPER = 5970`** — deliberately weak so staff PIN logins keep working; an
-  accepted risk. Schedule the strong-pepper + PIN-re-save migration in a maintenance window
-  (`PRODUCTION_AUDIT_REPORT.md` §3).
-- **Groq tier limits** — upgrade to a paid tier before heavy traffic (`console.groq.com/settings/billing`).
-- **MongoDB Atlas Network Access** must allow Cloud Run egress (`0.0.0.0/0` is simplest; or use the project's egress IPs).
-- **Rollback** is per-service via Cloud Run revisions (§5 step 7) — Cloud Run retains old revisions.
+```bash
+for u in https://www.metnmat.com/ https://metnmat.com/ \
+         https://admin.metnmat.com/admin https://chat.metnmat.com/health; do
+  curl -s -o /dev/null -w "%{http_code} %{ssl_verify_result} $u\n" "$u"
+done
+```
+
+Expect `200`, `308`, `200`, `200`, each with `ssl_verify_result` of `0`.
+
+- [ ] CMS `/admin` loads and you can log in; products and categories present
+- [ ] Website product pages show images — proves website → CMS → S3 end to end
+- [ ] Quote/order submission sends a confirmation email (Resend)
+- [ ] Money path: shop → cart → checkout → Razorpay → confirmation
+- [ ] `curl -s https://chat.metnmat.com/widget.js | head -c 200` returns script, not 404 —
+      the website injects exactly this, so a 404 means the bubble silently never appears
+- [ ] Ask the bot "what products do you sell?" → a real answer (proves OpenAI + Mongo + Pinecone)
+- [ ] `INTERNAL_API_KEY` identical in website and CMS
+- [ ] Run `preflight-aws.yml` — expect zero failures
+
+---
+
+## 8. Known constraints and production notes
+
+**Operational**
+
+- **One instance, four apps, ~400 MB headroom.** `sharp` allocates outside the V8 heap, so PM2's
+  memory caps do not bound an image-processing spike. A 2 GB swapfile and `sharp.concurrency(1)`
+  exist to keep a bulk upload from triggering the kernel OOM killer — which chooses its victim by
+  memory footprint, not by fault, and could take the other team's dashboard down.
+- **`imageSizes` are generated at upload only.** Five derivatives per image, never regenerated.
+  Changing the ladder does not touch existing media — settle it **before** a catalogue upload, or
+  changing it later means re-uploading everything.
+- **The media bucket is empty by decision.** GCS media was deliberately not migrated; the catalogue
+  is being uploaded fresh.
+- **MongoDB Atlas Network Access** must allow the instance's Elastic IP `15.206.25.71`.
+- **Seed runs on every CMS boot** but is create-if-missing, not sync — staff edits survive.
+  Globals seed only when unset, so changing a value already set in production requires a one-shot
+  migration in `seed.ts`, not a seed-data edit.
+
+**Security**
+
+- **`PAYLOAD_PIN_PEPPER = 5970`** is deliberately weak so existing staff PIN logins keep working —
+  an accepted risk. The strong-pepper + PIN-re-save migration needs a maintenance window.
+- **Customer sessions are stateless JWTs.** Logout clears the `mm-customer` cookie, but an issued
+  token stays valid until its 7-day expiry; there is no server-side revocation. To add force-logout
+  or revoke-on-password-reset, add a `tokenVersion` field to `customers` and check it in an auth
+  hook — do not re-enable Payload sessions.
+- **Staff login lockouts are per-account, not per-source.** Payload applies its default
+  `maxLoginAttempts: 5` to the `Users` collection, and the PIN route (`/pin-login`) adds its own
+  IP-keyed brute-force lock. Neither stops one source from spreading attempts across many
+  accounts — acceptable given `/admin` is not publicly advertised, but worth knowing.
+- ~~Rate-limit client IP is spoofable~~ — **fixed.** `clientIp()` strips trusted proxy hops from the
+  right of `X-Forwarded-For` and takes the rightmost remaining token, which under Caddy is always
+  the connecting peer. Caller-supplied values sit to the left and are unreachable. Covered by
+  `test/client-ip.test.ts`.
+
+**Still open**
+
+- **`metnmat.in` is still live, fully indexable and self-canonical.** It competes with
+  `metnmat.com` for the same content and splits ranking authority. This is the highest-value
+  remaining item for a global launch — redirect it 301 to `metnmat.com`.
+- **No uptime monitoring or alerting.** Nothing notices if a service dies; this has happened once
+  unattended. Any external monitor on the four URLs in §7 would close it.
+- **Seven optional secrets still hold placeholders** — the features they gate (Google sign-in,
+  WhatsApp/Messenger integration, analytics geo) are dark until set. Everything each app *requires*
+  is populated; `preflight-aws.yml` distinguishes the two.
 
 ---
 
 ## 9. Credentials handover (do NOT commit)
 
-Provide the company a **separate secure document** (password manager / sealed doc) with the
-real values for every variable in `ENVIRONMENT_VARIABLES.md`, plus logins for GCP, MongoDB
-Atlas, Resend, Groq, Razorpay, Upstash, and GitHub. Then:
+Provide the company a **separate secure document** (password manager or sealed doc) with real
+values for every variable in `ENVIRONMENT_VARIABLES.md`, plus logins for AWS, MongoDB Atlas,
+Resend, OpenAI, Pinecone, Razorpay, Upstash and GitHub. Then:
 
-1. **🔑 Rotate every key** — all dev keys were used during development and must be regenerated, then loaded into Secret Manager.
-2. **👤 Transfer account ownership** to a company email for every external service and GitHub.
-3. **🗑️ Revoke** personal access once the company confirms everything works.
+1. **🔑 Rotate every key.** Development keys were used throughout and must be regenerated into
+   Secrets Manager. Treat as compromised anything that ever sat in an OneDrive-synced `.env`.
+2. **👤 Transfer account ownership** to company email addresses for every external service.
+3. **🗑️ Revoke personal access** once the company confirms everything works — including the
+   `metnmat-migration` IAM user created for the migration, and any GitHub Actions access keys, in
+   favour of OIDC (`AWS_DEPLOY_ROLE_ARN`).
 
 ---
 
 ## 10. Day-2 operations
 
-- **Edit site content / products / prices:** Dashboard `/admin` — live, no redeploy.
-- **After website/dashboard *code* changes:** merge to `main` → auto-deploys (§5).
-- **After chatbot changes:** `./deploy-gcp.ps1 -Only chatbot` (§4 Path C).
-- **Logs:** `gcloud run services logs read <service> --region=asia-south1 --limit=100`.
-- **Builds:** `gcloud builds list --region=global --limit=10` (and `gcloud builds log <ID>`).
-- **Rollback:** §5 step 7.
+- **Content, products, prices:** `/admin` — live, no redeploy
+- **After code changes:** merge to `main`, then run the deploy workflow (§5)
+- **Logs:** `reload-app.yml` prints recent output, or via SSM:
+  `sudo -u ec2-user pm2 logs metnmat-website --lines 40 --nostream`
+  — always name the app; never `pm2 logs` unqualified on this box
+- **Diagnosis:** run `preflight-aws.yml` before forming a theory. It has repeatedly found the
+  actual cause in one run where reasoning from symptoms went the wrong way.
+- **Rollback:** automatic on failed health check (§5)
 
-### Enable branch protection on `main` (GitHub UI — one-time)
-1. GitHub → repo **Settings → Branches → Add branch ruleset** (or *Add rule*) for `main`.
-2. Enable **Require a pull request before merging**.
-3. Enable **Require status checks to pass before merging** → select the **`build`** check
-   (from `.github/workflows/ci.yml`).
-4. Enable **Require branches to be up to date before merging**.
-5. (Recommended) **Do not allow bypassing** / include administrators.
+### Enable branch protection on `main` (one-time)
 
-This makes the CI gate (§4 Path A) actually block bad code from reaching `main`, and
-therefore from auto-deploying.
+Settings → Branches → Add ruleset for `main`:
+
+1. **Require a pull request before merging**
+2. **Require status checks to pass** → select the `build` check from `ci.yml`
+3. **Require branches to be up to date before merging**
+4. (Recommended) **Do not allow bypassing**, including administrators
+
+Deploys are manual, so this does not gate production directly — but it keeps `main` deployable,
+which is what the manual deploy assumes.
 
 ---
 
-*Source of truth for deployment: this file + `DEPLOY-GCP.md` + `ENVIRONMENT_VARIABLES.md`.
-Keep them updated as the system evolves.*
+*Source of truth: this file + [`CLAUDE.md`](CLAUDE.md) + [`deploy/README.md`](deploy/README.md) +
+[`ENVIRONMENT_VARIABLES.md`](ENVIRONMENT_VARIABLES.md). Keep them updated as the system evolves.*

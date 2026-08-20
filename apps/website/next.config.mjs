@@ -6,10 +6,15 @@ import { legacyRedirects } from "./legacy-redirects.mjs";
 // build below; computed here so the standalone branch stays a one-liner.
 const MONOREPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
-// The CMS/dashboard host (serves uploaded media/documents) + Google Cloud Storage,
-// so browser <img> tags and fetches to them aren't blocked by CSP.
+// The CMS/dashboard host, which serves uploaded media and documents, so browser
+// <img> tags and fetches to it aren't blocked by CSP.
 const CMS_ORIGIN = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
-const STORAGE_ORIGINS = "https://storage.googleapis.com";
+// NOTE: https://storage.googleapis.com was allow-listed alongside it while media
+// lived in GCS. Media now lives in a PRIVATE S3 bucket and is served through the
+// CMS at /api/media/file/<filename>, so the browser never contacts object storage
+// directly — S3 deliberately does NOT replace this entry. The GCS allowance was
+// not protecting anything working either: that project is billing-disabled, so
+// every request to it already failed. Same reasoning as the Unsplash note below.
 // NOTE: images.unsplash.com was allow-listed here for the Services showcase
 // photography. Those images are now self-hosted under public/services/, so the
 // allowance is gone — nothing on the site may load an image from a third-party
@@ -46,9 +51,9 @@ const ContentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${DEV_EVAL} ${CHATBOT_ORIGIN} ${RAZORPAY_SCRIPT}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${CMS_ORIGIN} ${STORAGE_ORIGINS} ${CHATBOT_ORIGIN}`,
+  `img-src 'self' data: blob: ${CMS_ORIGIN} ${CHATBOT_ORIGIN}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${CMS_ORIGIN} ${STORAGE_ORIGINS} ${CHATBOT_ORIGIN} ${RAZORPAY_CONNECT}`,
+  `connect-src 'self' ${CMS_ORIGIN} ${CHATBOT_ORIGIN} ${RAZORPAY_CONNECT}`,
   `frame-src 'self' ${CHATBOT_ORIGIN} https://www.google.com https://maps.google.com https://api.razorpay.com ${RAZORPAY_SCRIPT}`,
   "frame-ancestors 'self'",
   "base-uri 'self'",
@@ -107,7 +112,6 @@ const nextConfig = {
         ...(cmsImageHost.port ? { port: cmsImageHost.port } : {}),
       },
       { protocol: "http", hostname: "localhost", port: "3001" },
-      { protocol: "https", hostname: "storage.googleapis.com" },
     ],
   },
   // Legacy metnmat.in (Wix) URLs → their .com equivalents. Kept in the build
