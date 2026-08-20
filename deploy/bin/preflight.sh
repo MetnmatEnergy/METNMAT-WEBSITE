@@ -818,13 +818,21 @@ if [ -n "$raw_uri" ]; then
   info "user '${userinfo%%:*}' — verify in Atlas that this user exists, its password matches, and it has access to database '$mongo_db'"
 fi
 
-# The CMS wants 500-800 MB on top of whatever is already resident.
+# Judged against whether the CMS is ALREADY RUNNING, not against its full
+# footprint unconditionally. Once deployed, that 500-800 MB is already spent —
+# measuring the remainder against it reports a healthy box as failing and tells
+# you to resize to an instance type you are already on. Same mistake, and same
+# fix, as the website's memory check.
 if [ -n "${avail:-}" ]; then
-  if [ "$avail" -lt 800 ]; then
-    no "${avail} MB free — the CMS needs 500-800 MB. Resize to t3.medium before deploying it."
-  else
-    ok "${avail} MB free — enough headroom to attempt the CMS"
-  fi
+  case " ${running:-} " in
+    *" metnmat-cms "*)
+      if   [ "$avail" -lt 150 ]; then no  "${avail} MB headroom with the CMS running — at the point where the kernel OOM killer starts choosing victims, and it does not choose the process at fault"
+      elif [ "$avail" -lt 400 ]; then hmm "${avail} MB headroom with the CMS running — thin. This box now hosts four apps; watch for swap and unexplained pm2 restarts."
+      else                            ok  "${avail} MB headroom with the CMS running"; fi ;;
+    *)
+      if   [ "$avail" -lt 800 ]; then no  "${avail} MB free and the CMS is NOT running — it needs 500-800 MB. Free memory or move to a larger instance before deploying it."
+      else                            ok  "${avail} MB free — enough headroom to start the CMS"; fi ;;
+  esac
 fi
 
 # ── 8. Chatbot readiness ───────────────────────────────────────────────────
