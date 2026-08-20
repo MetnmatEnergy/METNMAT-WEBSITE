@@ -531,7 +531,14 @@ REMOTE
             # connection error rather than a page, which is the worst of the
             # available failures.
             chat.metnmat.com:000)
-              no "chat.metnmat.com resolves HERE but nothing serves it — no Caddy block, so TLS is refused outright" ;;
+              no "chat.metnmat.com resolves HERE but nothing serves it — no Caddy block, or the app is not running" ;;
+            # The app registers NO root route: server.ts has /health, /integrate,
+            # /demo, /widget.js and /chat-widget. A 404 at / therefore means the
+            # process is up and answering, which is the opposite of a failure.
+            chat.metnmat.com:404)
+              ok "chat.metnmat.com is serving (404 at / is expected — no root route; /health is the endpoint)" ;;
+            chat.metnmat.com:200|chat.metnmat.com:30*)
+              ok "chat.metnmat.com routes correctly ($code)" ;;
             chat.metnmat.com:*)
               hmm "chat.metnmat.com answered $code" ;;
             *:200)
