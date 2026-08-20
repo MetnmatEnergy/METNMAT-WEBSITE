@@ -4,31 +4,61 @@
     {
       "Sid": "ReadDeployArtifacts",
       "Effect": "Allow",
-      "Action": ["s3:GetObject"],
+      "Action": [
+        "s3:GetObject"
+      ],
       "Resource": "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/*"
     },
     {
       "Sid": "ListDeployArtifactsBucket",
       "Effect": "Allow",
-      "Action": ["s3:ListBucket"],
+      "Action": [
+        "s3:ListBucket"
+      ],
       "Resource": "arn:aws:s3:::metnmat-deploy-artifacts-976134557584"
+    },
+    {
+      "Sid": "ReadWriteMedia",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::metnmat-media-prod/*"
+    },
+    {
+      "Sid": "ListMediaBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::metnmat-media-prod"
     },
     {
       "Sid": "ReadProdSecretValues",
       "Effect": "Allow",
-      "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ],
       "Resource": "arn:aws:secretsmanager:ap-south-1:976134557584:secret:metnmat/prod/*"
     },
     {
       "Sid": "ReadChatbotSecretValues",
       "Effect": "Allow",
-      "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret"
+      ],
       "Resource": "arn:aws:secretsmanager:ap-south-1:976134557584:secret:metnmat/chatbot/*"
     },
     {
       "Sid": "ListSecretsCannotBeResourceScoped",
       "Effect": "Allow",
-      "Action": ["secretsmanager:ListSecrets"],
+      "Action": [
+        "secretsmanager:ListSecrets"
+      ],
       "Resource": "*"
     }
   ]

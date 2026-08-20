@@ -360,6 +360,19 @@ else
   echo "chat_mongo=skipped"
 fi
 
+# Can the INSTANCE actually write media? The CMS runs with STORAGE_PROVIDER=s3
+# and no explicit credentials, so every upload goes through this role. Read
+# access alone is not enough — an admin uploading a product photo needs
+# PutObject, and without it the upload fails with AccessDenied inside Payload,
+# where it surfaces as a generic save error rather than a permissions one.
+echo "--- media bucket write ---"
+MPROBE="metnmat-media-prod/.preflight-write-probe"
+if echo probe | aws s3 cp - "s3://\$MPROBE" --region $AWS_REGION >/dev/null 2>&1; then
+  echo "media_write=ok"
+  aws s3 rm "s3://\$MPROBE" --region $AWS_REGION >/dev/null 2>&1 || echo "media_write_cleanup=failed"
+else
+  echo "media_write=denied"
+fi
 echo "--- chatbot prerequisites ---"
 if command -v bun >/dev/null 2>&1; then
   echo "chat_bun=\$(bun --version 2>/dev/null | head -1)"
@@ -592,6 +605,14 @@ REMOTE
       # Distinguishes "the CMS is not deployed" from "it is deployed and
       # broken" — a 502 at the edge looks identical for both, and they need
       # completely different responses.
+      # Media uploads are the difference between a CMS you can read and a CMS
+      # you can run a catalogue from.
+      case "$(echo "$out" | grep -o 'media_write=[a-z]*' | cut -d= -f2)" in
+        ok)     ok "instance can WRITE to metnmat-media-prod — CMS uploads will work" ;;
+        denied) no "instance CANNOT write to metnmat-media-prod — every CMS image upload will fail with AccessDenied. Apply: Bootstrap EC2 -> fix_instance_role=true" ;;
+        *)      hmm "media write probe did not report" ;;
+      esac
+
       cms_code="$(echo "$out" | grep -o 'cms_status=[0-9]*' | cut -d= -f2)"
       case " $running " in
         *" metnmat-cms "*)
