@@ -8,13 +8,13 @@ export const dynamic = "force-dynamic";
  * Trusted-proxy-aware client IP for the brute-force lock. The old leftmost
  * X-Forwarded-For read let an attacker rotate a fake header per request and
  * brute-force the 4-digit PIN into a staff session (audit finding). Prod
- * topology (verified 2026-07-13): Google external ALB appends
- * "<client-ip>, <lb-ip>", so strip OUR trusted hop(s) from the RIGHT and key on
- * the rightmost remaining token — attacker-supplied values sit further left and
- * are never reached. Mirrors clientIp() in the website's rate-limit.ts.
+ * topology (AWS, 2026-08-20): Caddy appends the connecting peer to
+ * X-Forwarded-For, so strip OUR trusted hop(s) from the RIGHT and key on the
+ * rightmost remaining token — attacker-supplied values sit further left and are
+ * never reached. Mirrors clientIp() in the website's rate-limit.ts.
  */
 const TRUSTED_PROXY_IPS = new Set(
-  (process.env.TRUSTED_PROXY_IPS || "35.201.95.137")
+  (process.env.TRUSTED_PROXY_IPS || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean)

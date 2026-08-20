@@ -78,14 +78,23 @@ export function rateLimit(key: string, limit = 5, windowMs = 60_000): Result {
 }
 
 /**
- * TRUSTED PROXY HOPS — prod topology (verified 2026-07-13): all metnmat hosts
- * resolve to one anycast IP behind a Google external Application Load Balancer,
- * which APPENDS "<client-ip>, <lb-ip>" to X-Forwarded-For. So the LB's own IP
- * is the rightmost token and the REAL client is second-from-right. Override via
- * env if the LB address ever changes (comma-separated).
+ * TRUSTED PROXY HOPS — prod topology (AWS, 2026-08-20): clients reach Caddy on
+ * the EC2 instance directly, and Caddy's reverse_proxy APPENDS the connecting
+ * peer to X-Forwarded-For without a header_up override. So the real client is
+ * the RIGHTMOST token and anything to its left is caller-supplied.
+ *
+ * That makes the trusted list empty by default: there is no hop between the
+ * client and Caddy whose address needs stripping. It previously defaulted to
+ * 35.201.95.137, the Google load balancer from the Cloud Run deployment — inert
+ * once that address stopped appearing, but it read as load-bearing and would
+ * have sent the next reader looking for a load balancer that no longer exists.
+ *
+ * Set the env (comma-separated) if an edge is ever put in FRONT of Caddy —
+ * CloudFront or an ALB would each add a hop, and the rightmost token would then
+ * be that edge rather than the client.
  */
 const TRUSTED_PROXY_IPS = new Set(
-  (process.env.TRUSTED_PROXY_IPS || "35.201.95.137")
+  (process.env.TRUSTED_PROXY_IPS || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean)
@@ -97,12 +106,16 @@ const normalizeIp = (s: string): string => (s.toLowerCase().startsWith("::ffff:"
 /**
  * Best-effort client IP — used as the RATE-LIMIT KEY, so it must not be
  * attacker-chosen. Strategy: strip OUR trusted proxy hops from the RIGHT of
- * X-Forwarded-For, then take the rightmost remaining token — that's the
- * connecting IP as recorded by Google's edge; everything further left is
- * client-supplied junk. This is correct behind the external ALB (…, client, lb)
- * AND on direct Cloud Run (…, client). The old leftmost read let callers rotate
- * a fake header and reset every per-IP bucket; a naive rightmost read would key
- * EVERYONE on the LB's constant IP (site-wide lockouts) — both audit findings.
+ * X-Forwarded-For, then take the rightmost remaining token — the peer that
+ * actually connected. Everything further left is caller-supplied and never
+ * reached, which is what makes the key unspoofable.
+ *
+ * Both historical failures came from reading the wrong end. Taking the LEFTMOST
+ * token let a caller rotate a fake header and reset every per-IP bucket. Taking
+ * the rightmost NAIVELY, while a load balancer appended its own address last,
+ * keyed every visitor on one constant IP and produced site-wide lockouts. The
+ * strip-then-rightmost rule is correct in both shapes, and behind Caddy — which
+ * appends the connecting peer and nothing after it — the strip is a no-op.
  */
 export function clientIp(request: Request): string {
   const fwd = request.headers.get("x-forwarded-for");
