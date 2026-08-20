@@ -130,7 +130,54 @@ for d in "$APP_ROOT" "$APP_ROOT/releases" "$APP_ROOT/logs" "$APP_ROOT/bin"; do
 done
 [ -w "$APP_ROOT" ] && ok "writable by $(whoami)" || fail "$APP_ROOT not writable by $(whoami)"
 
-# ── 3. Port ────────────────────────────────────────────────────────────────
+# ── 3. Swap ────────────────────────────────────────────────────────────────
+sec "Swap"
+
+# Four applications on a 4 GB box with no swap, and roughly 400 MB headroom.
+# sharp allocates OUTSIDE the V8 heap, so the pm2 memory caps do not bound the
+# spike a catalogue image upload produces. With no swap the kernel's only move
+# under pressure is to kill something, and it chooses by RSS rather than by who
+# caused the spike — the command-center dashboard is a plausible casualty of an
+# upload it had nothing to do with.
+#
+# Swap adds no capacity. It converts an instant kill into paging: slow, ugly,
+# survivable, and it gives pm2's max_memory_restart a chance to act first.
+# Created only when absent. Never resized, never removed.
+swap_mb="$(free -m 2>/dev/null | awk '/^Swap:/ {print $2}')"
+if [ -n "$swap_mb" ] && [ "$swap_mb" -gt 0 ]; then
+  ok "swap already configured: ${swap_mb} MB"
+elif [ -e /swapfile ]; then
+  # Present but inactive means something already went wrong here. Guessing at
+  # the reason risks destroying a file somebody made deliberately.
+  hmm "/swapfile exists but is not active — leaving it alone"
+else
+  root_free_g="$(df -Pk / 2>/dev/null | awk 'NR==2 {print int($4/1048576)}')"
+  if [ -n "$root_free_g" ] && [ "$root_free_g" -lt 6 ]; then
+    hmm "only ${root_free_g}G free on / — not creating a 2G swapfile"
+  elif sudo fallocate -l 2G /swapfile 2>/dev/null \
+       || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none 2>/dev/null; then
+    sudo chmod 600 /swapfile
+    if sudo mkswap /swapfile >/dev/null 2>&1 && sudo swapon /swapfile 2>/dev/null; then
+      ok "2G swapfile created and active"
+      grep -q '^/swapfile ' /etc/fstab 2>/dev/null \
+        || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+      ok "recorded in /etc/fstab — survives a reboot"
+      # 10, not the default 60. This is an overflow valve, not a tier to page
+      # into routinely; anonymous pages stay resident until pressure is real.
+      sudo sysctl -q vm.swappiness=10 2>/dev/null || true
+      grep -q '^vm.swappiness' /etc/sysctl.d/99-metnmat.conf 2>/dev/null \
+        || echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.d/99-metnmat.conf >/dev/null
+      ok "vm.swappiness=10"
+    else
+      sudo rm -f /swapfile
+      hmm "could not enable swap — partial file removed"
+    fi
+  else
+    hmm "could not allocate /swapfile"
+  fi
+fi
+
+# ── 4. Port ────────────────────────────────────────────────────────────────
 sec "Port $APP_PORT"
 
 if (ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null) | grep -q ":$APP_PORT "; then
@@ -144,7 +191,7 @@ else
   ok "free"
 fi
 
-# ── 4. PM2 survives a reboot ───────────────────────────────────────────────
+# ── 5. PM2 survives a reboot ───────────────────────────────────────────────
 sec "PM2 boot persistence"
 
 # Only configure if it is not already configured. On a shared box the dashboard
@@ -160,7 +207,7 @@ else
   info "every pm2 app on this box, including the dashboard"
 fi
 
-# ── 5. Caddy ───────────────────────────────────────────────────────────────
+# ── 6. Caddy ───────────────────────────────────────────────────────────────
 sec "Caddy"
 
 if ! command -v caddy >/dev/null 2>&1; then

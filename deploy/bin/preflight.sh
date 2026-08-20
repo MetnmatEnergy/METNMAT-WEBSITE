@@ -241,6 +241,7 @@ echo "--- port ---"
 (ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null) | grep -q ":$APP_PORT " && echo "PORT_TAKEN" || echo "port free"
 echo "--- memory ---"
 free -m | awk '/^Mem:/{print "mem_total="\$2" mem_avail="\$7}'
+free -m | awk '/^Swap:/{print "swap_total="\$2" swap_used="\$3}'
 echo "--- disk ---"
 df -h / | awk 'NR==2{print "disk_use="\$5" avail="\$4}'
 echo "--- app root ---"
@@ -863,6 +864,23 @@ if [ -n "${avail:-}" ]; then
       if   [ "$avail" -lt 800 ]; then no  "${avail} MB free and the CMS is NOT running — it needs 500-800 MB. Free memory or move to a larger instance before deploying it."
       else                            ok  "${avail} MB free — enough headroom to start the CMS"; fi ;;
   esac
+fi
+
+# Swap is the difference between "thin headroom" and "an upload can kill an
+# unrelated process". sharp allocates outside the V8 heap, so the pm2 caps do
+# not bound an image-processing spike; without swap the kernel's only response
+# is to kill by RSS. Reported separately because the headroom number above says
+# nothing about which of those two situations this box is in.
+swap_total="$(echo "$out" | grep -o 'swap_total=[0-9]*' | cut -d= -f2)"
+if [ -n "${swap_total:-}" ] && [ "$swap_total" -gt 0 ]; then
+  swap_used="$(echo "$out" | grep -o 'swap_used=[0-9]*' | cut -d= -f2)"
+  if [ -n "${swap_used:-}" ] && [ "$swap_used" -gt $((swap_total / 2)) ]; then
+    hmm "swap ${swap_used}/${swap_total} MB used — over half. The box is genuinely short of memory, not merely close to it."
+  else
+    ok "swap present (${swap_total} MB, ${swap_used:-0} MB used) — an upload spike pages instead of killing a process"
+  fi
+else
+  hmm "NO SWAP. An image upload spikes native memory outside the pm2 caps, and the kernel resolves that by killing the largest process — not necessarily the one at fault. Apply: Bootstrap EC2 -> mode=prepare"
 fi
 
 # ── 8. Chatbot readiness ───────────────────────────────────────────────────

@@ -53,6 +53,19 @@ import { globals } from "./globals";
 import { seed } from "./seed";
 import { resendAdapter } from "./lib/email-adapter";
 
+// libvips allocates OUTSIDE the V8 heap, so --max-old-space-size does not bound
+// it. Six encodes run per upload here (five imageSizes plus the base), the
+// largest 2400x1800, and this box runs four applications with roughly 400 MB
+// headroom and no swap. Left at the default the threadpool is sized to the core
+// count, and a bulk catalogue upload is exactly the workload that turns that
+// into an OOM kill — which the kernel aims at the largest RSS, not necessarily
+// at whoever caused it.
+//
+// One thread per operation trades wall-clock on a single upload for a bounded
+// peak. Uploads are interactive and occasional; being slower is survivable,
+// being killed mid-encode is not.
+sharp.concurrency(1);
+
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Browser origins trusted for the auth cookie (CSRF) and cross-origin API (CORS).
