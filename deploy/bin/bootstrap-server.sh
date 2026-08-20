@@ -180,10 +180,49 @@ else
     # Caddyfile. PUBLIC_TLS=true strips those lines, which is the cutover
     # action: run it once DNS resolves here and Caddy will request real
     # certificates on the next request per hostname.
+
+    # Back up what is installed. The failure path must restore the previous
+    # ROUTING, not delete it: www and admin are served by this same block, so
+    # removing it because a chat.metnmat.com change failed would take the live
+    # site off the edge to fix a hostname that was never up.
+    CADDY_BLOCK="$CADDY_CONF_D/metnmat-website.caddy"
+    BLOCK_BAK=""
+    if sudo test -f "$CADDY_BLOCK"; then
+      BLOCK_BAK="$(mktemp)"
+      sudo cat "$CADDY_BLOCK" > "$BLOCK_BAK" 2>/dev/null || { rm -f "$BLOCK_BAK"; BLOCK_BAK=""; }
+    fi
+
+    # Certificate mode is STICKY once public. PUBLIC_TLS defaults to false, so a
+    # re-run that forgets the checkbox stages `tls internal` over a block that
+    # is currently serving real certificates — and the next reload hands every
+    # visitor to www and admin a self-signed one. Cutover is not something to
+    # undo by omission, so an already-public block stays public.
+    EFFECTIVE_TLS="${PUBLIC_TLS:-false}"
+    if [ "$EFFECTIVE_TLS" != "true" ] && [ -n "$BLOCK_BAK" ] \
+       && ! grep -q 'tls internal' "$BLOCK_BAK"; then
+      EFFECTIVE_TLS=true
+      hmm "installed block already serves public certificates — keeping them"
+      info "PUBLIC_TLS was not set, but downgrading live certs is never the intent"
+    fi
+
+    # A second, independent signal — because the first can be wrong. A previous
+    # failed run installs the block and only then fails to reload, leaving the
+    # pre-cutover version on disk while Caddy still serves the public one from
+    # memory. Reading the file would conclude "not cut over" and downgrade real
+    # certificates. Issued ACME certificates in Caddy's own storage prove the
+    # cutover happened, whatever the file currently says.
+    if [ "$EFFECTIVE_TLS" != "true" ] \
+       && sudo find /var/lib/caddy/.local/share/caddy/certificates \
+            -maxdepth 3 -name '*metnmat.com*' -print -quit 2>/dev/null | grep -q .; then
+      EFFECTIVE_TLS=true
+      hmm "Caddy already holds public certificates for metnmat.com — keeping public TLS"
+      info "on-disk block said otherwise; trusting the issued certificates"
+    fi
+
     STAGED="$(mktemp)"
-    if [ "${PUBLIC_TLS:-false}" = "true" ]; then
+    if [ "$EFFECTIVE_TLS" = "true" ]; then
       grep -v '# PRE-CUTOVER' "$CADDY_SRC" > "$STAGED"
-      ok "PUBLIC_TLS=true — public ACME certificates enabled"
+      ok "public ACME certificates enabled"
       info "Caddy will request certificates on first request per hostname;"
       info "this only succeeds once DNS points at this instance"
     else
@@ -197,17 +236,55 @@ else
       || fail "could not write the site block"
     rm -f "$STAGED"
 
+    # `caddy validate` checks SYNTAX. It does not check that the paths the
+    # config names can be WRITTEN — and every site block here writes a log
+    # file. A missing or root-owned /var/log/caddy validates clean and then
+    # fails the reload, which is exactly the failure this branch reported with
+    # no reason attached. The other branch already prepared it; having that in
+    # only one of the two paths meant the outcome depended on which one ran.
+    CADDY_USER="$(sudo systemctl show -p User --value caddy 2>/dev/null)"
+    [ -n "$CADDY_USER" ] || CADDY_USER=caddy
+    sudo mkdir -p /var/log/caddy
+    sudo chown -R "$CADDY_USER" /var/log/caddy 2>/dev/null \
+      && ok "/var/log/caddy exists and is owned by '$CADDY_USER'" \
+      || hmm "could not chown /var/log/caddy to '$CADDY_USER'"
+
     # Validate BEFORE reloading. An invalid config on reload leaves Caddy
     # serving the old one, but a validate failure tells you now rather than
     # after you have gone looking at DNS.
     if sudo caddy validate --config "$CADDY_MAIN" >/dev/null 2>&1; then
       ok "config validates"
-      sudo systemctl reload caddy && ok "caddy reloaded (not restarted — no dropped connections)" \
-        || fail "reload failed — the dashboard's routes are unaffected, the old config is still live"
+      if reload_err="$(sudo systemctl reload caddy 2>&1)"; then
+        ok "caddy reloaded (not restarted — no dropped connections)"
+      else
+        # Print WHY. Reporting only that a reload failed states the one thing
+        # already known and sends the next hour to the wrong place.
+        no "reload failed — reason below, then reverting"
+        [ -n "$reload_err" ] && printf '%s\n' "$reload_err" | sed 's/^/         /'
+        sudo journalctl -u caddy -n 15 --no-pager 2>/dev/null | sed 's/^/         /'
+        # Revert. Validate passed, so the block is syntactically fine and WOULD
+        # be picked up by the next restart — including an unattended one.
+        # Leaving it staged turns a failed bootstrap into a later outage.
+        # Restore, do not delete. Deleting would drop www and admin from the
+        # edge as collateral for a chat.metnmat.com change that failed.
+        if [ -n "$BLOCK_BAK" ]; then
+          sudo install -m 0644 "$BLOCK_BAK" "$CADDY_BLOCK"
+        else
+          sudo rm -f "$CADDY_BLOCK"
+        fi
+        sudo systemctl reload caddy >/dev/null 2>&1 || true
+        fail "reload failed; previous site block restored, routing unchanged"
+      fi
     else
       fail "config does NOT validate — not reloading"
-      sudo rm -f "$CADDY_CONF_D/metnmat-website.caddy"
-      info "site block removed again; Caddy is untouched"
+      # Restore, do not delete. Deleting would drop www and admin from the
+      # edge as collateral for a chat.metnmat.com change that failed.
+      if [ -n "$BLOCK_BAK" ]; then
+        sudo install -m 0644 "$BLOCK_BAK" "$CADDY_BLOCK"
+      else
+        sudo rm -f "$CADDY_BLOCK"
+      fi
+      info "previous site block restored; Caddy is untouched"
       sudo caddy validate --config "$CADDY_MAIN" 2>&1 | head -5 | sed 's/^/         /'
     fi
   elif [ "${ALLOW_CADDYFILE_EDIT:-false}" = "true" ]; then

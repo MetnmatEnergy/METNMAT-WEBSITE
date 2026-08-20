@@ -36,7 +36,7 @@ on:
         default: false
         type: boolean
       public_tls:
-        description: "CUTOVER ONLY. Strip 'tls internal' so Caddy requests real Let's Encrypt certificates. Only after DNS points at this instance — earlier, every ACME attempt fails and burns rate limit."
+        description: "Real Let's Encrypt certificates. DNS already points here, so set this TRUE on every run that installs the Caddy config — leaving it false stages self-signed certs over the live www and admin blocks. Only false before DNS cutover, when every ACME attempt would fail and burn rate limit."
         required: false
         default: false
         type: boolean
