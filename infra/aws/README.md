@@ -2,15 +2,30 @@
 
 Target: account **976134557584** (METNMAT Innovations), region **ap-south-1** (Mumbai).
 
-**Partially applied.** An apply on 2026-08-10 created ~92 resource instances and
-was then cancelled while waiting on ACM DNS validation. Certificate validation is
-now complete (4/4 records verified). Still missing: the HTTPS listener, the three
-listener rules, and the three ECS services.
+> ## ⛔ SUPERSEDED — do not apply
+>
+> This stack builds ECS/Fargate + ALB. **The platform does not run on it.** All
+> three services run on the shared EC2 instance `i-0b7f49ca3e9852d4b` behind
+> Caddy, and `www`, `admin` and `chat` all serve publicly with real
+> certificates. See [`deploy/README.md`](../../deploy/README.md).
+>
+> Applying this would stand up a **second, parallel copy** of the platform:
+> billing for a NAT gateway and an ALB nothing routes to, and colliding with the
+> live deployment on every globally-unique name. `terraform-aws.yml` refuses
+> `apply` for that reason; `plan` and `output` still work.
+>
+> Everything below describes a design that was **abandoned mid-migration**. Read
+> it as a record, not as a task list — in particular, the sections describing
+> what is "still missing" are describing an apply that was deliberately never
+> finished, not work that remains to be done.
 
-Those resources were created BEFORE remote state existed, so they must be adopted
-into the S3 backend before the next apply — see §4. Do not apply without doing
-that first; Terraform would otherwise try to recreate everything and collide on
-every globally-unique name.
+## Why this is kept rather than deleted
+
+An apply on 2026-08-10 created roughly 92 resource instances before being
+cancelled while waiting on ACM DNS validation. That infrastructure was
+subsequently torn down, but these files are the only record of **what was
+created** — which is what an audit for orphaned, still-billing resources needs
+to work from. Deleting them would save nothing and lose that.
 
 ---
 

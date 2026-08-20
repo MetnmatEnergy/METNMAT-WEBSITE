@@ -1,4 +1,4 @@
-name: Terraform (AWS infrastructure)
+name: Terraform (AWS infrastructure — SUPERSEDED, plan/output only)
 
 # Runs the infra/aws Terraform stack from GitHub Actions.
 #
@@ -64,6 +64,31 @@ jobs:
         working-directory: infra/aws
 
     steps:
+      # ── SUPERSEDED ──────────────────────────────────────────────────────────
+      # This stack builds ECS/Fargate + ALB. That infrastructure was deleted,
+      # and the three services now run on the shared EC2 instance behind Caddy:
+      # www, admin and chat all serve publicly with real certificates. Applying
+      # this would stand up a second, parallel copy of the platform — billing
+      # for a NAT gateway and an ALB nobody routes to, and competing for the
+      # same globally-unique names.
+      #
+      # It is not deleted, because infra/aws is the only record of the ~92
+      # resources a cancelled 2026-08-10 apply created, and that record is what
+      # an orphaned-resource audit needs. Reading it is useful; applying it is
+      # not. So the read paths stay open and only apply is closed.
+      - name: Refuse to apply superseded infrastructure
+        if: inputs.action == 'apply'
+        # Runs before checkout, so the job-level infra/aws default does not exist
+        # yet — without this the step dies on a missing directory instead of
+        # printing the reason.
+        working-directory: ${{ github.workspace }}
+        run: |
+          echo "::error::This ECS/ALB stack is SUPERSEDED and must not be applied."
+          echo "The platform runs on EC2 (i-0b7f49ca3e9852d4b) behind Caddy — see deploy/README.md."
+          echo "infra/aws is retained as the record of what the cancelled 2026-08-10 apply created,"
+          echo "for auditing orphaned resources. 'plan' and 'output' still work for that purpose."
+          exit 1
+
       - uses: actions/checkout@v4
 
       - name: Verify credentials are present
