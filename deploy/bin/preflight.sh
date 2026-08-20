@@ -648,8 +648,10 @@ if aws s3api head-bucket --bucket "$MEDIA_BUCKET" >/dev/null 2>&1; then
 
   objs="$(aws s3 ls "s3://$MEDIA_BUCKET" --recursive --summarize 2>/dev/null | grep 'Total Objects:' | awk '{print $3}')"
   if [ "${objs:-0}" -eq 0 ] 2>/dev/null; then
-    hmm "0 objects — media has not been copied from GCS yet (deploy/bin/migrate-media.sh)"
-    info "expected until GCP billing is restored; the website will render placeholders"
+    hmm "0 objects — no media uploaded yet; product images will render as placeholders"
+    info "by decision (2026-08-20) media is NOT migrated from GCS — it is re-uploaded"
+    info "fresh through the CMS admin. BACKLOG.md records that 62 of 68 products had"
+    info "no image anyway, so this is a smaller job than the bucket being empty suggests."
   else
     ok "$objs objects present"
   fi
