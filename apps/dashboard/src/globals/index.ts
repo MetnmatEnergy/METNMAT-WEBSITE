@@ -128,6 +128,51 @@ export const Commerce: GlobalConfig = {
     },
     {
       type: "collapsible",
+      label: "Tax treatment",
+      admin: {
+        description:
+          "How GST is applied. The defaults reproduce current behaviour exactly — do not change these without confirmation from your CA.",
+      },
+      fields: [
+        {
+          name: "indiaGstRate",
+          type: "number",
+          defaultValue: 18,
+          min: 0,
+          max: 28,
+          label: "India GST rate (%)",
+          admin: { description: "Applied to Indian customers. Catalogue prices are stored excluding tax and displayed including it." },
+        },
+        {
+          name: "internationalTaxTreatment",
+          type: "select",
+          defaultValue: "TAXABLE",
+          label: "International sales",
+          options: [
+            { label: "Taxed the same as India (current behaviour)", value: "TAXABLE" },
+            { label: "Zero-rated export (requires a valid LUT)", value: "ZERO_RATED_EXPORT" },
+          ],
+          admin: {
+            description:
+              "⚠ Ask your CA before changing this. Exports of goods are commonly zero-rated under an LUT, but that depends on your registration and how payment is received. Note also that catalogue prices are stored EXCLUDING tax: switching to zero-rated lowers what international customers pay by the tax amount unless list prices are raised to compensate. That is a pricing decision, not a tax one.",
+          },
+        },
+        {
+          name: "internationalTaxRate",
+          type: "number",
+          defaultValue: 18,
+          min: 0,
+          max: 28,
+          label: "International tax rate (%)",
+          admin: {
+            condition: (data) => data?.internationalTaxTreatment !== "ZERO_RATED_EXPORT",
+            description: "Held separately from the India rate so the two cannot drift into each other unnoticed.",
+          },
+        },
+      ],
+    },
+    {
+      type: "collapsible",
       label: "Order management",
       fields: [
         {

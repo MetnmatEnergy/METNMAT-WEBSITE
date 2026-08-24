@@ -8,6 +8,7 @@
  * header, footer, top bar and page all share one settings/nav lookup).
  */
 import { cache } from "react";
+import { DEFAULT_TAX_POLICY, taxPolicyFrom, type TaxPolicy } from "./tax";
 import type { Product, Category } from "@/frontend/lib/catalog";
 import {
   services as phServices,
@@ -826,3 +827,19 @@ export async function getPrivacySettings(): Promise<PrivacySettings> {
     responseDays: Number.isFinite(days) && days > 0 ? days : 30,
   };
 }
+
+/**
+ * Tax policy from the commerce global.
+ *
+ * Cached per request like the exchange rate, and falls back to the DEFAULT
+ * policy on any failure — a tax treatment that changes because a fetch timed
+ * out would be far worse than one that never changes.
+ */
+export const getTaxPolicy = cache(async function getTaxPolicy(): Promise<TaxPolicy> {
+  try {
+    const d = await api<Record<string, unknown>>("/api/globals/commerce?depth=0");
+    return taxPolicyFrom(d);
+  } catch {
+    return DEFAULT_TAX_POLICY;
+  }
+});

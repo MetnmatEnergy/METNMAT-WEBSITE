@@ -53,6 +53,8 @@ export type OrderInput = {
   items: OrderItemInput[];
   subtotal: number;
   gstAmount: number;
+  taxTreatment?: "TAXABLE" | "ZERO_RATED_EXPORT";
+  taxRatePercent?: number;
   total: number;
   razorpayOrderId: string;
   /** Linked storefront customer account id, if the buyer was logged in. */

@@ -252,6 +252,9 @@ export type FullOrder = {
   items?: { productName?: string; slug?: string; sku?: string; size?: string; qty?: number; unitPrice?: number; lineTotal?: number; hsnSac?: string }[];
   subtotal?: number;
   gstAmount?: number;
+  /** Tax treatment snapshotted at purchase; absent on orders predating the field. */
+  taxTreatment?: "TAXABLE" | "ZERO_RATED_EXPORT";
+  taxRatePercent?: number;
   total?: number;
   razorpayPaymentId?: string;
   paidAt?: string;

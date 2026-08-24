@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentCustomer, getCustomerOrder, type FullOrder } from "@/backend/lib/customer";
 import { site } from "@/frontend/lib/site";
+import { splitIndianGst } from "@/frontend/lib/tax";
 
 /**
  * GET /api/orders/[orderNumber]/invoice
@@ -59,20 +60,32 @@ function invoiceHtml(order: FullOrder): string {
         .join("<br/>")
     : shipAddr;
 
-  // Tax split (domestic only): intra-state supply = CGST + SGST halves,
-  // inter-state = IGST. International orders keep a single GST line until an
-  // export tax treatment is introduced.
+  // Tax lines come from what the ORDER recorded, never from current settings.
+  // An invoice is a statement about a past transaction: if changing the tax
+  // policy tomorrow re-rendered yesterday's invoice, every document already
+  // sent to a customer would quietly stop matching the one they hold.
+  //
+  // Orders placed before the treatment was recorded were all taxed at 18% as
+  // taxable supplies, so that is what the fallback asserts — it is the historical
+  // fact, not a default.
+  const treatment = order.taxTreatment === "ZERO_RATED_EXPORT" ? "ZERO_RATED_EXPORT" : "TAXABLE";
+  const ratePercent =
+    typeof order.taxRatePercent === "number" && order.taxRatePercent >= 0 ? order.taxRatePercent : 18;
   const isIndia = /^india$/i.test((order.country || "India").trim());
   const buyerState = (order.billingState || order.state || "").trim().toLowerCase();
   const intraState = isIndia && !!buyerState && buyerState === SELLER_STATE;
-  const cgst = Math.round((gst / 2) * 100) / 100;
-  const sgst = Math.round((gst - cgst) * 100) / 100;
-  const taxRows = !isIndia
-    ? `<tr><td class="muted">GST (18%)</td><td style="text-align:right">${inr(gst)}</td></tr>`
-    : intraState
-      ? `<tr><td class="muted">CGST (9%)</td><td style="text-align:right">${inr(cgst)}</td></tr>
-         <tr><td class="muted">SGST (9%)</td><td style="text-align:right">${inr(sgst)}</td></tr>`
-      : `<tr><td class="muted">IGST (18%)</td><td style="text-align:right">${inr(gst)}</td></tr>`;
+  const { cgst, sgst } = splitIndianGst(gst, intraState);
+  const halfRate = Math.round((ratePercent / 2) * 100) / 100;
+
+  const taxRows =
+    treatment === "ZERO_RATED_EXPORT"
+      ? `<tr><td class="muted">Zero-rated export (LUT)</td><td style="text-align:right">${inr(0)}</td></tr>`
+      : !isIndia
+        ? `<tr><td class="muted">GST (${ratePercent}%)</td><td style="text-align:right">${inr(gst)}</td></tr>`
+        : intraState
+          ? `<tr><td class="muted">CGST (${halfRate}%)</td><td style="text-align:right">${inr(cgst)}</td></tr>
+             <tr><td class="muted">SGST (${halfRate}%)</td><td style="text-align:right">${inr(sgst)}</td></tr>`
+          : `<tr><td class="muted">IGST (${ratePercent}%)</td><td style="text-align:right">${inr(gst)}</td></tr>`;
 
   const anyHsn = (order.items ?? []).some((it) => it.hsnSac);
   const rows = (order.items ?? [])

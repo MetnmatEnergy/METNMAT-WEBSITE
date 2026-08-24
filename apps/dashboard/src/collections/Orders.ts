@@ -170,6 +170,33 @@ export const Orders: CollectionConfig = {
       ],
     },
 
+    // How this sale was TAXED, recorded at purchase time.
+    //
+    // The invoice reads these rather than current settings. Without them,
+    // changing the tax policy would silently re-render every historical invoice,
+    // so a customer's saved PDF would stop matching the one the system prints.
+    {
+      type: "row",
+      fields: [
+        {
+          name: "taxTreatment",
+          type: "select",
+          defaultValue: "TAXABLE",
+          options: ["TAXABLE", "ZERO_RATED_EXPORT"],
+          admin: {
+            width: "50%",
+            readOnly: true,
+            description: "Snapshotted at purchase. Orders predating this field were all TAXABLE.",
+          },
+        },
+        {
+          name: "taxRatePercent",
+          type: "number",
+          admin: { width: "50%", readOnly: true, description: "Tax rate applied (%), snapshotted at purchase." },
+        },
+      ],
+    },
+
     // Payment (Razorpay)
     {
       type: "collapsible",

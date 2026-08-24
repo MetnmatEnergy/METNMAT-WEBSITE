@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import { getProductBySlug, getUsdRate } from "@/frontend/lib/cms";
-import { unitPriceForQty, inclGST, gstPortionOf, clampQty, usdFor, isQuoteOnly } from "@/frontend/lib/catalog";
+import { getProductBySlug, getUsdRate, getTaxPolicy } from "@/frontend/lib/cms";
+import { unitPriceForQty, inclGST, clampQty, usdFor, isQuoteOnly } from "@/frontend/lib/catalog";
+import { isIndiaName } from "@/frontend/lib/countries";
+import { resolveTax } from "@/frontend/lib/tax";
+import type { Region } from "@/frontend/lib/region";
 import { createRazorpayOrder, razorpayConfigured, razorpayKeyId } from "@/backend/lib/razorpay";
 import { createOrder, type OrderItemInput } from "@/backend/services/orders.service";
 import { getCurrentCustomer } from "@/backend/lib/customer";
@@ -157,7 +160,15 @@ export async function POST(req: Request) {
     });
   }
   const subtotal = orderItems.reduce((n, it) => n + it.lineTotal, 0);
-  const gstAmount = gstPortionOf(subtotal);
+  // Tax is decided by where the order SHIPS, not by the currency the customer
+  // was browsing in. displayCurrency is client-supplied and cosmetic; the
+  // country is validated and is what the invoice and the tax authority care
+  // about. Deriving tax from the display currency would let a browser choose
+  // its own tax treatment.
+  const taxRegion: Region = isIndiaName(country) ? "IN" : "INTL";
+  const taxPolicy = await getTaxPolicy();
+  const taxLine = resolveTax(taxRegion, subtotal, taxPolicy);
+  const gstAmount = taxLine.amount;
   const total = subtotal; // shipping arranged separately for B2B lab equipment
 
   // Capture what the customer saw (display context — the charge stays INR).
@@ -245,6 +256,10 @@ export async function POST(req: Request) {
     total,
     razorpayOrderId: rzp.id,
     displayCurrency,
+    // Snapshotted so the invoice states what this sale WAS taxed at, not what
+    // the policy happens to say when the document is next rendered.
+    taxTreatment: taxLine.treatment,
+    taxRatePercent: taxLine.ratePercent,
     usdRateAtPurchase: displayCurrency === "USD" ? usdRate : undefined,
     totalUsdApprox,
   });
