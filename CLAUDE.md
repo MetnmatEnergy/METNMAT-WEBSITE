@@ -156,6 +156,8 @@ exists but is not part of the plan. Two consequences worth knowing before a bulk
 - **The `imageSizes` ladder is frozen at upload time** (gotcha 8). Five derivatives per image are
   generated on upload and never regenerated. Changing the ladder afterwards means re-uploading
   every asset, so settle it *before* the catalogue goes in.
+- Full procedure, including the naming convention and the database guards:
+  `docs/CATALOGUE.md`.
 - **`sharp` allocates outside the V8 heap**, so the PM2 memory caps do not bound an upload spike.
   `sharp.concurrency(1)` and a 2G swapfile exist specifically to keep a bulk upload from
   triggering the kernel OOM killer, which chooses its victim by RSS rather than by fault.

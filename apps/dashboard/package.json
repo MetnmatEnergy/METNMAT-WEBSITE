@@ -11,7 +11,10 @@
     "typecheck": "tsc --noEmit",
     "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
-    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload"
+    "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
+    "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
+    "catalogue:manifest": "tsx scripts/catalogue-manifest.ts",
+    "catalogue:import": "tsx scripts/import-catalogue.ts"
   },
   "dependencies": {
     "@payloadcms/db-mongodb": "3.85.1",
@@ -34,6 +37,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9.39.4",
     "eslint-config-next": "15.1.6",
+    "tsx": "4.22.4",
     "typescript": "^5"
   }
 }

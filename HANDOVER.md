@@ -281,6 +281,8 @@ Resend, OpenAI, Pinecone, Razorpay, Upstash and GitHub. Then:
 ## 10. Day-2 operations
 
 - **Content, products, prices:** `/admin` — live, no redeploy
+- **Bulk catalogue load** (many products or photographs at once): [`docs/CATALOGUE.md`](docs/CATALOGUE.md).
+  Run it from a laptop, not the server — image processing happens wherever the upload is handled.
 - **After code changes:** merge to `main`, then run the deploy workflow (§5)
 - **Logs:** `reload-app.yml` prints recent output, or via SSM:
   `sudo -u ec2-user pm2 logs metnmat-website --lines 40 --nostream`
