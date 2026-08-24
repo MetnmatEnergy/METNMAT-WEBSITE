@@ -844,6 +844,48 @@ async function dropFirstFromLegacyCopy(payload: Payload): Promise<void> {
  * value a staffer has customised in the admin is never overwritten. Reads the
  * NEW values from seedHomepage so this stays a single source of truth.
  */
+/**
+ * Persist the international pricing mode on rows written before the field.
+ *
+ * Mode used to be IMPLIED by whether usdPrice was set. The collection hook
+ * derives it on save and the storefront derives it on read, so behaviour is
+ * already correct without this — but "correct because three places agree to
+ * guess the same way" is not a state to leave a catalogue in. This writes the
+ * derivation down once so the stored data says what it means.
+ *
+ * Deliberately NOT a price change: AUTO_CONVERT for everything without a USD
+ * figure, FIXED_USD for everything with one. Every product keeps exactly the
+ * price it had.
+ */
+async function backfillPricingMode(payload: Payload): Promise<void> {
+  const missing = await payload.find({
+    collection: "products",
+    where: { internationalPricing: { exists: false } },
+    limit: 1000,
+    depth: 0,
+  });
+  if (missing.docs.length === 0) return;
+
+  let auto = 0;
+  let fixed = 0;
+  for (const doc of missing.docs) {
+    const usd = Number((doc as { usdPrice?: number }).usdPrice);
+    const mode = Number.isFinite(usd) && usd > 0 ? "FIXED_USD" : "AUTO_CONVERT";
+    await payload.update({
+      collection: "products",
+      id: doc.id,
+      data: { internationalPricing: mode },
+      // The row is otherwise untouched, so republishing it would be a lie in
+      // the version history.
+      draft: false,
+    });
+    mode === "FIXED_USD" ? fixed++ : auto++;
+  }
+  payload.logger.info(
+    `[seed] backfillPricingMode: ${auto} AUTO_CONVERT, ${fixed} FIXED_USD (no price changed)`,
+  );
+}
+
 async function rebrandHomepageCopy(payload: Payload): Promise<void> {
   const OLD_EYEBROW = "India's private Metallurgy & Materials R&D";
   const OLD_SUBTITLE =
@@ -1468,6 +1510,7 @@ export async function seed(payload: Payload): Promise<void> {
   await step(payload, "dropFirstFromLegacyCopy", () => dropFirstFromLegacyCopy(payload));
   await step(payload, "rebrandHomepageCopy", () => rebrandHomepageCopy(payload));
   await step(payload, "refineHeroHeadline", () => refineHeroHeadline(payload));
+  await step(payload, "backfillPricingMode", () => backfillPricingMode(payload));
 
   // 7) Default the homepage featured case study (only while unset).
   await step(payload, "ensureHomepageFeaturedProject", () => ensureHomepageFeaturedProject(payload));

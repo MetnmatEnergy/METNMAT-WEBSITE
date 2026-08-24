@@ -38,7 +38,13 @@ export type Product = {
   categorySlug: string;
   sku: string;
   price: number; // base unit price (INR)
-  usdPrice?: number; // optional manual USD price (override); blank ⇒ auto-convert from INR
+  usdPrice?: number; // fixed USD price, GST-INCLUSIVE (only meaningful in FIXED_USD)
+  /**
+   * How the international price is decided. Staff choose this explicitly in the
+   * CMS; before that field existed the mode was implied by whether usdPrice was
+   * set, so rows written earlier arrive without it and the mapper derives it.
+   */
+  internationalPricing?: "AUTO_CONVERT" | "FIXED_USD";
   mrp?: number; // list price for showing a discount
   rating: number; // 0–5
   reviewCount: number;
@@ -241,7 +247,18 @@ export const isQuoteOnly = (product: Pick<Product, "price" | "productType">): bo
  * USD figure for a GST-inclusive INR amount, scaled from the product's manual
  * USD price. Returns undefined when no manual price is set (⇒ auto-convert).
  */
+export function pricingMode(product: Pick<Product, "internationalPricing" | "usdPrice">): "AUTO_CONVERT" | "FIXED_USD" {
+  if (product.internationalPricing) return product.internationalPricing;
+  // Pre-dates the selector: mode was implied by whether a USD figure existed.
+  return product.usdPrice && product.usdPrice > 0 ? "FIXED_USD" : "AUTO_CONVERT";
+}
+
 export function usdFor(product: Product, inclGstInr: number): number | undefined {
+  // The selected mode wins over the stored figure. A product switched back to
+  // automatic converts at the live rate immediately, even if an old usdPrice is
+  // still sitting on the row — otherwise the switch would appear to do nothing
+  // until someone remembered to clear the other field too.
+  if (pricingMode(product) !== "FIXED_USD") return undefined;
   if (!product.usdPrice || product.usdPrice <= 0 || product.price <= 0) return undefined;
   const base = inclGST(product.price);
   if (base <= 0) return undefined;

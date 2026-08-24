@@ -298,7 +298,7 @@ function requiredKeys(f: Form): string[] {
 export default function CheckoutPage() {
   const router = useRouter();
   const { cartLines, cartCount, clearCart, addToCart, ready } = useStore();
-  const { money, currency, usdRate } = useCurrency();
+  const { money, currency, usdRate, setRegion } = useCurrency();
   const [form, setForm] = React.useState<Form>(EMPTY);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [touched, setTouched] = React.useState<Set<string>>(() => new Set());
@@ -414,6 +414,15 @@ export default function CheckoutPage() {
   /** Selecting a shipping country re-evaluates phone/PIN/state rules. */
   function setCountry(name: string) {
     setForm((f) => ({ ...f, country: name }));
+    // ...and the shopping region. Choosing where the order ships is a far
+    // stronger signal than the IP the region was first guessed from, and seeing
+    // dollar prices while shipping to Chennai reads as a mistake. Safe to do
+    // here because setCountry only runs on an explicit selection — syncing from
+    // the form value on mount would instead overwrite the visitor's region with
+    // the field default.
+    //
+    // Display only: the charge is recomputed server-side in INR either way.
+    setRegion(isIndiaName(name) ? "IN" : "INTL");
     setErrors((er) => {
       const rest = { ...er };
       delete rest.pincode;

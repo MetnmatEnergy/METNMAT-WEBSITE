@@ -186,6 +186,20 @@ export const Products: CollectionConfig = {
             "Leave Price at 0 for quote-only items — the storefront then hides the price and shows an enquiry CTA instead of Add to cart.",
           fields: [
             {
+              name: "internationalPricing",
+              type: "select",
+              defaultValue: "AUTO_CONVERT",
+              label: "International pricing",
+              options: [
+                { label: "Automatic ₹ → $ conversion", value: "AUTO_CONVERT" },
+                { label: "Fixed international $ price", value: "FIXED_USD" },
+              ],
+              admin: {
+                description:
+                  "Automatic conversion uses the current ₹/$ exchange rate, so the international price follows the rupee price. Fixed lets you set a specific international selling price that never moves with the rate.",
+              },
+            },
+            {
               type: "row",
               fields: [
                 {
@@ -204,9 +218,25 @@ export const Products: CollectionConfig = {
                   label: "USD price ($)",
                   admin: {
                     width: "33%",
-                    placeholder: "Auto",
+                    // Hidden in automatic mode so there is no second price box
+                    // whose emptiness silently means something.
+                    condition: (data) => data?.internationalPricing === "FIXED_USD",
                     description:
-                      "Optional. The final, tax-inclusive price international customers see, in USD (shown exactly as entered). Leave blank to auto-convert from ₹ at the latest exchange rate.",
+                      "The final, tax-inclusive price international customers pay, in USD, shown exactly as entered.",
+                  },
+                  // Mode and value have to agree. A FIXED_USD product with no
+                  // figure would silently fall back to conversion, which is the
+                  // failure this whole field exists to remove.
+                  validate: (value: unknown, { siblingData }: { siblingData?: Record<string, unknown> }) => {
+                    const mode = siblingData?.internationalPricing;
+                    const n = typeof value === "number" ? value : Number(value);
+                    const present = value !== null && value !== undefined && String(value) !== "" && !Number.isNaN(n);
+                    if (mode === "FIXED_USD") {
+                      if (!present || n <= 0) return "Set a USD price above 0, or switch to automatic conversion.";
+                    } else if (present && n > 0) {
+                      return "Automatic conversion is selected, so this must be empty. Switch to fixed international pricing to set it.";
+                    }
+                    return true;
                   },
                 },
                 { name: "unit", type: "text", defaultValue: "unit", admin: { width: "34%" } },
@@ -492,6 +522,27 @@ export const Products: CollectionConfig = {
     },
   ],
   hooks: {
+    // Derive internationalPricing for rows written before the field existed.
+    //
+    // Mode used to be IMPLIED by whether usdPrice was set. Existing products
+    // therefore have no value here, and the field default only applies on
+    // create — so without this, opening a product that carries a usdPrice and
+    // pressing save would fail validation (automatic conversion is selected,
+    // so this must be empty) on data that was perfectly valid a moment before.
+    //
+    // Reading the mode back out of the old shape keeps every existing product
+    // behaving exactly as it does today, with no data migration and no price
+    // movement. seed.ts persists the same derivation once; this covers the
+    // window before that runs, and any row it misses.
+    beforeValidate: [
+      ({ data }) => {
+        if (!data) return data;
+        if (data.internationalPricing) return data;
+        const usd = Number(data.usdPrice);
+        data.internationalPricing = Number.isFinite(usd) && usd > 0 ? "FIXED_USD" : "AUTO_CONVERT";
+        return data;
+      },
+    ],
     afterChange: [auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
     afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete, syncChatbotAfterDelete],
   },

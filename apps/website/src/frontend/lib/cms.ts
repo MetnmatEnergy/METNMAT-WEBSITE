@@ -67,6 +67,7 @@ type CmsProduct = {
   category?: { slug?: string } | string | null;
   price?: number;
   usdPrice?: number;
+  internationalPricing?: "AUTO_CONVERT" | "FIXED_USD";
   mrp?: number;
   unit?: string;
   moq?: number;
@@ -109,6 +110,11 @@ function mapProduct(d: CmsProduct): Product {
     sku: d.sku ?? "",
     price: d.price ?? 0,
     usdPrice: typeof d.usdPrice === "number" && d.usdPrice > 0 ? d.usdPrice : undefined,
+    // Same derivation the CMS hook applies on save, so a product that has not
+    // been re-saved since the field was added prices identically either way.
+    internationalPricing:
+      d.internationalPricing ??
+      (typeof d.usdPrice === "number" && d.usdPrice > 0 ? "FIXED_USD" : "AUTO_CONVERT"),
     mrp: d.mrp,
     rating: d.rating ?? 0,
     reviewCount: 0,

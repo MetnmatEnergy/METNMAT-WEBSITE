@@ -10,6 +10,7 @@ import { useStore } from "@/frontend/components/commerce/store-provider";
 import { inclGST, usdFor, lineUsdValue, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { ProductImage } from "@/frontend/components/commerce/product-image";
+import { RegionBar } from "@/frontend/components/commerce/region-bar";
 
 /**
  * The cart has three states — hydrating, empty, and populated — and the first
@@ -84,6 +85,10 @@ export default function CartPage() {
       <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
         Shopping cart
       </h1>
+      {/* Changing region here re-prices every line through the same context the
+          totals read from, so the cart cannot show one currency and total in
+          another. */}
+      <RegionBar className="mt-2" />
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px]">
         {/* Lines */}

@@ -12,6 +12,7 @@ import { getTopCategories, getFeaturedProducts } from "@/frontend/lib/cms";
 import { pageMetadata } from "@/frontend/lib/seo";
 import { JsonLd, itemListJsonLd } from "@/frontend/components/seo/json-ld";
 import { PageBreadcrumbs } from "@/frontend/components/seo/page-breadcrumbs";
+import { RegionBar } from "@/frontend/components/commerce/region-bar";
 
 export const metadata: Metadata = pageMetadata({
   title: "Shop — Electrodes, Membranes, Cells & Lab Equipment",
@@ -38,6 +39,9 @@ export default async function ShopHomePage() {
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">
             Research-grade electrochemistry &amp; lab equipment — electrodes, membranes, cells, reactors and accessories.
           </p>
+          {/* States the region rather than asking for it: the catalogue is
+              already rendered by the time this appears. */}
+          <RegionBar className="mt-3" />
         </Container>
       </section>
 

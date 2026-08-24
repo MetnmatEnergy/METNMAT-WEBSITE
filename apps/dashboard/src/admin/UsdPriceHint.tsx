@@ -16,6 +16,10 @@ const BRAND = "#d81f26";
 export default function UsdPriceHint() {
   const price = useFormFields(([fields]) => fields?.price?.value as number | string | undefined);
   const usdPrice = useFormFields(([fields]) => fields?.usdPrice?.value as number | string | undefined);
+  // Mode comes from the selector now, not from whether the USD box happens to be
+  // empty. Rows written before that field existed have no value, so fall back to
+  // the old rule — the same derivation the collection hook applies on save.
+  const mode = useFormFields(([fields]) => fields?.internationalPricing?.value as string | undefined);
 
   const [rate, setRate] = React.useState<number | null>(null);
   const [failed, setFailed] = React.useState(false);
@@ -36,7 +40,8 @@ export default function UsdPriceHint() {
   }, []);
 
   const p = Number(price) || 0;
-  const manual = usdPrice != null && usdPrice !== "" && Number(usdPrice) > 0;
+  const hasUsd = usdPrice != null && usdPrice !== "" && Number(usdPrice) > 0;
+  const manual = mode ? mode === "FIXED_USD" : hasUsd;
   const inclInr = Math.round(p * (1 + GST));
   const auto = rate && p > 0 ? inclInr / rate : null;
   const fmtUsd = (n: number) =>
@@ -46,6 +51,16 @@ export default function UsdPriceHint() {
   let active = false; // brand tint for live/actionable states; neutral otherwise
   if (p <= 0) {
     body = <>This is a <strong>quote-only</strong> product (₹ price is 0), so no USD price is shown.</>;
+  } else if (manual && !hasUsd) {
+    // Selected the mode but not typed a figure yet. Without this the branch
+    // below formats an empty value and renders "$NaN".
+    body = (
+      <>
+        Fixed international pricing is selected — enter the USD price international
+        customers will pay.{" "}
+        {auto != null && <span style={{ opacity: 0.7 }}>Automatic conversion would be ≈ {fmtUsd(auto)}.</span>}
+      </>
+    );
   } else if (manual) {
     active = true;
     body = (
@@ -54,17 +69,17 @@ export default function UsdPriceHint() {
         <strong style={{ color: BRAND }}>{fmtUsd(Number(usdPrice))}</strong> — the final,
         tax-inclusive price (shown as you type it).{" "}
         {auto != null && <span style={{ opacity: 0.7 }}>Auto-convert would be ≈ {fmtUsd(auto)}. </span>}
-        Clear the USD field to switch back to automatic conversion.
+        Switch to automatic conversion to follow the exchange rate instead.
       </>
     );
   } else if (auto != null) {
     active = true;
     body = (
       <>
-        USD field is blank → international customers see{" "}
+        International customers see{" "}
         <strong style={{ color: BRAND }}>≈ {fmtUsd(auto)}</strong>{" "}
         <span style={{ opacity: 0.7 }}>(incl. GST, auto-converted at ₹{rate!.toFixed(2)} / $1, live)</span>.
-        Enter a value to set a fixed USD price instead.
+        Choose fixed international pricing to set a specific figure instead.
       </>
     );
   } else if (failed) {
