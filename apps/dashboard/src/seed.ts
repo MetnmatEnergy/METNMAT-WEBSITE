@@ -1015,32 +1015,32 @@ async function ensureHomepageFeaturedProject(payload: Payload): Promise<void> {
 const PROJECT_COVERS: { slug: string; asset: string; alt: string }[] = [
   {
     slug: "microstructure-control-heat-treatment",
-    asset: "src/seed-assets/projects/microstructure-heat-treatment.webp",
+    asset: "src/seed-assets/projects/microstructure-heat-treatment-cover.webp",
     alt: "Heat-treated metal billet glowing from hot to cool beside a gear and shaft, with a strip of micrographs showing the microstructure evolving through heat treatment.",
   },
   {
     slug: "ferritic-stainless-steel-texture",
-    asset: "src/seed-assets/projects/ferritic-stainless-steel-texture.webp",
+    asset: "src/seed-assets/projects/ferritic-stainless-steel-texture-cover.webp",
     alt: "Deep-drawn stainless-steel cup, sheet and flange beside a thermo-mechanical processing temperature curve and micrographs of recrystallisation texture evolution.",
   },
   {
     slug: "casting-yield-optimization",
-    asset: "src/seed-assets/projects/casting-yield-optimization.webp",
+    asset: "src/seed-assets/projects/casting-yield-optimization-cover.webp",
     alt: "Molten metal pouring from a furnace with a thermoelectric module recycling waste process heat to lift casting yield.",
   },
   {
     slug: "alumina-insulation-fiber-board",
-    asset: "src/seed-assets/projects/alumina-insulation-fiber-board.webp",
+    asset: "src/seed-assets/projects/alumina-insulation-fiber-board-cover.webp",
     alt: "White high-temperature alumina insulation fiber boards with a fibre close-up, in front of a glowing furnace lining.",
   },
   {
     slug: "oxygen-free-copper-alloy",
-    asset: "src/seed-assets/projects/oxygen-free-copper-alloy.webp",
+    asset: "src/seed-assets/projects/oxygen-free-copper-alloy-cover.webp",
     alt: "Polished copper block, coil and rods with a grain-structure micrograph — oxygen-free high-strength electrical copper alloy at 91-93% IACS.",
   },
   {
     slug: "modeling-simulations",
-    asset: "src/seed-assets/projects/modeling-simulations.webp",
+    asset: "src/seed-assets/projects/modeling-simulations-cover.webp",
     alt: "Finite-element simulation of a valve body: meshed CAD model on one half, von-Mises stress colour map on the other, with solver code and result charts.",
   },
   // The remaining nine, completing covers for all 15 case studies. Same
@@ -1048,47 +1048,47 @@ const PROJECT_COVERS: { slug: string; asset: string; alt: string }[] = [
   // used on the card, detail hero and home feature keeps the wording readable.
   {
     slug: "casting-defects",
-    asset: "src/seed-assets/projects/casting-defects.webp",
+    asset: "src/seed-assets/projects/casting-defects-cover.webp",
     alt: "Foundry ladle pouring molten metal into a mould beside a thermoelectric waste-heat recovery unit, with a temperature-monitoring screen reading a stable 820 °C.",
   },
   {
     slug: "waste-heat-recycling-system",
-    asset: "src/seed-assets/projects/waste-heat-recycling-system.webp",
+    asset: "src/seed-assets/projects/waste-heat-recycling-system-cover.webp",
     alt: "Thermoelectric modules clamped in an array around a hot exhaust pipe, recovering 20–50 per cent of the waste heat passing through it.",
   },
   {
     slug: "wear-resistant-composites",
-    asset: "src/seed-assets/projects/wear-resistant-composites.webp",
+    asset: "src/seed-assets/projects/wear-resistant-composites-cover.webp",
     alt: "Metal-matrix composite blocks, discs and a sleeve showing coarse ceramic reinforcement particles, on a steel bench beside tooling.",
   },
   {
     slug: "new-aluminum-alloy",
-    asset: "src/seed-assets/projects/new-aluminum-alloy.webp",
+    asset: "src/seed-assets/projects/new-aluminum-alloy-cover.webp",
     alt: "Molten aluminium poured into an ingot mould beside cast billets and ingots, with a hydraulic press behind for thermo-mechanical processing.",
   },
   {
     slug: "material-synthesis",
-    asset: "src/seed-assets/projects/material-synthesis.webp",
+    asset: "src/seed-assets/projects/material-synthesis-cover.webp",
     alt: "Laboratory tube furnace at 800 °C with vials of thermoelectric powders, sintered pellets and an assembled module, against a whiteboard of ZT equations.",
   },
   {
     slug: "surface-casting-improvement",
-    asset: "src/seed-assets/projects/surface-casting-improvement.webp",
+    asset: "src/seed-assets/projects/surface-casting-improvement-cover.webp",
     alt: "Continuous casting line pouring molten metal, with an instrumented thermoelectric recovery module mounted on the mould conveyor.",
   },
   {
     slug: "composite-materials",
-    asset: "src/seed-assets/projects/composite-materials.webp",
+    asset: "src/seed-assets/projects/composite-materials-cover.webp",
     alt: "Carbon-fibre and honeycomb-cored composite panels beside a speckled composite block, engineered for thermoelectric conductivity and durability.",
   },
   {
     slug: "aluminum-foam",
-    asset: "src/seed-assets/projects/aluminum-foam.webp",
+    asset: "src/seed-assets/projects/aluminum-foam-cover.webp",
     alt: "Closed-cell aluminium foam panels and a cylinder showing the porous structure, beside a crucible pouring molten aluminium.",
   },
   {
     slug: "high-temperature-ceramic",
-    asset: "src/seed-assets/projects/high-temperature-ceramic.webp",
+    asset: "src/seed-assets/projects/high-temperature-ceramic-cover.webp",
     alt: "High-temperature ceramic tiles and a disc in front of a glowing furnace mouth, with heat-flow lines curving across to them.",
   },
 ];
@@ -1117,11 +1117,24 @@ async function ensureProjectCovers(payload: Payload): Promise<void> {
         collection: "projects",
         where: { slug: { equals: slug } },
         limit: 1,
-        depth: 0,
+        // depth 1: the decision below needs the attached cover's FILENAME.
+        depth: 1,
         overrideAccess: true,
       });
-      const doc = res.docs[0] as { id: string | number; coverImage?: unknown } | undefined;
-      if (!doc || doc.coverImage) continue; // no such project, or a cover is already set
+      const doc = res.docs[0] as
+        | { id: string | number; coverImage?: { filename?: string } | string | null }
+        | undefined;
+      if (!doc) continue;
+
+      const filename = path.basename(asset);
+      // Same rule as the category banners: compare the attached FILENAME with
+      // the asset being shipped, rather than asking whether a cover exists at
+      // all. Every one of these projects had a cover set and every one of those
+      // files 404s — the media rows outlived the GCS bucket — so "a cover is
+      // already set" was true and useless.
+      const currentFile =
+        doc.coverImage && typeof doc.coverImage === "object" ? doc.coverImage.filename : undefined;
+      if (currentFile === filename) continue;
       const filePath = path.resolve(process.cwd(), asset);
       if (!existsSync(filePath)) {
         payload.logger.warn(`[seed] project cover asset missing: ${filePath}`);
@@ -1132,7 +1145,6 @@ async function ensureProjectCovers(payload: Payload): Promise<void> {
       // concurrent boots, and a staff clear+reboot — none of which would leave
       // an orphaned upload in the GCS bucket. Payload auto-increments filenames
       // on collision, so a bare create would otherwise silently duplicate.
-      const filename = path.basename(asset);
       const existingMedia = await payload.find({
         collection: "media",
         where: { filename: { equals: filename } },
