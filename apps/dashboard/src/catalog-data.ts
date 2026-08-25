@@ -143,6 +143,292 @@ export const seedCategories: SeedCategory[] = [
 
 export const seedProducts: SeedProduct[] = [
   {
+    "slug": "intelligent-peristaltic-pump-mbt350s",
+    "name": "Intelligent Peristaltic Pump - Single Channel (MBT350S)",
+    "brand": "METNMAT",
+    "categorySlug": "peristaltic-pumps",
+    "sku": "MT-PP-MBT350S",
+    "price": 45500,
+    "moq": 1,
+    "unit": "pc",
+    "inStock": true,
+    "featured": true,
+    "badges": [
+      "GST invoice"
+    ],
+    "sizes": [],
+    "specs": [
+      {
+        "label": "Model",
+        "value": "MBT350S"
+      },
+      {
+        "label": "Pump Type",
+        "value": "Single Channel Peristaltic Pump"
+      },
+      {
+        "label": "Drive",
+        "value": "Closed-loop Stepper Motor"
+      },
+      {
+        "label": "Flow Rate",
+        "value": "Up to approx. 300 mL/min"
+      },
+      {
+        "label": "Speed Range",
+        "value": "0.1 – 350 RPM (adjustable)"
+      },
+      {
+        "label": "Power Supply",
+        "value": "DC 24 V, 2 A"
+      },
+      {
+        "label": "Display",
+        "value": "1.8-inch colour screen with 3-button control"
+      }
+    ],
+    "shortDesc": "Single-channel intelligent peristaltic pump with a closed-loop stepper drive, adjustable 0.1–350 RPM and a 1.8-inch colour display."
+  },
+  {
+    "slug": "intelligent-peristaltic-pump-mbt350d",
+    "name": "Intelligent Peristaltic Pump - Dual Channel (MBT350D)",
+    "brand": "METNMAT",
+    "categorySlug": "peristaltic-pumps",
+    "sku": "MT-PP-MBT350D",
+    "price": 50000,
+    "moq": 1,
+    "unit": "pc",
+    "inStock": true,
+    "featured": true,
+    "badges": [
+      "GST invoice"
+    ],
+    "sizes": [],
+    "specs": [
+      {
+        "label": "Model",
+        "value": "MBT350D"
+      },
+      {
+        "label": "Pump Type",
+        "value": "Dual Channel Peristaltic Pump"
+      },
+      {
+        "label": "Drive",
+        "value": "Closed-loop Stepper Motor"
+      },
+      {
+        "label": "Flow Rate",
+        "value": "Up to approx. 300 mL/min"
+      },
+      {
+        "label": "Speed Range",
+        "value": "0.1 – 350 RPM (adjustable)"
+      },
+      {
+        "label": "Power Supply",
+        "value": "DC 24 V, 2 A"
+      },
+      {
+        "label": "Display",
+        "value": "1.8-inch colour screen with 3-button control"
+      }
+    ],
+    "shortDesc": "Dual-channel intelligent peristaltic pump with a closed-loop stepper drive, adjustable 0.1–350 RPM and a 1.8-inch colour display."
+  },
+  {
+    "slug": "intelligent-peristaltic-pump-miwifi-v3-kk25",
+    "name": "Intelligent Peristaltic Pump - Wi-Fi Touchscreen (MIWIFI V3-KK25)",
+    "brand": "METNMAT",
+    "categorySlug": "peristaltic-pumps",
+    "sku": "MT-PP-MIWIFIV3KK25",
+    "price": 85500,
+    "moq": 1,
+    "unit": "pc",
+    "inStock": true,
+    "featured": true,
+    "badges": [
+      "GST invoice"
+    ],
+    "sizes": [],
+    "specs": [
+      {
+        "label": "Model",
+        "value": "MIWIFI V3-KK25"
+      },
+      {
+        "label": "Maximum Speed",
+        "value": "Up to 600 RPM"
+      },
+      {
+        "label": "Flow Rate",
+        "value": "Up to approx. 5,000 mL/min"
+      },
+      {
+        "label": "Speed Resolution",
+        "value": "0.1 RPM"
+      },
+      {
+        "label": "Power Supply",
+        "value": "AC 100 – 240 V"
+      },
+      {
+        "label": "Power Consumption",
+        "value": "< 75 W"
+      },
+      {
+        "label": "Display",
+        "value": "4.3-inch colour touchscreen"
+      },
+      {
+        "label": "Control Options",
+        "value": "RS485, analog (0–5 V / 0–10 V / 4–20 mA), Wi-Fi, touchscreen digital control"
+      }
+    ],
+    "shortDesc": "High-flow intelligent peristaltic pump reaching 600 RPM and approximately 5,000 mL/min, with a 4.3-inch touchscreen and RS485, analog and Wi-Fi control."
+  },
+  {
+    "slug": "peristaltic-pump-mstp15",
+    "name": "Peristaltic Pump - Dispensing (MSTP15)",
+    "brand": "METNMAT",
+    "categorySlug": "peristaltic-pumps",
+    "sku": "MT-PP-MSTP15",
+    "price": 22000,
+    "moq": 1,
+    "unit": "pc",
+    "inStock": true,
+    "featured": false,
+    "badges": [
+      "GST invoice"
+    ],
+    "sizes": [],
+    "specs": [
+      {
+        "label": "Model",
+        "value": "MSTP15"
+      },
+      {
+        "label": "Power Supply",
+        "value": "DC 24 V, 1.9 A"
+      },
+      {
+        "label": "Flow Rate",
+        "value": "0 – 15 mL/min (3 mm ID × 5 mm OD tubing)"
+      },
+      {
+        "label": "Speed",
+        "value": "350 RPM"
+      },
+      {
+        "label": "Display",
+        "value": "1.8-inch LCD"
+      },
+      {
+        "label": "Noise Level",
+        "value": "≤ 47 dB"
+      },
+      {
+        "label": "Operating Modes",
+        "value": "Time, volume and cycle modes"
+      },
+      {
+        "label": "Communication",
+        "value": "RS485"
+      },
+      {
+        "label": "Motor Type",
+        "value": "High-precision stepper motor"
+      }
+    ],
+    "shortDesc": "Precision dispensing peristaltic pump with time, volume and cycle modes, RS485 control and a 1.8-inch LCD."
+  },
+  {
+    "slug": "peristaltic-pump-mpp60",
+    "name": "Peristaltic Pump - Single Channel (MPP60)",
+    "brand": "METNMAT",
+    "categorySlug": "peristaltic-pumps",
+    "sku": "MT-PP-MPP60",
+    "price": 9500,
+    "moq": 1,
+    "unit": "pc",
+    "inStock": true,
+    "featured": false,
+    "badges": [
+      "GST invoice"
+    ],
+    "sizes": [],
+    "specs": [
+      {
+        "label": "Model",
+        "value": "MPP60"
+      },
+      {
+        "label": "Pump Type",
+        "value": "Single Channel Peristaltic Pump"
+      },
+      {
+        "label": "Flow Rate",
+        "value": "15 – 60 mL/min"
+      },
+      {
+        "label": "Operating Voltage",
+        "value": "DC 12 V"
+      },
+      {
+        "label": "Controls",
+        "value": "On/off switch and speed control knob"
+      },
+      {
+        "label": "Display",
+        "value": "None"
+      }
+    ],
+    "shortDesc": "Compact single-channel peristaltic pump delivering 15–60 mL/min, with knob speed control and no display."
+  },
+  {
+    "slug": "peristaltic-pump-mpp70",
+    "name": "Peristaltic Pump - Single Channel (MPP70)",
+    "brand": "METNMAT",
+    "categorySlug": "peristaltic-pumps",
+    "sku": "MT-PP-MPP70",
+    "price": 5500,
+    "moq": 1,
+    "unit": "pc",
+    "inStock": true,
+    "featured": false,
+    "badges": [
+      "GST invoice"
+    ],
+    "sizes": [],
+    "specs": [
+      {
+        "label": "Model",
+        "value": "MPP70"
+      },
+      {
+        "label": "Pump Type",
+        "value": "Single Channel Peristaltic Pump"
+      },
+      {
+        "label": "Flow Rate",
+        "value": "0 – 70 mL/min"
+      },
+      {
+        "label": "Operating Voltage",
+        "value": "DC 12 V"
+      },
+      {
+        "label": "Controls",
+        "value": "On/off switch and speed control knob"
+      },
+      {
+        "label": "Display",
+        "value": "None"
+      }
+    ],
+    "shortDesc": "Compact single-channel peristaltic pump delivering up to 70 mL/min, with knob speed control and no display."
+  },
+  {
     "slug": "silver-silver-chloride-ag-agcl-reference-electrode",
     "name": "Silver Silver Chloride Ag/AgCl Reference Electrode",
     "brand": "METNMAT",
@@ -3410,283 +3696,6 @@ export const seedProducts: SeedProduct[] = [
       }
     ],
     "shortDesc": "The METNMAT Metal-Flow Battery Reactor is a versatile electrochemical flow cell platform designed for the development and evaluation of metal-based flow battery systems."
-  },
-  {
-    "slug": "intelligent-peristaltic-pump-dual-channel-dc-24v",
-    "name": "Intelligent Peristaltic Pump - Dual Channel, DC 24V",
-    "brand": "METNMAT",
-    "categorySlug": "peristaltic-pumps",
-    "sku": "MT-EQ-PPDU-24V",
-    "price": 12999,
-    "moq": 1,
-    "unit": "pc",
-    "inStock": true,
-    "featured": true,
-    "badges": [
-      "GST invoice",
-      "Made by METNMAT"
-    ],
-    "sizes": [],
-    "specs": [
-      {
-        "label": "Power Supply",
-        "value": "DC 24 V"
-      },
-      {
-        "label": "Power Consumption",
-        "value": "< 36 W"
-      },
-      {
-        "label": "Speed Range",
-        "value": "0.1 – 350 rpm"
-      },
-      {
-        "label": "Speed Resolution",
-        "value": "0.1 rpm"
-      },
-      {
-        "label": "Dimensions",
-        "value": "249 × 111 × 154 mm"
-      },
-      {
-        "label": "Weight",
-        "value": "Approx. 2.5 kg"
-      },
-      {
-        "label": "Motor Type",
-        "value": "57 Closed-Loop Stepper Motor"
-      },
-      {
-        "label": "Motor Life",
-        "value": "≥ 6000 hours"
-      },
-      {
-        "label": "Pump Head",
-        "value": "3-Rotor (KK1800)"
-      },
-      {
-        "label": "Tube Material",
-        "value": "BPT / Silicone"
-      },
-      {
-        "label": "Control Methods",
-        "value": "Button, Foot Pedal, RS-485 (Modbus)"
-      },
-      {
-        "label": "Operating Temperature",
-        "value": "0°C to 40°C"
-      },
-      {
-        "label": "Humidity",
-        "value": "< 80% RH (Non-condensing)"
-      },
-      {
-        "label": "Noise Level",
-        "value": "≤ 58 dB"
-      },
-      {
-        "label": "Applications",
-        "value": "Flow battery electrolyte recirculation\r, Continuous flow electrochemical cells\r, Electrolyser electrolyte management\r, Analytical flow injection systems"
-      }
-    ],
-    "shortDesc": "The Dual-Channel Peristaltic Pump is a precision fluid delivery system designed for laboratory, industrial, and electrochemical applications requiring accurate and contamination-free liquid transfer."
-  },
-  {
-    "slug": "kamoer-kcp2-kxf-s08-peristaltic-lab-pump-12v-dc-17-50-ml-min",
-    "name": "Kamoer KCP2-KXF-S08 Peristaltic Lab Pump - 12V DC, 17-50 ml/min",
-    "brand": "METNMAT",
-    "categorySlug": "peristaltic-pumps",
-    "sku": "MT-EQ-PPK2-12V",
-    "price": 12999,
-    "moq": 1,
-    "unit": "pc",
-    "inStock": true,
-    "featured": true,
-    "badges": [
-      "GST invoice"
-    ],
-    "sizes": [],
-    "specs": [
-      {
-        "label": "Model",
-        "value": "KCP2-KXF-S08"
-      },
-      {
-        "label": "Pump Type",
-        "value": "Peristaltic Lab Pump"
-      },
-      {
-        "label": "Operating Voltage",
-        "value": "12 V DC"
-      },
-      {
-        "label": "Flow Rate",
-        "value": "17–50 mL/min"
-      },
-      {
-        "label": "Maximum Flow Rate",
-        "value": "210 mL/min"
-      },
-      {
-        "label": "Power Source",
-        "value": "AC Adapter Powered"
-      },
-      {
-        "label": "Dimensions",
-        "value": "13.9 × 7.9 × 11 cm"
-      },
-      {
-        "label": "Weight",
-        "value": "756 g"
-      },
-      {
-        "label": "Manufacturer",
-        "value": "Kamoer Fluid Tech"
-      },
-      {
-        "label": "Applications",
-        "value": "Electrochemical Flow Cells\r, CO₂ Electrolysis Systems\r, Water Electrolysis\r, Laboratory Dosing\r, Chemical Transfer\r, Analytical Instruments\r, Titration Systems\r, Research & Development"
-      }
-    ],
-    "shortDesc": "The Kamoer KCP2-KXF-S08 Peristaltic Pump is a compact and reliable laboratory dosing pump designed for precise liquid transfer in research, analytical, and electrochemical applications."
-  },
-  {
-    "slug": "kamoer-kcp-x-mini-peristaltic-pump-24v-19-65-ml-min-with-control",
-    "name": "Kamoer KCP-X Mini Peristaltic Pump - 24V, 19-65 ml/min, with Control",
-    "brand": "METNMAT",
-    "categorySlug": "peristaltic-pumps",
-    "sku": "MT-EQ-PPKX-24V",
-    "price": 12999,
-    "moq": 1,
-    "unit": "pc",
-    "inStock": true,
-    "featured": false,
-    "badges": [
-      "GST invoice"
-    ],
-    "sizes": [],
-    "specs": [
-      {
-        "label": "Model",
-        "value": "KCP-X"
-      },
-      {
-        "label": "Pump Type",
-        "value": "Mini Peristaltic Pump"
-      },
-      {
-        "label": "Operating Voltage",
-        "value": "24 V DC"
-      },
-      {
-        "label": "Flow Rate Range",
-        "value": "19–65 mL/min"
-      },
-      {
-        "label": "Tube Size",
-        "value": "3 mm ID × 5 mm OD Silicone Tube"
-      },
-      {
-        "label": "Dimensions",
-        "value": "72 × 86.5 × 80.2 mm"
-      },
-      {
-        "label": "Weight",
-        "value": "185 g"
-      },
-      {
-        "label": "Operating Temperature",
-        "value": "0–40°C"
-      },
-      {
-        "label": "Humidity",
-        "value": "< 80% RH"
-      },
-      {
-        "label": "Flow Control",
-        "value": "Adjustable Rotary Knob"
-      },
-      {
-        "label": "Pump Head",
-        "value": "Snap-Fit Design"
-      },
-      {
-        "label": "Applications",
-        "value": "Electrochemical Flow Cells\r, CO₂ Electrolysis Systems\r, Water Electrolysis Research\r, Chemical Dosing\r, Laboratory Fluid Transfer\r, Analytical Instruments\r, Continuous Flow Reactors\r, Scientific Research & Development"
-      },
-      {
-        "label": "Key features",
-        "value": "Compact and lightweight design\r, Adjustable flow rate control\r, Low-noise operation\r, Contamination-free liquid transfer\r, Easy tubing replacement and maintenance\r, Suitable for continuous laboratory operation"
-      }
-    ],
-    "shortDesc": "The Kamoer KCP-X Mini Peristaltic Pump is a compact and user-friendly fluid transfer solution designed for precise low-flow applications in laboratories, electrochemical systems, and research environments."
-  },
-  {
-    "slug": "kamoer-m1-stp-intelligent-peristaltic-pump-dc-24v-48w-by-metnmat",
-    "name": "Kamoer M1-STP Intelligent peristaltic Pump DC 24V <48W by METNMAT",
-    "brand": "METNMAT",
-    "categorySlug": "peristaltic-pumps",
-    "sku": "MT-EQ-PPM1-24V",
-    "price": 12999,
-    "moq": 1,
-    "unit": "pc",
-    "inStock": true,
-    "featured": false,
-    "badges": [
-      "GST invoice"
-    ],
-    "sizes": [],
-    "specs": [
-      {
-        "label": "Model",
-        "value": "M1-STP"
-      },
-      {
-        "label": "Pump Type",
-        "value": "Intelligent Peristaltic Pump"
-      },
-      {
-        "label": "Operating Voltage",
-        "value": "24 V DC"
-      },
-      {
-        "label": "Power Consumption",
-        "value": "< 48 W"
-      },
-      {
-        "label": "Flow Rate",
-        "value": "0–20 mL/min"
-      },
-      {
-        "label": "Maximum Speed",
-        "value": "350 RPM"
-      },
-      {
-        "label": "Display",
-        "value": "1.8-inch LCD Screen"
-      },
-      {
-        "label": "Communication",
-        "value": "RS485"
-      },
-      {
-        "label": "Motor Type",
-        "value": "High-Precision Stepper Motor"
-      },
-      {
-        "label": "Noise Level",
-        "value": "< 47 dB"
-      },
-      {
-        "label": "Operating Modes",
-        "value": "Time Mode, Volume Mode, Cycle Mode"
-      },
-      {
-        "label": "Manufacturer",
-        "value": "Kamoer Fluid Tech"
-      }
-    ],
-    "shortDesc": "The Kamoer M1-STP Intelligent Peristaltic Pump is a high-precision fluid handling system designed for laboratory automation, electrochemical research, and analytical applications."
   },
   {
     "slug": "triboelectric-measurement-setup",

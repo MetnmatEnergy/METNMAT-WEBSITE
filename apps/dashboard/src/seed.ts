@@ -1199,7 +1199,7 @@ const BLOG_FIGURES: {
     figures: [
       {
         afterParagraph: 2,
-        asset: "src/seed-assets/blog/iem-fig-proton-transport.webp",
+        asset: "src/seed-assets/blog/iem-figure-proton-transport.webp",
         alt: "Proton transport across a proton exchange membrane by the vehicular and Grotthuss mechanisms.",
         caption:
           "Proton (H⁺) transport across a PEM. In the vehicular mechanism the whole H₃O⁺ ion diffuses bodily across; in the Grotthuss mechanism the proton is relayed along a hydrogen-bonded water chain.",
@@ -1211,7 +1211,7 @@ const BLOG_FIGURES: {
     figures: [
       {
         afterParagraph: 2,
-        asset: "src/seed-assets/blog/aemwe-fig-cell-construction.webp",
+        asset: "src/seed-assets/blog/aemwe-figure-cell-construction.webp",
         alt: "Cross-section of an AEMWE cell showing endplates, current collectors, gaskets, catalyst electrodes and the central anion exchange membrane carrying OH⁻ ions.",
         caption:
           "AEMWE cell construction and working principle — endplates, current collectors with flow channels, gaskets and catalyst-coated electrodes around a central anion exchange membrane that carries OH⁻ from cathode to anode.",
@@ -1223,7 +1223,7 @@ const BLOG_FIGURES: {
     figures: [
       {
         afterParagraph: 4,
-        asset: "src/seed-assets/blog/co2-fig-cell-principle.webp",
+        asset: "src/seed-assets/blog/co2-figure-cell-principle.webp",
         alt: "Schematic of a metal–CO₂ cell: a lithium metal anode and a porous CO₂-fed gas cathode in a non-aqueous electrolyte, with the discharge (CRR) and charge (CER) reactions.",
         caption:
           "Working principle of a metal–CO₂ cell (Li–CO₂ archetype). On discharge, CO₂ is reduced at the porous gas cathode to Li₂CO₃ + C (CRR); on charge the reaction reverses (CER). Li₂CO₃ is an insulator, which drives the large charge overpotential at the heart of the field's research.",
@@ -1274,6 +1274,52 @@ const BLOG_COVERS: { slug: string; asset: string; alt: string }[] = [
  * and project covers: after the storage move every article had a cover and
  * none of the files existed, so "a cover is set" was true and meaningless.
  */
+/**
+ * Retire the peristaltic pumps the MBT/MPP/MSTP range replaced.
+ *
+ * Removing them from the seed data stops them being CREATED on a fresh
+ * database but does nothing to the rows already in production — the catalogue
+ * belongs to CMS staff and boot never deletes from it.
+ *
+ * Drafted rather than deleted. Orders snapshot the SKU as text so purchase
+ * history reads correctly either way, but StockLedger holds a REQUIRED
+ * relationship to the product, and deleting would orphan those rows. Drafting
+ * takes the product off the shop, keeps every reference intact, and is undone
+ * by publishing again.
+ */
+const SUPERSEDED_PUMP_SLUGS = [
+  "intelligent-peristaltic-pump-dual-channel-dc-24v",
+  "kamoer-kcp2-kxf-s08-peristaltic-lab-pump-12v-dc-17-50-ml-min",
+  "kamoer-kcp-x-mini-peristaltic-pump-24v-19-65-ml-min-with-control",
+  "kamoer-m1-stp-intelligent-peristaltic-pump-dc-24v-48w-by-metnmat",
+];
+
+async function retireSupersededPumps(payload: Payload): Promise<void> {
+  for (const slug of SUPERSEDED_PUMP_SLUGS) {
+    try {
+      const res = await payload.find({
+        collection: "products",
+        where: { slug: { equals: slug } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+      const doc = res.docs[0] as { id: string | number; _status?: string } | undefined;
+      // Already drafted — including by staff, deliberately. Re-writing it every
+      // boot would be pointless churn on a collection staff own.
+      if (!doc || doc._status === "draft") continue;
+      await payload.update({
+        collection: "products",
+        id: doc.id,
+        data: { _status: "draft" },
+        overrideAccess: true,
+      });
+      payload.logger.info(`[seed] products: retired superseded pump (${slug}).`);
+    } catch (e) {
+      payload.logger.warn(`[seed] retiring ${slug} failed: ${(e as Error).message}`);
+    }
+  }
+}
 async function ensureBlogCovers(payload: Payload): Promise<void> {
   for (const { slug, asset, alt } of BLOG_COVERS) {
     try {
@@ -1344,7 +1390,34 @@ async function ensureBlogFigures(payload: Payload): Promise<void> {
       const doc = res.docs[0] as { id: string | number; body?: { root?: { children?: LexNode[] } } } | undefined;
       const children = doc?.body?.root?.children;
       if (!doc || !Array.isArray(children)) continue; // no article, or empty body
-      if (children.some(lexHasUpload)) continue; // figures already present — idempotent
+
+      // Idempotency by WHICH figures are embedded, not whether any are.
+      //
+      // "The body already contains an upload" was true for these articles and
+      // told us nothing: the uploads pointed at media whose files never survived
+      // the storage move, so every figure was a broken image and the seed
+      // skipped them all as already done. Comparing filenames distinguishes
+      // "these are the figures we ship" from "these are figures".
+      const embeddedIds = children
+        .filter((c) => c?.type === "upload")
+        .map((c) => (c as { value?: unknown }).value)
+        .filter(Boolean);
+      const embeddedFiles = new Set<string>();
+      if (embeddedIds.length) {
+        const found = await payload.find({
+          collection: "media",
+          where: { id: { in: embeddedIds } },
+          limit: 50,
+          depth: 0,
+          overrideAccess: true,
+        });
+        for (const m of found.docs) {
+          const fn = (m as { filename?: string }).filename;
+          if (fn) embeddedFiles.add(fn);
+        }
+      }
+      const expected = figures.map((f) => path.basename(f.asset));
+      if (expected.every((f) => embeddedFiles.has(f))) continue; // already ours
 
       // Resolve (dedupe-by-filename) each figure's media id.
       const built: { afterParagraph: number; node: LexNode }[] = [];
@@ -1384,7 +1457,11 @@ async function ensureBlogFigures(payload: Payload): Promise<void> {
 
       // Splice each figure in after its Nth paragraph. Descending order so an
       // earlier insertion never shifts a later target index.
-      const out = [...children];
+      // Drop the stale figure nodes first, or the article ends up with both the
+      // broken originals and the new ones. Only top-level upload siblings are
+      // removed — an upload nested inside a paragraph is someone's inline image,
+      // not one of ours.
+      const out = children.filter((c) => c?.type !== "upload");
       for (const ins of [...built].sort((a, b) => b.afterParagraph - a.afterParagraph)) {
         let count = 0;
         let at = out.length - 1;
@@ -1648,6 +1725,7 @@ export async function seed(payload: Payload): Promise<void> {
   await step(payload, "ensureExtraBlogArticles", () => ensureExtraBlogArticles(payload));
 
   // 10) Inject bundled diagrams into the seeded blog articles (only while none).
+  await step(payload, "retireSupersededPumps", () => retireSupersededPumps(payload));
   await step(payload, "ensureBlogCovers", () => ensureBlogCovers(payload));
   await step(payload, "ensureBlogFigures", () => ensureBlogFigures(payload));
 
