@@ -1237,6 +1237,99 @@ type LexNode = { type?: string; children?: LexNode[]; [k: string]: unknown };
 const lexHasUpload = (n: LexNode): boolean =>
   n?.type === "upload" || (n?.children ?? []).some(lexHasUpload);
 
+/**
+ * Article cover images.
+ *
+ * Separate from ensureRealBlogArticles, which attaches a cover when it first
+ * creates an article and then never runs again — it is a one-shot migration, so
+ * an article whose cover later breaks can never be repaired through it. Every
+ * one of these had a cover set and every file 404s, which is exactly that case.
+ *
+ * Named -hero to distinguish them from the dead -cover rows; the attach test is
+ * a filename comparison, so reusing the old name would match and skip.
+ */
+const BLOG_COVERS: { slug: string; asset: string; alt: string }[] = [
+  {
+    slug: "co2-fuel-cells",
+    asset: "src/seed-assets/blog/co2-fuel-cells-hero.webp",
+    alt: "Exploded view of a CO2 electrolyser stack — flow plates, porous gas diffusion and catalyst layers either side of a proton-conducting membrane, with the external electron path above. CO2 enters on the left and the product stream leaves on the right, labelled carbon monoxide, formate, hydrocarbons and alcohols.",
+  },
+  {
+    slug: "anion-exchange-membrane-water-electrolysis",
+    asset: "src/seed-assets/blog/aemwe-hero.webp",
+    alt: "Exploded view of an anion exchange membrane water electrolyser — end plates, porous transport layers and catalyst layers around a central anion exchange membrane carrying hydroxide ions. Water and hydrogen are shown at the cathode side, oxygen at the anode side.",
+  },
+  {
+    slug: "ion-exchange-membranes",
+    asset: "src/seed-assets/blog/iem-hero.webp",
+    alt: "A three-layer ion exchange membrane shown edge-on, with protons migrating in from the left and hydroxide ions from the right into the central junction layer.",
+  },
+];
+
+/**
+ * Attach the bundled cover when the article is not already showing it.
+ *
+ * Compares the attached FILENAME with the asset being shipped rather than
+ * asking whether a cover exists, for the same reason as the category banners
+ * and project covers: after the storage move every article had a cover and
+ * none of the files existed, so "a cover is set" was true and meaningless.
+ */
+async function ensureBlogCovers(payload: Payload): Promise<void> {
+  for (const { slug, asset, alt } of BLOG_COVERS) {
+    try {
+      const res = await payload.find({
+        collection: "posts",
+        where: { slug: { equals: slug } },
+        limit: 1,
+        depth: 1,
+        overrideAccess: true,
+      });
+      const doc = res.docs[0] as
+        | { id: string | number; coverImage?: { filename?: string } | string | null }
+        | undefined;
+      if (!doc) continue;
+
+      const filename = path.basename(asset);
+      const currentFile =
+        doc.coverImage && typeof doc.coverImage === "object" ? doc.coverImage.filename : undefined;
+      if (currentFile === filename) continue;
+
+      const filePath = path.resolve(process.cwd(), asset);
+      if (!existsSync(filePath)) {
+        payload.logger.warn(`[seed] blog cover asset missing: ${filePath}`);
+        continue;
+      }
+      const existingMedia = await payload.find({
+        collection: "media",
+        where: { filename: { equals: filename } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      });
+      const mediaId =
+        (existingMedia.docs[0] as { id: string | number } | undefined)?.id ??
+        (
+          await payload.create({
+            collection: "media",
+            filePath,
+            // Explicit category: the "product" default would put a 16:9 hero
+            // through the 4:3 product-master check and reject it.
+            data: { alt, category: "hero-banner" },
+            overrideAccess: true,
+          })
+        ).id;
+      await payload.update({
+        collection: "posts",
+        id: doc.id,
+        data: { coverImage: mediaId, coverImageAlt: alt },
+        overrideAccess: true,
+      });
+      payload.logger.info(`[seed] posts: cover attached (${slug}).`);
+    } catch (e) {
+      payload.logger.warn(`[seed] blog cover for ${slug} failed: ${(e as Error).message}`);
+    }
+  }
+}
 async function ensureBlogFigures(payload: Payload): Promise<void> {
   const { randomBytes } = await import("crypto");
   for (const { slug, figures } of BLOG_FIGURES) {
@@ -1555,6 +1648,7 @@ export async function seed(payload: Payload): Promise<void> {
   await step(payload, "ensureExtraBlogArticles", () => ensureExtraBlogArticles(payload));
 
   // 10) Inject bundled diagrams into the seeded blog articles (only while none).
+  await step(payload, "ensureBlogCovers", () => ensureBlogCovers(payload));
   await step(payload, "ensureBlogFigures", () => ensureBlogFigures(payload));
 
   // 11) Backfill MNM-U customer codes for accounts created before the field,
