@@ -59,6 +59,7 @@ type CmsCategory = {
   parent?: { slug?: string } | string | null;
   image?: Media;
   updatedAt?: string;
+  hidden?: boolean;
 };
 
 type CmsProduct = {
@@ -167,6 +168,7 @@ function mapCategory(d: CmsCategory): Category {
     parent: typeof d.parent === "object" && d.parent ? d.parent.slug : undefined,
     imageUrl: mediaUrl(d.image),
     updatedAt: d.updatedAt,
+    hidden: d.hidden === true,
   };
 }
 
@@ -381,27 +383,34 @@ export async function getTopCategories(): Promise<Category[]> {
 }
 
 /**
- * Categories a customer can actually browse — the ones with something in them.
+ * Categories the storefront shows.
  *
- * The catalogue carries departments that are planned but unstocked. Advertising
- * them costs twice: a shopper clicks a card and lands on an empty page, and the
- * sitemap offers Google a set of thin, product-free URLs. Ten of twenty-six were
- * in that state, including the two that prompted this.
- *
- * The record is untouched. A category is simply not advertised while it is
- * empty, and returns the moment a product is assigned to it — so this needs no
- * maintenance and cannot drift out of date the way a hand-kept list would.
- *
- * A parent counts as non-empty when any of its children has products, since
- * that is where its listing page draws from (see getProductsByCategory).
+ * Visibility is a staff decision, read from the `hidden` flag — it is not
+ * inferred from whether a category happens to hold products. An empty
+ * department is usually deliberate ("we are not selling this yet"), and the
+ * listing page already says "No products in this category yet", so hiding it
+ * automatically removes a real part of the range on a guess.
  */
-export async function getBrowsableCategories(): Promise<Category[]> {
-  const [cats, prods] = await Promise.all([getAllCategories(), getAllProducts()]);
-  return selectBrowsable(cats, prods);
+export async function getVisibleCategories(): Promise<Category[]> {
+  return (await getAllCategories()).filter((c) => !c.hidden);
 }
-/** Top-level categories worth showing — the shop grid and the header menu. */
-export async function getBrowsableTopCategories(): Promise<Category[]> {
-  return (await getBrowsableCategories()).filter((c) => !c.parent);
+
+/** Top-level departments — the shop grid and the header menu. */
+export async function getVisibleTopCategories(): Promise<Category[]> {
+  return (await getVisibleCategories()).filter((c) => !c.parent);
+}
+
+/**
+ * Categories worth SUBMITTING to search engines: visible and actually stocked.
+ *
+ * A stricter rule than the storefront on purpose. An empty department is a
+ * reasonable page for a shopper who navigated to it and thin content for a
+ * crawler that was invited to it — being in the range and being worth indexing
+ * are different questions.
+ */
+export async function getIndexableCategories(): Promise<Category[]> {
+  const [cats, prods] = await Promise.all([getVisibleCategories(), getAllProducts()]);
+  return selectBrowsable(cats, prods);
 }
 
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {

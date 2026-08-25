@@ -8,7 +8,7 @@ import { CategoryCard } from "@/frontend/components/commerce/category-card";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { ShopShowcase } from "@/frontend/components/commerce/shop-showcase";
-import { getBrowsableTopCategories, getFeaturedProducts } from "@/frontend/lib/cms";
+import { getVisibleTopCategories, getFeaturedProducts } from "@/frontend/lib/cms";
 import { pageMetadata } from "@/frontend/lib/seo";
 import { JsonLd, itemListJsonLd } from "@/frontend/components/seo/json-ld";
 import { PageBreadcrumbs } from "@/frontend/components/seo/page-breadcrumbs";
@@ -23,7 +23,7 @@ export const metadata: Metadata = pageMetadata({
 
 export default async function ShopHomePage() {
   const [categories, featured] = await Promise.all([
-    getBrowsableTopCategories(),
+    getVisibleTopCategories(),
     getFeaturedProducts(8),
   ]);
   return (

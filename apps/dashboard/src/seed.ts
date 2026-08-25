@@ -48,7 +48,9 @@ const SHOP_DEPARTMENTS: SeedCategory[] = [
   { slug: "peristaltic-pumps", name: "Peristaltic Pumps", blurb: "Single and dual-channel laboratory peristaltic pumps for continuous electrolyte and reagent flow", order: 8 },
   { slug: "equipments", name: "Equipment & Accessories", blurb: "Presses, test benches, coating equipment, and laboratory accessories", order: 9 },
   { slug: "consumables", name: "Consumables", blurb: "Polishing materials, sealing products, gas-handling consumables, and specialty chemicals", order: 10 },
-  { slug: "analysis", name: "Analysis Instruments", blurb: "Conductivity measurement systems and materials characterization instruments", order: 11 },
+  // Retired in favour of Peristaltic Pumps, which took its slot at order 8. The
+  // record and any future products are kept; it is simply off the storefront.
+  { slug: "analysis", name: "Analysis Instruments", blurb: "Conductivity measurement systems and materials characterization instruments", order: 11, hidden: true },
 ];
 
 const DEPARTMENT_SLUGS = new Set(SHOP_DEPARTMENTS.map((d) => d.slug));
@@ -207,7 +209,10 @@ async function cleanupMalformed(payload: Payload): Promise<void> {
 
 async function ensureCategory(
   payload: Payload,
-  c: { slug: string; name: string; blurb?: string; parentSlug?: string; order?: number },
+  // SeedCategory rather than a restatement of its fields: the inline copy had
+  // already fallen behind it, which is how a new field silently stops being
+  // written.
+  c: SeedCategory,
   ids: Record<string, string>
 ): Promise<void> {
   const parent = c.parentSlug ? ids[c.parentSlug] : undefined;
@@ -220,13 +225,23 @@ async function ensureCategory(
       // null, not undefined. An undefined value is "field not supplied" and
       // leaves the existing parent in place, so promoting a sub-category to a
       // department would silently do nothing. null clears the relationship.
-      data: { name: c.name, blurb: c.blurb, order: c.order ?? 0, parent: parent ?? null },
+      // `hidden` is written only when the seed entry states one. Sending it
+      // unconditionally would un-hide, on every boot, any department staff had
+      // chosen to hide — the seed is authoritative for names and ordering, not
+      // for a merchandising decision someone made in the admin.
+      data: {
+        name: c.name,
+        blurb: c.blurb,
+        order: c.order ?? 0,
+        parent: parent ?? null,
+        ...(c.hidden === undefined ? {} : { hidden: c.hidden }),
+      },
     });
     return;
   }
   const doc = await payload.create({
     collection: "categories",
-    data: { name: c.name, slug: c.slug, blurb: c.blurb, order: c.order ?? 0, parent },
+    data: { name: c.name, slug: c.slug, blurb: c.blurb, order: c.order ?? 0, parent, hidden: c.hidden === true },
   });
   ids[c.slug] = String(doc.id);
 }

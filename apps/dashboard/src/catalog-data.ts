@@ -8,7 +8,7 @@
 // URL, and category pages roll child products up into the parent, so accessory
 // products still list under the merged department.
 
-export type SeedCategory = { slug: string; name: string; blurb?: string; parentSlug?: string; order?: number };
+export type SeedCategory = { slug: string; name: string; blurb?: string; parentSlug?: string; order?: number; hidden?: boolean };
 export type SeedProduct = {
   slug: string; name: string; brand: string; categorySlug: string; sku: string;
   price: number; mrp?: number; moq: number; unit: string;

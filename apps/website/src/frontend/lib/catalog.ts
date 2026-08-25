@@ -18,6 +18,8 @@ export type Category = {
   blurb?: string;
   imageUrl?: string; // CMS-managed category image
   updatedAt?: string; // CMS last-edit date (ISO) — used for sitemap lastModified
+  /** Staff-set: keep the record, keep it off the storefront. */
+  hidden?: boolean;
 };
 
 export type PriceTier = { minQty: number; price: number };

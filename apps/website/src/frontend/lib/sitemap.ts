@@ -1,7 +1,7 @@
 import { site, mainNav } from "@/frontend/lib/site";
 import {
   getProductSitemapEntries,
-  getBrowsableCategories,
+  getIndexableCategories,
   getProjects,
   getAllProducts,
 } from "@/frontend/lib/cms";
@@ -70,9 +70,10 @@ async function products(): Promise<SitemapUrl[]> {
 }
 
 async function categories(): Promise<SitemapUrl[]> {
-  // Empty categories are thin, product-free pages; submitting them invites
-  // Google to judge the shop by its emptiest URLs.
-  const docs = await getBrowsableCategories().catch(() => []);
+  // Stricter than the storefront: hidden categories are excluded, and so are
+  // empty ones. Submitting a product-free URL invites Google to judge the shop
+  // by its emptiest pages.
+  const docs = await getIndexableCategories().catch(() => []);
   return docs.map((c) => ({
     loc: abs(`/shop/c/${c.slug}`),
     lastmod: c.updatedAt,

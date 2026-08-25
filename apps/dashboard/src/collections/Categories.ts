@@ -41,6 +41,16 @@ export const Categories: CollectionConfig = {
     },
     { name: "image", type: "upload", relationTo: "media" },
     { name: "order", type: "number", defaultValue: 0, admin: { description: "Sort order." } },
+    {
+      name: "hidden",
+      type: "checkbox",
+      defaultValue: false,
+      label: "Hide from the storefront",
+      admin: {
+        description:
+          "Keeps the category and anything in it, but removes it from the shop grid, the header menu and the sitemap. Use for a department you are not selling yet, or one you have retired. Visibility is set here rather than inferred from whether the category happens to be empty — an empty department is often deliberate, and guessing gets it wrong in both directions.",
+      },
+    },
   ],
   hooks: {
     afterChange: [auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
