@@ -10,14 +10,15 @@ import { CartButton, WishlistBadgeButton } from "@/frontend/components/commerce/
 import { DepartmentsMenu } from "@/frontend/components/commerce/departments-menu";
 import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { SearchBar } from "@/frontend/components/commerce/search-bar";
-import { getAllCategories, getNavigation } from "@/frontend/lib/cms";
+import { getBrowsableCategories, getNavigation } from "@/frontend/lib/cms";
 import { mainNav } from "@/frontend/lib/site";
 
 const iconLink =
   "flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-all hover:bg-muted hover:border-foreground/20 active:scale-95";
 
 export async function SiteHeader() {
-  const [categories, nav] = await Promise.all([getAllCategories(), getNavigation()]);
+  // Browsable only: the menu must not offer a department with nothing in it.
+  const [categories, nav] = await Promise.all([getBrowsableCategories(), getNavigation()]);
   const navItems = nav?.headerLinks ?? mainNav;
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/85 shadow-[0_1px_0_0_rgba(0,0,0,0.03)] backdrop-blur supports-[backdrop-filter]:bg-surface/70">

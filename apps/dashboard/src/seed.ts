@@ -23,7 +23,7 @@ import { istYear2, formatUserCode, bumpCounter, countersModel, userCodeCounterKe
 // (so the old placeholder catalog is replaced cleanly).
 
 /**
- * THE canonical storefront departments — the 10 top-level categories, in order,
+ * THE canonical storefront departments — the top-level categories, in order,
  * exactly as specified in the company's "Product Categories" document.
  *
  * This list is the source of truth for department name/blurb/order and OVERRIDES
@@ -45,9 +45,10 @@ const SHOP_DEPARTMENTS: SeedCategory[] = [
   { slug: "battery-components", name: "Battery & Cell Components", blurb: "Coin cell and cylindrical cell components, separators, pouch films, and related parts", order: 5 },
   { slug: "carbon-gdl", name: "Carbon Materials & Gas Diffusion Layers (GDL)", blurb: "Gas diffusion layers, carbon paper, carbon cloth, carbon felt, and carbon powders", order: 6 },
   { slug: "raw-materials", name: "Raw Materials & Alloys", blurb: "Metal foams, felts, foils, meshes, sheets, plates, alloys, and raw materials", order: 7 },
-  { slug: "analysis", name: "Analysis Instruments", blurb: "Conductivity measurement systems and materials characterization instruments", order: 8 },
-  { slug: "equipments", name: "Equipment & Accessories", blurb: "Peristaltic pumps, presses, test benches, coating equipment, and laboratory accessories", order: 9 },
+  { slug: "peristaltic-pumps", name: "Peristaltic Pumps", blurb: "Single and dual-channel laboratory peristaltic pumps for continuous electrolyte and reagent flow", order: 8 },
+  { slug: "equipments", name: "Equipment & Accessories", blurb: "Presses, test benches, coating equipment, and laboratory accessories", order: 9 },
   { slug: "consumables", name: "Consumables", blurb: "Polishing materials, sealing products, gas-handling consumables, and specialty chemicals", order: 10 },
+  { slug: "analysis", name: "Analysis Instruments", blurb: "Conductivity measurement systems and materials characterization instruments", order: 11 },
 ];
 
 const DEPARTMENT_SLUGS = new Set(SHOP_DEPARTMENTS.map((d) => d.slug));
@@ -216,7 +217,10 @@ async function ensureCategory(
     await payload.update({
       collection: "categories",
       id: found.docs[0].id,
-      data: { name: c.name, blurb: c.blurb, order: c.order ?? 0, parent },
+      // null, not undefined. An undefined value is "field not supplied" and
+      // leaves the existing parent in place, so promoting a sub-category to a
+      // department would silently do nothing. null clears the relationship.
+      data: { name: c.name, blurb: c.blurb, order: c.order ?? 0, parent: parent ?? null },
     });
     return;
   }

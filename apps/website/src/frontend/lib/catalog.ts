@@ -275,3 +275,44 @@ export function lineUsdValue(
   const inclTotal = inclGST(effectiveUnitInr) * qty;
   return usdFor(product, inclTotal) ?? inclTotal / usdRate;
 }
+
+/**
+ * Categories with something in them — the pure half of getBrowsableCategories.
+ *
+ * Separated from the fetching so it can be tested against fixed data: this
+ * decides what the shop advertises, and "which departments exist" is not a
+ * thing to find out from production.
+ *
+ * A parent counts as stocked when any descendant has products, because that is
+ * where its listing page draws from.
+ */
+export function selectBrowsable<
+  C extends { slug: string; parent?: string },
+  P extends { categorySlug: string },
+>(cats: readonly C[], prods: readonly P[]): C[] {
+  const own = new Map<string, number>();
+  for (const p of prods) own.set(p.categorySlug, (own.get(p.categorySlug) ?? 0) + 1);
+
+  const childrenOf = new Map<string, string[]>();
+  for (const c of cats) {
+    if (!c.parent) continue;
+    childrenOf.set(c.parent, [...(childrenOf.get(c.parent) ?? []), c.slug]);
+  }
+
+  // Iterative with a visited set: categories that point at each other are bad
+  // data, not a reason to hang the shop page.
+  const stocked = (slug: string): boolean => {
+    const seen = new Set<string>();
+    const stack = [slug];
+    while (stack.length) {
+      const s = stack.pop()!;
+      if (seen.has(s)) continue;
+      seen.add(s);
+      if ((own.get(s) ?? 0) > 0) return true;
+      stack.push(...(childrenOf.get(s) ?? []));
+    }
+    return false;
+  };
+
+  return cats.filter((c) => stocked(c.slug));
+}

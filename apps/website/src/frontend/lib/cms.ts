@@ -10,6 +10,7 @@
 import { cache } from "react";
 import { DEFAULT_TAX_POLICY, taxPolicyFrom, type TaxPolicy } from "./tax";
 import type { Product, Category } from "@/frontend/lib/catalog";
+import { selectBrowsable } from "@/frontend/lib/catalog";
 import {
   services as phServices,
   projects as phProjects,
@@ -377,6 +378,30 @@ export async function getAllCategories(): Promise<Category[]> {
 
 export async function getTopCategories(): Promise<Category[]> {
   return (await getAllCategories()).filter((c) => !c.parent);
+}
+
+/**
+ * Categories a customer can actually browse — the ones with something in them.
+ *
+ * The catalogue carries departments that are planned but unstocked. Advertising
+ * them costs twice: a shopper clicks a card and lands on an empty page, and the
+ * sitemap offers Google a set of thin, product-free URLs. Ten of twenty-six were
+ * in that state, including the two that prompted this.
+ *
+ * The record is untouched. A category is simply not advertised while it is
+ * empty, and returns the moment a product is assigned to it — so this needs no
+ * maintenance and cannot drift out of date the way a hand-kept list would.
+ *
+ * A parent counts as non-empty when any of its children has products, since
+ * that is where its listing page draws from (see getProductsByCategory).
+ */
+export async function getBrowsableCategories(): Promise<Category[]> {
+  const [cats, prods] = await Promise.all([getAllCategories(), getAllProducts()]);
+  return selectBrowsable(cats, prods);
+}
+/** Top-level categories worth showing — the shop grid and the header menu. */
+export async function getBrowsableTopCategories(): Promise<Category[]> {
+  return (await getBrowsableCategories()).filter((c) => !c.parent);
 }
 
 export async function getCategoryBySlug(slug: string): Promise<Category | null> {
