@@ -68,37 +68,24 @@ const RETIRED_DEPARTMENTS = ["furnaces", "crucibles", "safety"] as const;
  * pattern as project covers). Only fills a category that has NO image yet, so a
  * staff upload in the admin always wins and is never overwritten.
  */
+/**
+ * Department banner images.
+ *
+ * Filenames all end -cover so they cannot collide with the media rows left
+ * behind by the GCS deployment. Those rows still exist and every one of them
+ * 404s — the files were never copied — so reusing a media doc by its old name,
+ * which is what this used to do, reattached a broken image and looked like a
+ * success. A new name forces a real upload.
+ */
 const CATEGORY_IMAGES: { slug: string; asset: string; alt: string }[] = [
-  {
-    slug: "electrode-holders",
-    asset: "src/seed-assets/categories/electrode-holders.webp",
-    alt: "Electrode holders, electrochemical cell bodies, sample holders, stands, polishing discs and a polishing kit — METNMAT electrode holders & accessories",
-  },
-  {
-    slug: "battery-components",
-    asset: "src/seed-assets/categories/battery-components.webp",
-    alt: "Cylindrical and coin cell cases, caps, gaskets, current-collector tabs, separators, pouch film and electrode powders — METNMAT battery & cell components",
-  },
-  {
-    slug: "carbon-gdl",
-    asset: "src/seed-assets/categories/carbon-gdl.webp",
-    alt: "Carbon cloth, carbon paper, carbon felt, gas diffusion layer sheets and rolls with carbon powders and granules — METNMAT carbon materials & GDL",
-  },
-  {
-    slug: "raw-materials",
-    asset: "src/seed-assets/categories/raw-materials-alloys.webp",
-    alt: "Metal powders, granules, rods, sheets and high-purity elements — METNMAT raw materials & alloys",
-  },
-  {
-    slug: "analysis",
-    asset: "src/seed-assets/categories/analysis-instruments.webp",
-    alt: "Analytical balance, microscope, UV-Vis spectrophotometer, XRF and electrochemical analysers — METNMAT analysis instruments",
-  },
-  {
-    slug: "consumables",
-    asset: "src/seed-assets/categories/consumables.webp",
-    alt: "Laboratory plasticware, tubes, petri dishes, pipette tips, fittings and tubing — METNMAT consumables",
-  },
+  { slug: "peristaltic-pumps", asset: "src/seed-assets/categories/peristaltic-pumps-cover.webp", alt: "Laboratory peristaltic pumps — benchtop dispensing and flow-rate models with touchscreen controllers, OEM pump heads and multi-channel cartridges — METNMAT peristaltic pumps" },
+  { slug: "membranes", asset: "src/seed-assets/categories/membranes-cover.webp", alt: "Ion-exchange membrane sheets — proton, anion, cation and bipolar exchange membranes in a range of textures and reinforcements — METNMAT membranes" },
+  { slug: "reactor-cell", asset: "src/seed-assets/categories/reactor-cell-cover.webp", alt: "Electrochemical reactors and cells — flow cells, zero-gap electrolysers and sealed test cells with compression hardware and fluid fittings — METNMAT reactors & cells" },
+  { slug: "electrode-holders", asset: "src/seed-assets/categories/electrode-holders-cover.webp", alt: "Electrode holders and shafts — threaded rotating-disc shafts, sleeves, porous frits and cell body tubes — METNMAT electrode holders & accessories" },
+  { slug: "carbon-gdl", asset: "src/seed-assets/categories/carbon-gdl-cover.webp", alt: "Carbon cloth, carbon paper, carbon felt and gas diffusion layer sheets and rolls with carbon powders and granules — METNMAT carbon materials & GDL" },
+  { slug: "raw-materials", asset: "src/seed-assets/categories/raw-materials-cover.webp", alt: "High-purity metals and alloys — aluminium, nickel, titanium and zirconium granules, copper wire, powders, rods, sheets and ingots — METNMAT raw materials & alloys" },
+  { slug: "battery-components", asset: "src/seed-assets/categories/battery-components-cover.webp", alt: "Cylindrical and coin cell cases, caps, gaskets, current-collector tabs, separators, pouch film and electrode powders — METNMAT battery & cell components" },
+  { slug: "consumables", asset: "src/seed-assets/categories/consumables-cover.webp", alt: "Laboratory plasticware, tubes, petri dishes, pipette tips, fittings and tubing — METNMAT consumables" },
 ];
 
 /**
@@ -123,17 +110,30 @@ async function ensureCategoryImages(payload: Payload): Promise<void> {
         collection: "categories",
         where: { slug: { equals: slug } },
         limit: 1,
-        depth: 0,
+        // depth 1: the decision below needs the attached media FILENAME, which a
+        // depth-0 read returns only as an id.
+        depth: 1,
         overrideAccess: true,
       });
-      const doc = res.docs[0] as { id: string | number; image?: unknown } | undefined;
-      if (!doc || doc.image) continue; // no such category, or staff already set one
+      const doc = res.docs[0] as
+        | { id: string | number; image?: { filename?: string } | string | null }
+        | undefined;
+      if (!doc) continue;
+
+      const filename = path.basename(asset);
+      // Compare against the filename actually attached, not merely "is something
+      // attached". The previous test skipped whenever ANY image was set, which
+      // meant a category pointing at a file that no longer exists stayed broken
+      // for exactly as long as the broken pointer survived — and after the GCS
+      // move that was all of them.
+      const currentFile =
+        doc.image && typeof doc.image === "object" ? doc.image.filename : undefined;
+      if (currentFile === filename) continue; // already the banner we ship
       const filePath = path.resolve(process.cwd(), asset);
       if (!existsSync(filePath)) {
         payload.logger.warn(`[seed] category banner asset missing: ${filePath}`);
         continue;
       }
-      const filename = path.basename(asset);
       const existingMedia = await payload.find({
         collection: "media",
         where: { filename: { equals: filename } },
