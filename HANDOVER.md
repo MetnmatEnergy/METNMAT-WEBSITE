@@ -83,8 +83,14 @@ key to distribute or rotate and no port 22 exposed.
 
 ## 4. How deployment works
 
-**Every deploy is manual.** Nothing ships on push — `workflow_dispatch` only. This is deliberate:
-one instance serves four applications, including one that belongs to another team.
+**The website auto-deploys on push to `main`; the CMS and chatbot are manual only.** That
+asymmetry matters: a commit touching `apps/dashboard/**` ships nothing by itself, so a CMS
+change — including `seed.ts`, which owns categories and globals — reaches production only when
+someone runs *Deploy CMS to EC2*. Forgetting looks exactly like a caching bug: the website shows
+new behaviour against old data.
+
+Manual dispatch exists for all three, and the instance serves four applications including one
+belonging to another team, so nothing here is scoped more broadly than one app.
 
 | Workflow | What it deploys | Repo |
 |---|---|---|

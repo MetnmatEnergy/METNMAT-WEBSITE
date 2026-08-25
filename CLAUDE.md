@@ -33,8 +33,19 @@ Dashboard extras: `pnpm --filter dashboard generate:types|generate:importmap`.
 
 **AWS EC2 is the only live path.** Read `deploy/README.md` before touching any of it.
 
-Every deploy is **manual** (`workflow_dispatch`) — nothing ships on push. Three services, three
-workflows, one shared instance:
+⚠ **The two are not triggered the same way, and assuming they are wastes a debugging session.**
+
+| | Website | CMS |
+|---|---|---|
+| On push to `main` | **auto-deploys** when `apps/website/**`, `packages/**`, `deploy/**` or the lockfiles change | never |
+| Manual | yes | **the only way** |
+
+So a push that changes CMS code ships nothing. A CMS change — including anything in `seed.ts`,
+which is what moves categories and globals — reaches production **only** when someone runs
+*Deploy CMS to EC2* by hand. Symptom of forgetting: the website shows new behaviour against old
+data, which looks like a caching bug and is not one.
+
+Three services, three workflows, one shared instance:
 
 | Workflow | App | Repo |
 |---|---|---|
