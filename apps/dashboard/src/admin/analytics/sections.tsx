@@ -270,7 +270,7 @@ export async function Realtime({ payload }: Ctx) {
       <div className="mn-a-split-rev" style={{ display: "grid", gap: 14, marginTop: 14 }}>
         <Panel title={`Active now (${active.length})`} action={<span style={{ fontSize: 11.5, opacity: 0.5 }}>last 5 min · refreshes every 12s</span>}>
           {active.length > 0 ? (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "grid", gap: 8, gridTemplateColumns: "minmax(0, 1fr)" }}>
               {active.map((s) => (
                 <div key={s.sid} style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 8, fontSize: 12.5 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 999, background: SUCCESS, flexShrink: 0 }} />
@@ -290,7 +290,7 @@ export async function Realtime({ payload }: Ctx) {
         </Panel>
         <Panel title="Live activity">
           {recent.length > 0 ? (
-            <div style={{ display: "grid", gap: 6 }}>
+            <div style={{ display: "grid", gap: 6, gridTemplateColumns: "minmax(0, 1fr)" }}>
               {recent.map((e, i) => (
                 <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 12.5, borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 6 }}>
                   <span style={{ width: 7, height: 7, borderRadius: 999, background: e.type === "purchase" ? SUCCESS : e.type.startsWith("form") ? ACCENT : INFO, flexShrink: 0 }} />
@@ -526,7 +526,7 @@ export async function Behavior({ payload, range, searchParams }: Ctx) {
       <div style={grid2}>
         <Panel title="Most visited pages">
           {pages.length > 0 ? (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "grid", gap: 8, gridTemplateColumns: "minmax(0, 1fr)" }}>
               {pages.map((p) => (
                 <a key={p.path} href={href("behavior", range, { path: p.path })} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5, textDecoration: "none", color: "var(--theme-text)", borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 6, minWidth: 0 }}>
                   <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{p.path}</span>

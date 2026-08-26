@@ -36,6 +36,10 @@ export const panel: React.CSSProperties = {
   border: "1px solid var(--theme-elevation-100)",
   borderRadius: 16,
   padding: 20,
+  // Panels are grid items, and grid items default to min-width:auto — they
+  // refuse to shrink below their own content. Nothing currently relies on this,
+  // but a single wide child would otherwise widen the whole column.
+  minWidth: 0,
 };
 
 // ── Formatters ────────────────────────────────────────────────────────────────
@@ -319,14 +323,25 @@ export function HBars({
 }) {
   const max = Math.max(...rows.map((r) => r.value), 1);
   return (
-    <div style={{ display: "grid", gap: 10 }}>
+    // minmax(0, 1fr), not a bare grid. A grid with no explicit columns gets one
+    // implicit `auto` track, and an auto track is sized to MAX-content — so a
+    // single unbreakable string (a URL path such as
+    // /shop/p/l-shaped-glassy-carbon-disk-working-electrode-3-mm) made the track
+    // 411px wide inside a 282px panel. Every row then inherited that width and
+    // the counts rendered on top of the panel beside it. The label's ellipsis
+    // never engaged because nothing had constrained it.
+    <div style={{ display: "grid", gap: 10, gridTemplateColumns: "minmax(0, 1fr)" }}>
       {rows.map((r, i) => (
         <div key={i}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
-            <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, paddingRight: 10 }}>
+            {/* title: once a long path is ellipsised there is no other way to read it. */}
+            <span
+              title={r.label}
+              style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: "1 1 auto", paddingRight: 10 }}
+            >
               {r.label}
             </span>
-            <strong style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+            <strong style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", flexShrink: 0 }}>
               {r.display}
               {valueLabel ? <span style={{ opacity: 0.5, fontWeight: 500 }}> {valueLabel}</span> : null}
             </strong>
