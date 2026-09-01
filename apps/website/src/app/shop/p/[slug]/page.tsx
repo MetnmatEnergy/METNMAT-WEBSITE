@@ -167,7 +167,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
       <div className="mt-6 grid gap-10 lg:grid-cols-2">
         {/* Left frame: gallery (CMS images, click-to-zoom) + key specs at a glance */}
         <div className="self-start">
-          <ProductGallery images={product.images ?? []} name={product.name} videoUrl={product.videoUrl} />
+          <ProductGallery
+            images={product.images ?? []}
+            fulls={product.imageFulls}
+            alts={product.imageAlts}
+            name={product.name}
+            videoUrl={product.videoUrl}
+          />
 
           {product.specs.length > 0 && (
             <div className="mt-6">

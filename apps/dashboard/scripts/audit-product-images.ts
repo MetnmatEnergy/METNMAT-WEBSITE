@@ -1,6 +1,7 @@
 /**
- * Report the image health of every product: which have no photo, which are off
- * the 4:3 / ≥2400px master spec, and which are missing alt text.
+ * Report the image health of every product: which have no photo, which lack a
+ * display derivative (and aren't legacy 4:3 masters), which are below the
+ * resolution floor, and which are missing alt text.
  *
  * Reads through the Payload local API (same DB the site reads), so it reflects
  * exactly what customers see.
@@ -21,9 +22,15 @@ for (const line of fs.readFileSync(path.join(APP_DIR, ".env"), "utf8").split(/\r
 }
 
 import { getPayload } from "payload";
-import { PRODUCT_IMAGE_SPEC, checkProductMaster } from "../src/hooks/product-image-spec";
+import { PRODUCT_IMAGE_SPEC, checkProductMaster, checkProductPhoto } from "../src/hooks/product-image-spec";
 
-type MediaDoc = { width?: number; height?: number; filesize?: number; alt?: string };
+type MediaDoc = {
+  width?: number;
+  height?: number;
+  filesize?: number;
+  alt?: string;
+  sizes?: { display?: { filename?: string } };
+};
 type Row = {
   slug: string;
   hasImage: boolean;
@@ -62,9 +69,11 @@ async function main(): Promise<void> {
 
     if (images.length === 0) flags.push("NO IMAGE");
     if (first?.width && first.height) {
-      const { ratioOk, wideEnough } = checkProductMaster(first.width, first.height);
-      if (!ratioOk) flags.push("NOT 4:3");
-      if (!wideEnough) flags.push("TOO SMALL");
+      // Healthy = has the subject-aware display derivative, or is a legacy
+      // pre-pipeline 4:3 master (which renders identically without one).
+      const hasDisplay = Boolean(first.sizes?.display?.filename);
+      if (!hasDisplay && !checkProductMaster(first.width, first.height).ok) flags.push("NO DISPLAY");
+      if (!checkProductPhoto(first.width, first.height).ok) flags.push("TOO SMALL");
     }
     if (images.length > 0 && !first?.alt?.trim()) flags.push("NO ALT");
     if (first?.filesize && first.filesize > PRODUCT_IMAGE_SPEC.warnBytes) flags.push("OVER 500KB");
@@ -102,7 +111,7 @@ async function main(): Promise<void> {
   }
 
   const noImage = rows.filter((r) => !r.hasImage).length;
-  const bad = rows.filter((r) => r.flags.some((f) => f === "NOT 4:3" || f === "TOO SMALL")).length;
+  const bad = rows.filter((r) => r.flags.some((f) => f === "NO DISPLAY" || f === "TOO SMALL")).length;
   const noAlt = rows.filter((r) => r.hasImage && !r.alt).length;
   console.error(
     `\n${rows.length} product(s) · ${noImage} with no image · ${bad} off-spec · ${noAlt} missing alt text`

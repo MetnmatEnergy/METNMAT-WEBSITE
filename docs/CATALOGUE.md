@@ -11,25 +11,23 @@ How product rows and photographs get into the live shop.
 
 ## The image specification
 
-Every product master is **4:3, at least 2400 × 1800 px**. This is enforced at
-upload time by `enforceProductImageSpec` — an off-spec file is rejected by the
-CMS, not silently accepted.
+Upload the **original photograph, untouched** — any orientation, any ratio. The
+only gate `enforceProductImageSpec` still applies is a resolution floor
+(shortest side ≥ 900 px), which keeps genuine camera photos in and
+messenger-app recompresses out.
 
-The reason is that **one master renders in every location** — shop grid, product
-page gallery, zoom viewer, cart line, search results — with no per-location
-cropping. That only works if every master shares one ratio. 2400 px wide is what
-survives full-bleed zoom on a retina display without upscaling.
+Composition is handled by the CMS itself: on upload, the display-derivative
+hook (`src/hooks/product-display-derivative.ts`) detects the product against
+the studio background, stores the detected focal point (staff can drag-correct
+it in the admin — doing so recomposes the derivative), and generates a
+subject-aware **`display` size (exact 4:3, 1600 × 1200 WebP)** that the shop
+grid, product gallery and cards all render. Only background is ever cropped;
+nothing is stretched; the **stored original stays untouched** and is what the
+lightbox serves as the complete photograph.
 
-Photographs almost never arrive at 4:3. Fix them all at once, without cropping:
-
-```bash
-cd apps/dashboard
-pnpm exec tsx scripts/normalize-product-images.ts ./photos ./photos-normalized
-```
-
-That scales each image down to fit and centres it on a transparent 2400 × 1800
-canvas. Nothing is cut off. (`--amazon` produces the 2000 × 2000 opaque-white
-square marketplaces require instead.)
+`scripts/normalize-product-images.ts` is no longer needed for the website —
+keep it for `--amazon`, which produces the 2000 × 2000 opaque-white square
+marketplaces require.
 
 ### ⚠ Settle the derivative ladder before the first bulk upload
 
@@ -45,7 +43,7 @@ existing media. Re-cutting it after 200 products are in means re-uploading all
 ### 1. Build a manifest from the photographs
 
 ```bash
-pnpm --filter dashboard catalogue:manifest ./photos-normalized --out catalogue.json
+pnpm --filter dashboard catalogue:manifest ./photos --out catalogue.json
 ```
 
 This reads the folder, works out which files are views of the same product, and
@@ -93,12 +91,12 @@ already filled in is kept and only new products are added.
 cd apps/dashboard
 
 # rehearse against the dev database first
-pnpm catalogue:import catalogue.json --images ./photos-normalized --target=dev --dry-run
-pnpm catalogue:import catalogue.json --images ./photos-normalized --target=dev
+pnpm catalogue:import catalogue.json --images ./photos --target=dev --dry-run
+pnpm catalogue:import catalogue.json --images ./photos --target=dev
 
 # then production
-pnpm catalogue:import catalogue.json --images ./photos-normalized --target=prod --dry-run
-pnpm catalogue:import catalogue.json --images ./photos-normalized --target=prod
+pnpm catalogue:import catalogue.json --images ./photos --target=prod --dry-run
+pnpm catalogue:import catalogue.json --images ./photos --target=prod
 ```
 
 The whole manifest is validated **before anything is written** — blank prices,

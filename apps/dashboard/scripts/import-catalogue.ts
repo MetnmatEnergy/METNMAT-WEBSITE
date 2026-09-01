@@ -31,7 +31,7 @@ loadEnv();
 
 import sharp from "sharp";
 import { getPayload, type Payload } from "payload";
-import { checkProductMaster, PRODUCT_IMAGE_SPEC } from "../src/hooks/product-image-spec";
+import { checkProductPhoto, PRODUCT_IMAGE_SPEC } from "../src/hooks/product-image-spec";
 import type { ManifestProduct } from "./catalogue-manifest";
 
 type Manifest = { products: ManifestProduct[] };
@@ -83,9 +83,9 @@ async function validate(products: ManifestProduct[], imageDir: string): Promise<
         const { width, height } = await sharp(file).metadata();
         if (!width || !height) {
           errors.push(`${at} ${rel}: could not read dimensions`);
-        } else if (!checkProductMaster(width, height).ok) {
+        } else if (!checkProductPhoto(width, height).ok) {
           errors.push(
-            `${at} ${rel}: ${width}x${height} — must be 4:3 and >= ${PRODUCT_IMAGE_SPEC.minWidth}px wide`
+            `${at} ${rel}: ${width}x${height} — shortest side must be >= ${PRODUCT_IMAGE_SPEC.minShortSide}px (upload the camera original)`
           );
         }
       } catch {

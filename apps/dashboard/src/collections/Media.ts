@@ -3,6 +3,7 @@ import { canManageAssets, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { enforceProductImageSpec } from "../hooks/product-image-spec";
+import { generateDisplayDerivative, writeDisplayDerivativeLocally } from "../hooks/product-display-derivative";
 
 /**
  * Media library — all IMAGE assets (product, catalog, hero/marketing banners,
@@ -35,6 +36,14 @@ export const Media: CollectionConfig = {
       { name: "card", width: 800, height: 600, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 }, formatOptions: { format: "webp", options: { quality: 85 } } },
       { name: "pdp", width: 1600, height: 1200, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 }, formatOptions: { format: "webp", options: { quality: 88 } } },
       { name: "zoom", width: 2400, height: 1800, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 }, formatOptions: { format: "webp", options: { quality: 90 } } },
+      // The gallery/card surface. Payload generates this as a plain contain
+      // render; for product photographs the display-derivative hook then
+      // REPLACES the buffer with a subject-aware composition (see
+      // hooks/product-display-derivative.ts), so this config doubles as the
+      // graceful fallback whenever analysis declines. withoutEnlargement:false
+      // forces generation even when the source is smaller than 1600×1200 —
+      // otherwise Payload skips the size entirely and the hook has no slot.
+      { name: "display", width: 1600, height: 1200, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 }, withoutEnlargement: false, formatOptions: { format: "webp", options: { quality: 88 } } },
     ],
     formatOptions: { format: "webp", options: { quality: 80 } },
   },
@@ -65,10 +74,15 @@ export const Media: CollectionConfig = {
     { name: "caption", type: "text" },
   ],
   hooks: {
-    // Enforce the 4:3 / ≥2400px product master spec at upload time (product
-    // category only — banners, logos and user uploads are unaffected).
+    // Resolution floor for product photographs (product category only —
+    // banners, logos and user uploads are unaffected).
     beforeValidate: [enforceProductImageSpec],
-    afterChange: [auditAfterChange, revalidateWebsiteAfterChange],
+    // Subject-aware `display` derivative (exact 4:3, 1600×1200) so the gallery
+    // fills its frame while the stored original stays untouched for the
+    // lightbox. Injected via req.payloadUploadSizes + data.sizes, which the
+    // storage plugin persists like any configured size.
+    beforeChange: [generateDisplayDerivative],
+    afterChange: [writeDisplayDerivativeLocally, auditAfterChange, revalidateWebsiteAfterChange],
     afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete],
   },
 };

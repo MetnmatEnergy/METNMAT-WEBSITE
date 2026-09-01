@@ -2,28 +2,37 @@ import type { CollectionBeforeValidateHook } from "payload";
 import sharp from "sharp";
 
 /**
- * Product image specification, enforced at upload time.
+ * Product photograph acceptance, enforced at upload time.
  *
- * One master file per product renders in every location on the site — shop grid,
- * PDP gallery, zoom, cart, search — with no per-location cropping. That only
- * holds if every master shares one ratio, so this rejects anything that doesn't.
+ * Since the display-derivative pipeline (product-display-derivative.ts) the
+ * stored file is the UNTOUCHED original — any orientation and ratio is welcome,
+ * because presentation is handled by the generated `display` size, and the
+ * lightbox deliberately shows the complete photograph. What still gets rejected
+ * is a source too small to survive being looked at: the resolution floor keeps
+ * genuine phone photos in and web-thumbnail rips out.
  */
 export const PRODUCT_IMAGE_SPEC = {
-  /** 4:3 — matches the aspect-[4/3] frame every product surface renders in. */
-  ratio: 4 / 3,
-  /** ±1%: enough for a rounding-off-by-one-pixel export, not enough to letterbox. */
-  ratioTolerance: 0.01,
-  /** Must survive full-bleed zoom on a retina desktop without upscaling. */
-  minWidth: 2400,
+  /** Shortest side a product photograph must have to stay sharp on the PDP. */
+  minShortSide: 900,
   /** Above this we warn (not reject) — big files slow the shop grid on mobile. */
   warnBytes: 500 * 1024,
+  /**
+   * Legacy master geometry (4:3, ≥2400px wide) — no longer required at upload,
+   * still used by scripts/normalize-product-images.ts for marketplace exports
+   * and by the audit to recognise pre-pipeline masters.
+   */
+  ratio: 4 / 3,
+  ratioTolerance: 0.01,
+  minWidth: 2400,
 } as const;
 
-/**
- * The single source of truth for "is this a valid product master?". Used by the
- * upload hook (to reject) and by scripts/audit-product-images.ts (to report), so
- * the admin and the audit can never disagree about what passes.
- */
+/** The current acceptance rule: is this photograph big enough to use at all? */
+export function checkProductPhoto(width: number, height: number): { ok: boolean; shortSide: number } {
+  const shortSide = Math.min(width, height);
+  return { ok: shortSide >= PRODUCT_IMAGE_SPEC.minShortSide, shortSide };
+}
+
+/** Legacy master check (4:3 ≥2400) — normalizer output and the audit use it. */
 export function checkProductMaster(
   width: number,
   height: number
@@ -35,17 +44,11 @@ export function checkProductMaster(
   return { ok: ratioOk && wideEnough, ratioOk, wideEnough, ratio };
 }
 
-const fmt = (w: number, h: number): string => {
-  const g = (a: number, b: number): number => (b ? g(b, a % b) : a);
-  const d = g(w, h) || 1;
-  return `${w} × ${h} (${w / d}:${h / d})`;
-};
-
 /**
- * Reject product images that aren't 4:3 / ≥2400px wide; warn on oversized files.
+ * Reject product images below the resolution floor; warn on oversized files.
  *
  * Scoped to `category === "product"` ONLY — banners, logos, blog art and user
- * uploads legitimately have other shapes and must keep flowing through this same
+ * uploads legitimately have other needs and must keep flowing through this same
  * collection. Non-image and metadata-only updates (no new file) pass straight
  * through, so editing alt text on an existing asset never trips the rule.
  */
@@ -71,20 +74,12 @@ export const enforceProductImageSpec: CollectionBeforeValidateHook = async ({ da
   }
   if (!width || !height) return data;
 
-  const { ratioOk, wideEnough } = checkProductMaster(width, height);
-
-  if (!ratioOk) {
+  const { ok, shortSide } = checkProductPhoto(width, height);
+  if (!ok) {
     throw new Error(
-      `Product images must be 4:3 and at least ${PRODUCT_IMAGE_SPEC.minWidth} × ${PRODUCT_IMAGE_SPEC.minWidth * 3 / 4} px. ` +
-        `Received ${fmt(width, height)}. ` +
-        `Run: npx tsx scripts/normalize-product-images.ts <in> <out> — it pads any photo onto a 2400 × 1800 transparent canvas without cropping.`
-    );
-  }
-
-  if (!wideEnough) {
-    throw new Error(
-      `Product images must be 4:3 and at least ${PRODUCT_IMAGE_SPEC.minWidth} × ${PRODUCT_IMAGE_SPEC.minWidth * 3 / 4} px. ` +
-        `Received ${fmt(width, height)} — the ratio is right but it is too small to stay sharp in the zoom viewer.`
+      `Product photographs need a shortest side of at least ${PRODUCT_IMAGE_SPEC.minShortSide}px to stay sharp ` +
+        `on the product page. Received ${width} × ${height} (shortest side ${shortSide}px). ` +
+        `Upload the camera original rather than a messenger-app recompress.`
     );
   }
 

@@ -62,7 +62,9 @@ export type Product = {
   datasheets: Datasheet[];
   badges?: string[]; // "Bestseller", "New", "GST invoice"
   reviews?: Review[];
-  imageUrl?: string; // CMS-managed primary image
+  imageAlts?: string[]; // media alt per gallery image, index-aligned with `images`
+  imageFulls?: string[]; // untouched originals for the lightbox, index-aligned with `images`
+  imageUrl?: string; // CMS-managed primary image (display derivative when available)
   images?: string[]; // CMS-managed gallery
   videoUrl?: string; // CMS-managed YouTube link, shown as a playable item in the gallery
   createdAt?: string; // CMS document creation date (ISO) — used for "Newest" sort

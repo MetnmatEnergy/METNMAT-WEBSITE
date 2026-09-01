@@ -1,15 +1,21 @@
 /**
- * Attach the In-Situ Raman cell photographs to its existing CMS product.
+ * Attach photographs to an EXISTING CMS product, driven by a manifest.
  *
- * One-off in the mould of attach-images.ts, but with the _bootstrap guards
- * (explicit --target checked against MONGODB_URI, S3 asserted for prod) and a
- * distinct alt text per image. The photo set and its order are deliberate —
- * identity → construction detail → scale → system in operation — and the first
- * image becomes the shop-grid thumbnail and Open Graph image.
+ * This is the master path for "here is the next product's photo set": stage the
+ * ORIGINAL photographs (the display-derivative hook composes them for the
+ * gallery automatically), write a small manifest naming the slug, the files
+ * (order matters — the first image is the thumbnail everywhere) and one honest
+ * alt per view, then run this. For products that do not exist in the CMS yet,
+ * use the full catalogue import instead (docs/CATALOGUE.md).
  *
  *   cd apps/dashboard
- *   npx tsx scripts/attach-raman-images.ts --target=prod --dry-run
- *   npx tsx scripts/attach-raman-images.ts --target=prod
+ *   npx tsx scripts/attach-product-images.ts scripts/attach-manifests/<product>.json --target=prod --dry-run
+ *   npx tsx scripts/attach-product-images.ts scripts/attach-manifests/<product>.json --target=prod
+ *
+ * Manifest shape (committed under scripts/attach-manifests/ so every attach run
+ * stays auditable and repeatable):
+ *
+ *   { "slug": "…", "images": [{ "file": "…​.webp", "alt": "…" }, …] }
  *
  * Flags
  *   --images <dir>   where the normalized masters live (default scripts/_img_tmp)
@@ -33,31 +39,10 @@ loadEnv();
 
 import sharp from "sharp";
 import { getPayload } from "payload";
-import { checkProductMaster, PRODUCT_IMAGE_SPEC } from "../src/hooks/product-image-spec";
+import { checkProductPhoto, PRODUCT_IMAGE_SPEC } from "../src/hooks/product-image-spec";
 
-const SLUG = "dual-chambered-in-situ-raman-spectroscopy-cell-with-single-light-windo";
-const NAME = "Dual Chambered In-Situ Raman Spectroscopy Cell With Single Light Window";
-
-// Order matters: images[0] is the thumbnail everywhere. Filenames follow the
-// catalogue convention (unnumbered primary, then numeric suffixes).
-const IMAGES: { file: string; alt: string }[] = [
-  {
-    file: "In-Situ Raman Spectroscopy Cell IRE-4.webp",
-    alt: `${NAME} — three-quarter view showing the dual-chamber PEEK body, sapphire optical window and fluidic ports`,
-  },
-  {
-    file: "In-Situ Raman Spectroscopy Cell IRE-4 2.webp",
-    alt: `${NAME} — top-down view of the sapphire optical window assembly and electrode aperture`,
-  },
-  {
-    file: "In-Situ Raman Spectroscopy Cell IRE-4 3.webp",
-    alt: `${NAME} — held in a gloved hand, showing the compact palm-sized form factor`,
-  },
-  {
-    file: "In-Situ Raman Spectroscopy Cell IRE-4 4.webp",
-    alt: `${NAME} — operating setup with dual peristaltic pumps and catholyte and anolyte reservoirs`,
-  },
-];
+type ManifestImage = { file: string; alt: string };
+type AttachManifest = { slug: string; images: ManifestImage[] };
 
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -70,9 +55,46 @@ const DRY = argv.includes("--dry-run");
 const REPLACE = argv.includes("--replace");
 const IMAGE_DIR = path.resolve(APP_DIR, flag("images") ?? path.join("scripts", "_img_tmp"));
 
-async function validateFiles(): Promise<string[]> {
+function loadManifest(): AttachManifest {
+  const rel = argv.find((a) => !a.startsWith("--") && a.endsWith(".json"));
+  if (!rel) {
+    console.error(
+      "Usage: npx tsx scripts/attach-product-images.ts <manifest.json> --target=dev|prod [--images <dir>] [--dry-run] [--replace]"
+    );
+    process.exit(2);
+  }
+  const full = path.resolve(APP_DIR, rel);
+  if (!fs.existsSync(full)) {
+    console.error(`Manifest not found: ${full}`);
+    process.exit(2);
+  }
+  const m = JSON.parse(fs.readFileSync(full, "utf8")) as Partial<AttachManifest>;
+  if (!m.slug?.trim()) {
+    console.error("Manifest is missing a product slug.");
+    process.exit(2);
+  }
+  if (!Array.isArray(m.images) || m.images.length === 0) {
+    console.error("Manifest names no images.");
+    process.exit(2);
+  }
+  for (const [i, img] of m.images.entries()) {
+    if (!img?.file?.trim()) {
+      console.error(`Manifest image #${i + 1} has no "file".`);
+      process.exit(2);
+    }
+    if (!img.alt?.trim()) {
+      // Alt text is part of the product data, not an optional nicety — refusing
+      // here keeps "every image describes itself" true for future products too.
+      console.error(`Manifest image "${img.file}" has no "alt".`);
+      process.exit(2);
+    }
+  }
+  return m as AttachManifest;
+}
+
+async function validateFiles(images: ManifestImage[]): Promise<string[]> {
   const errors: string[] = [];
-  for (const { file } of IMAGES) {
+  for (const { file } of images) {
     const full = path.join(IMAGE_DIR, file);
     if (!fs.existsSync(full)) {
       errors.push(`missing: ${full}`);
@@ -82,8 +104,10 @@ async function validateFiles(): Promise<string[]> {
       const { width, height } = await sharp(full).metadata();
       if (!width || !height) {
         errors.push(`${file}: could not read dimensions`);
-      } else if (!checkProductMaster(width, height).ok) {
-        errors.push(`${file}: ${width}x${height} — must be 4:3 and >= ${PRODUCT_IMAGE_SPEC.minWidth}px wide`);
+      } else if (!checkProductPhoto(width, height).ok) {
+        errors.push(
+          `${file}: ${width}x${height} — shortest side must be >= ${PRODUCT_IMAGE_SPEC.minShortSide}px (upload the camera original)`
+        );
       }
     } catch {
       errors.push(`${file}: unreadable image`);
@@ -93,22 +117,23 @@ async function validateFiles(): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
+  const manifest = loadManifest();
   const { target, dbName } = assertTarget(argv);
   assertS3(target);
 
   console.log(`\ntarget   ${target}  (database "${dbName}")`);
   console.log(`storage  ${process.env.STORAGE_PROVIDER || "(unset → gcs)"} ${process.env.S3_BUCKET ?? ""}`);
   console.log(`images   ${IMAGE_DIR}`);
-  console.log(`product  ${SLUG}`);
+  console.log(`product  ${manifest.slug}`);
   console.log(`mode     ${DRY ? "DRY RUN — nothing will be written" : "WRITING"}\n`);
 
-  const errors = await validateFiles();
+  const errors = await validateFiles(manifest.images);
   if (errors.length) {
     console.error("Validation failed:");
     errors.forEach((e) => console.error(`  ${e}`));
     process.exit(1);
   }
-  console.log(`${IMAGES.length} image(s) validated against the product master spec.`);
+  console.log(`${manifest.images.length} image(s) validated against the product master spec.`);
 
   if (DRY) {
     console.log("Dry run — stopping before the database.");
@@ -120,13 +145,13 @@ async function main(): Promise<void> {
 
   const found = await payload.find({
     collection: "products",
-    where: { slug: { equals: SLUG } },
+    where: { slug: { equals: manifest.slug } },
     limit: 1,
     depth: 0,
   });
   const product = found.docs[0];
   if (!product) {
-    console.error(`Product not found by slug: ${SLUG}`);
+    console.error(`Product not found by slug: ${manifest.slug}`);
     process.exit(1);
   }
 
@@ -137,7 +162,7 @@ async function main(): Promise<void> {
   }
 
   const ids: string[] = [];
-  for (const { file, alt } of IMAGES) {
+  for (const { file, alt } of manifest.images) {
     const media = await payload.create({
       collection: "media",
       data: { alt, category: "product" },
@@ -152,7 +177,7 @@ async function main(): Promise<void> {
     id: product.id,
     data: { images: ids.map((id) => ({ image: id })) },
   });
-  console.log(`OK: ${SLUG} -> ${ids.length} images`);
+  console.log(`OK: ${manifest.slug} -> ${ids.length} images`);
 
   // The product afterChange hook schedules a debounced chatbot-catalog resync;
   // give it a moment to run rather than killing it with the process.

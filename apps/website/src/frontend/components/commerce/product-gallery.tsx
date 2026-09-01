@@ -22,17 +22,28 @@ type Item = { kind: "image"; src: string } | { kind: "video"; id: string };
 
 /**
  * Product gallery: auto-sliding main image (crossfade every ~4.5s, paused on
- * hover/zoom/video), prev/next arrows, thumbnails + click-to-zoom lightbox.
+ * hover/zoom/video), prev/next arrows, touch swipe, thumbnails + click-to-zoom
+ * lightbox with a caption (the image's CMS alt) and a position counter.
  * If the product has a YouTube link it's appended as a playable item — the
  * heavy iframe loads only when the customer clicks play (a lightweight facade),
  * so it never slows the page or shifts layout.
+ *
+ * Entirely data-driven: images, their order and their alt text come from the
+ * product's CMS record — nothing here is specific to any one product.
  */
 export function ProductGallery({
   images,
+  fulls,
+  alts,
   name,
   videoUrl,
 }: {
+  /** Display URLs (subject-aware 4:3 derivatives) for stage, thumbs, crossfade. */
   images: string[];
+  /** Untouched originals, index-aligned — the lightbox shows the complete photo. */
+  fulls?: string[];
+  /** Media alt per image, index-aligned with `images` (optional, from the CMS). */
+  alts?: string[];
   name: string;
   videoUrl?: string;
 }) {
@@ -55,6 +66,34 @@ export function ProductGallery({
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const dialogRef = React.useRef<HTMLDivElement>(null);
   const wasOpen = React.useRef(false);
+
+  // Real media alt from the CMS when present; a neutral fallback otherwise.
+  const altFor = React.useCallback(
+    (i: number) => alts?.[i]?.trim() || `${name} — image ${i + 1}`,
+    [alts, name]
+  );
+
+  // Touch swipe (main stage + lightbox), pointer-based — no library. The
+  // surfaces set touch-action pan-y so vertical scrolling stays native while
+  // horizontal gestures reach us; a recognised swipe suppresses the click that
+  // follows it, so swiping never doubles as "open the lightbox" or "play".
+  const swipeStart = React.useRef<{ x: number; y: number } | null>(null);
+  const swipedRef = React.useRef(false);
+  const onSwipeDown = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse") return;
+    swipeStart.current = { x: e.clientX, y: e.clientY };
+  };
+  const makeSwipeUp = (nav: (dir: 1 | -1) => void) => (e: React.PointerEvent) => {
+    const s = swipeStart.current;
+    swipeStart.current = null;
+    if (!s || e.pointerType === "mouse") return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swipedRef.current = true;
+      nav(dx < 0 ? 1 : -1);
+    }
+  };
 
   const current = items[active] ?? null;
   const activeKind = current?.kind;
@@ -124,7 +163,12 @@ export function ProductGallery({
     }
   }, [zoom]);
 
-  const zoomSrc = current?.kind === "image" ? current.src : null;
+  // The lightbox shows the COMPLETE photograph: the untouched original when the
+  // CMS provides one, else the display file (identical for pre-pipeline media).
+  const zoomSrc = current?.kind === "image" ? fulls?.[active] || current.src : null;
+  // Caption only when the CMS provides real alt text — the neutral fallback
+  // ("… — image 2") is fine for screen readers but is noise as a visible line.
+  const zoomCaption = current?.kind === "image" ? alts?.[active]?.trim() : undefined;
 
   return (
     // self-start + content-start: don't stretch to the (taller) details column —
@@ -134,16 +178,18 @@ export function ProductGallery({
       {/* Main media — 4:3 frame */}
       {hasMedia ? (
         <div
-          className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-border bg-white"
+          className="group relative aspect-[4/3] touch-pan-y overflow-hidden rounded-xl border border-border bg-white"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
+          onPointerDown={onSwipeDown}
+          onPointerUp={makeSwipeUp(go)}
         >
           {/* Image layers (crossfade) */}
           {images.map((src, i) => (
             <Image
               key={src + i}
               src={src}
-              alt={`${name} — image ${i + 1}`}
+              alt={altFor(i)}
               fill
               sizes="(max-width: 768px) 100vw, 640px"
               priority={i === 0}
@@ -168,7 +214,10 @@ export function ProductGallery({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setPlaying(true)}
+                  onClick={() => {
+                    if (swipedRef.current) { swipedRef.current = false; return; }
+                    setPlaying(true);
+                  }}
                   className="group/play relative block h-full w-full"
                   aria-label={`Play ${name} video`}
                 >
@@ -195,7 +244,10 @@ export function ProductGallery({
               <button
                 ref={triggerRef}
                 type="button"
-                onClick={() => setZoom(true)}
+                onClick={() => {
+                  if (swipedRef.current) { swipedRef.current = false; return; }
+                  setZoom(true);
+                }}
                 className="absolute inset-0 cursor-zoom-in"
                 aria-label="Zoom image"
               />
@@ -265,7 +317,7 @@ export function ProductGallery({
                   // default 4:3 via twMerge.
                   <ProductImage
                     src={it.src}
-                    alt={`${name} ${i + 1}`}
+                    alt={altFor(i)}
                     sizes="128px"
                     className="aspect-square h-full w-full"
                   />
@@ -331,19 +383,33 @@ export function ProductGallery({
               </button>
             </>
           )}
-          {/* Zoom view: the 4:3 master at full width, optimised (was a raw <img>,
-              which shipped the untouched original on every open). */}
+          {/* Zoom view: the complete photograph (untouched original when the
+              CMS provides one), optimised through next/image. */}
           <div
-            className="relative h-full w-full max-w-5xl"
+            className="relative h-full w-full max-w-5xl touch-pan-y"
             onClick={(e) => e.stopPropagation()}
+            onPointerDown={onSwipeDown}
+            onPointerUp={makeSwipeUp(goImage)}
           >
             <Image
               src={zoomSrc}
-              alt={name}
+              alt={altFor(active)}
               fill
               sizes="(max-width: 768px) 100vw, 1200px"
               className="rounded-lg object-contain"
             />
+          </div>
+
+          {/* Caption (the image's CMS alt) + position counter */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex flex-col items-center gap-1.5 px-16 text-center">
+            {zoomCaption && (
+              <p className="line-clamp-2 max-w-2xl text-sm text-white/85 drop-shadow-md">{zoomCaption}</p>
+            )}
+            {manyImages && (
+              <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium tabular-nums text-white/80">
+                {Math.min(active + 1, imagesLen)} / {imagesLen}
+              </span>
+            )}
           </div>
         </div>
       )}

@@ -1,13 +1,20 @@
 /**
  * Normalise product photos to the site's master spec.
  *
- * Default (web):    2400 × 1800 WebP q90, TRANSPARENT canvas, artwork fitted
- *                   inside 2040 × 1530 so nothing touches the edge.
+ * Default (web):    2400 × 1800 WebP q90 on a TRANSPARENT canvas.
  * --amazon:         2000 × 2000 JPEG on pure white #FFFFFF for marketplaces
  *                   (Amazon requires a square, opaque white background).
  *
- * The image is never cropped — it is scaled down to fit and centred, so the
- * whole product survives whatever ratio the source was.
+ * FILL-FIRST: the artwork is scaled — up when needed — until it touches the
+ * canvas on at least one axis, so a portrait photo bakes in at full height with
+ * clean symmetric side bands instead of floating small inside an empty frame,
+ * and a 4:3 photo fills the canvas edge to edge. The image is never cropped and
+ * never distorted; only uniformly scaled and centred.
+ *
+ * Upscaling is capped at ×2: pixels invented much past that stop looking like
+ * photography, and hiding that behind a passing validator would be worse than a
+ * loud note. A capped file still uploads — the note tells you the real fix is a
+ * better source file (the camera original, not a messenger-app recompress).
  *
  * Run: cd apps/dashboard && npx tsx scripts/normalize-product-images.ts <in> <out> [--amazon] [--concurrency N]
  */
@@ -16,8 +23,8 @@ import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import sharp from "sharp";
 
-const WEB = { canvasW: 2400, canvasH: 1800, fitW: 2040, fitH: 1530 };
-const AMAZON = { canvas: 2000, fit: 1700 };
+const WEB = { canvasW: 2400, canvasH: 1800, maxScale: 2 };
+const AMAZON = { canvas: 2000, fit: 1700, maxScale: 2 };
 const EXTS = new Set([".png", ".jpg", ".jpeg", ".webp", ".avif", ".tif", ".tiff"]);
 
 type Row = { file: string; from: string; to: string; kb: string; note: string };
@@ -40,15 +47,34 @@ async function processOne(inPath: string, outDir: string, amazon: boolean): Prom
   const base = path.basename(inPath, path.extname(inPath));
   const src = sharp(inPath).rotate(); // honour EXIF orientation before measuring
   const meta = await src.metadata();
-  const from = `${meta.width ?? "?"}×${meta.height ?? "?"}`;
+  // .rotate() applies EXIF at processing time but metadata() reports the stored
+  // pixels — orientations 5–8 are 90°-turned, so swap the axes to measure what
+  // the pipeline will actually produce.
+  const turned = (meta.orientation ?? 1) >= 5;
+  const w = (turned ? meta.height : meta.width) ?? 0;
+  const h = (turned ? meta.width : meta.height) ?? 0;
+  const from = `${w || "?"}×${h || "?"}`;
+  if (!w || !h) throw new Error("could not read image dimensions");
+
+  const boundW = amazon ? AMAZON.fit : WEB.canvasW;
+  const boundH = amazon ? AMAZON.fit : WEB.canvasH;
+  const maxScale = amazon ? AMAZON.maxScale : WEB.maxScale;
+
+  const scale = Math.min(boundW / w, boundH / h, maxScale);
+  const tw = Math.min(boundW, Math.max(1, Math.round(w * scale)));
+  const th = Math.min(boundH, Math.max(1, Math.round(h * scale)));
+  const inner = await src.resize(tw, th, { fit: "inside" }).toBuffer();
+
+  const notes: string[] = [];
+  if (scale > 1.001) notes.push(`upscaled ×${scale.toFixed(2)}`);
+  if (scale >= maxScale && tw < boundW && th < boundH) {
+    notes.push(`CAPPED at ×${maxScale} — too small for a sharp zoom, prefer the camera original`);
+  }
 
   let buf: Buffer;
   let outName: string;
 
   if (amazon) {
-    const inner = await src
-      .resize(AMAZON.fit, AMAZON.fit, { fit: "inside", withoutEnlargement: true })
-      .toBuffer();
     buf = await sharp({
       create: {
         width: AMAZON.canvas,
@@ -62,9 +88,6 @@ async function processOne(inPath: string, outDir: string, amazon: boolean): Prom
       .toBuffer();
     outName = `${base}.jpg`;
   } else {
-    const inner = await src
-      .resize(WEB.fitW, WEB.fitH, { fit: "inside", withoutEnlargement: true })
-      .toBuffer();
     buf = await sharp({
       create: {
         width: WEB.canvasW,
@@ -81,12 +104,13 @@ async function processOne(inPath: string, outDir: string, amazon: boolean): Prom
 
   await fs.writeFile(path.join(outDir, outName), buf);
   const kb = buf.length / 1024;
+  if (kb > 500) notes.push("OVER 500 KB");
   return {
     file: outName,
     from,
     to: amazon ? `${AMAZON.canvas}×${AMAZON.canvas}` : `${WEB.canvasW}×${WEB.canvasH}`,
     kb: kb.toFixed(0),
-    note: kb > 500 ? "OVER 500 KB" : "",
+    note: notes.join(" · "),
   };
 }
 
@@ -116,7 +140,7 @@ async function main(): Promise<void> {
   console.log(
     `Normalising ${files.length} image(s) → ${
       amazon ? `${AMAZON.canvas}×${AMAZON.canvas} JPEG on white` : `${WEB.canvasW}×${WEB.canvasH} WebP, transparent`
-    } (concurrency ${concurrency})\n`
+    }, fill-first (concurrency ${concurrency})\n`
   );
 
   const rows: Row[] = [];
@@ -148,7 +172,7 @@ async function main(): Promise<void> {
     );
   }
 
-  const over = rows.filter((r) => r.note).length;
+  const over = rows.filter((r) => r.note.includes("OVER")).length;
   console.log(`\n${rows.length} written to ${outDir}${over ? ` · ${over} over 500 KB` : ""}`);
   if (failures.length) {
     console.log(`\n${failures.length} failed:`);

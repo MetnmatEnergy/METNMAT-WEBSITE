@@ -80,13 +80,35 @@ const apiStrict = cache(async function apiStrict<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 });
 
-type Media = { url?: string; alt?: string; width?: number; height?: number } | string | null | undefined;
+type Media =
+  | {
+      url?: string;
+      alt?: string;
+      width?: number;
+      height?: number;
+      sizes?: { display?: { url?: string; width?: number; height?: number } };
+    }
+  | string
+  | null
+  | undefined;
 
 /** Absolute URL for a Payload media object (handles local + cloud storage). */
 export function mediaUrl(media: Media): string | undefined {
   if (!media || typeof media === "string") return undefined;
   const u = media.url;
   if (!u) return undefined;
+  return u.startsWith("http") ? u : `${CMS}${u}`;
+}
+
+/**
+ * Gallery/card URL for a media object: the subject-aware `display` derivative
+ * (exact 4:3, generated at upload) when present, else the stored file — which
+ * for pre-pipeline media IS the 4:3 master, so both render identically.
+ */
+export function mediaDisplayUrl(media: Media): string | undefined {
+  if (!media || typeof media === "string") return undefined;
+  const u = media.sizes?.display?.url;
+  if (!u) return mediaUrl(media);
   return u.startsWith("http") ? u : `${CMS}${u}`;
 }
 
@@ -144,7 +166,16 @@ type CmsProduct = {
 type CmsDocument = { id?: string; title?: string; filename?: string; url?: string; public?: boolean };
 
 function mapProduct(d: CmsProduct): Product {
-  const imgs = (d.images ?? []).map((i) => mediaUrl(i.image)).filter(Boolean) as string[];
+  // Display URL (gallery/cards), full URL (lightbox = untouched original) and
+  // alt are kept pairwise so the arrays stay index-aligned even when an entry
+  // has no resolvable file and is dropped.
+  const gallery = (d.images ?? [])
+    .map((i) => ({
+      src: mediaDisplayUrl(i.image),
+      full: mediaUrl(i.image),
+      alt: typeof i.image === "object" && i.image ? (i.image.alt ?? "").trim() : "",
+    }))
+    .filter((g): g is { src: string; full: string; alt: string } => Boolean(g.src));
   return {
     slug: d.slug,
     name: d.name,
@@ -181,8 +212,10 @@ function mapProduct(d: CmsProduct): Product {
       }))
       .filter((sheet) => sheet.href),
     badges: d.badges ?? [],
-    imageUrl: imgs[0],
-    images: imgs,
+    imageUrl: gallery[0]?.src,
+    images: gallery.map((g) => g.src),
+    imageFulls: gallery.map((g) => g.full),
+    imageAlts: gallery.map((g) => g.alt),
     videoUrl: d.videoUrl?.trim() || undefined,
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
