@@ -56,6 +56,7 @@ export type Product = {
   leadTime: string; // e.g. "Ships in 1–2 weeks"
   priceTiers: PriceTier[]; // bulk pricing (B2B)
   shortDesc: string;
+  description?: unknown; // Payload Lexical rich text — rendered by <RichText> when non-empty
   sizes?: string[]; // selectable size options for this SKU
   specs: Spec[];
   datasheets: Datasheet[];

@@ -83,6 +83,7 @@ type CmsProduct = {
   specs?: { label: string; value: string }[];
   sizes?: { label?: string }[];
   shortDesc?: string;
+  description?: unknown;
   images?: { image?: Media }[];
   videoUrl?: string;
   createdAt?: string;
@@ -127,6 +128,7 @@ function mapProduct(d: CmsProduct): Product {
     leadTime: d.leadTime ?? "Ships in 1–2 weeks",
     priceTiers: d.priceTiers ?? [],
     shortDesc: d.shortDesc ?? "",
+    description: d.description,
     sizes: (d.sizes ?? []).map((s) => s.label?.trim()).filter(Boolean) as string[],
     specs: d.specs ?? [],
     // Only PUBLIC documents surface as downloadable datasheets. Private docs

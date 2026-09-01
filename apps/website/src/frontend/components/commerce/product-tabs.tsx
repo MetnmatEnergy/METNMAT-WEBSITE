@@ -3,6 +3,7 @@
 import * as React from "react";
 import { FileText, Truck } from "lucide-react";
 import type { Product } from "@/frontend/lib/catalog";
+import { RichText, hasRichText } from "@/frontend/components/blog/rich-text";
 import { cn } from "@/frontend/lib/utils";
 
 const TABS = ["Description", "Specifications", "Documents", "Shipping & Returns"] as const;
@@ -46,8 +47,11 @@ export function ProductTabs({ product }: { product: Product }) {
       >
         {tab === "Description" && (
           <div className="max-w-3xl space-y-4 text-muted-foreground">
-            <p>{product.shortDesc || "Detailed product description."}</p>
-            {/* TODO(content): rich description from the CMS. */}
+            {hasRichText(product.description) ? (
+              <RichText content={product.description} />
+            ) : (
+              <p>{product.shortDesc || "Detailed product description."}</p>
+            )}
             <p>
               Engineered for laboratory and industrial use. Contact us for custom
               specifications, bulk quantities, or application guidance.

@@ -35,3 +35,6 @@ apps/dashboard/media/
 apps/dashboard/enquiry-uploads/
 apps/dashboard/blog-submission-files/
 apps/dashboard/documents/
+
+# staging area for scripts/attach-*.ts photo uploads — media never belongs in git
+apps/dashboard/scripts/_img_tmp/
