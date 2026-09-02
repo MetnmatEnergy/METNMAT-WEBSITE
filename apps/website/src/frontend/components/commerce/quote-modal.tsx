@@ -5,6 +5,7 @@ import * as React from "react";
 import { X, Check, Send, Loader2, Mail, Minus, Plus } from "lucide-react";
 import { useQuote } from "@/frontend/components/commerce/quote-provider";
 import { useDialog } from "@/frontend/components/ui/use-dialog";
+import { newRequestId } from "@/frontend/lib/request-id";
 import {
   AttachmentUploader,
   type UploadItem,
@@ -23,6 +24,11 @@ export function QuoteModal() {
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [thankYou, setThankYou] = React.useState(false);
   const [emailed, setEmailed] = React.useState(false);
+  const [reference, setReference] = React.useState<string | null>(null);
+  const [errorText, setErrorText] = React.useState<string | null>(null);
+  /** One key per filled-in form — see lib/request-id. */
+  const requestIdRef = React.useRef<string>("");
+  if (!requestIdRef.current) requestIdRef.current = newRequestId();
   const [qty, setQty] = React.useState(1);
   const [attachments, setAttachments] = React.useState<UploadItem[]>([]);
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -108,19 +114,29 @@ export function QuoteModal() {
           quantity,
           attachmentGrants,
           attachmentNames,
+          requestId: requestIdRef.current,
         }),
       });
-      if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        reference?: string;
+        emailedCustomer?: boolean;
+      };
+      if (!res.ok || data.ok === false) {
+        setErrorText(data.error ?? "Something went wrong. Please try again.");
         setStatus("error");
         return;
       }
-      const data = await res.json().catch(() => ({}));
-      setEmailed(Boolean(data?.emailed));
+      setReference(data.reference ?? null);
+      setEmailed(Boolean(data.emailedCustomer));
       setStatus("idle");
       closeModal();
       setThankYou(true);
+      requestIdRef.current = newRequestId();
       getTracker().track("form_submit", { meta: { form: "quote" } });
     } catch {
+      setErrorText("We couldn't reach the server. Please check your connection and try again.");
       setStatus("error");
     }
   }
@@ -312,7 +328,9 @@ export function QuoteModal() {
 
                   {status === "error" && (
                     <div className="sm:col-span-2">
-                      <p className="text-sm text-brand">Something went wrong. Please try again.</p>
+                      <p className="text-sm text-brand" role="alert">
+                        {errorText ?? "Something went wrong. Please try again."}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -347,8 +365,16 @@ export function QuoteModal() {
             </span>
             <h3 className="mt-5 font-display text-xl font-bold">Request sent!</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              We&apos;ve received your quote request and will get back to you within 24 hours.
+              Your request has been submitted successfully. Our team will get back to you soon.
             </p>
+            {reference && (
+              <p className="mt-4 rounded-xl border border-border bg-surface px-4 py-3">
+                <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Your reference
+                </span>
+                <span className="mt-0.5 block font-mono text-sm font-semibold">{reference}</span>
+              </p>
+            )}
             {emailed && (
               <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-xs text-muted-foreground">
                 <Mail className="h-3.5 w-3.5 text-brand" /> A copy has been sent to your email.

@@ -5,23 +5,7 @@ import * as React from "react";
 import { X, Check, Send, Loader2, Mail, Minus, Plus } from "lucide-react";
 import { useQuote } from "@/frontend/components/commerce/quote-provider";
 import { useDialog } from "@/frontend/components/ui/use-dialog";
-
-/**
- * A key identifying one filled-in form, sent with every submit attempt so the
- * server can recognise a repeat instead of filing a second RFQ and re-sending
- * both emails with the customer's attachments a second time.
- *
- * randomUUID needs a secure context; the fallback keeps a plain-http preview
- * working rather than throwing inside a render.
- */
-function newRequestId(): string {
-  try {
-    if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
-  } catch {
-    /* fall through */
-  }
-  return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-}
+import { newRequestId } from "@/frontend/lib/request-id";
 import {
   AttachmentUploader,
   type UploadItem,

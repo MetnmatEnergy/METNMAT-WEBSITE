@@ -1,6 +1,7 @@
 "use client";
 
 import { getTracker } from "@/frontend/lib/analytics/collector";
+import { newRequestId } from "@/frontend/lib/request-id";
 import * as React from "react";
 import { Loader2, CheckCircle2, AlertCircle, Send } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
@@ -18,6 +19,10 @@ export function QuoteForm() {
   const [status, setStatus] = React.useState<Status>("idle");
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
   const [topError, setTopError] = React.useState("");
+  const [reference, setReference] = React.useState<string | null>(null);
+  /** One key per filled-in form — see lib/request-id. */
+  const requestIdRef = React.useRef<string>("");
+  if (!requestIdRef.current) requestIdRef.current = newRequestId();
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -37,6 +42,9 @@ export function QuoteForm() {
       // The API validates on `message`; fold the category in so staff see it.
       message: category ? `Quote for: ${category}\n\n${details}` : details,
       hp_company_url: String(fd.get("hp_company_url") ?? ""), // honeypot (see hidden field)
+      // Recognises a repeat submission server-side rather than filing a second
+      // RFQ and re-sending both emails.
+      requestId: requestIdRef.current,
     };
 
     try {
@@ -45,13 +53,15 @@ export function QuoteForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok !== false) {
+        setReference(data?.reference ?? null);
         setStatus("success");
         getTracker().track("form_submit", { meta: { form: "quote" } });
         form.reset();
+        requestIdRef.current = newRequestId();
         return;
       }
-      const data = await res.json().catch(() => null);
       if (res.status === 400 && data?.fields) {
         setFieldErrors(data.fields);
         setStatus("error");
@@ -73,8 +83,16 @@ export function QuoteForm() {
         </span>
         <h3 className="mt-5 font-display text-xl font-semibold">Quote request received</h3>
         <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-          Thanks — our team will scope it and get back to you, usually within one business day.
+          Your request has been submitted successfully. Our team will get back to you soon.
         </p>
+        {reference && (
+          <p className="mt-4 rounded-xl border border-border bg-surface px-4 py-3">
+            <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+              Your reference
+            </span>
+            <span className="mt-0.5 block font-mono text-sm font-semibold">{reference}</span>
+          </p>
+        )}
         <Button type="button" variant="outline" size="sm" className="mt-6" onClick={() => setStatus("idle")}>
           Submit another request
         </Button>
