@@ -32,9 +32,34 @@ function canonicalHost(): string | null {
   }
 }
 
+/**
+ * Endpoints that MACHINES call, which must work on whichever host they were
+ * registered against.
+ *
+ * The canonical redirect exists for browsers carrying host-only cookies. A
+ * payment provider carries no cookies and — crucially — does not follow
+ * redirects on webhook delivery: it sees the 308, records a failed delivery, and
+ * retries into the same 308 until it gives up. Nothing on our side logs anything,
+ * because the request never reaches the route. Confirmed against production:
+ * GET https://metnmat.com/api/checkout/webhook answers 308.
+ *
+ * So a webhook registered on the apex fails silently and permanently, and the
+ * only symptom is orders that stay unpaid while the money has moved. Serving
+ * these on both hosts is strictly safer than depending on a dashboard setting
+ * somewhere else being exactly right.
+ *
+ * Signature verification is unaffected — it is computed over the raw body, not
+ * the host — so this widens no trust boundary.
+ */
+const HOST_AGNOSTIC_PATHS = ["/api/checkout/webhook"];
+
 export function middleware(req: NextRequest): NextResponse {
   const target = canonicalHost();
   if (!target) return NextResponse.next();
+
+  if (HOST_AGNOSTIC_PATHS.some((p) => req.nextUrl.pathname === p)) {
+    return NextResponse.next();
+  }
 
   const host = req.headers.get("host");
   if (!host || host === target) return NextResponse.next();
