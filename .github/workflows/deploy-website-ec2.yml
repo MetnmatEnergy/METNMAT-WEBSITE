@@ -293,6 +293,13 @@ jobs:
           SHA: ${{ needs.build.outputs.sha }}
         run: |
           set -euo pipefail
+          # HEALTH_TIMEOUT is raised to 180 below, matching the CMS. release.sh
+          # defaults to 90 and that is not enough on this box: four applications
+          # share it with roughly 400 MB of headroom, and a cold Next.js boot for
+          # the larger of the two apps exceeds 90s. Deploy d4a6d1c failed on
+          # exactly that - the check gave up while the app was still starting,
+          # the rollback then timed out on its own check, and the run reported
+          # "ROLLBACK DID NOT RESTORE SERVICE" for a site that was healthy.
           CMD=$(aws ssm send-command \
             --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
@@ -305,6 +312,7 @@ jobs:
               \"export APP_NAME='${{ env.APP_NAME }}'\",
               \"export APP_ROOT='${{ env.APP_ROOT }}'\",
               \"export APP_PORT='${{ env.APP_PORT }}'\",
+              \"export HEALTH_TIMEOUT='180'\",
               \"aws s3 cp s3://${{ env.ARTIFACT_BUCKET }}/${{ env.ARTIFACT_PREFIX }}/$SHA/release.sh /tmp/release.sh --only-show-errors\",
               \"chmod +x /tmp/release.sh\",
               \"sudo -E -u ec2-user bash /tmp/release.sh $SHA\"
