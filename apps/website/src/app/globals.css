@@ -492,3 +492,23 @@
   top: 50%;
   transform: translateY(-50%);
 }
+
+/* ── Third-party chat widget, kept inside our own stacking scale ────────────
+ *
+ * The widget appends #chat-widget-container to <body> with an INLINE
+ * z-index: 999999, which outranked every overlay on the site: the quote drawer
+ * (95), its backdrop (90), the product-image lightbox (100) and the camera
+ * modal (110). The consent banner had already been pushed to 1000000 purely to
+ * climb over it, and every future overlay would have had to do the same.
+ *
+ * 70 puts it above ordinary page content and below everything modal, so a
+ * dialog covers the bubble rather than the bubble covering the dialog — without
+ * any component needing to know the widget exists. !important is required
+ * because the value is set inline by a script we do not control.
+ *
+ * Owned here rather than in the chatbot repo on purpose: this is the HOST's
+ * layering policy, and it must hold whatever that widget ships next.
+ */
+#chat-widget-container {
+  z-index: 70 !important;
+}

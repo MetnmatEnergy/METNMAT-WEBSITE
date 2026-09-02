@@ -100,5 +100,67 @@ export function ChatWidget() {
     document.body.appendChild(s);
   }, [wake]);
 
+  /**
+   * Two accessibility attributes the widget does not set, applied from the host.
+   *
+   * Its iframe ships with NO `title`, so a screen reader announces the chat as
+   * an unlabelled frame — WCAG 4.1.2, and one of the few things about someone
+   * else's embed that is genuinely fixable from outside it. Its launcher has an
+   * aria-label but never exposes expanded state, so a screen-reader user cannot
+   * tell whether the panel they just toggled is open.
+   *
+   * Deliberately defensive. This reaches into markup owned by another
+   * repository, so every step is feature-detected and a change in their DOM
+   * makes this quietly do nothing rather than throw inside a host page. It never
+   * touches iframe CONTENT — that is cross-origin and none of our business —
+   * only attributes on the element in our own document.
+   *
+   * The rest of the widget's keyboard behaviour (focus into the panel on open,
+   * Escape to close, and the fact that the iframe precedes the launcher in DOM
+   * order) can only be fixed in the chatbot repository.
+   */
+  React.useEffect(() => {
+    if (!wake || !CHATBOT_URL) return;
+
+    const apply = () => {
+      const container = document.getElementById("chat-widget-container");
+      if (!container) return false;
+
+      const iframe = container.querySelector("iframe");
+      if (iframe && !iframe.getAttribute("title")) {
+        iframe.setAttribute("title", "Chat with a METNMAT specialist");
+      }
+
+      const launcher = container.querySelector("button");
+      const panel = document.getElementById("chat-widget-frame-container");
+      if (launcher && panel) {
+        const open = getComputedStyle(panel).display !== "none";
+        launcher.setAttribute("aria-expanded", String(open));
+        if (!launcher.getAttribute("aria-controls")) {
+          launcher.setAttribute("aria-controls", "chat-widget-frame-container");
+        }
+      }
+      return Boolean(iframe || launcher);
+    };
+
+    // The widget builds its DOM whenever its script finishes, so watch rather
+    // than guess at a delay — and keep watching, because `aria-expanded` has to
+    // follow the panel every time it is toggled.
+    const observer = new MutationObserver(() => {
+      try {
+        apply();
+      } catch {
+        /* their markup changed shape — leave it alone */
+      }
+    });
+    try {
+      apply();
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    } catch {
+      /* nothing to observe */
+    }
+    return () => observer.disconnect();
+  }, [wake]);
+
   return null;
 }
