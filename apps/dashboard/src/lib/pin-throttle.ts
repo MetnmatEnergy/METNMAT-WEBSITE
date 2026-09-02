@@ -40,6 +40,8 @@ import type { Payload } from "payload";
  */
 
 const COLL = "pin_login_throttle";
+/** Mongo duplicate-key error. Two concurrent upserts on one new _id; one loses. */
+const DUPLICATE_KEY = 11000;
 const WINDOW_MS = 15 * 60 * 1000;
 
 /** Per-IP attempts allowed in a window. */
@@ -72,23 +74,45 @@ export async function ensurePinThrottleIndex(payload: Payload): Promise<void> {
  * everywhere it is used — see the fail-open note above.
  */
 export async function countAttempt(payload: Payload, key: string): Promise<number> {
-  try {
-    const res = await collection(payload).findOneAndUpdate(
-      { _id: key },
-      {
-        $inc: { fails: 1 },
-        // Only on insert, so the window is fixed from the FIRST attempt and a
-        // steady drip cannot keep pushing the expiry out ahead of itself.
-        $setOnInsert: { expiresAt: new Date(Date.now() + WINDOW_MS) },
-      },
-      { upsert: true, returnDocument: "after" }
-    );
-    // Driver 6 returns the document; 4 and 5 wrap it in { value }.
-    const doc = ((res as unknown as { value?: ThrottleDoc })?.value ?? res) as ThrottleDoc | null;
-    return doc?.fails ?? 1;
-  } catch {
-    return 0;
+  /*
+   * Two attempts, because of one specific and very relevant race.
+   *
+   * Concurrent upserts against the SAME not-yet-existing _id collide on the
+   * unique index, and all but one lose with E11000. That is Mongo's documented
+   * behaviour for concurrent upserts, and it lands exactly where it hurts most:
+   * the FIRST burst against a cold key — which is precisely what a brute-force
+   * attempt looks like.
+   *
+   * Measured against production after deploying the first version of this: a
+   * burst of 12 produced only 2 rejections where 7 were expected, because the
+   * losers hit the catch below and failed open. Retrying once fixes it, because
+   * by then the row exists and the increment is an ordinary serialised update.
+   *
+   * A duplicate key is not a store failure — the write the loser wanted has, in
+   * effect, already happened — so it must not be treated like one.
+   */
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await collection(payload).findOneAndUpdate(
+        { _id: key },
+        {
+          $inc: { fails: 1 },
+          // Only on insert, so the window is fixed from the FIRST attempt and a
+          // steady drip cannot keep pushing the expiry out ahead of itself.
+          $setOnInsert: { expiresAt: new Date(Date.now() + WINDOW_MS) },
+        },
+        { upsert: true, returnDocument: "after" }
+      );
+      // Driver 6 returns the document; 4 and 5 wrap it in { value }.
+      const doc = ((res as unknown as { value?: ThrottleDoc })?.value ?? res) as ThrottleDoc | null;
+      return doc?.fails ?? 1;
+    } catch (e) {
+      const code = (e as { code?: number } | null)?.code;
+      if (attempt === 0 && code === DUPLICATE_KEY) continue;
+      return 0;
+    }
   }
+  return 0;
 }
 
 /** Forget one budget's attempts. Used for the IP row after a correct PIN. */
