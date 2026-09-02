@@ -5,6 +5,23 @@ import * as React from "react";
 import { X, Check, Send, Loader2, Mail, Minus, Plus } from "lucide-react";
 import { useQuote } from "@/frontend/components/commerce/quote-provider";
 import { useDialog } from "@/frontend/components/ui/use-dialog";
+
+/**
+ * A key identifying one filled-in form, sent with every submit attempt so the
+ * server can recognise a repeat instead of filing a second RFQ and re-sending
+ * both emails with the customer's attachments a second time.
+ *
+ * randomUUID needs a secure context; the fallback keeps a plain-http preview
+ * working rather than throwing inside a render.
+ */
+function newRequestId(): string {
+  try {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  } catch {
+    /* fall through */
+  }
+  return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
 import {
   AttachmentUploader,
   type UploadItem,
@@ -24,6 +41,15 @@ export function QuoteDrawer() {
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [thankYou, setThankYou] = React.useState(false);
   const [emailed, setEmailed] = React.useState(false);
+  const [reference, setReference] = React.useState<string | null>(null);
+  const [errorText, setErrorText] = React.useState<string | null>(null);
+  /**
+   * One key per filled-in form, so a double click, a retry or a refresh is
+   * recognised server-side as the SAME request rather than filing a second RFQ
+   * and re-sending both emails. Regenerated once a submission succeeds.
+   */
+  const requestIdRef = React.useRef<string>("");
+  if (!requestIdRef.current) requestIdRef.current = newRequestId();
   const [qty, setQty] = React.useState(1);
   const [attachments, setAttachments] = React.useState<UploadItem[]>([]);
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -99,6 +125,7 @@ export function QuoteDrawer() {
       .join("\n");
 
     setStatus("sending");
+    setErrorText(null);
     try {
       const res = await fetch("/api/quote", {
         method: "POST",
@@ -116,19 +143,37 @@ export function QuoteDrawer() {
           product: product ? { name: product.name, sku: product.sku, slug: product.slug } : null,
           attachmentGrants,
           attachmentNames,
+          requestId: requestIdRef.current,
+          // Same hidden field every other public form on this site carries. Its
+          // absence here made this the one form a bot could submit unimpeded.
+          hp_company_url: get("hp_company_url"),
         }),
       });
-      if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        reference?: string;
+        emailedCustomer?: boolean;
+        pending?: boolean;
+      };
+      if (!res.ok || data.ok === false) {
+        // Show what the server actually said. Replacing a 429 or a "we couldn't
+        // file your request" with a flat "Something went wrong" told the
+        // customer nothing and invited an immediate retry that would fail too.
+        setErrorText(data.error ?? "Something went wrong. Please try again.");
         setStatus("error");
         return;
       }
-      const data = await res.json().catch(() => ({}));
-      setEmailed(Boolean(data?.emailed));
+      setReference(data.reference ?? null);
+      setEmailed(Boolean(data.emailedCustomer));
       setStatus("idle");
       closeQuote();
       setThankYou(true);
+      // A new key: the next submission is a genuinely different request.
+      requestIdRef.current = newRequestId();
       getTracker().track("form_submit", { meta: { form: "quote" } });
     } catch {
+      setErrorText("We couldn't reach the server. Please check your connection and try again.");
       setStatus("error");
     }
   }
@@ -347,8 +392,21 @@ export function QuoteDrawer() {
               <input name="company" className={field} placeholder="Company name" />
             </div>
 
+            {/* Honeypot — never shown, never announced, never autofilled. A bot
+                fills every input it finds; a person cannot reach this one. */}
+            <input
+              type="text"
+              name="hp_company_url"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="absolute left-[-9999px] h-px w-px opacity-0"
+            />
+
             {status === "error" && (
-              <p className="text-sm text-brand">Something went wrong. Please try again.</p>
+              <p className="text-sm text-brand" role="alert">
+                {errorText ?? "Something went wrong. Please try again."}
+              </p>
             )}
 
             <button
@@ -385,8 +443,16 @@ export function QuoteDrawer() {
             </span>
             <h3 className="mt-5 font-display text-xl font-bold">Thank you!</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              We&apos;ve received your customization request and will get back to you soon.
+              Your request has been submitted successfully. Our team will get back to you soon.
             </p>
+            {reference && (
+              <p className="mt-4 rounded-xl border border-border bg-surface px-4 py-3">
+                <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Your reference
+                </span>
+                <span className="mt-0.5 block font-mono text-sm font-semibold">{reference}</span>
+              </p>
+            )}
             {emailed && (
               <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-xs text-muted-foreground">
                 <Mail className="h-3.5 w-3.5 text-brand" /> A copy has been sent to your email.

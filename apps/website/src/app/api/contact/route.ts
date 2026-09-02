@@ -27,7 +27,9 @@ export async function POST(request: Request) {
   // BOTH channels fail so the client's retry UI shows.
   const saved = await createEnquiry(result.data);
   if (!saved) {
-    const emailed = await sendQuoteEmails(result.data);
+    const { customer, team } = await sendQuoteEmails(result.data);
+    // The lead is not lost as long as the team was reached.
+    const emailed = customer || team;
     if (!emailed) {
       return NextResponse.json(
         {

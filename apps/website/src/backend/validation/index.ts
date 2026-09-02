@@ -39,6 +39,28 @@ export function validateEnquiry(
   if (!isEmail(email)) fields.email = "Please enter a valid email.";
   if (message.length < 5) fields.message = "Please add a few more details.";
 
+  /*
+   * Upper bounds.
+   *
+   * There were none on this validator, though the sibling DPDP one caps its
+   * free text at 4000 for exactly this reason. Every field here is written to
+   * the CMS and interpolated into two emails, so an unbounded value is a way to
+   * make one anonymous request store and mail an arbitrary amount — and a
+   * megabyte "name" turns the staff enquiry list into something that will not
+   * render. The limits are generous enough that no real enquiry meets them.
+   */
+  if (name.length > 200) fields.name = "Please keep your name under 200 characters.";
+  if (email.length > 254) fields.email = "Please enter a valid email.";
+  if (message.length > 8000) fields.message = "Please keep this under 8000 characters.";
+  for (const [key, limit] of [
+    ["phone", 40],
+    ["company", 200],
+  ] as const) {
+    if (String(body[key] ?? "").trim().length > limit) {
+      fields[key] = `Please keep this under ${limit} characters.`;
+    }
+  }
+
   if (Object.keys(fields).length > 0) return { success: false, fields };
 
   return {

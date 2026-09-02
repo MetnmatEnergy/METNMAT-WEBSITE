@@ -2,6 +2,7 @@ import type { CollectionConfig } from "payload";
 import { canManageSales, isAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { enquiryBeforeChange } from "../hooks/workflow-gates";
+import { assignEnquiryReference } from "../hooks/enquiry-reference";
 
 /**
  * Customization / quote requests (RFQ) submitted from the website's
@@ -60,6 +61,17 @@ export const Enquiries: CollectionConfig = {
       ],
     },
     { name: "source", type: "text", admin: { position: "sidebar", readOnly: true } },
+    {
+      name: "referenceId",
+      type: "text",
+      unique: true,
+      index: true,
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description: "Quoted to the customer in their confirmation email. Search on it.",
+      },
+    },
 
     // Customer
     {
@@ -157,7 +169,9 @@ export const Enquiries: CollectionConfig = {
     },
   ],
   hooks: {
-    beforeChange: [enquiryBeforeChange],
+    // Reference first: the create response carries it back to the website, which
+    // emails it to the customer and shows it on the success screen.
+    beforeChange: [assignEnquiryReference, enquiryBeforeChange],
     afterChange: [auditAfterChange],
     afterDelete: [auditAfterDelete],
   },

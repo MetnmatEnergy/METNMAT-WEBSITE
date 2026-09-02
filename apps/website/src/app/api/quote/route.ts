@@ -10,6 +10,12 @@ import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 import { sendQuoteEmails, type EmailAttachment } from "@/backend/lib/email";
 import { isAllowedUploadSignature, safeFilename } from "@/backend/lib/file-signature";
 import { collectGrantedIds } from "@/backend/lib/attachment-grant";
+import {
+  beginIdempotent,
+  completeIdempotent,
+  abandonIdempotent,
+  normalizeIdempotencyKey,
+} from "@/backend/lib/idempotency";
 
 const MAX_FILES = 5;
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB each
@@ -86,6 +92,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, fields: result.fields }, { status: 400 });
   }
 
+  /*
+   * ONCE ONLY.
+   *
+   * Each submission files an RFQ for staff to work and sends two emails, one
+   * carrying the customer's attachments. Nothing stopped a repeat: a double
+   * click, a refresh of the POST, a client retry after a slow response or a
+   * proxy replay each produced another RFQ and another pair of emails, and
+   * staff could not tell duplicates from two genuine enquiries by one person.
+   *
+   * Claimed AFTER validation so a malformed body never burns a key, and
+   * released on failure so a transient error does not lock the customer out of
+   * retrying for the whole TTL.
+   */
+  const idemKey = normalizeIdempotencyKey(b.requestId);
+  if (idemKey) {
+    const prior = await beginIdempotent<Record<string, unknown>>(idemKey);
+    if (prior.state === "done") {
+      return NextResponse.json(prior.result, { status: 200 });
+    }
+    if (prior.state === "in_flight") {
+      // The first attempt is still running. Answering 202 rather than an error
+      // keeps the customer's screen truthful: it IS being processed.
+      return NextResponse.json(
+        { ok: true, pending: true, message: "Your request is already being submitted." },
+        { status: 202 }
+      );
+    }
+  }
+
   // product may arrive as an object (JSON) or already-parsed (multipart).
   const rawP = b.product;
   const p = (typeof rawP === "object" && rawP ? rawP : {}) as {
@@ -93,7 +128,16 @@ export async function POST(request: Request) {
     sku?: string;
     slug?: string;
   };
-  const str = (k: string) => (typeof b[k] === "string" ? (b[k] as string) : undefined);
+  /*
+   * These four never went through validateEnquiry — the route reads them
+   * straight off the body — so they had no length bound at all. Truncated
+   * rather than rejected: they are supporting detail, and failing a whole
+   * enquiry because someone pasted a long spec sheet into "material" would lose
+   * a real lead over a formatting problem.
+   */
+  const DETAIL_MAX = 2000;
+  const str = (k: string) =>
+    typeof b[k] === "string" ? (b[k] as string).slice(0, DETAIL_MAX) : undefined;
 
   // Files already uploaded live (the new form flow) arrive as SIGNED GRANTS.
   //
@@ -142,24 +186,57 @@ export async function POST(request: Request) {
     attachmentIds,
   };
 
-  // Save the enquiry, linking the uploaded files, then email everyone.
+  /*
+   * PERSIST FIRST, then email.
+   *
+   * The order already ran this way, but the response did not respect it: a
+   * failed CMS save with a successful email returned 201, so the RFQ existed
+   * only in an inbox. It was absent from the admin queue staff actually work
+   * from, and nobody was told. The request had not disappeared, but for every
+   * practical purpose it had.
+   *
+   * Now the save is what decides acceptance. If it fails we still send the team
+   * notification — losing the lead entirely would be worse — but we do not tell
+   * the customer their request was received, because the system they will be
+   * chased from does not have it.
+   */
   const saved = await createEnquiry(enquiry);
-  const emailed = await sendQuoteEmails(enquiry, emailAttachments);
-  // If BOTH the CMS save and the email failed, the RFQ is lost — don't return
-  // success (the client branches only on res.ok). Surface an error so the
-  // customer can retry instead of believing the request was received.
-  if (!saved && !emailed) {
+  const withReference = { ...enquiry, referenceId: saved.referenceId };
+  const emailed = await sendQuoteEmails(withReference, emailAttachments);
+
+  if (!saved.ok) {
+    console.error("[quote] CMS save FAILED — enquiry exists only in email", {
+      email: enquiry.email,
+      teamNotified: emailed.team,
+    });
+    if (idemKey) await abandonIdempotent(idemKey);
     return NextResponse.json(
       {
         ok: false,
-        error:
-          "We couldn't submit your request right now. Please try again, or email us directly at contact@metnmat.com.",
+        error: emailed.team
+          ? "We've received your request by email but couldn't file it properly. Our team will still see it — if you don't hear back within one working day, please email contact@metnmat.com."
+          : "We couldn't submit your request right now. Please try again, or email us directly at contact@metnmat.com.",
       },
       { status: 502 }
     );
   }
-  return NextResponse.json(
-    { ok: true, saved, emailed, attachments: attachmentIds.length, stored: attachmentIds.length },
-    { status: 201 }
-  );
+
+  const payload = {
+    ok: true as const,
+    reference: saved.referenceId,
+    saved: saved.ok,
+    // Reported separately so the success screen stops claiming a copy was
+    // emailed to the customer when only the internal notification sent.
+    emailedCustomer: emailed.customer,
+    emailedTeam: emailed.team,
+    attachments: attachmentIds.length,
+    stored: attachmentIds.length,
+  };
+
+  // Remember the answer so a double click, a refresh of the POST, or a client
+  // retry replays it instead of filing a second RFQ and sending both emails
+  // again — this time with the customer's attachments a second time.
+  if (idemKey) await completeIdempotent(idemKey, payload);
+
+  return NextResponse.json(payload, { status: 201 });
 }

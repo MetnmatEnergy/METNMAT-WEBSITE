@@ -19,7 +19,12 @@ type QuoteEmailInput = {
   material?: string;
   quantity?: string;
   attachmentNames?: string[];
+  /** RFQ-YYYYMMDD-XXXXXX, minted by the CMS. Absent if the save failed. */
+  referenceId?: string;
 };
+
+/** Which sides of the exchange actually received mail. */
+export type QuoteEmailResult = { customer: boolean; team: boolean };
 
 /** A file to attach to the email. `content` is base64-encoded. */
 export type EmailAttachment = {
@@ -33,13 +38,31 @@ function esc(s: string): string {
 }
 
 function summaryTable(input: QuoteEmailInput): string {
+  /*
+   * The free-text message was in NO email.
+   *
+   * The customization drawer composes `message` from the structured fields, so
+   * for that form the rows below already say everything and repeating it is just
+   * noise. The /quote page has no structured fields at all — it collects a name,
+   * an email and the request itself — so for those submissions the team was
+   * notified with a contact card and none of the actual request.
+   *
+   * Include it exactly when nothing structured is present, which is precisely
+   * the case where it is the whole enquiry.
+   */
+  const hasStructuredDetail = Boolean(
+    input.productName || input.design || input.size || input.material || input.quantity
+  );
+
   const rows: Array<[string, string | undefined]> = [
+    ["Reference", input.referenceId],
     ["Product", input.productName],
     ["Product code", input.productSku],
     ["Design / requirement", input.design],
     ["Size / dimensions", input.size],
     ["Material", input.material],
     ["Quantity", input.quantity],
+    ["Request", hasStructuredDetail ? undefined : input.message],
     ["Attachments", input.attachmentNames?.length ? input.attachmentNames.join(", ") : undefined],
     ["Name", input.name],
     ["Mobile", input.phone],
@@ -92,9 +115,9 @@ function shell(opts: { heading: string; intro: string; body: string }): string {
 export async function sendQuoteEmails(
   input: QuoteEmailInput,
   attachments: EmailAttachment[] = []
-): Promise<boolean> {
+): Promise<QuoteEmailResult> {
   const key = process.env.RESEND_API_KEY;
-  if (!key) return false;
+  if (!key) return { customer: false, team: false };
 
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
   const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
@@ -104,10 +127,16 @@ export async function sendQuoteEmails(
     content: a.content,
   }));
 
+  const reference = input.referenceId
+    ? ` Your reference is <strong>${esc(input.referenceId)}</strong> — quote it if you get in touch.`
+    : "";
+
   const customerHtml = shell({
     heading: `Thank you for your request, ${esc(input.name)}!`,
     intro:
-      "We&rsquo;ve received your customization request and our team will review it and get back to you shortly. Here&rsquo;s a copy of the details you submitted, for your records:",
+      "We&rsquo;ve received your customization request and our team will review it and get back to you shortly." +
+      reference +
+      " Here&rsquo;s a copy of the details you submitted, for your records:",
     body: `<h3 style="margin:0 0 8px;font-size:14px;color:#111827">Your customization request</h3>${table}`,
   });
 
@@ -142,23 +171,35 @@ export async function sendQuoteEmails(
     return res.ok;
   }
 
+  const subject = input.referenceId
+    ? `New customization request from ${input.name} (${input.referenceId})`
+    : `New customization request from ${input.name}`;
+
   try {
-    // Confirmation to the CUSTOMER — replying reaches our team (notify inbox).
-    const toCustomer = await send(
+    /*
+     * Both sides are reported separately.
+     *
+     * This used to collapse to `toCustomer || toTeam`, and the success screen
+     * branched on the single boolean to tell the customer a copy had been
+     * emailed to them. When only the internal notification sent — a bounced
+     * address, a typo, a provider rejecting one recipient — the customer was
+     * told to check an inbox that would never receive anything.
+     *
+     * The caller still treats "team reached" as the lead not being lost; it just
+     * no longer claims something it does not know.
+     */
+    const customer = await send(
       input.email,
-      "Thank you for your request — METNMAT",
+      input.referenceId
+        ? `Thank you for your request (${input.referenceId}) — METNMAT`
+        : "Thank you for your request — METNMAT",
       customerHtml,
       notify
     );
-    // Internal copy to the team — replying reaches the customer.
-    const toTeam = await send(notify, `New customization request from ${input.name}`, notifyHtml, input.email);
-    // Success if EITHER side was reached: the point is that the lead isn't lost.
-    // Reporting failure when only the customer confirmation bounced would make
-    // the contact fallback 502 (and the customer retry) even though the team
-    // already has the enquiry.
-    return toCustomer || toTeam;
+    const team = await send(notify, subject, notifyHtml, input.email);
+    return { customer, team };
   } catch {
-    return false;
+    return { customer: false, team: false };
   }
 }
 

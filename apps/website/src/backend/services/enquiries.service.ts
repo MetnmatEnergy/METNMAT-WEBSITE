@@ -111,7 +111,10 @@ export async function fetchEnquiryFileBase64(
   }
 }
 
-export async function createEnquiry(input: EnquiryInput): Promise<boolean> {
+/** What the CMS did with an enquiry, and the reference it minted for it. */
+export type CreatedEnquiry = { ok: boolean; referenceId?: string };
+
+export async function createEnquiry(input: EnquiryInput): Promise<CreatedEnquiry> {
   try {
     const res = await fetch(`${CMS}/api/enquiries`, {
       method: "POST",
@@ -136,11 +139,17 @@ export async function createEnquiry(input: EnquiryInput): Promise<boolean> {
     });
     if (!res.ok) {
       console.warn(`[enquiry] CMS save failed: ${res.status}`);
-      return false;
+      return { ok: false };
     }
-    return true;
+    // The reference is minted by a CMS hook, not supplied by us — `create` on
+    // that collection is public, so a body-supplied reference could not be
+    // trusted. Read it back off the created doc.
+    const json = (await res.json().catch(() => null)) as {
+      doc?: { referenceId?: string };
+    } | null;
+    return { ok: true, referenceId: json?.doc?.referenceId };
   } catch {
     console.warn("[enquiry] CMS unreachable — not saved.");
-    return false;
+    return { ok: false };
   }
 }

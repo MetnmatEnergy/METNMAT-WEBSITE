@@ -28,12 +28,12 @@ const fetchEnquiryFileBase64 = vi.fn(async (id: string) => ({
   content: "cHJpdmF0ZQ==",
   contentType: "application/pdf",
 }));
-const sendQuoteEmails = vi.fn(async () => true);
+const sendQuoteEmails = vi.fn(async () => ({ customer: true, team: true }));
 
 vi.mock("@/backend/services/enquiries.service", () => ({
   fetchEnquiryFileBase64: (id: string) => fetchEnquiryFileBase64(id),
   uploadEnquiryFiles: vi.fn(async () => []),
-  createEnquiry: vi.fn(async () => true),
+  createEnquiry: vi.fn(async () => ({ ok: true, referenceId: "RFQ-20260902-TESTAA" })),
 }));
 vi.mock("@/backend/lib/email", () => ({
   sendQuoteEmails: (...a: unknown[]) => sendQuoteEmails(...(a as [])),

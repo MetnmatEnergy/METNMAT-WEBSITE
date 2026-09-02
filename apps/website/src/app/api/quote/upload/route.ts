@@ -15,7 +15,9 @@ const ALLOWED = /^(application\/pdf|image\/)/;
  * database right away. Returns the stored doc id used later to link the enquiry.
  */
 export async function POST(request: Request) {
-  const rl = await limitRate(`upload:${clientIp(request)}`);
+  // The default of 5/min was exactly MAX_FILES, so attaching the maximum used
+  // up the entire allowance and a single failed upload could not be retried.
+  const rl = await limitRate(`upload:${clientIp(request)}`, 20, 60_000);
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "Too many uploads. Please slow down." },
