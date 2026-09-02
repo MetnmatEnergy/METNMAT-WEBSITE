@@ -41,6 +41,45 @@ const api = cache(async function api<T>(path: string): Promise<T | null> {
   }
 });
 
+/** The CMS did not answer. Distinct from it answering "there is no such thing". */
+export class CmsUnavailableError extends Error {
+  constructor(path: string, cause?: unknown) {
+    super(`CMS unavailable for ${path}`);
+    this.name = "CmsUnavailableError";
+    this.cause = cause;
+  }
+}
+
+/**
+ * Like `api`, but a failure THROWS instead of looking like an empty result.
+ *
+ * WHAT WAS WRONG
+ * `api` collapsed three different outcomes into one `null`: transport failure,
+ * a non-2xx upstream, and a successful empty result. Every detail route read
+ * that null as "this document does not exist" and called notFound(), so any CMS
+ * unavailability — a restart, a 5xx, an Atlas blip — turned every product,
+ * category, project and blog URL into a real HTTP 404. A 404 tells Google to
+ * drop the URL; a 5xx tells it to come back. A few minutes of downtime could
+ * therefore cost catalogue rankings, and nothing signalled that anything failed.
+ *
+ * The distinction already exists elsewhere in the codebase, and even elsewhere
+ * in THIS file: getProjects() treats null as "unreachable, use placeholders"
+ * twelve lines above getProjectFull() treating the identical null as "no such
+ * slug". The listing and fallback callers genuinely should degrade, so `api`
+ * keeps its behaviour; the DETAIL fetchers use this one, and call notFound()
+ * only when the CMS answered and had nothing.
+ */
+const apiStrict = cache(async function apiStrict<T>(path: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${CMS}${path}`, { next: { revalidate: 60, tags: ["cms"] } });
+  } catch (e) {
+    throw new CmsUnavailableError(path, e);
+  }
+  if (!res.ok) throw new CmsUnavailableError(path, `HTTP ${res.status}`);
+  return (await res.json()) as T;
+});
+
 type Media = { url?: string; alt?: string; width?: number; height?: number } | string | null | undefined;
 
 /** Absolute URL for a Payload media object (handles local + cloud storage). */
@@ -210,7 +249,9 @@ export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const data = await api<{ docs: CmsProduct[] }>(
+  // Strict: null here means the CMS answered and had no such slug, so the route
+  // may 404. A CMS outage throws instead of masquerading as a missing product.
+  const data = await apiStrict<{ docs: CmsProduct[] }>(
     `/api/products?depth=1&limit=1&where[slug][equals]=${encodeURIComponent(slug)}`
   );
   const doc = data?.docs?.[0];
@@ -380,6 +421,22 @@ export async function getAllCategories(): Promise<Category[]> {
   return (data?.docs ?? []).map(mapCategory);
 }
 
+/**
+ * One category by slug, asked for directly.
+ *
+ * Used to filter the full 200-row list, which meant a CMS outage produced an
+ * empty list and read as "no such category" — a hard 404 on a real department.
+ * A targeted strict query separates the two, and fetches one row instead of two
+ * hundred.
+ */
+export async function getCategoryBySlug(slug: string): Promise<Category | null> {
+  const data = await apiStrict<{ docs: CmsCategory[] }>(
+    `/api/categories?depth=1&limit=1&where[slug][equals]=${encodeURIComponent(slug)}`
+  );
+  const doc = data?.docs?.[0];
+  return doc ? mapCategory(doc) : null;
+}
+
 export async function getTopCategories(): Promise<Category[]> {
   return (await getAllCategories()).filter((c) => !c.parent);
 }
@@ -413,10 +470,6 @@ export async function getVisibleTopCategories(): Promise<Category[]> {
 export async function getIndexableCategories(): Promise<Category[]> {
   const [cats, prods] = await Promise.all([getVisibleCategories(), getAllProducts()]);
   return selectBrowsable(cats, prods);
-}
-
-export async function getCategoryBySlug(slug: string): Promise<Category | null> {
-  return (await getAllCategories()).find((c) => c.slug === slug) ?? null;
 }
 
 export async function getSubCategories(parentSlug: string): Promise<Category[]> {
@@ -510,7 +563,10 @@ export type ProjectFull = Project & {
 };
 
 export async function getProjectFull(slug: string): Promise<ProjectFull | null> {
-  const data = await api<{ docs: CmsProjectDoc[] }>(
+  // Strict — see getProductBySlug. Twelve lines above, getProjects() already
+  // treats a null from `api` as "unreachable"; this used to read the same null
+  // as "no such project" and 404 the page.
+  const data = await apiStrict<{ docs: CmsProjectDoc[] }>(
     `/api/projects?depth=1&limit=1&where[slug][equals]=${encodeURIComponent(slug)}&${PROJECT_PUBLIC_WHERE}`
   );
   const doc = data?.docs?.[0];

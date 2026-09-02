@@ -170,8 +170,42 @@ export async function POST(request: Request) {
     content: f.buffer.toString("base64"),
     contentType: f.contentType,
   }));
+  /*
+   * The two attachment paths had asymmetric limits.
+   *
+   * The multipart path enforces MAX_TOTAL_BYTES as it reads. The grant path
+   * enforced only a COUNT — five — while /api/quote/upload caps each file at
+   * 10 MB with no running total, and the 20 MB total the uploader shows is
+   * client-side only. Calling the upload endpoint five times directly and
+   * submitting the five grants therefore reached ~50 MB raw, which becomes
+   * ~67 MB of base64 held here and serialised again inside each outbound email,
+   * in a process capped at 448 MB of heap. That is one cheap anonymous request
+   * spending most of the heap, on a box running four applications.
+   *
+   * Charged against the same budget the multipart path uses. Anything over it
+   * is dropped rather than failing the enquiry — the request itself is worth
+   * more than an attachment, and the names still reach staff via
+   * `attachmentNames` and the CMS `attachments` relationship, so a dropped file
+   * is visible and openable in the admin rather than lost.
+   */
   const readBack = await Promise.all(preUploadedIds.map((id) => fetchEnquiryFileBase64(id)));
-  for (const att of readBack) if (att) emailAttachments.push(att);
+  let emailBytes = files.reduce((n, f) => n + f.buffer.length, 0);
+  const tooLargeToEmail: string[] = [];
+  for (const att of readBack) {
+    if (!att) continue;
+    const bytes = Buffer.byteLength(att.content, "base64");
+    if (emailBytes + bytes > MAX_TOTAL_BYTES) {
+      tooLargeToEmail.push(att.filename);
+      continue;
+    }
+    emailBytes += bytes;
+    emailAttachments.push(att);
+  }
+  if (tooLargeToEmail.length) {
+    console.warn(
+      `[quote] ${tooLargeToEmail.length} attachment(s) over the ${MAX_TOTAL_BYTES}-byte email budget — filed but not attached: ${tooLargeToEmail.join(", ")}`
+    );
+  }
 
   const enquiry = {
     ...result.data,

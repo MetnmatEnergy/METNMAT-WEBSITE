@@ -12,6 +12,7 @@
 import { cache } from "react";
 import { mediaUrl } from "@/frontend/lib/cms";
 import { BLOG_PAGE_SIZE, type BlogQuery } from "@/frontend/lib/blog-query";
+import { CmsUnavailableError } from "@/frontend/lib/cms";
 
 const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
 
@@ -23,6 +24,25 @@ const fetchJson = cache(async function fetchJson<T>(path: string): Promise<T | n
   } catch {
     return null;
   }
+});
+
+/**
+ * Like fetchJson, but a failure THROWS rather than looking like an empty result.
+ *
+ * The listing pages should degrade to "no articles" when the CMS is down; the
+ * ARTICLE page must not, because `null` there was read as "no such slug" and
+ * answered a real HTTP 404. A 404 tells Google to drop the URL, so a few minutes
+ * of CMS downtime could deindex the whole blog. See cms.ts CmsUnavailableError.
+ */
+const fetchJsonStrict = cache(async function fetchJsonStrict<T>(path: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${CMS}${path}`, { next: { revalidate: 60, tags: ["cms"] } });
+  } catch (e) {
+    throw new CmsUnavailableError(path, e);
+  }
+  if (!res.ok) throw new CmsUnavailableError(path, `HTTP ${res.status}`);
+  return (await res.json()) as T;
 });
 
 // ── Where-clause encoding (Payload REST bracket syntax) ───────────────────────
@@ -481,7 +501,9 @@ export async function getBlogArticle(slug: string): Promise<BlogArticleFull | nu
     limit: 1,
     depth: 2, // authors → profile images, attachments → files
   });
-  const data = await fetchJson<ListResponse<CmsArticle>>(`/api/posts?${qs}`);
+  // Strict: null means the CMS answered and had no such article, so the route
+  // may 404. An outage throws instead of deindexing the post.
+  const data = await fetchJsonStrict<ListResponse<CmsArticle>>(`/api/posts?${qs}`);
   const doc = data?.docs?.[0];
   return doc ? mapFull(doc) : null;
 }
