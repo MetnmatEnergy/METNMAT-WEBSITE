@@ -25,8 +25,12 @@ export default function ForgotPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
+      // Read the body: a rate-limit or a "we couldn't send it" carries a real
+      // message, and replacing it with "Something went wrong" told the customer
+      // nothing and invited an immediate retry that would fail the same way.
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
       if (res.ok) setSent(true);
-      else setError("Something went wrong. Please try again.");
+      else setError(data?.error || "Something went wrong. Please try again.");
     } catch {
       setError("Network error — please try again.");
     }

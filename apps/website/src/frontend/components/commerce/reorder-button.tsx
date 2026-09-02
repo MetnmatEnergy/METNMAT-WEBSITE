@@ -23,6 +23,8 @@ export function ReorderButton({
   const { addToCart } = useStore();
   const [loading, setLoading] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
+  /** Some lines could not be re-added; offer the cart instead of navigating. */
+  const [partial, setPartial] = React.useState(false);
 
   const slugs = Array.from(new Set(items.map((i) => i.slug).filter(Boolean))) as string[];
 
@@ -39,7 +41,20 @@ export function ReorderButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slugs }),
       });
-      const data = (await res.json()) as { products?: Product[] };
+      /*
+        * A failed lookup is not the same as a discontinued product.
+        *
+        * res.ok was never checked, so a 500 produced no `products`, nothing
+        * matched, and the customer was told "these items aren't available to buy
+        * online anymore" — about items that were very likely fine. That is a lie
+        * that ends a repeat purchase.
+        */
+      if (!res.ok) {
+        setMsg("Couldn't check these items just now. Please try again.");
+        setLoading(false);
+        return;
+      }
+      const data = (await res.json().catch(() => ({}))) as { products?: Product[] };
       const bySlug = new Map((data.products ?? []).map((p) => [p.slug, p]));
 
       let added = 0;
@@ -56,8 +71,24 @@ export function ReorderButton({
         setLoading(false);
         return;
       }
-      // Any removed / now-quote-only items are simply left out; the cart shows
-      // exactly what could be re-added at today's prices.
+
+      /*
+       * A PARTIAL rebuild used to navigate straight to the cart, so the customer
+       * arrived at a basket quietly missing items and had to notice for
+       * themselves. Say what happened and let them go on their own — the message
+       * would be lost the instant we navigated.
+       */
+      const missing = items.length - added;
+      if (missing > 0) {
+        setMsg(
+          `Added ${added} of ${items.length} item${items.length === 1 ? "" : "s"} — ` +
+            `${missing} ${missing === 1 ? "is" : "are"} no longer available to buy online. ` +
+            `Your cart has the rest.`
+        );
+        setPartial(true);
+        setLoading(false);
+        return;
+      }
       router.push("/cart");
     } catch {
       setMsg("Couldn't reorder right now. Please try again.");
@@ -75,6 +106,11 @@ export function ReorderButton({
         <p className="mt-1.5 text-xs text-muted-foreground" role="status">
           {msg}
         </p>
+      )}
+      {partial && (
+        <Button type="button" variant="outline" className="mt-2" onClick={() => router.push("/cart")}>
+          Go to cart
+        </Button>
       )}
     </div>
   );

@@ -35,6 +35,9 @@ const fmtDate = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }) : "";
 
 type UploadedFile = { id: string; grant: string; filename: string };
+
+/** Matches the cap the API enforces, so the UI stops before the server drops. */
+const MAX_SUPPORT_FILES = 5;
 type TicketMessage = { from: "customer" | "staff"; authorName?: string; body: string; createdAt?: string };
 type TicketView = {
   ticketNumber: string; status: string; subject: string; category?: string;
@@ -123,6 +126,8 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState<string | null>(null);
+  /** Whether the API actually managed to send the confirmation. */
+  const [confirmationSent, setConfirmationSent] = React.useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setF((s) => ({ ...s, [k]: e.target.value }));
 
@@ -132,20 +137,32 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
     if (!list.length) return;
     setUploading(true);
     setError(null);
+    /*
+     * `files` is the value captured when this handler was created, so it does
+     * not change as the loop appends. Picking five files at once therefore
+     * checked the same pre-pick count five times and uploaded all of them, and
+     * the server silently dropped everything past its own cap of five. Count
+     * locally instead.
+     */
+    let accepted = files.length;
     for (const file of list) {
-      if (files.length >= 5) break;
+      if (accepted >= MAX_SUPPORT_FILES) {
+        setError(`You can attach up to ${MAX_SUPPORT_FILES} files.`);
+        break;
+      }
       const fd = new FormData();
       fd.append("file", file);
       fd.append("source", "support");
       try {
         const res = await fetch("/api/quote/upload", { method: "POST", body: fd });
         const d = await res.json();
-        if (res.ok && d.id && d.grant)
+        if (res.ok && d.id && d.grant) {
+          accepted++;
           setFiles((prev) => [
             ...prev,
             { id: d.id, grant: d.grant as string, filename: d.filename || file.name },
           ]);
-        else setError(d.error || "Couldn't attach that file.");
+        } else setError(d.error || "Couldn't attach that file.");
       } catch {
         setError("Upload failed. Please retry.");
       }
@@ -168,7 +185,13 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
         body: JSON.stringify({ ...f, attachmentGrants: files.map((x) => x.grant) }),
       });
       const d = await res.json();
-      if (res.ok && d.ok) { setDone(d.ticketNumber); getTracker().track("form_submit", { meta: { form: "support" } }); }
+      if (res.ok && d.ok) {
+        setDone(d.ticketNumber);
+        // The API has always returned this; the success screen ignored it and
+        // claimed the email regardless.
+        setConfirmationSent(Boolean(d.emailed));
+        getTracker().track("form_submit", { meta: { form: "support" } });
+      }
       else setError(d.error || "Could not create your ticket. Please try again.");
     } catch {
       setError("Something went wrong. Please try again.");
@@ -189,8 +212,18 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
           <span className="rounded-lg bg-background px-2.5 py-1 font-display font-bold text-brand">{done}</span>
         </p>
         <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground">
-          We&apos;ve emailed a confirmation to <strong>{f.email}</strong>. Keep your ticket number to
-          track progress and reply.
+          {confirmationSent ? (
+            <>
+              We&apos;ve emailed a confirmation to <strong>{f.email}</strong>. Keep your ticket number
+              to track progress and reply.
+            </>
+          ) : (
+            <>
+              Your ticket is saved and our team can see it. We couldn&apos;t send the confirmation
+              email, so please keep your ticket number — you&apos;ll need it to track progress and
+              reply.
+            </>
+          )}
         </p>
         <div className="mt-6 flex justify-center">
           <Button onClick={onRaised}>Track this ticket</Button>
@@ -237,10 +270,10 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
       {/* Attachments */}
       <div className="mt-4">
         <Label htmlFor="s-files">Attachments (optional — photos, invoice, up to 5)</Label>
-        <label className={cn("inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2.5 text-sm hover:border-brand/50", files.length >= 5 && "pointer-events-none opacity-50")}>
+        <label className={cn("inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-4 py-2.5 text-sm hover:border-brand/50", files.length >= MAX_SUPPORT_FILES && "pointer-events-none opacity-50")}>
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
           {uploading ? "Uploading…" : "Add files"}
-          <input id="s-files" type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={onFiles} disabled={files.length >= 5} />
+          <input id="s-files" type="file" multiple accept="image/*,application/pdf" className="hidden" onChange={onFiles} disabled={files.length >= MAX_SUPPORT_FILES} />
         </label>
         {files.length > 0 && (
           <ul className="mt-2 flex flex-wrap gap-2">

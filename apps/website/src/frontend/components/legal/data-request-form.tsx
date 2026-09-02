@@ -66,7 +66,20 @@ export function DataRequestForm() {
       };
       if (!res.ok || !json.ok) {
         if (json.fields) setFieldErrors(json.fields);
-        setTopError(json.error ?? "");
+        /*
+         * `json.error ?? ""` meant that whenever the body was not JSON, or was
+         * JSON without an `error` key — a 502 from a proxy, a 429 whose shape
+         * differs, an HTML error page — the form entered its error state and
+         * displayed NOTHING. The submit button came back and the customer had no
+         * idea why. Only a field-level error may leave the banner empty, because
+         * in that case the message is on the field itself.
+         */
+        setTopError(
+          json.error ||
+            (json.fields
+              ? ""
+              : "We couldn't submit your request. Please try again, or email privacy@metnmat.com.")
+        );
         setStatus("error");
         return;
       }
