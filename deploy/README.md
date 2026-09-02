@@ -298,6 +298,31 @@ trigger to reverse, not as a feature you never had.
 
 ---
 
+## Locked out of the CMS PIN screen
+
+PIN sign-in is throttled by an **atomic, Mongo-persisted** budget: 5 attempts per
+IP and 40 across all addresses, per 15-minute window, in `pin_login_throttle`.
+A TTL index expires the rows, so a lockout clears itself after 15 minutes.
+
+⚠ **`pm2 reload metnmat-cms` no longer clears a lockout.** The counter used to
+live in process memory, so a restart wiped it — which was an accidental escape
+hatch, and also meant a restart wiped it mid-attack. It is deliberate that this
+no longer works.
+
+To clear it immediately, over SSM on the instance:
+
+```bash
+mongosh "$MONGODB_URI" --eval 'db.pin_login_throttle.deleteMany({})'
+```
+
+The throttle **fails open**: if Mongo is unreachable, attempts are allowed. That
+is deliberate — an Atlas blip must never lock the only director out of their own
+admin. The break-glass door is unaffected either way: Payload's own
+email/password login at `/admin/login` carries no PIN budget.
+
+Remember the CMS ships only via the manual **Deploy CMS to EC2** workflow; a push
+to `main` deploys nothing for CMS code.
+
 ## Still open
 
 Reviewed 2026-08-21. Items that were open during the migration and are now closed are kept with

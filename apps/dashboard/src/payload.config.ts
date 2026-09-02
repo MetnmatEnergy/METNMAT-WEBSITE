@@ -49,6 +49,7 @@ import { AnalyticsEvents } from "./collections/AnalyticsEvents";
 import { AnalyticsSessions } from "./collections/AnalyticsSessions";
 import { AnalyticsDaily } from "./collections/AnalyticsDaily";
 import { ensureAnalyticsIndexes } from "./hooks/analytics-ingest";
+import { ensurePinThrottleIndex } from "./lib/pin-throttle";
 import { globals } from "./globals";
 import { seed } from "./seed";
 import { resendAdapter } from "./lib/email-adapter";
@@ -313,6 +314,14 @@ export default buildConfig({
       await ensureAnalyticsIndexes(payload);
     } catch (e) {
       payload.logger.error(`[config] ensureAnalyticsIndexes failed (continuing boot): ${(e as Error).message}`);
+    }
+    try {
+      // The TTL index IS the PIN throttle's window. Its absence would let
+      // throttle rows accumulate forever rather than expire, so it is ensured
+      // at boot — but a failure here must not stop the CMS from starting.
+      await ensurePinThrottleIndex(payload);
+    } catch (e) {
+      payload.logger.error(`[config] ensurePinThrottleIndex failed (continuing boot): ${(e as Error).message}`);
     }
   },
   editor: lexicalEditor(),

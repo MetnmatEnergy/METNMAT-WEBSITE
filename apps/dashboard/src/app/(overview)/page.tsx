@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { getPayload, type Payload } from "payload";
+import { getPayload, type Payload, type TypedUser } from "payload";
 import config from "@payload-config";
 
 export const dynamic = "force-dynamic";
@@ -13,21 +13,31 @@ const card: React.CSSProperties = {
   padding: "20px 22px",
 };
 
-async function getStats(payload: Payload) {
+async function getStats(payload: Payload, user: TypedUser) {
+  /*
+   * `overrideAccess` defaults to TRUE on the Local API, so these ran as though
+   * nobody were asking and each collection's own `read` rule never executed.
+   * Passing the user makes those rules a second line of defence behind the staff
+   * check in the caller, rather than something this page quietly bypasses.
+   *
+   * A staff member who cannot read a collection now sees 0 for it instead of a
+   * real number, which is the honest answer to "what are you allowed to see".
+   */
+  const as = { overrideAccess: false, user } as const;
   const [products, categories, media, documents, users, enquiries, services, projects, posts, faqs, team, recent] =
     await Promise.all([
-      payload.count({ collection: "products" }),
-      payload.count({ collection: "categories" }),
-      payload.count({ collection: "media" }),
-      payload.count({ collection: "documents" }),
-      payload.count({ collection: "users" }),
-      payload.count({ collection: "enquiries" }),
-      payload.count({ collection: "services" }),
-      payload.count({ collection: "projects" }),
-      payload.count({ collection: "posts" }),
-      payload.count({ collection: "faqs" }),
-      payload.count({ collection: "team" }),
-      payload.find({ collection: "enquiries", limit: 6, sort: "-createdAt", depth: 0 }),
+      payload.count({ collection: "products", ...as }),
+      payload.count({ collection: "categories", ...as }),
+      payload.count({ collection: "media", ...as }),
+      payload.count({ collection: "documents", ...as }),
+      payload.count({ collection: "users", ...as }),
+      payload.count({ collection: "enquiries", ...as }),
+      payload.count({ collection: "services", ...as }),
+      payload.count({ collection: "projects", ...as }),
+      payload.count({ collection: "posts", ...as }),
+      payload.count({ collection: "faqs", ...as }),
+      payload.count({ collection: "team", ...as }),
+      payload.find({ collection: "enquiries", limit: 6, sort: "-createdAt", depth: 0, ...as }),
     ]);
   return {
     products: products.totalDocs,
@@ -53,17 +63,29 @@ async function getStats(payload: Payload) {
 export default async function OverviewPage() {
   const payload = await getPayload({ config });
 
-  // SECURITY: this overview renders live counts + recent enquiry PII. It is NOT
-  // part of Payload's authenticated /admin shell, so without this gate it leaks
-  // to any anonymous visitor. Require a logged-in staff user (payload-token
-  // cookie) and bounce everyone else to the PIN/login screen.
+  /*
+   * SECURITY: this overview renders live counts + recent enquiry PII. It is NOT
+   * part of Payload's authenticated /admin shell, so without a gate it leaks to
+   * any visitor.
+   *
+   * The gate must check WHICH auth collection resolved, not merely that one did.
+   * `customers` is a second auth collection with `create: () => true`, and this
+   * host serves its REST endpoints — so anyone could register at
+   * POST /api/customers on admin.metnmat.com, sign in, and satisfy a bare
+   * `!user`, then read the six most recent customization requests' customer
+   * names, the product each asked about, and the size of every collection
+   * including the staff roster. No PIN, no staff account, no admin role.
+   *
+   * access/index.ts warns about exactly this, and SiteAnalyticsView and
+   * AnalyticsDaily both make the check this page was missing.
+   */
   const { user } = await payload.auth({ headers: new Headers(await headers()) });
-  if (!user) redirect("/admin/login");
+  if (!user || user.collection !== "users") redirect("/admin/login");
 
   let stats: Awaited<ReturnType<typeof getStats>> | null = null;
   let error: string | null = null;
   try {
-    stats = await getStats(payload);
+    stats = await getStats(payload, user);
   } catch (e) {
     error = e instanceof Error ? e.message : "Could not reach the database.";
   }

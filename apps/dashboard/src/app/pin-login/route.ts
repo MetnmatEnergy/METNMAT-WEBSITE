@@ -1,6 +1,14 @@
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { derivePassword, PIN_REGEX, checkLock, recordFailure, recordSuccess } from "../../lib/pin";
+import { derivePassword, PIN_REGEX } from "../../lib/pin";
+import {
+  countAttempt,
+  clearAttempts,
+  isOverBudget,
+  ipKey,
+  GLOBAL_KEY,
+  THROTTLE_WINDOW_MINUTES,
+} from "../../lib/pin-throttle";
 
 export const dynamic = "force-dynamic";
 
@@ -40,12 +48,29 @@ function lockKeyIp(req: Request): string {
  */
 export async function POST(req: Request): Promise<Response> {
   const ip = lockKeyIp(req);
+  const payload = await getPayload({ config });
 
-  const lock = checkLock(ip);
-  if (lock.locked) {
+  /*
+   * Charge the attempt BEFORE any credential work.
+   *
+   * The previous guard checked an in-process counter here and only wrote to it
+   * three awaits later. Node interleaves at every await, so a concurrent burst
+   * from one address all passed the check before any of them recorded a
+   * failure: the real budget was the attacker's in-flight concurrency, not 5.
+   * Increment-then-test in one atomic operation has no window to race.
+   *
+   * The global budget is charged too. It is the only ceiling here that rotating
+   * source addresses cannot spend around, and PIN sign-in has no legitimate
+   * high-volume caller.
+   */
+  const [ipFails, globalFails] = await Promise.all([
+    countAttempt(payload, ipKey(ip)),
+    countAttempt(payload, GLOBAL_KEY),
+  ]);
+  if (isOverBudget(ipFails, globalFails)) {
     return Response.json(
-      { error: `Too many attempts. Try again in ${lock.minutes} minute${lock.minutes === 1 ? "" : "s"}.` },
-      { status: 429 }
+      { error: `Too many attempts. Try again in ${THROTTLE_WINDOW_MINUTES} minutes.` },
+      { status: 429, headers: { "Retry-After": "900" } }
     );
   }
 
@@ -58,11 +83,8 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   if (!PIN_REGEX.test(pin)) {
-    recordFailure(ip);
     return Response.json({ error: "Enter your 4-digit key." }, { status: 400 });
   }
-
-  const payload = await getPayload({ config });
 
   try {
     const found = await payload.find({
@@ -75,11 +97,10 @@ export async function POST(req: Request): Promise<Response> {
     const user = found.docs[0] as { email?: string } | undefined;
 
     if (!user?.email) {
-      const after = recordFailure(ip);
-      return Response.json(
-        { error: after.locked ? `Locked for ${after.minutes} minutes.` : "Invalid key." },
-        { status: 401 }
-      );
+      // The attempt was already charged up front. The message stays identical
+      // to every other failure so a wrong PIN cannot be told apart from a
+      // wrong-but-existing one.
+      return Response.json({ error: "Invalid key." }, { status: 401 });
     }
 
     const result = await payload.login({
@@ -88,11 +109,12 @@ export async function POST(req: Request): Promise<Response> {
     });
 
     if (!result?.token) {
-      recordFailure(ip);
       return Response.json({ error: "Invalid key." }, { status: 401 });
     }
 
-    recordSuccess(ip);
+    // Clear this address's budget, never the global one: a correct guess must
+    // not refund an attacker the attempts it took to find it.
+    await clearAttempts(payload, ipKey(ip));
 
     const nowSec = Math.floor(Date.now() / 1000);
     const maxAge = result.exp ? Math.max(60, result.exp - nowSec) : 7200;
@@ -105,10 +127,6 @@ export async function POST(req: Request): Promise<Response> {
     );
     return res;
   } catch {
-    const after = recordFailure(ip);
-    return Response.json(
-      { error: after.locked ? `Locked for ${after.minutes} minutes.` : "Invalid key." },
-      { status: 401 }
-    );
+    return Response.json({ error: "Invalid key." }, { status: 401 });
   }
 }

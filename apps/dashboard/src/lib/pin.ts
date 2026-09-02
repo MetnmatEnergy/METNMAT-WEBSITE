@@ -19,43 +19,13 @@ export function derivePassword(pin: string): string {
 
 export const PIN_REGEX = /^\d{4}$/;
 
-// ── Brute-force protection (in-memory, per server instance) ───────────────────
-// 4 digits = 10,000 combinations, so throttling is essential. State resets on
-// restart and is per-instance; for multi-instance deploys move this to Redis.
-const MAX_FAILS = 5;
-const LOCK_MS = 15 * 60 * 1000; // 15 min lockout after MAX_FAILS
-const WINDOW_MS = 15 * 60 * 1000; // failures older than this don't count
-
-type Bucket = { fails: number; firstFailAt: number; lockedUntil: number };
-const buckets = new Map<string, Bucket>();
-
-export type LockState = { locked: boolean; minutes: number };
-
-export function checkLock(key: string): LockState {
-  const b = buckets.get(key);
-  if (!b) return { locked: false, minutes: 0 };
-  const now = Date.now();
-  if (b.lockedUntil > now) {
-    return { locked: true, minutes: Math.ceil((b.lockedUntil - now) / 60000) };
-  }
-  return { locked: false, minutes: 0 };
-}
-
-export function recordFailure(key: string): LockState {
-  const now = Date.now();
-  const b = buckets.get(key);
-  if (!b || now - b.firstFailAt > WINDOW_MS) {
-    buckets.set(key, { fails: 1, firstFailAt: now, lockedUntil: 0 });
-    return { locked: false, minutes: 0 };
-  }
-  b.fails += 1;
-  if (b.fails >= MAX_FAILS) {
-    b.lockedUntil = now + LOCK_MS;
-    return { locked: true, minutes: Math.ceil(LOCK_MS / 60000) };
-  }
-  return { locked: false, minutes: 0 };
-}
-
-export function recordSuccess(key: string): void {
-  buckets.delete(key);
-}
+// ── Brute-force protection lives in pin-throttle.ts ─────────────────────────
+// It used to be an in-memory Map here, CHECKED at the top of the route and only
+// WRITTEN three awaits later. Node interleaves at every await, so a concurrent
+// burst from one address all passed the check before any of them recorded a
+// failure — the real budget was the attacker's in-flight concurrency, not the
+// five this intended. It also lived only in process memory, so a PM2 reload
+// wiped every accumulated lockout mid-attack.
+//
+// Replaced by an atomic, Mongo-persisted, per-IP AND global budget. Do not
+// reintroduce a read-then-write counter on an async path.
