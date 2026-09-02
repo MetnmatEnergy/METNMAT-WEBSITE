@@ -488,8 +488,22 @@ export async function getProductsByCategory(slug: string): Promise<Product[]> {
 // unreachable, so pages always render.
 
 type CmsService = { slug: string; title: string; summary?: string; icon?: string };
+/*
+ * ACTIVE FILTER.
+ *
+ * Services, Team and Clients each carry an `active` checkbox labelled "Uncheck
+ * to hide from the website" — and nothing read it. Staff could untick it, see it
+ * saved, and the row stayed live on the site. A control that reports success and
+ * does nothing is worse than no control.
+ *
+ * `not_equals false` rather than `equals true` on purpose: rows created before
+ * the field existed have no value at all, and `equals true` would have hidden
+ * every one of them — turning a bug fix into a blank page.
+ */
+const ACTIVE_ONLY = "where[active][not_equals]=false";
+
 export async function getServices(): Promise<Service[]> {
-  const data = await api<{ docs: CmsService[] }>("/api/services?depth=0&limit=100&sort=order");
+  const data = await api<{ docs: CmsService[] }>(`/api/services?depth=0&limit=100&sort=order&${ACTIVE_ONLY}`);
   const docs = data?.docs ?? [];
   if (!docs.length) return phServices;
   return docs.map((d) => ({ slug: d.slug, title: d.title, summary: d.summary ?? "", icon: d.icon }));
@@ -679,7 +693,7 @@ export async function getFaqs(category?: string): Promise<Faq[]> {
 export type TeamMember = { name: string; role?: string; photoUrl?: string; bio?: string; linkedin?: string };
 type CmsTeam = { name: string; role?: string; photo?: Media; bio?: string; linkedin?: string };
 export async function getTeam(): Promise<TeamMember[]> {
-  const data = await api<{ docs: CmsTeam[] }>("/api/team?depth=1&limit=100&sort=order");
+  const data = await api<{ docs: CmsTeam[] }>(`/api/team?depth=1&limit=100&sort=order&${ACTIVE_ONLY}`);
   return (data?.docs ?? []).map((d) => ({
     name: d.name,
     role: d.role,
@@ -692,7 +706,7 @@ export async function getTeam(): Promise<TeamMember[]> {
 type CmsClient = { name: string; logo?: Media; url?: string; type?: string };
 /** Logo wall — companies vs institutions, split by `type`. */
 export async function getClients(): Promise<{ companies: Client[]; institutions: EduLogo[] }> {
-  const data = await api<{ docs: CmsClient[] }>("/api/clients?depth=1&limit=200&sort=order");
+  const data = await api<{ docs: CmsClient[] }>(`/api/clients?depth=1&limit=200&sort=order&${ACTIVE_ONLY}`);
   const docs = data?.docs ?? [];
   if (!docs.length) return { companies: phClients, institutions: phEduLogos };
   const companies: Client[] = [];

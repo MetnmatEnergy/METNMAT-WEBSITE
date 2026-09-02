@@ -318,12 +318,30 @@ export const Posts: CollectionConfig = {
         const newSlug = (doc as { slug?: string }).slug;
         if (!oldSlug || !newSlug || oldSlug === newSlug) return doc;
         const wasPublic = (previousDoc as { _status?: string } | undefined)?._status === "published";
+        const isPublic = (doc as { _status?: string })._status === "published";
         try {
-          await req.payload.db.deleteMany?.({
-            collection: "blog-slug-redirects",
-            where: { oldSlug: { equals: newSlug } },
-            req,
-          });
+          /*
+           * Only a PUBLISHED article occupies its slug.
+           *
+           * This delete removes a redirect that would shadow the new slug, which
+           * is right — but it ran unconditionally, including on a draft save. So
+           * drafting a new article and giving it a slug that some OTHER
+           * published article already redirects from deleted that live redirect
+           * on the spot. The draft was not serving the URL and might never be,
+           * yet /blog/<that-slug> stopped redirecting and started 404ing, taking
+           * the other article's inbound links with it.
+           *
+           * Guarding on the new status means a draft can no longer reach into a
+           * published article's redirects; publishing it still clears the shadow,
+           * which is the moment the slug genuinely changes hands.
+           */
+          if (isPublic) {
+            await req.payload.db.deleteMany?.({
+              collection: "blog-slug-redirects",
+              where: { oldSlug: { equals: newSlug } },
+              req,
+            });
+          }
           if (wasPublic) {
             const existing = await req.payload.find({
               collection: "blog-slug-redirects",
