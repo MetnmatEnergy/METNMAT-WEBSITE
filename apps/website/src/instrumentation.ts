@@ -39,6 +39,14 @@ export async function register(): Promise<void> {
   const degraded = (
     [
       "RESEND_API_KEY",
+      // Both were absent from this list, which is exactly how they went missing
+      // in the GCP→EC2 move without anyone noticing. Their fallbacks are not
+      // safe defaults: an unset QUOTE_FROM_EMAIL sends as Resend's SANDBOX
+      // address, which only delivers to the Resend account owner — so every
+      // customer confirmation silently fails to arrive — and an unset
+      // QUOTE_NOTIFY_EMAIL quietly moves the sales inbox.
+      "QUOTE_FROM_EMAIL",
+      "QUOTE_NOTIFY_EMAIL",
       "RAZORPAY_KEY_ID",
       "RAZORPAY_KEY_SECRET",
       "RAZORPAY_WEBHOOK_SECRET",
@@ -55,8 +63,14 @@ export async function register(): Promise<void> {
     console.error(
       `[website] ${degraded.length} secret(s) are unset or still ${PLACEHOLDER_SECRET}: ${degraded.join(", ")}. ` +
         `Affected features fail silently — payments, transactional email, Google sign-in and rate limiting. ` +
-        `Populate them in AWS Secrets Manager under metnmat/prod/<NAME>, then redeploy: ECS resolves secrets ` +
-        `only at task start, so updating a secret does NOT affect a running task.`,
+        // The remediation used to name ECS and tell the operator to redeploy.
+        // That infrastructure was deleted at the AWS cutover, so it sent whoever
+        // read it to a console page that no longer exists and to a rebuild that
+        // would not have helped. Secrets are fetched by deploy/bin/with-secrets.sh
+        // at PROCESS START, so the fix is a reload, not a build.
+        `Populate them in AWS Secrets Manager under metnmat/prod/<NAME> (region ap-south-1, ` +
+        `plaintext secrets, no surrounding quotes), then run the reload-app.yml workflow for ` +
+        `this app. Secrets are read at process start, so a rebuild is neither needed nor sufficient.`,
     );
   }
 }

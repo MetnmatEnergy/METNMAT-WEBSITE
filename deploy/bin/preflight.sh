@@ -159,9 +159,19 @@ else
   fi
 
   if [ -n "$other_bad" ]; then
-    hmm "$other_n other secret(s) still placeholder — the CMS and chatbot need these, the website does not"
+    # This used to claim these belong to the CMS and chatbot and that the website
+    # does not need them, and to blame GCP billing for their absence. Both were
+    # wrong and actively misleading: GOOGLE_CLIENT_ID/SECRET, QUOTE_FROM_EMAIL,
+    # QUOTE_NOTIFY_EMAIL and OPEN_EXCHANGE_RATES_APP_ID are read by the WEBSITE,
+    # and GCP is gone, so there is nothing to copy across from anywhere.
+    hmm "$other_n optional secret(s) unset or placeholder — the feature each one powers is OFF"
     info "$other_bad"
-    info "expected until GCP billing is restored and the real values can be copied across"
+    info "these degrade silently rather than failing loudly: Google sign-in bounces"
+    info "back to /login, customer confirmation email sends from Resend's SANDBOX"
+    info "address (delivered only to the Resend account owner), and the live \$ rate"
+    info "falls back to a fixed figure"
+    info "populate in Secrets Manager (plaintext, no surrounding quotes), then run"
+    info "reload-app.yml — secrets are read at process start, so no rebuild helps"
   fi
   [ -n "$empties" ] && hmm "empty or unreadable:$empties"
 
