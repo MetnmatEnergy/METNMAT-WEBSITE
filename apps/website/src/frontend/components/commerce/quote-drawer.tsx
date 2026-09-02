@@ -27,6 +27,8 @@ export function QuoteDrawer() {
   const [attachments, setAttachments] = React.useState<UploadItem[]>([]);
   const formRef = React.useRef<HTMLFormElement>(null);
   const asideRef = React.useRef<HTMLDivElement>(null);
+  // What had focus when the drawer opened, so closing can hand it back.
+  const triggerRef = React.useRef<HTMLElement | null>(null);
 
   const uploading = attachments.some((a) => a.status === "uploading");
 
@@ -41,9 +43,27 @@ export function QuoteDrawer() {
   }, [open, product]);
 
   // Move focus into the drawer on open so a screen reader announces the dialog
-  // instead of leaving focus on the (now off-screen) trigger control.
+  // instead of leaving focus on the (now off-screen) trigger control — and give
+  // it back on close.
+  //
+  // Returning focus is not a nicety here. This drawer is always mounted and
+  // merely translated off-screen, so without the hand-back focus stays inside a
+  // panel the user cannot see: the next Tab continues from an invisible form
+  // and a keyboard user has no way to tell where they are. Measured on
+  // production before this change — after closing, focus was still inside the
+  // hidden panel and had not returned to the button that opened it.
   React.useEffect(() => {
-    if (open) asideRef.current?.focus();
+    if (open) {
+      // Captured BEFORE we move focus, or we would record the drawer itself.
+      triggerRef.current = document.activeElement as HTMLElement | null;
+      asideRef.current?.focus();
+      return;
+    }
+    const trigger = triggerRef.current;
+    triggerRef.current = null;
+    // Only if it is still in the document — the trigger can unmount while the
+    // drawer is open (navigating away, a re-render dropping the product card).
+    if (trigger && document.contains(trigger)) trigger.focus();
   }, [open]);
 
   React.useEffect(() => {
@@ -157,6 +177,11 @@ export function QuoteDrawer() {
       <div
         ref={asideRef}
         tabIndex={-1}
+        // Always mounted, so when closed its inputs and buttons would otherwise
+        // stay tabbable and exposed to screen readers while sitting off-screen.
+        // inert removes the whole subtree from the tab order and the a11y tree
+        // without unmounting it, which keeps the slide transition intact.
+        inert={!open}
         role="dialog"
         aria-modal="true"
         aria-label="Request for Customization"
