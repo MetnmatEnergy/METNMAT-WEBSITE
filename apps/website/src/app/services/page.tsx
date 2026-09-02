@@ -4,7 +4,8 @@ import { Container } from "@/frontend/components/ui/container";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { ServiceCardStack, type ServiceStackItem } from "@/frontend/components/ui/service-card-stack";
-import CardFanCarousel, { type CardItem } from "@/frontend/components/ui/card-fan-carousel";
+import { LazyCardFanCarousel } from "@/frontend/components/ui/card-fan-carousel.lazy";
+import type { CardItem } from "@/frontend/components/ui/card-fan-carousel";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, organizationJsonLd } from "@/frontend/components/seo/json-ld";
 import { getServices } from "@/frontend/lib/cms";
@@ -117,7 +118,7 @@ export default async function ServicesPage() {
       {fanCards.length > 0 && (
         <section className="section pt-0" aria-label="Our services">
           <h2 className="sr-only">Our services</h2>
-          <CardFanCarousel cards={fanCards} />
+          <LazyCardFanCarousel cards={fanCards} />
         </section>
       )}
 

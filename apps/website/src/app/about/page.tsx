@@ -24,7 +24,7 @@ import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { Reveal } from "@/frontend/components/ui/reveal";
 import { HandWrittenTitle } from "@/frontend/components/ui/hand-writing-text";
 import { ProcessOrbit } from "@/frontend/components/about/process-orbit";
-import { AnimatedShaderBackground } from "@/frontend/components/ui/animated-shader-background";
+import { LazyShaderBackground } from "@/frontend/components/ui/animated-shader-background.lazy";
 import { getHomepage, getTeam } from "@/frontend/lib/cms";
 import { pageMetadata } from "@/frontend/lib/seo";
 import { JsonLd, organizationJsonLd } from "@/frontend/components/seo/json-ld";
@@ -72,7 +72,7 @@ export default async function AboutPage() {
       {/* ───────────── Hero ───────────── */}
       <section className="relative overflow-hidden border-b border-border">
         {/* Brand WebGL plasma (recolored red/dark), dimmed under a scrim for legibility */}
-        <AnimatedShaderBackground className="absolute inset-0 opacity-60" />
+        <LazyShaderBackground className="absolute inset-0 opacity-60" />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/50 via-background/65 to-background" />
         <div className="bg-grid pointer-events-none absolute inset-0 opacity-50 [mask-image:radial-gradient(80%_60%_at_50%_0%,black,transparent)]" />
 

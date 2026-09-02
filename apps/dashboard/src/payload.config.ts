@@ -51,7 +51,7 @@ import { AnalyticsDaily } from "./collections/AnalyticsDaily";
 import { ensureAnalyticsIndexes } from "./hooks/analytics-ingest";
 import { ensurePinThrottleIndex } from "./lib/pin-throttle";
 import { globals } from "./globals";
-import { seed } from "./seed";
+import { seedCritical, seedContentAndCatalogue } from "./seed";
 import { resendAdapter } from "./lib/email-adapter";
 
 // libvips allocates OUTSIDE the V8 heap, so --max-old-space-size does not bound
@@ -304,11 +304,21 @@ export default buildConfig({
     // Seeding must never take the CMS down: a transient DB error during seed
     // should log and let the admin/API still boot (it degrades to whatever data
     // is already there) rather than crash-loop the container.
+    //
+    // Only the ACCOUNT part is awaited. The catalogue and content part is ~200
+    // database round trips, and onInit is awaited before the server accepts
+    // traffic — so the first request after any restart, including a PM2 memory
+    // restart, used to wait for all of it. On a populated database every one of
+    // those round trips is a no-op, so the work blocking the door changed
+    // nothing. It now runs after boot.
     try {
-      await seed(payload);
+      await seedCritical(payload);
     } catch (e) {
-      payload.logger.error(`[config] seed() failed (continuing boot): ${(e as Error).message}`);
+      payload.logger.error(`[config] seedCritical() failed (continuing boot): ${(e as Error).message}`);
     }
+    void seedContentAndCatalogue(payload).catch((e) => {
+      payload.logger.error(`[config] background seed failed: ${(e as Error).message}`);
+    });
     try {
       // Raw-Mongo indexes Payload fields can't express (analytics TTL retention).
       await ensureAnalyticsIndexes(payload);

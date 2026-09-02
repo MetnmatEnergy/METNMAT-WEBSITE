@@ -1631,12 +1631,39 @@ async function ensureUserCodeIndex(payload: Payload): Promise<void> {
   }
 }
 
-export async function seed(payload: Payload): Promise<void> {
+/**
+ * The part of seeding that boot must WAIT for.
+ *
+ * Without these nobody can sign in to a fresh deployment, so they stay on the
+ * critical path. It is a handful of round trips, not two hundred.
+ */
+export async function seedCritical(payload: Payload): Promise<void> {
   await ensureSuperAdmin(payload);
   await ensureDirectorAccount(payload);
   await scrubPinBearingEmails(payload);
   await cleanupMalformed(payload);
+}
 
+/**
+ * Everything else: catalogue, content, media and the one-shot migrations.
+ *
+ * WHY THIS IS SEPARATE
+ * This is roughly two hundred database round trips — a find-then-maybe-create
+ * for each of ~68 products and ~26 categories, plus globals, covers, figures and
+ * backfills. It ran inside onInit, which Payload awaits before the server
+ * accepts traffic, so the first request after ANY CMS restart waited for all of
+ * it. A PM2 memory-restart is a restart, so this was not only a deploy-time cost.
+ *
+ * On an already-populated database every one of those round trips is a no-op:
+ * products are create-if-missing, globals seed only when unset, and the
+ * migrations are one-shot. So the work that blocked the door was, in steady
+ * state, work that changed nothing.
+ *
+ * It is now started after boot rather than awaited. Nothing here is required for
+ * the CMS to serve correctly — on a fresh database the site briefly shows less
+ * content and then has it, which is strictly better than not being up at all.
+ */
+export async function seedContentAndCatalogue(payload: Payload): Promise<void> {
   const catSlugs = new Set(ALL_SEED_CATEGORIES.map((c) => c.slug));
   const prodSlugs = new Set(seedProducts.map((p) => p.slug));
 
@@ -1735,4 +1762,16 @@ export async function seed(payload: Payload): Promise<void> {
   await step(payload, "ensureUserCodeIndex", () => ensureUserCodeIndex(payload));
 
   payload.logger.info(`[seed] Done. ${prodSlugs.size} catalog products, ${catSlugs.size} categories.`);
+}
+
+/**
+ * The whole seed, in order, awaited.
+ *
+ * Kept for scripts and any caller that genuinely wants to block until the
+ * database is fully populated. onInit deliberately does NOT use this — see
+ * seedContentAndCatalogue.
+ */
+export async function seed(payload: Payload): Promise<void> {
+  await seedCritical(payload);
+  await seedContentAndCatalogue(payload);
 }

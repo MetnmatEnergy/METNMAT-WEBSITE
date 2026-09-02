@@ -788,39 +788,64 @@ const sane = (r: unknown): number | null => {
   return Number.isFinite(n) && n > 20 && n < 500 ? n : null; // sanity band for INR/USD
 };
 
-export const getUsdRate = cache(async function getUsdRate(): Promise<number> {
-  // 1) Open Exchange Rates (official, keyed).
-  const appId = process.env.OPEN_EXCHANGE_RATES_APP_ID;
-  if (appId) {
-    try {
-      const res = await fetch(
-        `https://openexchangerates.org/api/latest.json?app_id=${appId}&symbols=INR`,
-        { next: { revalidate: 3600 }, signal: AbortSignal.timeout(2500) }
-      );
-      if (res.ok) {
-        const j = (await res.json()) as { rates?: { INR?: number } };
-        const r = sane(j?.rates?.INR);
-        if (r) return r;
-      }
-    } catch {
-      /* fall through */
-    }
-  }
-  // 2) Keyless live rates (ExchangeRate-API open endpoint, updated daily).
+/** One live source, bounded. Resolves to null rather than throwing. */
+async function liveRate(url: string, budgetMs: number): Promise<number | null> {
   try {
-    const res = await fetch("https://open.er-api.com/v6/latest/USD", {
+    const res = await fetch(url, {
       next: { revalidate: 3600 },
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(budgetMs),
     });
-    if (res.ok) {
-      const j = (await res.json()) as { rates?: { INR?: number } };
-      const r = sane(j?.rates?.INR);
-      if (r) return r;
-    }
+    if (!res.ok) return null;
+    const j = (await res.json()) as { rates?: { INR?: number } };
+    return sane(j?.rates?.INR);
   } catch {
-    /* fall through */
+    return null;
   }
-  // 3) Staff-maintained rate from the dashboard.
+}
+
+/**
+ * How long the whole lookup may spend on third parties.
+ *
+ * WHAT WAS WRONG
+ * The two live sources were tried SEQUENTIALLY, each with its own 2.5s timeout,
+ * and RootLayout awaits this before returning any JSX. So on a cold data cache
+ * every page on the site could sit behind up to five seconds of third-party
+ * network before the shell was even sent — and if OPEN_EXCHANGE_RATES_APP_ID was
+ * a placeholder rather than absent, the first of those hops was doomed from the
+ * start and paid for on every cold render anyway.
+ *
+ * Steady state was always fine: `revalidate: 3600` means Next serves the cached
+ * value and refreshes behind the request. The cold path was the problem, and the
+ * cold path is exactly what a visitor hits after every deploy or restart.
+ *
+ * Now both sources race in parallel on one shared budget, so the worst case is
+ * one timeout instead of two, and a slow source cannot delay a fast one.
+ */
+const LIVE_RATE_BUDGET_MS = 1200;
+
+export const getUsdRate = cache(async function getUsdRate(): Promise<number> {
+  const appId = process.env.OPEN_EXCHANGE_RATES_APP_ID;
+  const sources: Array<Promise<number | null>> = [
+    // Keyless open endpoint (ExchangeRate-API), updated daily.
+    liveRate("https://open.er-api.com/v6/latest/USD", LIVE_RATE_BUDGET_MS),
+  ];
+  if (appId) {
+    sources.unshift(
+      liveRate(
+        `https://openexchangerates.org/api/latest.json?app_id=${appId}&symbols=INR`,
+        LIVE_RATE_BUDGET_MS
+      )
+    );
+  }
+
+  // Settled, not raced: a source that fails fast must not decide the answer
+  // before a slower, more authoritative one has replied. The order of `sources`
+  // is the preference order.
+  const results = await Promise.all(sources);
+  for (const r of results) if (r) return r;
+
+  // Staff-maintained rate from the dashboard — same-origin and already cached,
+  // so this costs nothing once the CMS has been read for anything else.
   const d = await api<{ usdExchangeRate?: number }>("/api/globals/commerce?depth=0");
   return sane(d?.usdExchangeRate) ?? 84;
 });

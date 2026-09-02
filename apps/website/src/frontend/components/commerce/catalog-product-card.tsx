@@ -34,6 +34,13 @@ export function CatalogProductCard({
 
       <Link
         href={href}
+        // A catalogue grid renders ~20 cards with TWO links each, and Next
+        // prefetches every visible Link on sight — so arriving at /shop fired
+        // dozens of speculative RSC requests, most of them aborted as the
+        // visitor scrolled past. Intent, not sight: prefetch={false} keeps the
+        // hover prefetch, which is the one that actually predicts a click.
+        // Same reasoning as the cart icon in cart-button.tsx.
+        prefetch={false}
         // The link carries the name and the image is decorative (alt=""). The
         // alternative — naming both — makes the accessible name duplicate the
         // image's alt and fails WCAG 2.5.3; dropping the aria-label instead
@@ -87,6 +94,7 @@ export function CatalogProductCard({
         )}
         <Link
           href={href}
+          prefetch={false}
           className={cn(
             "mt-0.5 line-clamp-2 font-display text-[15px] font-semibold leading-snug hover:text-brand sm:text-base",
             // Reserve two lines in grid so price/MOQ rows align across cards.

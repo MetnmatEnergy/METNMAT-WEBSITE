@@ -11,7 +11,29 @@ import {
   Loader2,
   RotateCw,
 } from "lucide-react";
-import { ProgressiveFluxLoader } from "@/frontend/components/ui/progressive-flux-loader";
+import dynamic from "next/dynamic";
+
+/**
+ * framer-motion, off EVERY route.
+ *
+ * The quote drawer and quote modal are both mounted in the root layout, both
+ * import this uploader, and this uploader imported ProgressiveFluxLoader — which
+ * imports framer-motion. So ~37 KB gzip of animation library was in the shared
+ * bundle of every page on the site, to animate a progress bar that only appears
+ * while a customer is uploading a file.
+ *
+ * Deferred to the moment an upload actually starts. Nothing renders it until
+ * `items.length > 0`, so on most visits it is never fetched at all.
+ */
+const ProgressiveFluxLoader = dynamic(
+  () => import("@/frontend/components/ui/progressive-flux-loader").then((m) => m.ProgressiveFluxLoader),
+  {
+    ssr: false,
+    // The upload is already under way; a plain bar until the animated one
+    // arrives is better than a gap where the progress indicator should be.
+    loading: () => <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" />,
+  }
+);
 
 /** Phase labels for the overall upload progress bar. */
 const UPLOAD_PHASES = [
