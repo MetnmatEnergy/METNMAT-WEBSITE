@@ -4,6 +4,7 @@ import { getTracker } from "@/frontend/lib/analytics/collector";
 import * as React from "react";
 import { X, Check, Send, Loader2, Mail, Minus, Plus } from "lucide-react";
 import { useQuote } from "@/frontend/components/commerce/quote-provider";
+import { useDialog } from "@/frontend/components/ui/use-dialog";
 import {
   AttachmentUploader,
   type UploadItem,
@@ -27,8 +28,6 @@ export function QuoteDrawer() {
   const [attachments, setAttachments] = React.useState<UploadItem[]>([]);
   const formRef = React.useRef<HTMLFormElement>(null);
   const asideRef = React.useRef<HTMLDivElement>(null);
-  // What had focus when the drawer opened, so closing can hand it back.
-  const triggerRef = React.useRef<HTMLElement | null>(null);
 
   const uploading = attachments.some((a) => a.status === "uploading");
 
@@ -42,41 +41,13 @@ export function QuoteDrawer() {
     }
   }, [open, product]);
 
-  // Move focus into the drawer on open so a screen reader announces the dialog
-  // instead of leaving focus on the (now off-screen) trigger control — and give
-  // it back on close.
+  // Focus in, tab trap, Escape, scroll lock, focus back to the trigger.
   //
   // Returning focus is not a nicety here. This drawer is always mounted and
   // merely translated off-screen, so without the hand-back focus stays inside a
-  // panel the user cannot see: the next Tab continues from an invisible form
-  // and a keyboard user has no way to tell where they are. Measured on
-  // production before this change — after closing, focus was still inside the
-  // hidden panel and had not returned to the button that opened it.
-  React.useEffect(() => {
-    if (open) {
-      // Captured BEFORE we move focus, or we would record the drawer itself.
-      triggerRef.current = document.activeElement as HTMLElement | null;
-      asideRef.current?.focus();
-      return;
-    }
-    const trigger = triggerRef.current;
-    triggerRef.current = null;
-    // Only if it is still in the document — the trigger can unmount while the
-    // drawer is open (navigating away, a re-render dropping the product card).
-    if (trigger && document.contains(trigger)) trigger.focus();
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeQuote();
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [open, closeQuote]);
+  // panel the user cannot see: the next Tab continues from an invisible form and
+  // a keyboard user has no way to tell where they are.
+  useDialog({ open, onClose: closeQuote, containerRef: asideRef });
 
   function setQtyClamped(v: number) {
     if (Number.isNaN(v)) return setQty(QTY_MIN);

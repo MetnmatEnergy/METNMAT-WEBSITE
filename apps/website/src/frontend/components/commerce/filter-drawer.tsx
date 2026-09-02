@@ -4,6 +4,7 @@ import * as React from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import type { Category } from "@/frontend/lib/catalog";
 import { FilterSidebar } from "@/frontend/components/commerce/filter-sidebar";
+import { useDialog } from "@/frontend/components/ui/use-dialog";
 
 /**
  * Mobile/tablet access to the filter rail — a "Filters" button (hidden on lg+)
@@ -17,20 +18,14 @@ export function FilterDrawer(props: {
   priceMax?: number;
 }) {
   const [open, setOpen] = React.useState(false);
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+  const close = React.useCallback(() => setOpen(false), []);
 
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [open]);
+  // It already declared role="dialog" aria-modal="true" while doing no focus
+  // management at all, which is the combination that misleads a screen-reader
+  // user most: announced as modal, but Tab walks straight out into the page
+  // behind it.
+  useDialog({ open, onClose: close, containerRef: dialogRef });
 
   return (
     <>
@@ -43,8 +38,15 @@ export function FilterDrawer(props: {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Filters">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
+        <div
+          ref={dialogRef}
+          tabIndex={-1}
+          className="fixed inset-0 z-50 outline-none lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Filters"
+        >
+          <div className="absolute inset-0 bg-black/50" onClick={close} />
           <div className="animate-fade-up absolute inset-y-0 left-0 flex w-[85%] max-w-xs flex-col bg-background shadow-xl">
             <div className="flex items-center justify-between border-b border-border p-4">
               <h2 className="font-display text-base font-semibold">Filters</h2>

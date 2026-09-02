@@ -4,6 +4,7 @@ import { getTracker } from "@/frontend/lib/analytics/collector";
 import * as React from "react";
 import { X, Check, Send, Loader2, Mail, Minus, Plus } from "lucide-react";
 import { useQuote } from "@/frontend/components/commerce/quote-provider";
+import { useDialog } from "@/frontend/components/ui/use-dialog";
 import {
   AttachmentUploader,
   type UploadItem,
@@ -39,24 +40,10 @@ export function QuoteModal() {
     }
   }, [modalOpen]);
 
-  // Move focus onto the dialog when it opens so a screen reader announces
-  // "Get a Quote, dialog" — otherwise focus is left on whatever triggered it
-  // (e.g. the mobile-nav toggle, which is then hidden behind this overlay).
-  React.useEffect(() => {
-    if (modalOpen) dialogRef.current?.focus();
-  }, [modalOpen]);
-
-  React.useEffect(() => {
-    if (!modalOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeModal();
-    document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [modalOpen, closeModal]);
+  // Focus in, tab trap, Escape, scroll lock, and focus back to whatever opened
+  // it — the last of which this modal previously never did, stranding a keyboard
+  // user at the top of the document after every close.
+  useDialog({ open: modalOpen, onClose: closeModal, containerRef: dialogRef });
 
   function setQtyClamped(v: number) {
     if (Number.isNaN(v)) return setQty(QTY_MIN);
