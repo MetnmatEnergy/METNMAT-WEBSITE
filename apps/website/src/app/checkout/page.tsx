@@ -14,6 +14,20 @@ import { site } from "@/frontend/lib/site";
 import { countryByName, dialFor, isIndiaName } from "@/frontend/lib/countries";
 import { CountryPicker } from "@/frontend/components/commerce/country-picker";
 import { ProductImage } from "@/frontend/components/commerce/product-image";
+import {
+  createPaymentScriptLoader,
+  canReuseOrder,
+  isBusy,
+  isTimeout,
+  postJson,
+  CREATE_ORDER_TIMEOUT_MS,
+  RESOLVE_TIMEOUT_MS,
+  VERIFY_TIMEOUT_MS,
+  WATCHDOG_MS,
+  PAY_BUSY_LABEL,
+  type PayStatus,
+  type CachedOrder,
+} from "@/frontend/lib/pay-flow";
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(" ");
 
@@ -22,27 +36,48 @@ const field =
 
 declare global {
   interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on?: (event: string, handler: (payload: RazorpayFailure) => void) => void;
+    };
   }
 }
 
-/** Load Razorpay checkout.js once. */
-function loadRazorpay(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (window.Razorpay) return resolve(true);
-    const existing = document.querySelector('script[src*="checkout.razorpay.com"]');
-    if (existing) {
-      existing.addEventListener("load", () => resolve(true));
-      existing.addEventListener("error", () => resolve(false));
-      return;
-    }
-    const s = document.createElement("script");
-    s.src = "https://checkout.razorpay.com/v1/checkout.js";
-    s.onload = () => resolve(true);
-    s.onerror = () => resolve(false);
-    document.body.appendChild(s);
-  });
+type RazorpayFailure = { error?: { description?: string; reason?: string } };
+
+const RAZORPAY_SRC = "https://checkout.razorpay.com/v1/checkout.js";
+
+/**
+ * The one loader for the payment script. Module-level so concurrent clicks and
+ * repeat visits to checkout share a single in-flight load. See pay-flow.ts for
+ * the freeze this replaced.
+ */
+const loadRazorpay = createPaymentScriptLoader({
+  src: RAZORPAY_SRC,
+  getDocument: () => (typeof document === "undefined" ? undefined : document),
+  isReady: () => typeof window !== "undefined" && Boolean(window.Razorpay),
+});
+
+/** Analytics session id, best-effort — storage can throw in private mode. */
+function readAnalyticsSid(): string | undefined {
+  try {
+    return localStorage.getItem("mm-sid") || undefined;
+  } catch {
+    return undefined;
+  }
 }
+
+type CreateOrderResponse = {
+  ok: boolean;
+  error?: string;
+  keyId?: string;
+  razorpayOrderId?: string;
+  amount?: number;
+  currency?: string;
+  orderNumber?: string;
+  total?: number;
+  totalUsdApprox?: number;
+};
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
@@ -302,8 +337,18 @@ export default function CheckoutPage() {
   const [form, setForm] = React.useState<Form>(EMPTY);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [touched, setTouched] = React.useState<Set<string>>(() => new Set());
-  const [paying, setPaying] = React.useState(false);
+  const [payStatus, setPayStatus] = React.useState<PayStatus>("idle");
   const [payError, setPayError] = React.useState<string | null>(null);
+  /**
+   * Synchronous re-entry lock. `disabled` is driven by state, and two clicks
+   * dispatched in the same tick both read the pre-update value, so the button
+   * alone does not stop a double submit.
+   */
+  const payingRef = React.useRef(false);
+  /** The order already created for an identical request — see handlePay. */
+  const orderCacheRef = React.useRef<CachedOrder<CreateOrderResponse> | null>(null);
+
+  const busy = isBusy(payStatus);
 
   // Display GST-inclusive totals (catalog stores base prices excl. GST).
   const subtotalIncl = cartLines.reduce((n, l) => n + inclGST(l.unitPrice) * l.qty, 0);
@@ -466,120 +511,184 @@ export default function CheckoutPage() {
     return Object.keys(er).length === 0;
   }
 
+  /**
+   * Leave the pay flow in a terminal state.
+   *
+   * Every exit routes through here, including the ones that run long after
+   * handlePay returned (the provider's dismiss and result callbacks), so the
+   * button can never be left disabled with nothing in flight.
+   */
+  const finishPay = React.useCallback((status: PayStatus, message: string | null) => {
+    // Stay locked on success: we are navigating away, and a second charge must
+    // not be startable during the transition.
+    payingRef.current = status === "success";
+    setPayStatus(status);
+    setPayError(message);
+  }, []);
+
+  /**
+   * Backstop. Each hop already has its own timeout, so this should never fire —
+   * it exists because "the Pay button is stuck" must not be reachable by any
+   * path, including one nobody predicted.
+   *
+   * Deliberately not armed during awaiting_payment: the customer is inside the
+   * provider's window typing card details and may legitimately take minutes.
+   */
+  React.useEffect(() => {
+    const ms = WATCHDOG_MS[payStatus];
+    if (!ms) return;
+    const t = setTimeout(() => {
+      finishPay(
+        "error",
+        payStatus === "verifying"
+          ? "We couldn't confirm your payment in time. Do not pay again — contact us with your payment ID and we'll finish the order."
+          : "The payment couldn't be started in time. Please check your connection and try again."
+      );
+    }, ms);
+    return () => clearTimeout(t);
+  }, [payStatus, finishPay]);
+
   async function handlePay() {
+    if (payingRef.current) return;
+
     setPayError(null);
     if (!validate()) return;
-    setPaying(true);
+
+    payingRef.current = true;
+    setPayStatus("submitting");
+
     try {
       const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
       const phoneDigits = form.phone.replace(/\D/g, "");
       const fullPhone = `${dialCode} ${form.phone.trim()}`.trim();
-      // 1) Server creates the Razorpay order from CMS prices.
-      const res = await fetch("/api/checkout/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer: { name: fullName, email: form.email, phone: fullPhone, company: form.company },
-          address: {
-            line1: form.line1, line2: form.line2, city: form.city,
-            state: form.state, pincode: form.pincode, country: form.country,
-          },
-          gstin: form.gstin.trim().toUpperCase(),
-          businessName: form.businessName,
-          billingSameAsShipping: form.billingSame,
-          billing: form.billingSame
-            ? undefined
-            : {
-                name: form.bName.trim(), line1: form.bLine1.trim(), line2: form.bLine2.trim(),
-                city: form.bCity.trim(), state: form.bState.trim(),
-                pincode: form.bPincode.trim(), country: form.bCountry.trim(),
-              },
-          deliveryNotes: form.deliveryNotes.trim(),
-          marketingOptIn: form.marketingOptIn,
-          items: cartLines.map((l) => ({ slug: l.slug, qty: l.qty, size: l.size })),
-          displayCurrency: currency,
-          // Link this order to the analytics session (best-effort) so the paid
-          // conversion is attributed server-side from the Order total.
-          analyticsSid: (() => {
-            try {
-              return localStorage.getItem("mm-sid") || undefined;
-            } catch {
-              return undefined;
-            }
-          })(),
-        }),
-      });
-      const data = (await res.json()) as {
-        ok: boolean; error?: string; keyId?: string; razorpayOrderId?: string;
-        amount?: number; currency?: string; orderNumber?: string; total?: number; totalUsdApprox?: number;
+
+      const orderRequest = {
+        customer: { name: fullName, email: form.email, phone: fullPhone, company: form.company },
+        address: {
+          line1: form.line1, line2: form.line2, city: form.city,
+          state: form.state, pincode: form.pincode, country: form.country,
+        },
+        gstin: form.gstin.trim().toUpperCase(),
+        businessName: form.businessName,
+        billingSameAsShipping: form.billingSame,
+        billing: form.billingSame
+          ? undefined
+          : {
+              name: form.bName.trim(), line1: form.bLine1.trim(), line2: form.bLine2.trim(),
+              city: form.bCity.trim(), state: form.bState.trim(),
+              pincode: form.bPincode.trim(), country: form.bCountry.trim(),
+            },
+        deliveryNotes: form.deliveryNotes.trim(),
+        marketingOptIn: form.marketingOptIn,
+        items: cartLines.map((l) => ({ slug: l.slug, qty: l.qty, size: l.size })),
+        displayCurrency: currency,
       };
-      if (!res.ok || !data.ok) {
-        setPayError(data.error || "Could not start the payment. Please try again.");
-        setPaying(false);
-        return;
-      }
 
-      // Safety net: the server recomputes the total from LIVE CMS prices. If it
-      // differs from what the customer just saw (a price changed since these
-      // items were added), never silently charge the new amount — refresh the
-      // stale cart snapshots to TODAY's catalog so the page shows the new total,
-      // then let them confirm with another click. Without the refresh this was a
-      // dead end: the cart could only ever re-show the old price.
-      if (typeof data.total === "number" && data.total !== Math.round(subtotalIncl)) {
-        try {
-          const slugs = Array.from(new Set(cartLines.map((l) => l.slug)));
-          const rres = await fetch("/api/products/resolve", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ slugs }),
-          });
-          const rdata = (await rres.json()) as { products?: Product[] };
-          const bySlug = new Map((rdata.products ?? []).map((p) => [p.slug, p]));
-          const lines = cartLines.map((l) => ({ slug: l.slug, qty: l.qty, size: l.size }));
-          clearCart();
-          for (const l of lines) {
-            const p = bySlug.get(l.slug);
-            if (p && p.price) addToCart(p, l.qty, l.size);
-          }
-        } catch {
-          /* refresh failed — the message below still explains the situation */
-        }
-        setPayError(
-          `Prices were updated since you added these items — the total is now ${formatINR(
-            data.total
-          )} (charged in INR). The amounts above now show the current prices; please review and press Pay again.`
+      /*
+       * Reuse the order already created for an IDENTICAL request.
+       *
+       * Every Pay click minted a fresh Razorpay order AND a fresh pending Order
+       * row in the CMS, so cancelling the payment window and pressing Pay again
+       * left an abandoned order behind each time — one customer, one payment,
+       * and a trail of pending rows for staff to reconcile.
+       *
+       * The fingerprint covers the whole request, so changing the cart or the
+       * address correctly starts a NEW order rather than reusing one bound to a
+       * stale address. It expires too, so an order abandoned for a quarter of an
+       * hour is not resurrected at a price that may since have moved.
+       */
+      const fingerprint = JSON.stringify(orderRequest);
+      const cached = orderCacheRef.current;
+      let data: CreateOrderResponse | null = canReuseOrder(cached, fingerprint, Date.now())
+        ? (cached as CachedOrder<CreateOrderResponse>).data
+        : null;
+
+      if (!data) {
+        const res = await postJson(
+          "/api/checkout/create-order",
+          { ...orderRequest, analyticsSid: readAnalyticsSid() },
+          CREATE_ORDER_TIMEOUT_MS
         );
-        setPaying(false);
-        return;
+        const parsed = (await res.json().catch(() => ({ ok: false }))) as CreateOrderResponse;
+        if (!res.ok || !parsed.ok) {
+          finishPay("error", parsed.error || "Could not start the payment. Please try again.");
+          return;
+        }
+
+        // Safety net: the server recomputes the total from LIVE CMS prices. If it
+        // differs from what the customer just saw (a price changed since these
+        // items were added), never silently charge the new amount — refresh the
+        // stale cart snapshots to TODAY's catalog so the page shows the new total,
+        // then let them confirm with another click. Without the refresh this was a
+        // dead end: the cart could only ever re-show the old price.
+        if (typeof parsed.total === "number" && parsed.total !== Math.round(subtotalIncl)) {
+          orderCacheRef.current = null;
+          try {
+            const slugs = Array.from(new Set(cartLines.map((l) => l.slug)));
+            const rres = await postJson("/api/products/resolve", { slugs }, RESOLVE_TIMEOUT_MS);
+            const rdata = (await rres.json()) as { products?: Product[] };
+            const bySlug = new Map((rdata.products ?? []).map((pr) => [pr.slug, pr]));
+            const lines = cartLines.map((l) => ({ slug: l.slug, qty: l.qty, size: l.size }));
+            clearCart();
+            for (const l of lines) {
+              const pr = bySlug.get(l.slug);
+              if (pr && pr.price) addToCart(pr, l.qty, l.size);
+            }
+          } catch {
+            /* refresh failed — the message below still explains the situation */
+          }
+          finishPay(
+            "error",
+            `Prices were updated since you added these items — the total is now ${formatINR(
+              parsed.total
+            )} (charged in INR). The amounts above now show the current prices; please review and press Pay again.`
+          );
+          return;
+        }
+
+        data = parsed;
+        orderCacheRef.current = { fingerprint, at: Date.now(), data };
       }
 
-      // 2) Open the Razorpay modal.
+      const order = data;
+
       const loaded = await loadRazorpay();
       if (!loaded || !window.Razorpay) {
-        setPayError("Could not load the secure payment window. Check your connection and try again.");
-        setPaying(false);
+        finishPay(
+          "error",
+          "Could not load the secure payment window. Check your connection and try again."
+        );
         return;
       }
+
+      /*
+       * Razorpay reports a failed attempt WITHOUT closing its window, so the
+       * customer can correct their card and retry inside it. Record the reason
+       * and let ondismiss surface it; a later success simply overtakes it.
+       */
+      let lastFailure: string | null = null;
+
       const rzp = new window.Razorpay({
-        key: data.keyId,
-        order_id: data.razorpayOrderId,
-        amount: data.amount,
-        currency: data.currency,
+        key: order.keyId,
+        order_id: order.razorpayOrderId,
+        amount: order.amount,
+        currency: order.currency,
         name: site.legalName,
-        description: `Order ${data.orderNumber}`,
+        description: `Order ${order.orderNumber}`,
         prefill: { name: fullName, email: form.email, contact: `${dialCode}${phoneDigits}` },
-        notes: { orderNumber: data.orderNumber ?? "" },
+        notes: { orderNumber: order.orderNumber ?? "" },
         theme: { color: "#d81f26" },
         // International customers see the USD equivalent inside the modal
         // (Razorpay's display-currency feature; the charge remains INR).
-        ...(currency === "USD" && data.totalUsdApprox
-          ? { display_currency: "USD", display_amount: data.totalUsdApprox.toFixed(2) }
+        ...(currency === "USD" && order.totalUsdApprox
+          ? { display_currency: "USD", display_amount: order.totalUsdApprox.toFixed(2) }
           : {}),
         modal: {
           ondismiss: () => {
-            setPaying(false);
-            setPayError("Payment was cancelled — your cart is unchanged.");
-            getTracker().track("payment_failed", { meta: { reason: "dismissed", value: data.total ?? 0 } });
+            finishPay("error", lastFailure ?? "Payment was cancelled — your cart is unchanged.");
+            getTracker().track("payment_failed", {
+              meta: { reason: lastFailure ? "failed" : "dismissed", value: order.total ?? 0 },
+            });
           },
         },
         handler: async (resp: {
@@ -587,38 +696,69 @@ export default function CheckoutPage() {
           razorpay_payment_id: string;
           razorpay_signature: string;
         }) => {
-          // 3) Verify the signature server-side before trusting anything.
+          // The money has moved. Nothing below may report success unless the
+          // server verifies the signature and says so.
+          setPayStatus("verifying");
           try {
-            const v = await fetch("/api/checkout/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(resp),
-            });
-            const vd = (await v.json()) as { ok: boolean; orderNumber?: string; error?: string };
+            const v = await postJson("/api/checkout/verify", resp, VERIFY_TIMEOUT_MS);
+            const vd = (await v.json().catch(() => ({ ok: false }))) as {
+              ok: boolean;
+              orderNumber?: string;
+              error?: string;
+            };
             if (v.ok && vd.ok) {
               // Client-side purchase moment (analytics only; the CMS `paidAt`
               // remains the authoritative revenue record).
               getTracker().track("purchase", {
-                meta: { order: vd.orderNumber ?? "", total: data.total ?? 0 },
+                meta: { order: vd.orderNumber ?? "", total: order.total ?? 0 },
               });
+              // Drop the cached order so a back-navigation cannot reopen a
+              // payment window for something already paid.
+              orderCacheRef.current = null;
+              finishPay("success", null);
               clearCart();
               router.push(`/checkout/success?order=${encodeURIComponent(vd.orderNumber ?? "")}`);
             } else {
-              setPaying(false);
-              setPayError(vd.error || "Payment verification failed. If you were charged, contact us.");
-              getTracker().track("payment_failed", { meta: { reason: "verify_failed", value: data.total ?? 0 } });
+              finishPay(
+                "error",
+                vd.error || "Payment verification failed. If you were charged, contact us."
+              );
+              getTracker().track("payment_failed", {
+                meta: { reason: "verify_failed", value: order.total ?? 0 },
+              });
             }
-          } catch {
-            setPaying(false);
-            setPayError("Could not verify the payment. If you were charged, contact us with your payment ID.");
-            getTracker().track("payment_failed", { meta: { reason: "verify_error", value: data.total ?? 0 } });
+          } catch (err) {
+            finishPay(
+              "error",
+              isTimeout(err)
+                ? "Your payment may have gone through but we couldn't confirm it in time. Do not pay again — contact us with your payment ID and we'll complete the order."
+                : "Could not verify the payment. If you were charged, contact us with your payment ID."
+            );
+            getTracker().track("payment_failed", {
+              meta: { reason: "verify_error", value: order.total ?? 0 },
+            });
           }
         },
       });
+
+      if (typeof rzp.on === "function") {
+        rzp.on("payment.failed", (e: RazorpayFailure) => {
+          const why = e?.error?.description?.trim();
+          lastFailure = why
+            ? `Payment failed: ${why}`
+            : "The payment didn't go through — no money was taken.";
+        });
+      }
+
+      setPayStatus("awaiting_payment");
       rzp.open();
-    } catch {
-      setPaying(false);
-      setPayError("Something went wrong. Please try again.");
+    } catch (err) {
+      finishPay(
+        "error",
+        isTimeout(err)
+          ? "The payment took too long to start. Please check your connection and try again."
+          : "Something went wrong. Please try again."
+      );
     }
   }
 
@@ -937,13 +1077,27 @@ export default function CheckoutPage() {
             <Button
               type="button"
               onClick={handlePay}
-              disabled={paying || hasQuoteOnly}
+              disabled={busy || hasQuoteOnly}
+              aria-busy={busy}
               className="mt-5 w-full"
               size="lg"
             >
-              {paying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-              {paying ? "Opening secure payment…" : `Pay ${money(subtotalIncl, usdSubtotal)}`}
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+              {PAY_BUSY_LABEL[payStatus] ?? `Pay ${money(subtotalIncl, usdSubtotal)}`}
             </Button>
+            {payStatus === "awaiting_payment" && (
+              // The provider's window is a third-party iframe we do not control.
+              // If it fails to appear, or the customer closes it in a way that
+              // does not reach ondismiss, this is the way back — cheaper and far
+              // more honest than guessing at the window's state from out here.
+              <button
+                type="button"
+                onClick={() => finishPay("idle", null)}
+                className="mt-2 w-full text-center text-[11px] text-muted-foreground underline hover:text-foreground"
+              >
+                Payment window didn&apos;t open? Cancel and try again
+              </button>
+            )}
             <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
               By placing this order you agree to our{" "}
               <Link href="/terms" className="underline hover:text-foreground">Terms</Link>,{" "}
