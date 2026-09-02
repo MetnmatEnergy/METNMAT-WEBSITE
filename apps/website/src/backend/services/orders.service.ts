@@ -260,7 +260,11 @@ export async function recordIntegrationLog(input: {
   summary: string;
   error?: string;
   payload?: unknown;
+  /** Which integration this is about. Defaults to the payment webhook, which
+   *  was the only caller when this was written. */
+  integration?: string;
 }): Promise<void> {
+  const { integration = "razorpay-webhook", ...rest } = input;
   try {
     const res = await fetch(`${CMS}/api/integration-logs`, {
       method: "POST",
@@ -268,7 +272,7 @@ export async function recordIntegrationLog(input: {
         "Content-Type": "application/json",
         "x-internal-key": outboundKey("CMS_LOGS_KEY"),
       },
-      body: JSON.stringify({ integration: "razorpay-webhook", ...input }),
+      body: JSON.stringify({ integration, ...rest }),
     });
     if (!res.ok) {
       console.error(

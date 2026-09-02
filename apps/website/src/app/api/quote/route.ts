@@ -10,6 +10,7 @@ import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 import { sendQuoteEmails, type EmailAttachment } from "@/backend/lib/email";
 import { isAllowedUploadSignature, safeFilename } from "@/backend/lib/file-signature";
 import { collectGrantedIds } from "@/backend/lib/attachment-grant";
+import { recordIntegrationLog } from "@/backend/services/orders.service";
 import {
   beginIdempotent,
   completeIdempotent,
@@ -237,6 +238,40 @@ export async function POST(request: Request) {
   const saved = await createEnquiry(enquiry);
   const withReference = { ...enquiry, referenceId: saved.referenceId };
   const emailed = await sendQuoteEmails(withReference, emailAttachments);
+
+  /*
+   * A failed email is now OBSERVABLE.
+   *
+   * Persisting the request no longer depends on the email, which is right — but
+   * it also meant a customer whose confirmation bounced left no trace anywhere
+   * staff look. The console line dies with the process. IntegrationLogs is the
+   * durable, queryable place this codebase already uses for exactly this, and
+   * the website can write to it with the internal key.
+   *
+   * Best-effort and never awaited into the response: a logging failure must not
+   * turn a filed enquiry into an error the customer sees.
+   */
+  if (saved.ok && (!emailed.customer || !emailed.team)) {
+    void recordIntegrationLog({
+      integration: "quote-email",
+      status: "error",
+      summary: `RFQ ${saved.referenceId ?? "(no reference)"} filed, but ${
+        !emailed.customer && !emailed.team
+          ? "NEITHER email sent"
+          : !emailed.customer
+            ? "the customer confirmation did not send"
+            : "the internal notification did not send"
+      }`,
+      payload: {
+        reference: saved.referenceId,
+        emailedCustomer: emailed.customer,
+        emailedTeam: emailed.team,
+        // The address is operational data staff need to follow up; nothing
+        // else from the enquiry is duplicated here.
+        email: enquiry.email,
+      },
+    });
+  }
 
   if (!saved.ok) {
     console.error("[quote] CMS save FAILED — enquiry exists only in email", {
