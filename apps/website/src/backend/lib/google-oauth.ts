@@ -69,6 +69,32 @@ export const OAUTH_TEMP_COOKIES = [
   OAUTH_PANE_COOKIE,
 ] as const;
 
+/** Ten minutes is plenty for a consent screen and short enough to not linger. */
+export const OAUTH_COOKIE_MAX_AGE = 60 * 10;
+
+/**
+ * Attributes for the handshake cookies. Shared between setting and clearing on
+ * purpose.
+ *
+ * WHAT WAS WRONG
+ * The callback cleared them with `{ path: "/", maxAge: 0 }` and no `secure`. A
+ * `__Host-` cookie is only VALID with Secure, so in production the browser
+ * rejected that Set-Cookie outright and the cookie was never cleared — the used
+ * PKCE verifier and CSRF state stayed in the jar until they expired on their
+ * own. The cleanup looked correct, ran on every path, and did nothing.
+ *
+ * A delete is just a set with maxAge 0, so it has to carry the same attributes.
+ */
+export const oauthCookieOptions = {
+  httpOnly: true,
+  path: "/" as const,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+};
+
+/** Options that actually delete a handshake cookie. */
+export const oauthClearOptions = { ...oauthCookieOptions, maxAge: 0 };
+
 /** URL-safe random token (state, PKCE verifier). */
 export const randomToken = (bytes = 32): string => randomBytes(bytes).toString("base64url");
 

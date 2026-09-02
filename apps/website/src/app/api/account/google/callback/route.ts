@@ -10,6 +10,7 @@ import {
   OAUTH_REDIRECT_COOKIE,
   OAUTH_PANE_COOKIE,
   OAUTH_TEMP_COOKIES,
+  oauthClearOptions,
 } from "@/backend/lib/google-oauth";
 import { CUSTOMER_COOKIE, cookieOptions } from "@/backend/lib/customer";
 import { outboundKey } from "@/backend/lib/internal-key";
@@ -31,7 +32,7 @@ export async function GET(req: Request): Promise<Response> {
 
   // Always strip the short-lived OAuth cookies on the way out.
   const finish = (res: NextResponse): NextResponse => {
-    for (const name of OAUTH_TEMP_COOKIES) res.cookies.set(name, "", { path: "/", maxAge: 0 });
+    for (const name of OAUTH_TEMP_COOKIES) res.cookies.set(name, "", oauthClearOptions);
     return res;
   };
   const jar = await cookies();

@@ -10,19 +10,16 @@ import {
   OAUTH_VERIFIER_COOKIE,
   OAUTH_REDIRECT_COOKIE,
   OAUTH_PANE_COOKIE,
+  OAUTH_COOKIE_MAX_AGE,
+  oauthCookieOptions,
 } from "@/backend/lib/google-oauth";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-const TEN_MIN = 60 * 10;
-const tempCookie = {
-  httpOnly: true,
-  path: "/",
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-  maxAge: TEN_MIN,
-};
+// Attributes live in google-oauth.ts so the callback's CLEAR cannot drift from
+// this SET — a __Host- cookie cleared without Secure is not cleared at all.
+const tempCookie = { ...oauthCookieOptions, maxAge: OAUTH_COOKIE_MAX_AGE };
 
 /**
  * Begin Google sign-in: mint CSRF `state` + PKCE verifier, stash them (and the
