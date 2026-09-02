@@ -9,6 +9,7 @@ import {
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 import { sendQuoteEmails, type EmailAttachment } from "@/backend/lib/email";
 import { isAllowedUploadSignature, safeFilename } from "@/backend/lib/file-signature";
+import { collectGrantedIds } from "@/backend/lib/attachment-grant";
 
 const MAX_FILES = 5;
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB each
@@ -94,10 +95,18 @@ export async function POST(request: Request) {
   };
   const str = (k: string) => (typeof b[k] === "string" ? (b[k] as string) : undefined);
 
-  // Files already uploaded live (the new form flow) arrive as ids.
-  const preUploadedIds = Array.isArray(b.attachmentIds)
-    ? (b.attachmentIds as unknown[]).filter((x): x is string => typeof x === "string")
-    : [];
+  // Files already uploaded live (the new form flow) arrive as SIGNED GRANTS.
+  //
+  // A bare id is not accepted and `b.attachmentIds` is deliberately not read.
+  // These ids address private customer files, and the readback below runs with
+  // the internal key, so trusting the body here let anyone have anyone else's
+  // attachment mailed to an address of their choosing. The grant is minted by
+  // /api/quote/upload and handed only to the uploader.
+  const granted = collectGrantedIds(b.attachmentGrants, MAX_FILES);
+  const preUploadedIds = granted.ids;
+  if (granted.rejected > 0) {
+    console.warn(`[quote] rejected ${granted.rejected} unverified attachment reference(s)`);
+  }
   const bodyNames = Array.isArray(b.attachmentNames)
     ? (b.attachmentNames as unknown[]).filter((x): x is string => typeof x === "string")
     : [];
@@ -108,16 +117,17 @@ export async function POST(request: Request) {
   const attachmentIds = [...preUploadedIds, ...storedFromMultipart.map((u) => u.id)];
   const attachmentNames = [...bodyNames, ...files.map((f) => f.filename)];
 
-  // Build email attachments: multipart files directly (base64) + readback of pre-uploaded ids.
+  // Build email attachments: multipart files directly (base64) + readback of the
+  // granted ids. Concurrent rather than sequential — the list is capped at
+  // MAX_FILES, and serialising two CMS round-trips per attachment put that
+  // latency on the customer's submit.
   const emailAttachments: EmailAttachment[] = files.map((f) => ({
     filename: f.filename,
     content: f.buffer.toString("base64"),
     contentType: f.contentType,
   }));
-  for (const id of preUploadedIds) {
-    const att = await fetchEnquiryFileBase64(id);
-    if (att) emailAttachments.push(att);
-  }
+  const readBack = await Promise.all(preUploadedIds.map((id) => fetchEnquiryFileBase64(id)));
+  for (const att of readBack) if (att) emailAttachments.push(att);
 
   const enquiry = {
     ...result.data,

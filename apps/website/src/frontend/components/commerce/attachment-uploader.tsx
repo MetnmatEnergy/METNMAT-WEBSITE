@@ -28,6 +28,8 @@ export type UploadItem = {
   progress: number; // 0..100
   status: "uploading" | "done" | "error";
   id?: string; // dashboard doc id once stored
+  /** Signed proof this upload is ours — submitted instead of the bare id. */
+  grant?: string;
   error?: string;
   previewUrl?: string;
 };
@@ -111,14 +113,23 @@ export function AttachmentUploader({
     };
     xhr.onload = () => {
       delete xhrsRef.current[key];
-      let res: { ok?: boolean; id?: string; error?: string } = {};
+      let res: { ok?: boolean; id?: string; grant?: string; error?: string } = {};
       try {
         res = JSON.parse(xhr.responseText);
       } catch {
         /* ignore */
       }
-      if (xhr.status >= 200 && xhr.status < 300 && res.id) {
-        patch(key, { status: "done", progress: 100, id: res.id, error: undefined });
+      // Without a grant the file cannot be submitted, so treat a grant-less
+      // response as a failed upload rather than showing a green tick for
+      // something that will be silently dropped at submit.
+      if (xhr.status >= 200 && xhr.status < 300 && res.id && res.grant) {
+        patch(key, {
+          status: "done",
+          progress: 100,
+          id: res.id,
+          grant: res.grant,
+          error: undefined,
+        });
       } else {
         patch(key, { status: "error", error: res.error || "Upload failed" });
       }

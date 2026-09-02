@@ -3,6 +3,8 @@
  * CMS (Payload `enquiries` collection, which allows public create). The team
  * then sees and manages them in the admin.
  */
+import { OBJECT_ID } from "../lib/attachment-grant";
+
 const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
 
 export type EnquiryInput = {
@@ -77,9 +79,14 @@ export async function fetchEnquiryFileBase64(
 ): Promise<{ filename: string; content: string; contentType: string } | null> {
   const key = process.env.INTERNAL_API_KEY;
   if (!key) return null;
+  // This request carries the internal key, so an id that is not an ObjectId must
+  // never reach the URL: extra path segments or a `?` would turn a file readback
+  // into an arbitrary internal-key-authenticated GET against the CMS API.
+  // Callers already verify a signed grant; this is the second lock on the door.
+  if (!OBJECT_ID.test(id)) return null;
   try {
     // 1) Look up the doc to get filename + mimeType.
-    const metaRes = await fetch(`${CMS}/api/enquiry-uploads/${id}?depth=0`, {
+    const metaRes = await fetch(`${CMS}/api/enquiry-uploads/${encodeURIComponent(id)}?depth=0`, {
       headers: { "x-internal-key": key },
       cache: "no-store",
     });

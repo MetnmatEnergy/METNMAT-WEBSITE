@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createTicket } from "@/backend/services/tickets.service";
 import { sendTicketEmails } from "@/backend/lib/email";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
+import { collectGrantedIds } from "@/backend/lib/attachment-grant";
 
 /**
  * POST /api/support — raise a support ticket.
@@ -28,7 +29,8 @@ type Body = {
   subject?: string;
   description?: string;
   orderNumber?: string;
-  attachmentIds?: string[];
+  /** Signed grants from /api/quote/upload — never bare ids. */
+  attachmentGrants?: unknown;
 };
 
 const bad = (error: string, status = 400) => NextResponse.json({ ok: false, error }, { status });
@@ -63,9 +65,14 @@ export async function POST(req: Request) {
   }
   if (description.length > 5000) return bad("Please keep the description under 5000 characters.");
 
-  const attachmentIds = Array.isArray(body.attachmentIds)
-    ? body.attachmentIds.filter((id) => typeof id === "string").slice(0, 5)
-    : undefined;
+  // Attachment ids are not accepted from the body. They address private files
+  // belonging to whoever uploaded them, so an unverified id let a caller staple
+  // another customer's document onto their own ticket for staff to open.
+  const granted = collectGrantedIds(body.attachmentGrants, 5);
+  if (granted.rejected > 0) {
+    console.warn(`[support] rejected ${granted.rejected} unverified attachment reference(s)`);
+  }
+  const attachmentIds = granted.ids.length ? granted.ids : undefined;
 
   const now = new Date();
   const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;

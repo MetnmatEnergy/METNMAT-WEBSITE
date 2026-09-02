@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { uploadEnquiryFiles, type ParsedFile } from "@/backend/services/enquiries.service";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 import { isAllowedUploadSignature, safeFilename } from "@/backend/lib/file-signature";
+import { mintAttachmentGrant } from "@/backend/lib/attachment-grant";
 
 export const dynamic = "force-dynamic";
 
@@ -62,10 +63,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Storage failed. Please retry." }, { status: 502 });
   }
 
+  // The grant is the caller's proof that this upload is theirs — the submit
+  // endpoints accept it and refuse a bare id. Minting can only fail when no
+  // signing secret is configured, which is also when the readback would fail,
+  // so there would be nothing to attach either way.
+  const grant = mintAttachmentGrant(String(stored.id));
+  if (!grant) {
+    console.warn("[upload] no signing secret — attachment cannot be granted");
+    return NextResponse.json(
+      { ok: false, error: "Attachments are unavailable right now. Please submit without it." },
+      { status: 503 }
+    );
+  }
+
   // Note: we intentionally do NOT return the raw storage URL — these attachments
-  // are private and the client never needs the GCS path (it previews locally).
+  // are private and the client never needs the storage path (it previews locally).
   return NextResponse.json(
-    { ok: true, id: stored.id, filename: stored.filename, size: file.size, type: parsed.contentType },
+    {
+      ok: true,
+      id: stored.id,
+      grant,
+      filename: stored.filename,
+      size: file.size,
+      type: parsed.contentType,
+    },
     { status: 201 }
   );
 }

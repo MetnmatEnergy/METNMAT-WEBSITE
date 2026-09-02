@@ -34,7 +34,7 @@ const STATUS_META: Record<string, { label: string; cls: string; step: number }> 
 const fmtDate = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }) : "";
 
-type UploadedFile = { id: string; filename: string };
+type UploadedFile = { id: string; grant: string; filename: string };
 type TicketMessage = { from: "customer" | "staff"; authorName?: string; body: string; createdAt?: string };
 type TicketView = {
   ticketNumber: string; status: string; subject: string; category?: string;
@@ -140,7 +140,11 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
       try {
         const res = await fetch("/api/quote/upload", { method: "POST", body: fd });
         const d = await res.json();
-        if (res.ok && d.id) setFiles((prev) => [...prev, { id: d.id, filename: d.filename || file.name }]);
+        if (res.ok && d.id && d.grant)
+          setFiles((prev) => [
+            ...prev,
+            { id: d.id, grant: d.grant as string, filename: d.filename || file.name },
+          ]);
         else setError(d.error || "Couldn't attach that file.");
       } catch {
         setError("Upload failed. Please retry.");
@@ -161,7 +165,7 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
       const res = await fetch("/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...f, attachmentIds: files.map((x) => x.id) }),
+        body: JSON.stringify({ ...f, attachmentGrants: files.map((x) => x.grant) }),
       });
       const d = await res.json();
       if (res.ok && d.ok) { setDone(d.ticketNumber); getTracker().track("form_submit", { meta: { form: "support" } }); }

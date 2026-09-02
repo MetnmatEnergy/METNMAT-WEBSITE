@@ -108,8 +108,10 @@ export function QuoteDrawer() {
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
-    const done = attachments.filter((a) => a.status === "done" && a.id);
-    const attachmentIds = done.map((a) => a.id as string);
+    // Only uploads that came back with a grant can be submitted — the API
+    // refuses a bare id, so an ungranted upload would be dropped silently.
+    const done = attachments.filter((a) => a.status === "done" && a.id && a.grant);
+    const attachmentGrants = done.map((a) => a.grant as string);
     const attachmentNames = done.map((a) => a.name);
 
     const message = [
@@ -141,7 +143,7 @@ export function QuoteDrawer() {
           material: get("material"),
           quantity,
           product: product ? { name: product.name, sku: product.sku, slug: product.slug } : null,
-          attachmentIds,
+          attachmentGrants,
           attachmentNames,
         }),
       });

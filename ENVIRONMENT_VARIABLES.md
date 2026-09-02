@@ -26,6 +26,7 @@ Consolidated reference for all three services. **Never commit real secrets.** Pe
 | `TURNSTILE_SECRET_KEY` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | — | Bot protection on public forms (optional). |
 | `GOOGLE_CLIENT_ID` | ✅ (Google sign-in) | Google OAuth 2.0 **Web** client id. Server-side only. Redirect URI = `${NEXT_PUBLIC_SITE_URL}/api/account/google/callback`. Button is hidden-by-error if unset. |
 | `GOOGLE_CLIENT_SECRET` | ✅ (Google sign-in) | Google OAuth client secret. Server-side only; never sent to the browser. |
+| `ATTACHMENT_SIGNING_SECRET` | ✅ (recommended) | Signs the short-lived grant that `/api/quote/upload` returns and `/api/quote` + `/api/support` require, proving an attachment belongs to the caller. Falls back to `INTERNAL_API_KEY`. **With neither set, attachments are refused** — `enquiry-uploads` has no owner field, so the signature is the only ownership proof and it fails closed rather than trusting a body-supplied id. Generate: `openssl rand -hex 32`. |
 | `CMS_OAUTH_KEY` | ✅ (recommended) | Dedicated key for the website→CMS `POST /api/customers/oauth` **session-minting** call. **When set, the dashboard accepts ONLY this key** (a leaked shared `INTERNAL_API_KEY` then can't mint customer sessions). Must be the **same** value on website **and** dashboard. Generate: `openssl rand -hex 32`. If unset, falls back to `INTERNAL_API_KEY` (works, wider blast radius — logged). |
 
 ## Dashboard (`apps/dashboard` → `.env`) — template newly added (SEC-08)
