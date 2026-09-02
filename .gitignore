@@ -12,8 +12,14 @@ dist/
 *.tsbuildinfo
 
 # env
+# `.env` matches only that exact name and `.env*.local` only the .local
+# variants, so .env.production and .env.development were NOT ignored — a real
+# secrets file could be committed by an ordinary `git add .`. Keep .env.example
+# tracked; it holds names, never values.
 .env
-.env*.local
+.env.*
+!.env.example
+!.env*.example
 
 # backups (may contain secrets)
 *.bak
