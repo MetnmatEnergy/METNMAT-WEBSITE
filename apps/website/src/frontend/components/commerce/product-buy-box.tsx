@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTimedFlag } from "@/frontend/lib/use-timed-flag";
 import { ShoppingCart, Check } from "lucide-react";
 import { useStore } from "@/frontend/components/commerce/store-provider";
 import { QuantityStepper } from "@/frontend/components/commerce/quantity-stepper";
@@ -17,7 +18,8 @@ export function ProductBuyBox({ product }: { product: Product }) {
   const { money } = useCurrency();
   const [qty, setQty] = React.useState(product.moq);
   const [size, setSize] = React.useState<string>(product.sizes?.[0] ?? "");
-  const [added, setAdded] = React.useState(false);
+  // Restarts on every click and is cleared on unmount — see lib/use-timed-flag.
+  const [added, flashAdded] = useTimedFlag(1500);
   const [plusTrigger, setPlusTrigger] = React.useState(0);
 
   const hasSizes = !!(product.sizes && product.sizes.length > 0);
@@ -101,9 +103,8 @@ export function ProductBuyBox({ product }: { product: Product }) {
 
   function handleAdd() {
     addToCart(product, qty, hasSizes ? size || undefined : undefined);
-    setAdded(true);
+    flashAdded();
     setPlusTrigger((t) => t + 1);
-    setTimeout(() => setAdded(false), 1500);
   }
 
   return (

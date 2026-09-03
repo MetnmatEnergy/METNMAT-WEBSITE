@@ -225,39 +225,43 @@ function watchConsent(): void {
 }
 
 /**
- * Initialize once per real browser. Returns the tracker (or a no-op for bots /
- * opted-out staff / SSR / anyone who has not consented), so callers never need
- * null checks.
+ * Forms whose first focus has already been reported, deduped per page view.
+ *
+ * Module scope, not per-`getTracker()`: the focusin listener below is bound
+ * once for the life of the page, and `pageView()` clears this same set, so the
+ * two must refer to one object. When it lived inside getTracker() a consent
+ * re-grant produced a second listener with a second, empty set — the dedup this
+ * exists for stopped working, and one focus reported `form_start` twice.
  */
-export function getTracker(): Tracker {
-  const noop: Tracker = { track: () => {}, pageView: () => {} };
-  if (typeof window === "undefined") return noop;
+const startedForms = new Set<string>();
 
-  // Consent is checked BEFORE the memoisation, not after. Reading it after
-  // `if (instance) return instance` made consent an init-time decision: a tab
-  // that had already built a tracker never re-read it, so a withdrawal made
-  // elsewhere could not stop that tab. It is never cached as `instance` either,
-  // so an undecided visitor who accepts a moment later starts being measured
-  // without a reload.
-  try {
-    if (!hasAnalyticsConsent()) {
-      if (instance) resetTracker();
-      return noop;
-    }
-  } catch {
-    return noop;
-  }
-
-  if (instance) return instance;
-  try {
-    if ((navigator as { webdriver?: boolean }).webdriver) return (instance = noop);
-    if (ls.get(K_OPTOUT) === "1") return (instance = noop);
-  } catch {
-    return noop;
-  }
-
-  watchConsent();
-  ensureIds();
+/**
+ * Bind the delegated DOM listeners. ONCE per page, whatever happens to consent.
+ *
+ * These used to be registered inside getTracker(), after its `if (instance)`
+ * memoisation check. That looked like "register once" and was not: withdrawing
+ * consent calls resetTracker(), which nulls `instance`, so the next grant fell
+ * through the check and registered the whole set AGAIN. Nothing ever removed
+ * them — each handler is an inline closure, so removeEventListener could not
+ * have matched even if it had been called. Measured on production: every
+ * withdraw-then-grant cycle added exactly five permanent listeners
+ * (pagehide, visibilitychange, scroll, click, focusin), growing linearly and
+ * without bound.
+ *
+ * The cost was not only the listeners. Each duplicate handler calls push()
+ * independently, so after N re-grants one click emitted N `cta_click` events
+ * and one form focus N `form_start` events — the funnel over-counting that
+ * pageView()'s dedup reset was written to prevent.
+ *
+ * Binding once is safe because consent is enforced at the other end: push()
+ * drops every event while consent is absent (see its comment), so listeners
+ * bound during an earlier grant sit inert through a withdrawal and resume on
+ * re-grant. That is the same contract as before — only the duplication is gone.
+ */
+let listenersBound = false;
+function bindListeners(): void {
+  if (listenersBound || typeof window === "undefined") return;
+  listenersBound = true;
 
   // Deliver whatever is queued when the page is being backgrounded/closed —
   // the one moment fetch can be killed, hence sendBeacon.
@@ -304,15 +308,14 @@ export function getTracker(): Tracker {
   );
 
   // Generic form starts: first focus inside any form[data-analytics-form].
-  const started = new Set<string>();
   document.addEventListener(
     "focusin",
     (e) => {
       try {
         const form = (e.target as Element | null)?.closest?.("form[data-analytics-form]");
         const name = form?.getAttribute("data-analytics-form");
-        if (!name || started.has(name)) return;
-        started.add(name);
+        if (!name || startedForms.has(name)) return;
+        startedForms.add(name);
         push({ type: "form_start", ts: Date.now(), path: location.pathname, meta: { form: name.slice(0, 60) } });
       } catch {
         /* ignore */
@@ -320,6 +323,49 @@ export function getTracker(): Tracker {
     },
     { capture: true, passive: true }
   );
+}
+
+/** Test seam: how many times the delegated listeners have been bound. */
+export function __listenersBoundForTest(): boolean {
+  return listenersBound;
+}
+
+/**
+ * Initialize once per real browser. Returns the tracker (or a no-op for bots /
+ * opted-out staff / SSR / anyone who has not consented), so callers never need
+ * null checks.
+ */
+export function getTracker(): Tracker {
+  const noop: Tracker = { track: () => {}, pageView: () => {} };
+  if (typeof window === "undefined") return noop;
+
+  // Consent is checked BEFORE the memoisation, not after. Reading it after
+  // `if (instance) return instance` made consent an init-time decision: a tab
+  // that had already built a tracker never re-read it, so a withdrawal made
+  // elsewhere could not stop that tab. It is never cached as `instance` either,
+  // so an undecided visitor who accepts a moment later starts being measured
+  // without a reload.
+  try {
+    if (!hasAnalyticsConsent()) {
+      if (instance) resetTracker();
+      return noop;
+    }
+  } catch {
+    return noop;
+  }
+
+  if (instance) return instance;
+  try {
+    if ((navigator as { webdriver?: boolean }).webdriver) return (instance = noop);
+    if (ls.get(K_OPTOUT) === "1") return (instance = noop);
+  } catch {
+    return noop;
+  }
+
+  watchConsent();
+  ensureIds();
+
+  bindListeners();
 
   instance = {
     track(type, data) {
@@ -344,7 +390,7 @@ export function getTracker(): Tracker {
         // Reset form-start dedup per page view — deduping for the whole tab
         // lifetime let a form be re-shown (SPA nav back to it, or after a submit)
         // without a new form_start, so the funnel could report >100% completion.
-        started.clear();
+        startedForms.clear();
         pagePath = path.slice(0, LIMITS.maxPathLen);
         pageStart = Date.now();
         maxScroll = 0;

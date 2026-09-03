@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTimedFlag } from "@/frontend/lib/use-timed-flag";
 import { useRouter } from "next/navigation";
 import { Loader2, Check, Copy, Pencil, X, Camera } from "lucide-react";
 import { Card } from "@/frontend/components/ui/card";
@@ -66,7 +67,8 @@ export function ProfileForm({ initial }: { initial: Initial }) {
   const [avatarOpen, setAvatarOpen] = React.useState(false);
   const [nameError, setNameError] = React.useState("");
   const [saving, setSaving] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
+  // Restarts on every copy and is cleared on unmount — see lib/use-timed-flag.
+  const [copied, flashCopied] = useTimedFlag(1500);
   const [msg, setMsg] = React.useState<{ ok: boolean; text: string } | null>(null);
 
   const set =
@@ -93,8 +95,7 @@ export function ProfileForm({ initial }: { initial: Initial }) {
     if (!initial.userCode) return;
     try {
       await navigator.clipboard.writeText(initial.userCode);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
+      flashCopied();
     } catch {
       /* clipboard unavailable — the code is on screen anyway */
     }

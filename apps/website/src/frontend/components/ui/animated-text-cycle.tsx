@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Variants } from "framer-motion";
 
 interface AnimatedTextCycleProps {
@@ -30,13 +30,55 @@ export default function AnimatedTextCycle({
 }: AnimatedTextCycleProps) {
   const [index, setIndex] = useState(0);
   const reduce = useReducedMotion();
+  const hostRef = useRef<HTMLSpanElement | null>(null);
+
+  /*
+   * The interval used to run unconditionally, for the life of the page.
+   *
+   * The homepage hero mounts two of these, and each tick re-keys an
+   * AnimatePresence child, which framer-motion then animates for 0.7 s across
+   * opacity, transform and `filter: blur(8px)` — a blur is a per-frame paint
+   * over the element's whole box. That ran while the badge was scrolled far off
+   * screen, while it was hidden behind a breakpoint (`hidden lg:block`), and
+   * while the tab was in the background, where rAF is suspended so the paint
+   * never even happened: pure re-render for nothing.
+   *
+   * Gated on viewport intersection AND tab visibility, the way
+   * home/featured-projects-carousel already gates its own timer. An element
+   * inside `display: none` reports isIntersecting === false, so the same gate
+   * covers the breakpoint case without touching the markup. Anyone who can
+   * actually see the badge sees exactly what they saw before.
+   */
+  const [inView, setInView] = useState(true);
+  const [pageVisible, setPageVisible] = useState(true);
 
   useEffect(() => {
+    const el = hostRef.current;
+    // Fail open: without IntersectionObserver the words must still cycle.
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+      threshold: 0,
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setPageVisible(!document.hidden);
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
+
+  const cycling = inView && pageVisible && words.length > 1;
+
+  useEffect(() => {
+    if (!cycling) return;
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % words.length);
     }, interval);
     return () => clearInterval(timer);
-  }, [interval, words.length]);
+  }, [cycling, interval, words.length]);
 
   const variants: Variants = {
     hidden: { opacity: 0, y: reduce ? 0 : "-0.35em", filter: reduce ? "blur(0px)" : "blur(8px)" },
@@ -45,7 +87,7 @@ export default function AnimatedTextCycle({
   };
 
   return (
-    <span className={wrapperClassName}>
+    <span ref={hostRef} className={wrapperClassName}>
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
           key={index}

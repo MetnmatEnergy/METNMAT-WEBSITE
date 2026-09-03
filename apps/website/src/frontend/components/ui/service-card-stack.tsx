@@ -107,9 +107,25 @@ export function ServiceCardStack({ items }: { items: ServiceStackItem[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
+  /*
+   * The exit-then-advance timer. Its id used to be discarded, so rapid cycling
+   * queued several of them — each one advancing the deck again 140 ms later,
+   * which skipped cards — and any still pending when the component unmounted
+   * fired against a dead tree. One timer at a time, cleared on unmount.
+   */
+  const cycleTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (cycleTimer.current !== null) window.clearTimeout(cycleTimer.current);
+    },
+    []
+  );
+
   const cycle = (direction: "next" | "prev") => {
+    if (cycleTimer.current !== null) window.clearTimeout(cycleTimer.current);
     setLeaving(true);
-    window.setTimeout(() => {
+    cycleTimer.current = window.setTimeout(() => {
+      cycleTimer.current = null;
       (direction === "next" ? next : prev)();
       setLeaving(false);
     }, 140);

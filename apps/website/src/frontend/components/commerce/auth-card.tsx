@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTimedFlag } from "@/frontend/lib/use-timed-flag";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -116,12 +117,12 @@ function CreatedPanel({
   signedIn: boolean;
   onContinue: () => void;
 }) {
-  const [copied, setCopied] = React.useState(false);
+  // Restarts on every copy and is cleared on unmount — see lib/use-timed-flag.
+  const [copied, flashCopied] = useTimedFlag(1500);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(userCode);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
+      flashCopied();
     } catch {
       /* clipboard unavailable — the code is on screen anyway */
     }

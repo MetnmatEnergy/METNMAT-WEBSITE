@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { bodyScrollLock } from "@/frontend/lib/scroll-lock";
 import Link from "next/link";
 import { ShieldCheck, BarChart3, Lock, Check } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
@@ -126,13 +127,10 @@ export function ConsentBanner() {
     panel.focus({ preventScroll: true });
 
     // Lock the page behind the scrim. The scrollbar's width is given back as
-    // padding so removing it cannot shift the layout (CLS).
-    const { body } = document;
-    const prevOverflow = body.style.overflow;
-    const prevPadding = body.style.paddingRight;
-    const gap = window.innerWidth - document.documentElement.clientWidth;
-    body.style.overflow = "hidden";
-    if (gap > 0) body.style.paddingRight = `${gap}px`;
+    // padding so removing it cannot shift the layout (CLS). Reference-counted,
+    // because this dialog can be opened from the footer while a drawer is
+    // already holding the lock — see lib/scroll-lock.
+    const releaseScroll = bodyScrollLock.acquire();
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -168,8 +166,7 @@ export function ConsentBanner() {
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      body.style.overflow = prevOverflow;
-      body.style.paddingRight = prevPadding;
+      releaseScroll();
       restoreFocusRef.current?.focus?.();
     };
   }, [open, decision, showPrefs, forced]);

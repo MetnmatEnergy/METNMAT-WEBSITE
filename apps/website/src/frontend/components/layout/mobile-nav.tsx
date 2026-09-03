@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { mainNav } from "@/frontend/lib/site";
+import { bodyScrollLock } from "@/frontend/lib/scroll-lock";
 import { useQuote } from "@/frontend/components/commerce/quote-provider";
 import { cn } from "@/frontend/lib/utils";
 import { ThemeToggle } from "@/frontend/components/theme-toggle";
@@ -80,11 +81,13 @@ export function MobileNav({ items = mainNav }: { items?: NavItem[] }) {
     };
 
     document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Reference-counted: saving and restoring `overflow` here independently
+    // stranded the page unscrollable whenever another overlay overlapped this
+    // one. See lib/scroll-lock.
+    const releaseScroll = bodyScrollLock.acquire();
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
+      releaseScroll();
       // Restore focus to the toggle on close.
       restoreTo?.focus();
     };

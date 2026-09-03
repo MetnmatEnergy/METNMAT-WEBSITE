@@ -1,15 +1,56 @@
 "use client";
 
-import React, { useEffect, useRef, type ReactNode, type CSSProperties } from "react";
+import React, { useEffect, type ReactNode, type CSSProperties } from "react";
 import { cn } from "@/frontend/lib/utils";
+import { createPointerBroadcaster } from "@/frontend/lib/pointer-glow";
 
 type GlowColor = "blue" | "purple" | "green" | "red" | "orange" | "brand";
+
+/** Bridges the broadcaster's (x, y) callback to the DOM PointerEvent listener
+ *  it was actually registered with, so removal matches by reference. */
+const handlers = new WeakMap<(x: number, y: number) => void, (e: PointerEvent) => void>();
 
 interface GlowCardProps {
   children: ReactNode;
   className?: string;
   glowColor?: GlowColor;
 }
+
+/**
+ * ONE pointer listener for every card on the page.
+ *
+ * Each card used to add its own `pointermove` listener to `document` and write
+ * four CSS custom properties onto itself. The values are viewport coordinates,
+ * identical for every card, so the shop page — ten cards — bound ten listeners
+ * and performed forty style writes per pointermove, each invalidating a card
+ * that paints a radial gradient with `background-attachment: fixed`.
+ *
+ * The properties now go on the document element, once per animation frame.
+ * They inherit, and globals.css reads them as `var(--x, 0)` on [data-glow]
+ * without setting them locally, so each card resolves the same value it held
+ * before. Identical pixels, one listener, four writes per frame.
+ */
+const pointerGlow = createPointerBroadcaster({
+  addListener: (fn) => {
+    const handler = (e: PointerEvent) => fn(e.clientX, e.clientY);
+    handlers.set(fn, handler);
+    document.addEventListener("pointermove", handler, { passive: true });
+  },
+  removeListener: (fn) => {
+    const handler = handlers.get(fn);
+    if (handler) {
+      document.removeEventListener("pointermove", handler);
+      handlers.delete(fn);
+    }
+  },
+  schedule: (fn) => requestAnimationFrame(fn),
+  cancel: (h) => cancelAnimationFrame(h),
+  apply: (vars) => {
+    const root = document.documentElement.style;
+    for (const [k, v] of Object.entries(vars)) root.setProperty(k, v);
+  },
+  viewport: () => ({ w: window.innerWidth, h: window.innerHeight }),
+});
 
 const glowColorMap: Record<GlowColor, { base: number; spread: number }> = {
   blue: { base: 220, spread: 200 },
@@ -27,21 +68,9 @@ const glowColorMap: Record<GlowColor, { base: number; spread: number }> = {
  * Theme-aware (surface/border tokens) and brand-tinted by default.
  */
 export function GlowCard({ children, className = "", glowColor = "brand" }: GlowCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const card = cardRef.current;
-    if (!card) return;
-    const syncPointer = (e: PointerEvent) => {
-      const { clientX: x, clientY: y } = e;
-      card.style.setProperty("--x", x.toFixed(2));
-      card.style.setProperty("--xp", (x / window.innerWidth).toFixed(2));
-      card.style.setProperty("--y", y.toFixed(2));
-      card.style.setProperty("--yp", (y / window.innerHeight).toFixed(2));
-    };
-    document.addEventListener("pointermove", syncPointer, { passive: true });
-    return () => document.removeEventListener("pointermove", syncPointer);
-  }, []);
+  // Join the shared pointer tracker; the listener exists while at least one
+  // card is mounted and is removed with the last of them.
+  useEffect(() => pointerGlow.subscribe(), []);
 
   const { base, spread } = glowColorMap[glowColor];
 
@@ -70,11 +99,15 @@ export function GlowCard({ children, className = "", glowColor = "brand" }: Glow
     backgroundAttachment: "fixed",
     border: "var(--border-size) solid var(--backup-border)",
     position: "relative",
-    touchAction: "none",
+    // The upstream component set `touch-action: none` here because it had a
+    // drag gesture. This card has none, and on the shop page it sits on ten
+    // large tiles. That value tells the browser not to pan, so a visitor who
+    // began a swipe on a category card could not scroll the page. Removed.
+    // The spotlight is driven by pointermove and is unaffected.
   } as CSSProperties;
 
   return (
-    <div ref={cardRef} data-glow style={style} className={cn("rounded-2xl", className)}>
+    <div data-glow style={style} className={cn("rounded-2xl", className)}>
       <div data-glow />
       {children}
     </div>

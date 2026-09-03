@@ -56,6 +56,50 @@ export const IFRAME_TITLE = "Chat with a METNMAT specialist";
 export const PANEL_ID = "chat-widget-frame-container";
 
 /**
+ * Every attribute name planA11yWrites is capable of writing.
+ *
+ * This is half of the invariant that keeps the freeze dead. The other half is
+ * the observer init objects below: the set of attributes we WATCH and the set
+ * we WRITE must not intersect, or a write can wake the callback that performed
+ * it — and MutationObserver callbacks are microtasks, so that loop never yields.
+ */
+export const WRITTEN_ATTRIBUTES = ["title", "aria-expanded", "aria-controls"] as const;
+
+/**
+ * The three observer configurations the widget uses, as values rather than
+ * literals buried in the component, so a test can check them against
+ * WRITTEN_ATTRIBUTES instead of pattern-matching source text.
+ *
+ *  - body: wait for the widget's container to appear. childList only; a node
+ *    being added is not something an attribute write can produce.
+ *  - panel: follow the panel opening and closing, which the widget does through
+ *    inline `display`. `style` only — never an attribute we write.
+ *  - container: re-apply if the widget rebuilds its children.
+ */
+export const BODY_OBSERVER_INIT: MutationObserverInit = { childList: true, subtree: true };
+export const PANEL_OBSERVER_INIT: MutationObserverInit = { attributes: true, attributeFilter: ["style"] };
+export const CONTAINER_OBSERVER_INIT: MutationObserverInit = { childList: true };
+
+export type ObserverInit = {
+  readonly attributes?: boolean;
+  readonly attributeFilter?: readonly string[];
+};
+
+/**
+ * Would an observer configured like this be woken by our own writes?
+ *
+ * True is a defect: it is the shape that froze the homepage. Note that watching
+ * attributes with NO filter counts as watching all of them — that is exactly
+ * what the original `{ subtree: true, attributes: true }` on document.body did.
+ */
+export function observerWatchesWrittenAttributes(init: ObserverInit): boolean {
+  if (!init.attributes) return false;
+  if (!init.attributeFilter) return true;
+  const written = WRITTEN_ATTRIBUTES as readonly string[];
+  return init.attributeFilter.some((name) => written.includes(name));
+}
+
+/**
  * The writes required to bring the widget's markup up to standard.
  *
  * Every entry is guarded by the current value, so a DOM that already matches

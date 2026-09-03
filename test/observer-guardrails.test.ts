@@ -1,29 +1,37 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import {
+  WRITTEN_ATTRIBUTES,
+  BODY_OBSERVER_INIT,
+  PANEL_OBSERVER_INIT,
+  CONTAINER_OBSERVER_INIT,
+  observerWatchesWrittenAttributes,
+  planA11yWrites,
+  PANEL_ID,
+  IFRAME_TITLE,
+  type WidgetSnapshot,
+} from "../apps/website/src/frontend/lib/chat-widget-a11y";
 
 /**
- * Structural guardrails against the two observer patterns that froze the
- * homepage. Both were written in good faith, both looked reasonable in review,
- * and both saturated the main thread in production. A rule that reads the
- * source is the only thing that catches the NEXT one before it ships.
+ * Structural guardrails against the loop shapes that froze the homepage.
  *
- * Pattern 1 — the self-feeding MutationObserver (03c1d5f, the incident).
- *   Observing a document-level root with `attributes: true` and no
- *   `attributeFilter` means EVERY attribute write on the page wakes the
- *   callback — including the callback's own. setAttribute fires even when the
- *   value is unchanged, MutationObserver callbacks are microtasks, and a
- *   microtask loop never yields. That is a hard freeze.
+ * WHY THIS FILE WAS REWRITTEN. Its first version only inspected observers whose
+ * root matched /^document(\.body|\.documentElement)?$/. An audit re-introduced
+ * the incident byte for byte, merely relocated onto an ELEMENT root — watch the
+ * panel with `{ attributes: true, subtree: true }` and write `aria-expanded`
+ * back unconditionally — and every rule here passed it. The guardrail failed
+ * open on the exact bug it was written for, because it encoded a source-text
+ * shape ("is the root document.body?") rather than the property that matters.
  *
- * Pattern 2 — the fresh-object state write from an observer (01bc7eb).
- *   `setState({ ... })` from a ResizeObserver callback re-renders every time by
- *   reference, and if that state feeds an effect which resizes the observed
- *   element, the cycle is closed. Guarded by identity-preserving updaters in
- *   lib/stable-updates.ts.
+ * The property is: AN OBSERVER MUST NEVER WATCH THE ATTRIBUTES IT WRITES.
+ * `setAttribute` queues a mutation record even when the value is unchanged, and
+ * MutationObserver callbacks are microtasks, so any overlap between the watched
+ * set and the written set is a loop that never yields to paint or input.
  *
- * These scan the website source. They are deliberately narrow: they encode the
- * exact mistake, not a general style preference, so they will not nag about
- * legitimate observers.
+ * It is now checked twice: as a unit test on the real exported values (strong,
+ * and independent of how the source is written), and as a root-agnostic source
+ * scan (the net for observers written anywhere else in the app).
  */
 
 const ROOT = join(__dirname, "..", "apps", "website", "src");
@@ -37,7 +45,10 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const files = walk(ROOT).map((p) => ({ path: p.replace(ROOT, "src"), src: readFileSync(p, "utf8") }));
+const files = walk(ROOT).map((p) => ({
+  path: p.replace(ROOT, "src").split("\\").join("/"),
+  src: readFileSync(p, "utf8"),
+}));
 
 /** Every `.observe(<root>, { ...opts })` call in a file, with its options text. */
 function observeCalls(src: string): { root: string; opts: string }[] {
@@ -48,24 +59,95 @@ function observeCalls(src: string): { root: string; opts: string }[] {
   return out;
 }
 
-const DOCUMENT_ROOTS = /^document(\.body|\.documentElement)?$/;
+// ── The invariant, checked on the real values ────────────────────────────────
+
+describe("the chat widget never watches what it writes", () => {
+  it("writes only the three attributes it declares", () => {
+    // Exhaustive over the snapshot shape: whatever the DOM says, the plan may
+    // only ever name an attribute from WRITTEN_ATTRIBUTES.
+    const bools = [true, false];
+    const titles: (string | null | undefined)[] = [null, IFRAME_TITLE, "someone else's title", undefined];
+    const expanded = [null, "true", "false", "garbage"];
+    const controls = [null, PANEL_ID, "elsewhere"];
+    const panels: (boolean | null)[] = [null, true, false];
+
+    const names = new Set<string>();
+    for (const hasContainer of bools)
+      for (const iframeTitle of titles)
+        for (const hasLauncher of bools)
+          for (const launcherExpanded of expanded)
+            for (const launcherControls of controls)
+              for (const panelOpen of panels) {
+                const s: WidgetSnapshot = {
+                  hasContainer,
+                  iframeTitle,
+                  hasLauncher,
+                  launcherExpanded,
+                  launcherControls,
+                  panelOpen,
+                };
+                for (const w of planA11yWrites(s)) names.add(w.name);
+              }
+
+    expect([...names].sort()).toEqual([...WRITTEN_ATTRIBUTES].sort());
+  });
+
+  it("none of the three observer configurations can be woken by our own writes", () => {
+    // The whole invariant. If any of these flips to true the freeze is
+    // reachable again, whatever element the observer is pointed at.
+    expect(observerWatchesWrittenAttributes(BODY_OBSERVER_INIT)).toBe(false);
+    expect(observerWatchesWrittenAttributes(PANEL_OBSERVER_INIT)).toBe(false);
+    expect(observerWatchesWrittenAttributes(CONTAINER_OBSERVER_INIT)).toBe(false);
+  });
+
+  it("the invariant check itself catches the shapes that froze the page", () => {
+    // Positive controls, so a helper that always returned false would fail here.
+    // (a) the original: attributes with no filter watches everything, ours too.
+    expect(observerWatchesWrittenAttributes({ attributes: true })).toBe(true);
+    // (b) the relocated regression: a filter naming an attribute we write.
+    expect(
+      observerWatchesWrittenAttributes({ attributes: true, attributeFilter: ["aria-expanded"] })
+    ).toBe(true);
+    expect(
+      observerWatchesWrittenAttributes({ attributes: true, attributeFilter: ["style", "title"] })
+    ).toBe(true);
+    // (c) safe shapes stay safe.
+    expect(observerWatchesWrittenAttributes({ attributes: true, attributeFilter: ["style"] })).toBe(false);
+    expect(observerWatchesWrittenAttributes({})).toBe(false);
+  });
+
+  it("the component uses those shared configurations rather than inline literals", () => {
+    // Keeps the unit test above meaningful: if the component inlines its own
+    // object again, the values under test stop being the values in use.
+    const chat = files.find((f) => f.path.endsWith("chat-widget.tsx"))!;
+    expect(chat.src).toMatch(/observe\(panel, PANEL_OBSERVER_INIT\)/);
+    expect(chat.src).toMatch(/observe\(container, CONTAINER_OBSERVER_INIT\)/);
+    expect(chat.src).toMatch(/observe\(document\.body, BODY_OBSERVER_INIT\)/);
+    const inline = observeCalls(chat.src);
+    expect(inline.map((c) => c.opts), "chat-widget must not inline an observer literal").toEqual([]);
+  });
+});
+
+// ── Root-agnostic source scan ────────────────────────────────────────────────
 
 describe("MutationObserver guardrails", () => {
   const withMutationObservers = files.filter((f) => /new MutationObserver/.test(f.src));
 
   it("finds the observers it is meant to police", () => {
-    // If this ever hits zero the scan has broken, not the codebase.
     expect(withMutationObservers.length).toBeGreaterThan(0);
   });
 
-  it("never watches a document-level root for attributes without an attributeFilter", () => {
+  it("no observer anywhere watches attributes without naming them", () => {
+    // ROOT-AGNOSTIC, deliberately. The previous version only looked at
+    // document-level roots and an element-rooted copy of the incident walked
+    // straight through it. An unfiltered attribute observer watches every
+    // attribute, including the ones its own callback writes, wherever it points.
     const offenders: string[] = [];
-    for (const f of withMutationObservers) {
+    for (const f of files) {
       for (const call of observeCalls(f.src)) {
-        const isDocumentRoot = DOCUMENT_ROOTS.test(call.root);
         const watchesAttributes = /attributes\s*:\s*true/.test(call.opts);
         const hasFilter = /attributeFilter\s*:/.test(call.opts);
-        if (isDocumentRoot && watchesAttributes && !hasFilter) {
+        if (watchesAttributes && !hasFilter) {
           offenders.push(`${f.path}: observe(${call.root}, ${call.opts.replace(/\s+/g, " ")})`);
         }
       }
@@ -73,32 +155,32 @@ describe("MutationObserver guardrails", () => {
     expect(offenders, offenders.join("\n")).toEqual([]);
   });
 
+  it("no observer filter names an attribute the chat widget writes", () => {
+    const offenders: string[] = [];
+    for (const f of files) {
+      for (const call of observeCalls(f.src)) {
+        if (!/attributes\s*:\s*true/.test(call.opts)) continue;
+        for (const name of WRITTEN_ATTRIBUTES) {
+          if (new RegExp(`["']${name}["']`).test(call.opts)) {
+            offenders.push(`${f.path}: watches "${name}", which the a11y plan writes`);
+          }
+        }
+      }
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
   it("the theme observer in hero-stats passes because it names its attribute", () => {
-    // A positive control: this is the legitimate shape. It watches <html> for
-    // `class` only, and its callback writes no attributes.
     const hero = files.find((f) => f.path.endsWith("hero-stats.tsx"));
     expect(hero).toBeDefined();
     const call = observeCalls(hero!.src).find((c) => c.root === "document.documentElement");
     expect(call).toBeDefined();
     expect(call!.opts).toMatch(/attributeFilter\s*:\s*\["class"\]/);
   });
-
-  it("the chat widget observer no longer watches attributes on body at all", () => {
-    // The regression itself, pinned. Phase A watches body for childList only.
-    const chat = files.find((f) => f.path.endsWith("chat-widget.tsx"));
-    expect(chat).toBeDefined();
-    const bodyCalls = observeCalls(chat!.src).filter((c) => c.root === "document.body");
-    expect(bodyCalls.length).toBeGreaterThan(0);
-    for (const c of bodyCalls) {
-      expect(c.opts, c.opts).not.toMatch(/attributes\s*:\s*true/);
-    }
-  });
 });
 
 describe("ResizeObserver guardrails", () => {
   it("the vaporize wrapper size and the hero display style go through identity-preserving updaters", () => {
-    // Pinning the second fix. If someone reverts to `setWrapperSize({ width, height })`
-    // the feedback loop returns; the updater form is the only safe one here.
     const vapour = files.find((f) => f.path.endsWith("vapour-text-effect.tsx"))!;
     const hero = files.find((f) => f.path.endsWith("hero-stats.tsx"))!;
     expect(vapour.src).not.toMatch(/setWrapperSize\(\s*\{/);
@@ -108,10 +190,6 @@ describe("ResizeObserver guardrails", () => {
   });
 
   it("the vaporize ResizeObserver callback never re-samples the canvas itself", () => {
-    // The callback once called renderCanvas directly, with the closure from the
-    // first render: every notification re-sampled synchronously and painted
-    // texts[0] over the current stat, and a real size change rebuilt twice. The
-    // identity-gated size state feeds the rebuild effect; that is the one path.
     const vapour = files.find((f) => f.path.endsWith("vapour-text-effect.tsx"))!;
     const m = /new ResizeObserver\(([\s\S]*?)\);\s*resizeObserver\.observe/.exec(vapour.src);
     expect(m, "could not locate the vaporize ResizeObserver body").not.toBeNull();
@@ -138,6 +216,86 @@ describe("vaporize cost guardrails", () => {
   it("the wait timer is held in a ref and cleared, not discarded", () => {
     expect(vapour.src).toMatch(/waitTimerRef\.current = window\.setTimeout\(/);
     expect(vapour.src).toMatch(/window\.clearTimeout\(waitTimerRef\.current\)/);
-    expect(vapour.src).not.toMatch(/^\s*setTimeout\(\(\) => \{\s*$/m);
+  });
+
+  it("the frame chain stops instead of respinning when there is nothing to draw", () => {
+    // It used to reschedule on the empty-particle path, which is unbounded:
+    // nothing on that path can ever satisfy its own exit condition.
+    const m = /if \(!canvas \|\| !ctx \|\| !particlesRef\.current\.length\)([\s\S]{0,140})/.exec(vapour.src);
+    expect(m, "empty-particle guard not found").not.toBeNull();
+    expect(m![1]).not.toMatch(/requestAnimationFrame/);
+  });
+});
+
+// ── Phase 10: repository-wide structural scan ────────────────────────────────
+
+describe("structural scan", () => {
+  it("every setInterval is paired with a clearInterval in the same file", () => {
+    const offenders = files
+      .filter((f) => /setInterval\s*\(/.test(f.src) && !/clearInterval\s*\(/.test(f.src))
+      .map((f) => f.path);
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
+  it("a self-rescheduling animation loop always has a way to be cancelled", () => {
+    // One rAF call is a one-shot (the analytics scroll sampler); two or more in
+    // a file is a chain, and a chain with no cancel outlives its component.
+    const offenders = files
+      .filter((f) => (f.src.match(/requestAnimationFrame\s*\(/g) ?? []).length >= 2)
+      .filter((f) => !/cancelAnimationFrame\s*\(/.test(f.src))
+      .map((f) => f.path);
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
+  it("no timer is scheduled from inside a setState updater", () => {
+    // A state updater must be a pure function of its argument — React may throw
+    // a render away and run it again. The attachment uploader scheduled its
+    // upload from inside one, so a re-invocation uploaded the same file twice.
+    const offenders: string[] = [];
+    for (const f of files) {
+      const re = /set[A-Z]\w*\(\s*\(?\s*\w+\s*\)?\s*=>\s*\{/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(f.src))) {
+        let i = re.lastIndex - 1;
+        let depth = 0;
+        for (; i < f.src.length; i++) {
+          if (f.src[i] === "{") depth++;
+          else if (f.src[i] === "}") {
+            depth--;
+            if (depth === 0) break;
+          }
+        }
+        if (/set(Timeout|Interval)\s*\(/.test(f.src.slice(re.lastIndex, i))) {
+          offenders.push(`${f.path}: ${m[0].trim().replace(/\s+/g, " ")}`);
+        }
+      }
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
+  it("only the reference-counted module writes the body scroll lock", () => {
+    // Five overlays each saved and restored `overflow` independently, so an
+    // interleaved close restored "hidden" and stranded the page unscrollable.
+    const offenders = files
+      .filter((f) => /body\.style\.(overflow|paddingRight)\s*=/.test(f.src))
+      .filter((f) => !f.path.endsWith("lib/scroll-lock.ts"))
+      .map((f) => f.path);
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
+  it("the spotlight cards share one pointer listener rather than one per card", () => {
+    const card = files.find((f) => f.path.endsWith("spotlight-card.tsx"))!;
+    expect(card.src).toMatch(/pointerGlow\.subscribe\(\)/);
+    expect(card.src).not.toMatch(/useEffect\([\s\S]{0,400}document\.addEventListener\("pointermove"/);
+  });
+
+  it("the analytics collector binds its delegated listeners once", () => {
+    const collector = files.find((f) => f.path.endsWith("analytics/collector.ts"))!;
+    expect(collector.src).toMatch(/let listenersBound = false;/);
+    expect(collector.src).toMatch(/if \(listenersBound \|\| typeof window === "undefined"\) return;/);
+    // getTracker must delegate to it, not register listeners inline.
+    const getTracker = collector.src.slice(collector.src.indexOf("export function getTracker"));
+    expect(getTracker).toMatch(/bindListeners\(\);/);
+    expect(getTracker).not.toMatch(/addEventListener\(/);
   });
 });

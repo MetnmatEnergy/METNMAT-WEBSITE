@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import { CONSENT_EVENT, readConsent } from "@/frontend/lib/consent";
-import { planA11yWrites, PANEL_ID, type WidgetSnapshot } from "@/frontend/lib/chat-widget-a11y";
+import {
+  planA11yWrites,
+  PANEL_ID,
+  BODY_OBSERVER_INIT,
+  PANEL_OBSERVER_INIT,
+  CONTAINER_OBSERVER_INIT,
+  type WidgetSnapshot,
+} from "@/frontend/lib/chat-widget-a11y";
 
 /**
  * Loads the Metnmat customer-agent chat bubble.
@@ -192,10 +199,12 @@ export function ChatWidget() {
         try { apply(); } catch { /* their markup changed shape — leave it alone */ }
       });
       // The panel opens and closes by inline `display`; that is the one
-      // attribute change we need to follow.
-      if (panel) inner.observe(panel, { attributes: true, attributeFilter: ["style"] });
+      // attribute change we need to follow. These inits live in
+      // lib/chat-widget-a11y so a unit test can prove they never intersect the
+      // attributes we write — the invariant, rather than a source-text shape.
+      if (panel) inner.observe(panel, PANEL_OBSERVER_INIT);
       // And if the widget rebuilds its children, re-apply once.
-      inner.observe(container, { childList: true });
+      inner.observe(container, CONTAINER_OBSERVER_INIT);
     };
 
     // Phase A: the widget's script is async and builds its DOM whenever it
@@ -212,7 +221,7 @@ export function ChatWidget() {
       if (apply()) {
         watchWidget();
       } else {
-        outer.observe(document.body, { childList: true, subtree: true });
+        outer.observe(document.body, BODY_OBSERVER_INIT);
       }
     } catch {
       /* nothing to observe */

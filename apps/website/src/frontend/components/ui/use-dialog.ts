@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { bodyScrollLock } from "@/frontend/lib/scroll-lock";
 import { FOCUSABLE_SELECTOR, wrapTabTarget } from "@/frontend/lib/focus-trap";
 
 /**
@@ -96,11 +97,13 @@ export function useDialog({
     };
 
     document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Reference-counted. Three dialogs share this hook and any of them can be
+    // open while the consent dialog or the mobile nav also holds the lock;
+    // independent save/restore stranded the page. See lib/scroll-lock.
+    const releaseScroll = bodyScrollLock.acquire();
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+      releaseScroll();
     };
   }, [open, containerRef]);
 }

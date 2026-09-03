@@ -90,6 +90,12 @@ export default function VaporizeTextCycle({
    * final fade-in frame could run twice and schedule it twice.
    */
   const waitTimerRef = useRef<number | null>(null);
+  /*
+   * Bumped whenever a rebuild actually produced particles. The frame loop stops
+   * dead when there is nothing to draw, so it needs an explicit signal to start
+   * again rather than a poll.
+   */
+  const [particlesVersion, setParticlesVersion] = useState(0);
   const vaporizeProgressRef = useRef(0);
   const fadeOpacityRef = useRef(0);
   const [wrapperSize, setWrapperSize] = useState({ width: 0, height: 0 });
@@ -245,10 +251,23 @@ export default function VaporizeTextCycle({
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
 
-      if (!canvas || !ctx || !particlesRef.current.length) {
-        frameId = requestAnimationFrame(animate);
-        return;
-      }
+      /*
+       * Nothing to draw: STOP, do not reschedule.
+       *
+       * This used to request another frame, which made it an unbounded loop —
+       * nothing on this path advances the vaporize progress, decays an opacity
+       * or changes state, so the exit condition could never be reached from
+       * inside it. It spun at 60 fps forever, producing no pixels. It is
+       * reachable whenever the state is "vaporizing" while the particle array
+       * is empty, which is what a zero-measured wrapper produces: renderCanvas
+       * returns early without assigning particles, while the intersection
+       * observer still reports a zero-area element as in view.
+       *
+       * particlesVersion below is the restart signal: the rebuild effect bumps
+       * it whenever sampling actually produced particles, which re-runs this
+       * effect and starts a fresh chain.
+       */
+      if (!canvas || !ctx || !particlesRef.current.length) return;
 
       // Clear canvas only if we're going to draw
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -334,6 +353,7 @@ export default function VaporizeTextCycle({
     memoizedUpdateParticles,
     memoizedRenderParticles,
     paintOnce,
+    particlesVersion,
     animationDurations.FADE_IN_DURATION,
     animationDurations.WAIT_DURATION,
     animationDurations.VAPORIZE_DURATION,
@@ -353,6 +373,9 @@ export default function VaporizeTextCycle({
     // paints; in the idle states there is no next frame, so paint here — this
     // is what keeps a theme switch or a resize visible mid-wait.
     if (!isAnimating(animationStateRef.current)) paintOnce();
+    // Tell the frame loop there is something to draw now. Identity-guarded so a
+    // rebuild that produced nothing cannot spin the effect.
+    if (particlesRef.current.length) setParticlesVersion((n) => n + 1);
 
     const currentFont = font.fontFamily || "sans-serif";
     return handleFontChange({

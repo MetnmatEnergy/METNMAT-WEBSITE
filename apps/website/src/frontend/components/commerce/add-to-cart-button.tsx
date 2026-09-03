@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTimedFlag } from "@/frontend/lib/use-timed-flag";
 import { ShoppingCart, Check } from "lucide-react";
 import { useStore } from "@/frontend/components/commerce/store-provider";
 import { Button } from "@/frontend/components/ui/button";
@@ -40,14 +41,14 @@ export function AddToCartButton({
   fullWidth?: boolean;
 }) {
   const { addToCart } = useStore();
-  const [added, setAdded] = React.useState(false);
+  // Restarts on every click and is cleared on unmount — see lib/use-timed-flag.
+  const [added, flashAdded] = useTimedFlag(1500);
   const [plusTrigger, setPlusTrigger] = React.useState(0);
 
   function handle() {
     addToCart(product, qty);
-    setAdded(true);
+    flashAdded();
     setPlusTrigger((t) => t + 1);
-    setTimeout(() => setAdded(false), 1500);
   }
 
   return (

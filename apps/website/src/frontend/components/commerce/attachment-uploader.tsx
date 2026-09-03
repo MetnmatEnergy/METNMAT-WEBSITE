@@ -166,48 +166,70 @@ export function AttachmentUploader({
     xhr.send(form);
   }
 
+  /*
+   * Everything here used to run INSIDE a setItems updater, which also called
+   * setFileError, mutated keyRef, created object URLs and scheduled the upload.
+   * A state updater must be a pure function of its argument: React is free to
+   * discard a render and run it again, and does so deliberately under
+   * StrictMode. Every extra invocation minted another key, leaked another
+   * object URL, and scheduled a SECOND upload of the same file — a duplicate
+   * PUT against the media bucket for one user action.
+   *
+   * The list is now computed first, from the committed `items`, and the state
+   * write is a plain value. addFiles only ever runs from a file-picker change
+   * or a drop, so reading committed state cannot miss a concurrent update.
+   * The uploads still start on a macrotask after the commit, exactly as before.
+   */
   function addFiles(list: FileList | null) {
     if (!list || list.length === 0) return;
     setFileError(null);
-    setItems((current) => {
-      const next = [...current];
-      let totalBytes = current.reduce((s, i) => s + i.size, 0);
-      for (const f of Array.from(list)) {
-        if (next.length >= MAX_FILES) {
-          setFileError(`You can attach up to ${MAX_FILES} files.`);
-          break;
-        }
-        if (f.size > MAX_FILE_MB * 1024 * 1024) {
-          setFileError(`"${f.name}" is larger than ${MAX_FILE_MB} MB.`);
-          continue;
-        }
-        if (!/^(application\/pdf|image\/)/.test(f.type || "")) {
-          setFileError("Only PDF or image files are allowed.");
-          continue;
-        }
-        if (current.some((i) => i.name === f.name && i.size === f.size)) continue;
-        totalBytes += f.size;
-        if (totalBytes > MAX_TOTAL_MB * 1024 * 1024) {
-          setFileError(`Total attachments exceed ${MAX_TOTAL_MB} MB.`);
-          break;
-        }
-        keyRef.current += 1;
-        const key = `f${keyRef.current}`;
-        filesRef.current[key] = f;
-        next.push({
-          key,
-          name: f.name,
-          size: f.size,
-          type: f.type,
-          progress: 5,
-          status: "uploading",
-          previewUrl: f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
-        });
-        // Kick off the upload right after state commits.
-        setTimeout(() => startUpload(key, f), 0);
+
+    const current = items;
+    const next = [...current];
+    const queued: Array<{ key: string; file: File }> = [];
+    let error: string | null = null;
+    let totalBytes = current.reduce((s, i) => s + i.size, 0);
+
+    for (const f of Array.from(list)) {
+      if (next.length >= MAX_FILES) {
+        error = `You can attach up to ${MAX_FILES} files.`;
+        break;
       }
-      return next;
-    });
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        error = `"${f.name}" is larger than ${MAX_FILE_MB} MB.`;
+        continue;
+      }
+      if (!/^(application\/pdf|image\/)/.test(f.type || "")) {
+        error = "Only PDF or image files are allowed.";
+        continue;
+      }
+      if (current.some((i) => i.name === f.name && i.size === f.size)) continue;
+      totalBytes += f.size;
+      if (totalBytes > MAX_TOTAL_MB * 1024 * 1024) {
+        error = `Total attachments exceed ${MAX_TOTAL_MB} MB.`;
+        break;
+      }
+      keyRef.current += 1;
+      const key = `f${keyRef.current}`;
+      filesRef.current[key] = f;
+      next.push({
+        key,
+        name: f.name,
+        size: f.size,
+        type: f.type,
+        progress: 5,
+        status: "uploading",
+        previewUrl: f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
+      });
+      queued.push({ key, file: f });
+    }
+
+    if (error) setFileError(error);
+    if (queued.length === 0) return;
+
+    setItems(next);
+    // Kick off the uploads right after state commits.
+    for (const { key, file } of queued) setTimeout(() => startUpload(key, file), 0);
   }
 
   function removeItem(key: string) {
