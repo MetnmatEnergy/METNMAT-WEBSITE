@@ -8,6 +8,7 @@ import { SiteHeader } from "@/frontend/components/layout/site-header";
 import { SiteFooter } from "@/frontend/components/layout/site-footer";
 import { TopBar } from "@/frontend/components/layout/top-bar";
 import { MaintenanceBanner } from "@/frontend/components/layout/maintenance-banner";
+import { RouteProgress } from "@/frontend/components/layout/route-progress";
 import { StoreProvider } from "@/frontend/components/commerce/store-provider";
 import { QuoteProvider } from "@/frontend/components/commerce/quote-provider";
 import { QuoteDrawer } from "@/frontend/components/commerce/quote-drawer";
@@ -140,6 +141,7 @@ export default async function RootLayout({
         <CurrencyProvider usdRate={usdRate}>
         <StoreProvider>
         <QuoteProvider>
+        <RouteProgress />
         <div className="flex min-h-dvh flex-col">
           <MaintenanceBanner />
           <TopBar />

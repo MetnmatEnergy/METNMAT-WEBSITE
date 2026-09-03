@@ -42,10 +42,24 @@ export function BlogToolbar({ categories, contentTypes, authors, years }: Props)
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   React.useEffect(() => setText(query.q), [query.q]);
 
+  /*
+   * Filtering is a search-param navigation on the SAME path, so neither the
+   * route's loading.tsx nor the global route-progress bar covers it — both key
+   * off the pathname. Without a transition the visitor changed a filter and got
+   * nothing at all until the server re-render landed.
+   *
+   * Same approach the shop listing already uses (ShopTransitionProvider); the
+   * blog toolbar is small enough to own its own transition rather than needing a
+   * shared context.
+   */
+  const [isPending, startTransition] = React.useTransition();
+
   const push = React.useCallback(
     (next: Partial<BlogQuery>) => {
       const merged: Partial<BlogQuery> = { ...query, page: 1, ...next };
-      router.push(`/blog${blogQueryString(merged)}`, { scroll: false });
+      startTransition(() =>
+        router.push(`/blog${blogQueryString(merged)}`, { scroll: false })
+      );
     },
     [router, query],
   );
@@ -80,7 +94,15 @@ export function BlogToolbar({ categories, contentTypes, authors, years }: Props)
   );
 
   return (
-    <div className="rounded-2xl border border-border bg-surface p-4 md:p-5">
+    <div
+      aria-busy={isPending}
+      // Dimmed while the server re-renders, the same acknowledgement the shop
+      // listing gives. Controls stay clickable on purpose: a visitor who wants
+      // to change two filters in a row should not have to wait between them.
+      className={`rounded-2xl border border-border bg-surface p-4 transition-opacity duration-200 md:p-5 ${
+        isPending ? "opacity-60" : ""
+      }`}
+    >
       <form
         role="search"
         onSubmit={(e) => {

@@ -1,8 +1,9 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Package, FileText, MapPin, User, Heart, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, FileText, MapPin, User, Heart, LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/frontend/lib/utils";
 
 const links = [
@@ -18,11 +19,21 @@ export function AccountNav() {
   const pathname = usePathname();
   const router = useRouter();
 
+  /*
+   * Signing out awaits a round trip and used to show nothing while it ran: the
+   * button looked dead, and a second click fired a second request. It stays
+   * disabled through the navigation that follows too — there is no "signed out"
+   * state to return to, so re-enabling it would only invite a pointless retry.
+   */
+  const [signingOut, setSigningOut] = React.useState(false);
+
   async function logout() {
+    if (signingOut) return;
+    setSigningOut(true);
     try {
       await fetch("/api/account/logout", { method: "POST" });
     } catch {
-      /* ignore */
+      /* the cookie is cleared server-side or it is not; either way, leave */
     }
     router.push("/");
     router.refresh();
@@ -52,10 +63,16 @@ export function AccountNav() {
       <button
         type="button"
         onClick={logout}
-        className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border-border px-3 py-2.5 text-sm text-muted-foreground hover:text-brand lg:mt-2 lg:w-full lg:gap-3 lg:border-t lg:pt-4"
+        disabled={signingOut}
+        aria-busy={signingOut}
+        className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border-border px-3 py-2.5 text-sm text-muted-foreground hover:text-brand disabled:opacity-60 lg:mt-2 lg:w-full lg:gap-3 lg:border-t lg:pt-4"
       >
-        <LogOut className="h-4 w-4" />
-        Sign out
+        {signingOut ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <LogOut className="h-4 w-4" />
+        )}
+        {signingOut ? "Signing out…" : "Sign out"}
       </button>
     </nav>
   );
