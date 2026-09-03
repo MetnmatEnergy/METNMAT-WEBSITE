@@ -967,6 +967,49 @@ async function refineHeroHeadline(payload: Payload): Promise<void> {
 }
 
 /**
+ * One-shot (2026-09-03): clear the cutover-era maintenance banner.
+ *
+ * `maintenance.enabled` was switched on in the admin on 2026-07-04 during the
+ * AWS cutover and never switched back off, so for two months every page on
+ * www.metnmat.com server-rendered — above the <h1> — a notice that the site was
+ * degraded and that visitors would do "better to use metnmat.in". Neither half
+ * was doing us any good: the site was in fact fully healthy, and metnmat.in is
+ * the legacy property the .com consolidation is trying to retire (see
+ * docs/seo/AUDIT.md, "The one thing genuinely working against you"). So the
+ * banner cost traffic twice over — it read as an outage to customers, and it
+ * handed every crawler and answer engine a cross-domain recommendation before
+ * any real content.
+ *
+ * The guard is the cross-domain recommendation itself rather than the usual
+ * exact-match on the whole string: the stored copy has already drifted from the
+ * field default (it carries a trailing space), and what makes it harmful is
+ * precisely that it names the old domain. A genuine future maintenance notice
+ * written by staff will not point at metnmat.in, so this reverts to a no-op
+ * once it has fired, and a deliberate banner is never silently switched off.
+ */
+async function clearCutoverMaintenanceBanner(payload: Payload): Promise<void> {
+  const NEUTRAL_MESSAGE =
+    "We are currently performing scheduled maintenance. Some features may be temporarily unavailable.";
+  try {
+    const m = (await payload.findGlobal({ slug: "maintenance" })) as {
+      enabled?: boolean;
+      message?: string;
+    };
+    if (m?.enabled !== true) return;
+    if (!/metnmat\.in/i.test(m?.message ?? "")) return;
+    await payload.updateGlobal({
+      slug: "maintenance",
+      data: { enabled: false, message: NEUTRAL_MESSAGE },
+    });
+    payload.logger.info(
+      `[seed] maintenance banner: switched OFF the 2026-07 cutover notice (it recommended metnmat.in) and restored the neutral default message.`,
+    );
+  } catch (e) {
+    payload.logger.warn(`[seed] maintenance banner migration failed: ${(e as Error).message}`);
+  }
+}
+
+/**
  * Default the homepage "Featured case study" to the Microstructure Control &
  * Heat Treatment project (the case study with a cover image, so a real photo
  * shows on the home page). Sets the relationship while it's empty, and does a
@@ -1740,6 +1783,7 @@ export async function seedContentAndCatalogue(payload: Payload): Promise<void> {
   await step(payload, "dropFirstFromLegacyCopy", () => dropFirstFromLegacyCopy(payload));
   await step(payload, "rebrandHomepageCopy", () => rebrandHomepageCopy(payload));
   await step(payload, "refineHeroHeadline", () => refineHeroHeadline(payload));
+  await step(payload, "clearCutoverMaintenanceBanner", () => clearCutoverMaintenanceBanner(payload));
   await step(payload, "backfillPricingMode", () => backfillPricingMode(payload));
 
   // 7) Default the homepage featured case study (only while unset).
