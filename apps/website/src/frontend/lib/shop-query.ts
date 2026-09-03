@@ -81,8 +81,32 @@ export function sortProducts(products: Product[], sort: string): Product[] {
     case "newest":
       return items.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
     default:
-      return items; // "relevance" — keep source order
+      return items.sort(byPresentation);
   }
+}
+
+/**
+ * Default ("relevance") order: lead with the products a customer can actually
+ * see.
+ *
+ * Source order is newest-first, which put the most recently imported products —
+ * the ones with the thinnest photography, and those still waiting for a photo —
+ * at the very top of every listing. A product with no image renders as the
+ * branded placeholder, so leading with it makes a stocked catalogue look empty.
+ *
+ * Rank is: has a photo → how many photos → newest. Photo COUNT is the honest
+ * proxy available here for how well a product is documented; the storefront has
+ * no measure of image sharpness, and inventing one from file size would punish
+ * the flat-background studio shots that compress smallest.
+ */
+function byPresentation(a: Product, b: Product): number {
+  const shot = (p: Product) => (p.images?.length ?? 0);
+  const has = (p: Product) => (shot(p) > 0 ? 1 : 0);
+  return (
+    has(b) - has(a) ||
+    shot(b) - shot(a) ||
+    (b.createdAt || "").localeCompare(a.createdAt || "")
+  );
 }
 
 /** Filter → sort → paginate. Returns the page window plus paging metadata. */
