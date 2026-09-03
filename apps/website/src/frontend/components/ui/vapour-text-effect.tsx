@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState, createElement, useMemo, useCallback, memo } from "react";
+import { renderParticles, type Particle } from "@/frontend/lib/particle-render";
 
 // Adapted from the 21st.dev "vaporize text" effect. Trimmed the black-screen demo,
 // added an `onTextChange` callback (so a parent can sync sibling content — e.g. a
@@ -35,20 +36,6 @@ type VaporizeTextCycleProps = {
   onTextChange?: (index: number) => void;
 };
 
-type Particle = {
-  x: number;
-  y: number;
-  originalX: number;
-  originalY: number;
-  color: string;
-  opacity: number;
-  originalAlpha: number;
-  velocityX: number;
-  velocityY: number;
-  angle: number;
-  speed: number;
-  shouldFadeQuickly?: boolean;
-};
 
 type TextBoundaries = {
   left: number;
@@ -184,6 +171,19 @@ export default function VaporizeTextCycle({
     let frameId: number;
 
     const animate = (currentTime: number) => {
+      /*
+       * Do no work at all in a background tab.
+       *
+       * Chrome throttles rAF when a tab is hidden but does not stop it, and one
+       * throttled frame of this still costs a full pass over every particle.
+       * Resetting lastTime keeps deltaTime honest, so the animation resumes
+       * where it left off instead of jumping on return.
+       */
+      if (typeof document !== "undefined" && document.hidden) {
+        lastTime = currentTime;
+        frameId = requestAnimationFrame(animate);
+        return;
+      }
       const deltaTime = (currentTime - lastTime) / 1000;
       lastTime = currentTime;
 
@@ -232,18 +232,19 @@ export default function VaporizeTextCycle({
         case "fadingIn": {
           fadeOpacityRef.current += deltaTime * 1000 / animationDurations.FADE_IN_DURATION;
 
-          // Use particles for fade-in
-          ctx.save();
-          ctx.scale(globalDpr, globalDpr);
-          particlesRef.current.forEach(particle => {
-            particle.x = particle.originalX;
-            particle.y = particle.originalY;
-            const opacity = Math.min(fadeOpacityRef.current, 1) * particle.originalAlpha;
-            const particleColor = particle.color.replace(/[\d.]+\)$/, `${opacity})`);
-            ctx.fillStyle = particleColor;
-            ctx.fillRect(particle.x / globalDpr, particle.y / globalDpr, 1, 1);
-          });
-          ctx.restore();
+          // Fade-in carried its own copy of the same per-particle regex and
+          // fillStyle churn. Set the opacity on the particles and hand them to
+          // the shared renderer, which batches by colour and merges opaque runs
+          // — identical pixels, one code path.
+          {
+            const fade = Math.min(fadeOpacityRef.current, 1);
+            for (const particle of particlesRef.current) {
+              particle.x = particle.originalX;
+              particle.y = particle.originalY;
+              particle.opacity = fade * particle.originalAlpha;
+            }
+            memoizedRenderParticles(ctx, particlesRef.current);
+          }
 
           if (fadeOpacityRef.current >= 1) {
             setAnimationState("waiting");
@@ -577,12 +578,14 @@ const createParticles = (
         // so the reformed text is crisp and solid — matching the static fallback.
         // The original DPR-based reduction washed the text out to a faded grey.
         const originalAlpha = alpha / 255;
+        const rgbPrefix = `rgba(${data[index]}, ${data[index + 1]}, ${data[index + 2]}, `;
         const particle: Particle = {
           x,
           y,
           originalX: x,
           originalY: y,
-          color: `rgba(${data[index]}, ${data[index + 1]}, ${data[index + 2]}, ${originalAlpha})`,
+          color: `${rgbPrefix}${originalAlpha})`,
+          rgbPrefix,
           opacity: originalAlpha,
           originalAlpha,
           velocityX: 0,
@@ -675,20 +678,6 @@ const updateParticles = (
   return allParticlesVaporized;
 };
 
-const renderParticles = (ctx: CanvasRenderingContext2D, particles: Particle[], globalDpr: number) => {
-  ctx.save();
-  ctx.scale(globalDpr, globalDpr);
-
-  particles.forEach(particle => {
-    if (particle.opacity > 0) {
-      const color = particle.color.replace(/[\d.]+\)$/, `${particle.opacity})`);
-      ctx.fillStyle = color;
-      ctx.fillRect(particle.x / globalDpr, particle.y / globalDpr, 1, 1);
-    }
-  });
-
-  ctx.restore();
-};
 
 const resetParticles = (particles: Particle[]) => {
   particles.forEach(particle => {

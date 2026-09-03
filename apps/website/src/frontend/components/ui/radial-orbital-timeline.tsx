@@ -70,17 +70,47 @@ export default function RadialOrbitalTimeline({ timelineData }: RadialOrbitalTim
     });
   };
 
+  /**
+   * Spin only while someone can actually see it.
+   *
+   * This drives a React state update every 50ms — twenty re-renders a second,
+   * each recomputing every node's orbital position — and it used to run from
+   * mount until unmount regardless of whether the section was on screen or the
+   * tab was even in the foreground. On /about that ran alongside the WebGL
+   * shader, which already gates itself exactly this way.
+   *
+   * Nothing about the animation changes when it IS visible.
+   */
+  const [canSpin, setCanSpin] = useState(false);
   useEffect(() => {
-    let rotationTimer: ReturnType<typeof setInterval>;
-    if (autoRotate) {
-      rotationTimer = setInterval(() => {
-        setRotationAngle((prev) => Number(((prev + 0.3) % 360).toFixed(3)));
-      }, 50);
-    }
+    const el = containerRef.current;
+    if (!el) return;
+
+    let onScreen = false;
+    const sync = () => setCanSpin(onScreen && !document.hidden);
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        onScreen = entry.isIntersecting;
+        sync();
+      },
+      { threshold: 0.01 }
+    );
+    io.observe(el);
+    document.addEventListener("visibilitychange", sync);
     return () => {
-      if (rotationTimer) clearInterval(rotationTimer);
+      io.disconnect();
+      document.removeEventListener("visibilitychange", sync);
     };
-  }, [autoRotate]);
+  }, []);
+
+  useEffect(() => {
+    if (!autoRotate || !canSpin) return;
+    const rotationTimer = setInterval(() => {
+      setRotationAngle((prev) => Number(((prev + 0.3) % 360).toFixed(3)));
+    }, 50);
+    return () => clearInterval(rotationTimer);
+  }, [autoRotate, canSpin]);
 
   // Keep the orbit radius inside the container so nodes never clip on mobile.
   useEffect(() => {
