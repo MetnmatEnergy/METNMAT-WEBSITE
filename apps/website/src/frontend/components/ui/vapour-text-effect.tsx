@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect, useState, createElement, useMemo, useCallback, memo } from "react";
 import { renderParticles, type Particle } from "@/frontend/lib/particle-render";
+import { nextSize } from "@/frontend/lib/stable-updates";
 
 // Adapted from the 21st.dev "vaporize text" effect. Trimmed the black-screen demo,
 // added an `onTextChange` callback (so a parent can sync sibling content — e.g. a
@@ -318,7 +319,12 @@ export default function VaporizeTextCycle({
     const resizeObserver = new ResizeObserver(entries => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
-        setWrapperSize({ width, height });
+        // Preserve identity when the size has not really changed. This setter
+        // feeds the effect that calls renderCanvas, and renderCanvas resizes a
+        // child of the element this observer is watching — so an unconditional
+        // new object here is a self-sustaining loop that rebuilds every particle
+        // on every iteration. See lib/stable-updates.
+        setWrapperSize((prev) => nextSize(prev, width, height));
       }
 
       renderCanvas({
@@ -343,10 +349,7 @@ export default function VaporizeTextCycle({
   useEffect(() => {
     if (wrapperRef.current) {
       const rect = wrapperRef.current.getBoundingClientRect();
-      setWrapperSize({
-        width: rect.width,
-        height: rect.height,
-      });
+      setWrapperSize((prev) => nextSize(prev, rect.width, rect.height));
     }
   }, []);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { nextDisplayStyle } from "@/frontend/lib/stable-updates";
 import dynamic from "next/dynamic";
 import { type Tag } from "@/frontend/components/ui/vapour-text-effect";
 import type { Stat } from "@/frontend/lib/placeholder";
@@ -64,12 +65,17 @@ function useDisplayStyle(ref: React.RefObject<HTMLElement | null>): DisplayStyle
     if (!el) return;
     const read = () => {
       const cs = window.getComputedStyle(el);
-      setStyle({
+      const next = {
         color: cs.color,
         fontFamily: cs.fontFamily,
         fontSize: cs.fontSize,
         fontWeight: parseInt(cs.fontWeight) || 400,
-      });
+      };
+      // Both observers below fire far more often than the values change — the
+      // point of watching is to catch a breakpoint or theme switch, which is
+      // rare. An unconditional new object re-rendered every time, and this
+      // object reaches the canvas as `font`, forcing a full particle rebuild.
+      setStyle((prev) => nextDisplayStyle(prev, next));
     };
     read();
     const ro = new ResizeObserver(read);
