@@ -1,0 +1,984 @@
+[
+  {
+    "name": "Silver Silver Chloride Ag/AgCl Reference Electrode Ø2 × 50mm Glass Rod",
+    "slug": "silver-silver-chloride-ag-agcl-reference-electrode-2-50mm-glass-rod",
+    "categorySlug": "reference-electrodes",
+    "shortDesc": "Silver Silver Chloride Ag/AgCl Reference Electrode Ø2 × 50mm Glass Rod — tube diameter 2 mm, effective length 50 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Tube Diameter",
+        "value": "2 mm"
+      },
+      {
+        "label": "Effective Length",
+        "value": "50 mm"
+      },
+      {
+        "label": "Liquid Junction Core",
+        "value": "PTFE filter core"
+      },
+      {
+        "label": "Filling Solution",
+        "value": "3.5M KCl"
+      },
+      {
+        "label": "Potential Stability",
+        "value": "<5 mV"
+      },
+      {
+        "label": "Operating Temperature",
+        "value": "0-100 deg C"
+      }
+    ],
+    "price": 13000
+  },
+  {
+    "name": "Silver Silver Chloride Ag/AgCl Reference Electrode Ø2.4 × 60mm Glass Rod",
+    "slug": "silver-silver-chloride-ag-agcl-reference-electrode-2-4-60mm-glass-rod",
+    "categorySlug": "reference-electrodes",
+    "shortDesc": "Silver Silver Chloride Ag/AgCl Reference Electrode Ø2.4 × 60mm Glass Rod — tube diameter 2.4 mm, effective length 60 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Tube Diameter",
+        "value": "2.4 mm"
+      },
+      {
+        "label": "Effective Length",
+        "value": "60 mm"
+      },
+      {
+        "label": "Liquid Junction Core",
+        "value": "microporous ceramic filter core"
+      },
+      {
+        "label": "Filling Solution",
+        "value": "3.5M KCl"
+      },
+      {
+        "label": "Potential Stability",
+        "value": "<5 mV"
+      },
+      {
+        "label": "Operating Temperature",
+        "value": "0-100 deg C"
+      }
+    ],
+    "price": 13000
+  },
+  {
+    "name": "Silver Silver Chloride Ag/AgCl Reference Electrode Ø4 × 50mm Glass Rod",
+    "slug": "silver-silver-chloride-ag-agcl-reference-electrode-4-50mm-glass-rod",
+    "categorySlug": "reference-electrodes",
+    "shortDesc": "Silver Silver Chloride Ag/AgCl Reference Electrode Ø4 × 50mm Glass Rod — tube diameter 4 mm, effective length 50 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Tube Diameter",
+        "value": "4 mm"
+      },
+      {
+        "label": "Effective Length",
+        "value": "50 mm"
+      },
+      {
+        "label": "Liquid Junction Core",
+        "value": "microporous ceramic filter core"
+      },
+      {
+        "label": "Filling Solution",
+        "value": "3M/3.5M KCl"
+      },
+      {
+        "label": "Potential Stability",
+        "value": "<5 mV"
+      },
+      {
+        "label": "Operating Temperature",
+        "value": "0-100 degrees Celsius"
+      }
+    ],
+    "price": 10000
+  },
+  {
+    "name": "Silver Silver Chloride Ag/AgCl Reference Electrode Ø4 × 90mm Glass Rod",
+    "slug": "silver-silver-chloride-ag-agcl-reference-electrode-4-90mm-glass-rod",
+    "categorySlug": "reference-electrodes",
+    "shortDesc": "Silver Silver Chloride Ag/AgCl Reference Electrode Ø4 × 90mm Glass Rod — tube diameter 4 mm, effective length 90 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Tube Diameter",
+        "value": "4 mm"
+      },
+      {
+        "label": "Effective Length",
+        "value": "90 mm"
+      },
+      {
+        "label": "Liquid Junction Core",
+        "value": "microporous ceramic filter core"
+      },
+      {
+        "label": "Filling Solution",
+        "value": "3M/3.5M KCl"
+      },
+      {
+        "label": "Potential Stability",
+        "value": "<5 mV"
+      },
+      {
+        "label": "Operating Temperature",
+        "value": "0-100 deg C"
+      }
+    ],
+    "price": 7000
+  },
+  {
+    "name": "Silver Silver Chloride Ag/AgCl Reference Electrode Ø6 × 70mm Glass Rod",
+    "slug": "silver-silver-chloride-ag-agcl-reference-electrode-6-70mm-glass-rod",
+    "categorySlug": "reference-electrodes",
+    "shortDesc": "Silver Silver Chloride Ag/AgCl Reference Electrode Ø6 × 70mm Glass Rod — tube diameter 6 mm, effective length 70 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Tube Diameter",
+        "value": "6 mm"
+      },
+      {
+        "label": "Effective Length",
+        "value": "70 mm"
+      },
+      {
+        "label": "Liquid Junction Core",
+        "value": "microporous ceramic filter core"
+      },
+      {
+        "label": "Filling Solution",
+        "value": "3M/3.5M KCl"
+      },
+      {
+        "label": "Potential Stability",
+        "value": "<5 mV"
+      },
+      {
+        "label": "Operating Temperature",
+        "value": "0-100 degrees Celsius"
+      }
+    ],
+    "price": 6000
+  },
+  {
+    "name": "Mercury Oxide Reference Electrode Hg/HgO (Ø4 × 70 mm, Glass Rod)",
+    "slug": "mercury-oxide-reference-electrode-hg-hgo-4-70-mm-glass-rod",
+    "categorySlug": "reference-electrodes",
+    "shortDesc": "Flow Cell Accessories - Mercury Oxide Reference Electrode Hg/HgO Galss Rod Ø4 × 70 — tube diameter 4 mm, effective length 70 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Tube Diameter",
+        "value": "4 mm"
+      },
+      {
+        "label": "Effective Length",
+        "value": "70 mm"
+      },
+      {
+        "label": "Liquid Junction Core",
+        "value": "microporous ceramic filter core"
+      },
+      {
+        "label": "Filling Solution",
+        "value": "1M KOH"
+      },
+      {
+        "label": "Potential Stability",
+        "value": "<5 mV"
+      },
+      {
+        "label": "Operating Temperature",
+        "value": "0-40 deg C"
+      }
+    ],
+    "price": 6000
+  },
+  {
+    "name": "Lengthened Saturated Calomel Electrode Hg/Hg2Cl2 Ø6 × 95mm",
+    "slug": "lengthened-saturated-calomel-electrode-hg-hg2cl2-6-95mm",
+    "categorySlug": "reference-electrodes",
+    "shortDesc": "Lengthened Saturated Calomel Electrode Hg/Hg2Cl2 Ø6 × 95mm — supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 10000
+  },
+  {
+    "name": "Graphite rod counter electrode Ø6 × 60mm",
+    "slug": "graphite-rod-counter-electrode-6-60mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Graphite rod counter electrode Ø6 × 60mm — body material High purity graphite, body diameter 6 mm, body length 60 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Body Material",
+        "value": "High purity graphite"
+      },
+      {
+        "label": "Graphite Purity",
+        "value": "99.99%"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6 mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "60 mm"
+      }
+    ],
+    "price": 3500
+  },
+  {
+    "name": "Graphite rod counter electrode Ø6 × 120mm",
+    "slug": "graphite-rod-counter-electrode-6-120mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Graphite rod counter electrode Ø6 × 120mm — body material High purity graphite, body diameter 6 mm, body length 120 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Body Material",
+        "value": "High purity graphite"
+      },
+      {
+        "label": "Graphite Purity",
+        "value": "99.99%"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6 mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "120 mm"
+      }
+    ],
+    "price": 6000
+  },
+  {
+    "name": "Platinum mesh electrode without diagonal reinforcement 10 × 10mm",
+    "slug": "platinum-mesh-electrode-without-diagonal-reinforcement-10-10mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Platinum mesh electrode without diagonal reinforcement 10 × 10mm — electrode material Platinum 99.95%, body material PTFE, body diameter 6mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Electrode Material",
+        "value": "Platinum 99.95%"
+      },
+      {
+        "label": "Mesh Count",
+        "value": "52"
+      },
+      {
+        "label": "Mesh Wire Diameter",
+        "value": "120 µm"
+      },
+      {
+        "label": "Connection Wire Diameter",
+        "value": "500 µm"
+      },
+      {
+        "label": "Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "80mm"
+      }
+    ],
+    "price": 35000
+  },
+  {
+    "name": "Platinum mesh electrode without diagonal reinforcement 20 × 20mm",
+    "slug": "platinum-mesh-electrode-without-diagonal-reinforcement-20-20mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Platinum mesh electrode without diagonal reinforcement 20 × 20mm — electrode material Platinum 99.95%, body material PTFE, body diameter 6mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Electrode Material",
+        "value": "Platinum 99.95%"
+      },
+      {
+        "label": "Mesh Count",
+        "value": "52"
+      },
+      {
+        "label": "Mesh Wire Diameter",
+        "value": "120 µm"
+      },
+      {
+        "label": "Connection Wire Diameter",
+        "value": "500 µm"
+      },
+      {
+        "label": "Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "80mm"
+      }
+    ],
+    "price": 25000
+  },
+  {
+    "name": "Platinum Sheet Counter Electrode 10 × 10 × 0.1mm",
+    "slug": "platinum-sheet-counter-electrode-10-10-0-1mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Platinum Sheet Counter Electrode 10 × 10 × 0.1mm — electrode material Platinum 99.95%, body material PTFE, body diameter 6 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Electrode Material",
+        "value": "Platinum 99.95%"
+      },
+      {
+        "label": "Size",
+        "value": "10x10 mm²"
+      },
+      {
+        "label": "Thickness",
+        "value": "0.1 mm"
+      },
+      {
+        "label": "Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6 mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "80 mm"
+      }
+    ],
+    "price": 20000
+  },
+  {
+    "name": "Platinum Sheet Counter Electrode 15 × 20 × 0.1mm",
+    "slug": "platinum-sheet-counter-electrode-15-20-0-1mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Platinum Sheet Counter Electrode 15 × 20 × 0.1mm — electrode material Platinum 99.95%, body material PTFE, body diameter 6 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Electrode Material",
+        "value": "Platinum 99.95%"
+      },
+      {
+        "label": "Size",
+        "value": "15x20 mm²"
+      },
+      {
+        "label": "Thickness",
+        "value": "0.1 mm"
+      },
+      {
+        "label": "Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6 mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "80 mm"
+      }
+    ],
+    "price": 16000
+  },
+  {
+    "name": "Platinum Sheet Counter Electrode 20 × 20 × 0.1mm",
+    "slug": "platinum-sheet-counter-electrode-20-20-0-1mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Platinum Sheet Counter Electrode 20 × 20 × 0.1mm — electrode material Platinum 99.95%, body material PTFE, body diameter 6 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Electrode Material",
+        "value": "Platinum 99.95%"
+      },
+      {
+        "label": "Size",
+        "value": "20x20 mm²"
+      },
+      {
+        "label": "Thickness",
+        "value": "0.1 mm"
+      },
+      {
+        "label": "Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6 mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "80 mm"
+      }
+    ],
+    "price": 35000
+  },
+  {
+    "name": "Platinum Sheet Counter Electrode 30 × 30 × 0.1mm",
+    "slug": "platinum-sheet-counter-electrode-30-30-0-1mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Platinum Sheet Counter Electrode 30 × 30 × 0.1mm — electrode material Platinum 99.95%, body material PTFE, body diameter 6 mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Electrode Material",
+        "value": "Platinum 99.95%"
+      },
+      {
+        "label": "Size",
+        "value": "30x30 mm²"
+      },
+      {
+        "label": "Thickness",
+        "value": "0.1 mm"
+      },
+      {
+        "label": "Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6 mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "80 mm"
+      }
+    ],
+    "price": 50000
+  },
+  {
+    "name": "Noble metal plate platinum 20 × 20 × 0.1mm",
+    "slug": "noble-metal-plate-platinum-20-20-0-1mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Fits all major brands of potentiostats• This is a customized item, invalid for refund or exchange.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 30000
+  },
+  {
+    "name": "Noble metal plate platinum 30 × 30 × 0.1mm",
+    "slug": "noble-metal-plate-platinum-30-30-0-1mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Fits all major brands of potentiostats• This is a customized item, invalid for refund or exchange.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 35000
+  },
+  {
+    "name": "Platinum Wire Counter Electrode Ø0.5 × 37mm PTFE Rod",
+    "slug": "platinum-wire-counter-electrode-0-5-37mm-ptfe-rod",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Platinum Wire Counter Electrode Ø0.5 × 37mm PTFE Rod — electrode material Platinum 99.95%, body material PTFE, body diameter 6mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Electrode Material",
+        "value": "Platinum 99.95%"
+      },
+      {
+        "label": "Wire Diameter",
+        "value": "500 µm"
+      },
+      {
+        "label": "Wire Length",
+        "value": "37 mm"
+      },
+      {
+        "label": "Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "40mm"
+      }
+    ],
+    "price": 25000
+  },
+  {
+    "name": "Platinum Wire Counter Electrode Ø0.5 × 37mm PEEK Rod",
+    "slug": "platinum-wire-counter-electrode-0-5-37mm-peek-rod",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Platinum Wire Counter Electrode Ø0.5 × 37mm PEEK Rod — electrode material Platinum 99.95%, body material PEEK, body diameter 6mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Electrode Material",
+        "value": "Platinum 99.95%"
+      },
+      {
+        "label": "Wire Diameter",
+        "value": "500 µm"
+      },
+      {
+        "label": "Wire Length",
+        "value": "37 mm"
+      },
+      {
+        "label": "Body Material",
+        "value": "PEEK"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "40mm"
+      }
+    ],
+    "price": 50000
+  },
+  {
+    "name": "Platinum Wire Ring Counter Electrode Ø0.5 × 100mm",
+    "slug": "platinum-wire-ring-counter-electrode-0-5-100mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Platinum Wire Ring Counter Electrode Ø0.5 × 100mm — electrode material Platinum 99.95%, body material PEEK, body diameter 6mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Electrode Material",
+        "value": "Platinum 99.95%"
+      },
+      {
+        "label": "Helix Inner Diameter",
+        "value": "4 mm"
+      },
+      {
+        "label": "Helix Outer Diameter",
+        "value": "5 mm"
+      },
+      {
+        "label": "Wire Diameter",
+        "value": "500 µm"
+      },
+      {
+        "label": "Wire Length",
+        "value": "100 mm (80 mm long helix, 20 mm long straight wire)"
+      },
+      {
+        "label": "Body Material",
+        "value": "PEEK"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "40mm"
+      }
+    ],
+    "price": 30000
+  },
+  {
+    "name": "Gold Wire Ring Counter Electrode Ø0.5 × 100mm",
+    "slug": "gold-wire-ring-counter-electrode-0-5-100mm",
+    "categorySlug": "counter-electrodes",
+    "shortDesc": "Gold Wire Ring Counter Electrode Ø0.5 × 100mm — electrode material Gold 99.99%, body material PEEK, body diameter 6mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Electrode Material",
+        "value": "Gold 99.99%"
+      },
+      {
+        "label": "Helix Inner Diameter",
+        "value": "4 mm"
+      },
+      {
+        "label": "Helix Outer Diameter",
+        "value": "5 mm"
+      },
+      {
+        "label": "Wire Diameter",
+        "value": "500 µm"
+      },
+      {
+        "label": "Wire Length",
+        "value": "100 mm (80 mm long helix, 20 mm long straight wire)"
+      },
+      {
+        "label": "Body Material",
+        "value": "PEEK"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "40mm"
+      }
+    ],
+    "price": 60000
+  },
+  {
+    "name": "L-Shaped Glassy Carbon Electrode PEEK Rod Ø3mm",
+    "slug": "l-shaped-glassy-carbon-electrode-peek-rod-3mm",
+    "categorySlug": "working-electrodes",
+    "shortDesc": "L-Shaped Glassy Carbon Electrode PEEK Rod Ø3mm — body material PTFE, body diameter 6mm, body length 80mmL-rod diameter:12mmL-rod length:12mm. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Disk Diameter",
+        "value": "3mmconductive copper rod: Ø2*20 mm"
+      },
+      {
+        "label": "Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Body Diameter",
+        "value": "6mm"
+      },
+      {
+        "label": "Body Length",
+        "value": "80mmL-rod diameter:12mmL-rod length:12mm"
+      }
+    ],
+    "price": 11000
+  },
+  {
+    "name": "Nickel Foam Electrode (200 × 300 × 1.5 mm)",
+    "slug": "nickel-foam-electrode-200-300-1-5-mm",
+    "categorySlug": "carbon-gdl",
+    "shortDesc": "Nickel Foam (Electrode), (Purity > 99% with Cell Density - 110 PPI), (Size: W 20 — size W 200 mm x L 300 mm x T 1.5 mm, thickness 1.5 mm, porosity 80%-90%. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Size",
+        "value": "W 200 mm x L 300 mm x T 1.5 mm"
+      },
+      {
+        "label": "Cell Size (PPI)",
+        "value": "110 PPI"
+      },
+      {
+        "label": "Thickness",
+        "value": "1.5 mm"
+      },
+      {
+        "label": "Porosity",
+        "value": "80%-90%"
+      }
+    ],
+    "price": 2125
+  },
+  {
+    "name": "Copper Foam (200mm x 300mm)",
+    "slug": "copper-foam-200mm-x-300mm",
+    "categorySlug": "carbon-gdl",
+    "shortDesc": "Copper Foam (200mm x 300mm) — thickness 1.5 mm, porosity 95%-98%. Supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Cell Size (PPI)",
+        "value": "110 PPI"
+      },
+      {
+        "label": "Thickness",
+        "value": "1.5 mm"
+      },
+      {
+        "label": "Size & Shape",
+        "value": "200mm x 300mm"
+      },
+      {
+        "label": "Porosity",
+        "value": "95%-98%"
+      }
+    ],
+    "price": 5500
+  },
+  {
+    "name": "Conducting Carbon Fiber Cloth (CT) (200mm x 200mm)",
+    "slug": "conducting-carbon-fiber-cloth-ct-200mm-x-200mm",
+    "categorySlug": "carbon-gdl",
+    "shortDesc": "Carbon fiber content 95%Woven typeSheet Resistance 3-5 Ohm/sqSize 200mm x 200mmThickness 0.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      },
+      {
+        "label": "Surface Area",
+        "value": "300-400 m2/g (BET)"
+      }
+    ],
+    "price": 4500
+  },
+  {
+    "name": "Gas Diffusion Layer (GDL) Carbon Paper for CO₂ Electrolysis Flow Cell",
+    "slug": "gas-diffusion-layer-gdl-carbon-paper-for-co2-electrolysis-flow-cell",
+    "categorySlug": "carbon-gdl",
+    "shortDesc": "CO₂ reduction (CO2RR), water electrolysis, hydrogen production, fuel cell research, electrocatalysis, and advanced electrochemical applications.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 9000
+  },
+  {
+    "name": "PiperION® AEM",
+    "slug": "piperion-aem",
+    "categorySlug": "aem-membranes",
+    "shortDesc": "ION® AEM MembraneThickness: 20 µmStructure: Self-SupportingProduct DescriptionPiperION® AEM (20 µm, Self-Supporting) is a high-performance Anion Exchange Membrane (AEM) designed for advanced electrochemical applications.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 18500
+  },
+  {
+    "name": "Perfluorosulfonic acid (PFSA) Resin Dispersion (5wt%) Solution",
+    "slug": "perfluorosulfonic-acid-pfsa-resin-dispersion-5wt-solution",
+    "categorySlug": "consumables",
+    "shortDesc": "Perfluorosulfonic acid (PFSA) Resin Dispersion (5wt%) Solution — supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      },
+      {
+        "label": "Volume",
+        "value": "50 ml"
+      }
+    ],
+    "price": 10999
+  },
+  {
+    "name": "Fumion® FAA-3-SOLUT-10 Anion Exchange Ionomer Dispersion",
+    "slug": "fumion-faa-3-solut-10-anion-exchange-ionomer-dispersion",
+    "categorySlug": "consumables",
+    "shortDesc": "AEM) dispersion developed for advanced electrochemical research, alkaline water electrolysis, CO₂ electrolysis, fuel cells, membrane electrode assembly (MEA) fabrication, and catalyst ink preparation.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 6500
+  },
+  {
+    "name": "100 mL Water-Jacketed H-Cell – Three-Electrode Electrochemical Cell",
+    "slug": "100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell",
+    "categorySlug": "reactor-cell",
+    "shortDesc": "L Water-Jacketed H-Cell The 100 mL Water-Jacketed H-Cell is a laboratory H-type electrochemical cell designed for controlled three-electrode electrochemical experiments.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 65000
+  },
+  {
+    "name": "H-Cell Electrochemical Cell",
+    "slug": "h-cell-electrochemical-cell",
+    "categorySlug": "reactor-cell",
+    "shortDesc": "H-Cell Electrochemical Cell — supplied by METNMAT for laboratory electrochemical research.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 32000
+  },
+  {
+    "name": "Electrowinning System – PP Electrochemical Cell with SS316 & Titanium Electrodes",
+    "slug": "electrowinning-system-pp-electrochemical-cell-with-ss316-titanium-electrodes",
+    "categorySlug": "reactor-cell",
+    "shortDesc": "Pair Electrowinning System The 6-Pair Electrowinning System is a laboratory-scale electrochemical system designed for electrowinning, metal recovery, electrochemical deposition, and electrode performance studies.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 98000
+  },
+  {
+    "name": "5 cm² Research-Scale Electrolyzer Cell – Graphite & Nickel Serpentine Flow Field",
+    "slug": "5-cm2-research-scale-electrolyzer-cell-graphite-nickel-serpentine-flow-field",
+    "categorySlug": "water-splitting-reactors",
+    "shortDesc": "The 5 cm² Research-Scale Electrolyzer Cell is a compact laboratory electrochemical cell designed for water electrolysis, CO₂ electrolysis, electrocatalysis, catalyst evaluation, and membrane-based electrochemical research.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 158000
+  },
+  {
+    "name": "Transparent Water Splitting Reactor",
+    "slug": "transparent-water-splitting-reactor",
+    "categorySlug": "water-splitting-reactors",
+    "shortDesc": "Water Splitting Reactor (Model EWB) is a precision-engineered H-type electrochemical cell designed for advanced water splitting, hydrogen generation, oxygen evolution, electrocatalysis, and renewable energy research.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 47000
+  },
+  {
+    "name": "PTFE Photoelectrochemical Cell for Three-Electrode Quantum Efficiency & IPCE",
+    "slug": "ptfe-photoelectrochemical-cell-for-three-electrode-quantum-efficiency-ipce",
+    "categorySlug": "photo-ec-reactors",
+    "shortDesc": "FE Photoelectrochemical Cell for Three-Electrode Quantum Efficiency & IPCE Testing The PTFE Photoelectrochemical Cell is a compact three-electrode cell designed for laboratory photoelectrochemical and optical measurements.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      },
+      {
+        "label": "Dimensions",
+        "value": "100 × 100 × 40 mmInternal Chamber: 40 × 40 mmOptical Window: QuartzWindow"
+      }
+    ],
+    "price": 140000
+  },
+  {
+    "name": "In Situ Raman Electrochemical Cell for Operando Raman Spectroscopy",
+    "slug": "in-situ-raman-electrochemical-cell-for-operando-raman-spectroscopy",
+    "categorySlug": "co2-electrolysis",
+    "shortDesc": "In Situ Raman Electrochemical Cell The In Situ Raman Electrochemical Cell is a specialized electrochemical cell designed for in situ and operando Raman spectroscopy of electrochemical reactions.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 182000
+  },
+  {
+    "name": "PEEK CO₂RR Gas Diffusion Flow Cell – 20 × 20 mm CO₂ Electrochemical Flow Cell",
+    "slug": "peek-co2rr-gas-diffusion-flow-cell-20-20-mm-co2-electrochemical-flow-cell",
+    "categorySlug": "co2-electrolysis",
+    "shortDesc": "The PEEK CO₂RR Gas Diffusion Flow Cell is a compact electrochemical flow cell designed for carbon dioxide reduction reaction (CO₂RR), gas diffusion electrode (GDE) testing, CO₂ electrolysis, and electrocatalysis research.",
+    "specs": [
+      {
+        "label": "Material",
+        "value": "PEEKCell Type: CO₂RR Gas Diffusion Flow Cell"
+      },
+      {
+        "label": "Active Area",
+        "value": "20 × 20 mmGeometric Electrode Area: 4 cm²Overall Cell"
+      },
+      {
+        "label": "Dimensions",
+        "value": "80 × 70 mmPlate"
+      }
+    ],
+    "price": 178000
+  },
+  {
+    "name": "Microbial Fuel Cell (MFC) Reactor",
+    "slug": "microbial-fuel-cell-mfc-reactor",
+    "categorySlug": "fuel-cells",
+    "shortDesc": "The reactor enables researchers to investigate the direct conversion of chemical energy stored in organic matter into electrical energy through the metabolic activity of electroactive microorganisms.",
+    "specs": [
+      {
+        "label": "Supplied By",
+        "value": "METNMAT"
+      },
+      {
+        "label": "Application",
+        "value": "Laboratory electrochemical research"
+      }
+    ],
+    "price": 88500
+  }
+]

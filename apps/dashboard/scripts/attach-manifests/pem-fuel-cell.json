@@ -1,0 +1,25 @@
+{
+  "slug": "pem-fuel-cell-hardware",
+  "images": [
+    {
+      "file": "PEM Fuel Cell Hardware.webp",
+      "alt": "PEM Fuel Cell Hardware - three-quarter view with the gold-plated copper current collectors between the end plates"
+    },
+    {
+      "file": "PEM Fuel Cell Hardware 2.webp",
+      "alt": "PEM Fuel Cell Hardware - cathode side, showing the labelled oxygen inlet and outlet ports and the aluminium end plate"
+    },
+    {
+      "file": "PEM Fuel Cell Hardware 3.webp",
+      "alt": "PEM Fuel Cell Hardware - anode side, showing the labelled hydrogen inlet and outlet ports"
+    },
+    {
+      "file": "PEM Fuel Cell Hardware 4.webp",
+      "alt": "PEM Fuel Cell Hardware - angled view of the assembled single cell and its tie bolts"
+    },
+    {
+      "file": "PEM Fuel Cell Hardware 5.webp",
+      "alt": "PEM Fuel Cell Hardware - components laid out: graphite flow-field plates, copper current collectors, gaskets and the membrane electrode assembly"
+    }
+  ]
+}

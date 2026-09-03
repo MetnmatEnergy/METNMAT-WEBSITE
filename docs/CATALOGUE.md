@@ -16,14 +16,93 @@ only gate `enforceProductImageSpec` still applies is a resolution floor
 (shortest side ≥ 900 px), which keeps genuine camera photos in and
 messenger-app recompresses out.
 
-Composition is handled by the CMS itself: on upload, the display-derivative
-hook (`src/hooks/product-display-derivative.ts`) detects the product against
-the studio background, stores the detected focal point (staff can drag-correct
-it in the admin — doing so recomposes the derivative), and generates a
-subject-aware **`display` size (exact 4:3, 1600 × 1200 WebP)** that the shop
-grid, product gallery and cards all render. Only background is ever cropped;
-nothing is stretched; the **stored original stays untouched** and is what the
+Composition is handled by the CMS itself. On upload, the display-derivative
+hook (`src/hooks/product-display-derivative.ts`) runs the photograph through
+`src/lib/product-image-analysis.ts` and generates a subject-aware **`display`
+size (exact 4:3, 1600 × 1200 WebP)** that the shop grid, product gallery and
+cards all render. The **stored original stays untouched** and is what the
 lightbox serves as the complete photograph.
+
+    upload → straighten → find the background → find the product
+           → settle the boundary → reframe to 4:3 inside the photograph
+           → display derivative → product page
+
+- **Straighten.** A magnitude-weighted histogram of gradient orientations
+  finds the camera tilt the scene's near-axis structure shares. Only a slight,
+  coherent tilt (0.4°–8°) is corrected — a deliberate three-quarter angle is
+  photography, not error, and is left exactly as shot.
+- **Find the background.** The border is sampled per side in thirds and the
+  samples clustered, so a split scene (grey curtain over a white table) is
+  understood as two backgrounds rather than averaged into one. A cluster needs
+  two supporting segments, so a product crossing one border edge cannot
+  register its own colour as background. Tolerance comes from the *median*
+  absolute deviation, never mean + kσ — see the warning below.
+- **Find the product.** Foreground pixels group into connected components;
+  the strongest central one is the product. Nearby pieces (probes, ferrules,
+  tubing) join by proximity, and distant-but-substantial ones join by mass, so
+  a full rig of pumps and reservoirs stays whole. Contrast depth gates both,
+  which is what keeps a lit patch of backdrop from qualifying as product.
+- **Settle the boundary.** The masks above are wrong in both directions on a
+  real studio backdrop — a curtain fold and the product's own cast shadow clear
+  the colour tolerance, while a pale probe on pale paper barely does — so the
+  box is not trusted to them. Each pixel's contrast depth, saturated so a dark
+  steel pump head and a pale PTFE cell weigh the same, is averaged along every
+  row and column. The edges settle where that profile has only a token share of
+  the subject's energy outside them, then walk back out while an adjacent line
+  still carries material. Integrating rather than thresholding is what lets a
+  white housing with a near-zero-contrast middle stay whole. **A looser frame
+  always beats a clipped product.**
+- **Reframe, inside the photograph.** The 4:3 window is sized so the subject's
+  binding dimension fills **84 %** of the canvas along that axis, and centred on
+  the product (box centre pulled toward its mass, so a cell trailing a metre of
+  tubing still sits centred on its body). It is then held to what the photograph
+  can actually supply — the largest 4:3 rectangle inside it — and slid back in
+  if it overhangs. Where even that cannot hold the whole product (a tall product
+  shot in portrait), the frame is taken from the product instead of the ratio —
+  cropped to the product plus the same margin, grown toward 4:3 as far as the
+  photograph allows — and the canvas beside it is left clear, which the shop
+  renders as the card's own background. Note what this is *not*: showing the
+  whole photograph. That keeps every inch of empty backdrop above and below the
+  product, so the fit is bound by the emptiness and the product lands at a third
+  of the frame while a landscape shot of the same pump fills it — the two then
+  sit side by side in the grid looking like different products.
+- **Nothing is synthesised.** Earlier versions continued the backdrop into
+  whatever the photograph could not fill — stretched, mirrored, smoothed,
+  washed toward the scene colour. Every one of them left something on the flank:
+  a smear, the backdrop board's edge printed twice, a tonal band. The rule now
+  is that every pixel of the crop is a piece of the photograph. Only background
+  is ever cropped; nothing is stretched or distorted; upscaling is capped at ×2.
+
+Staff can drag the focal point in the admin to overrule the automatic
+composition; doing so recomposes the derivative around their choice.
+
+### Re-running the pipeline on photographs already uploaded
+
+Tuning the analysis does not touch existing derivatives. To re-run it over a
+product that is already in the CMS — originals untouched, only the `display`
+derivative and the auto focal point refreshed, through the same hook that runs
+on upload:
+
+```bash
+npx tsx scripts/recompose-display.ts --target=dev --slug=<product-slug>
+```
+
+`--media=<id>` recomposes a single asset. Note that a recompose re-seeds the
+focal point from fresh detection, so a point staff dragged by hand is replaced;
+re-drag it afterwards if it mattered. On prod the running CMS must be reachable
+at `CMS_URL`, since the hook re-reads stored originals through it.
+
+### ⚠ Never widen the background tolerance to "be safe"
+
+It is the opposite of safe, and this has already reached the live gallery once.
+A shaded wall or a curtain fold drags the tail of the border's colour
+distribution; `mean + kσ` balloons; the tolerance grows until a pale product —
+cream PEEK, beige ferrules — falls *inside* it and is classified as background.
+The visible symptom is a gallery image with the top of the product sliced off,
+which reads like a cropping bug and is a detection bug. `BG_THRESHOLD_CEILING`
+is 38 because a pale product on a white table is only ~40 apart in RGB; wider
+than that stops separating them at all. `test/product-image-analysis.test.ts`
+reproduces the scene and fails on the old estimator.
 
 `scripts/normalize-product-images.ts` is no longer needed for the website —
 keep it for `--amazon`, which produces the 2000 × 2000 opaque-white square

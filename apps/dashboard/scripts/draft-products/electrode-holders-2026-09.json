@@ -1,0 +1,390 @@
+[
+  {
+    "name": "PTFE Replaceable Platinum Electrode Holder",
+    "slug": "ptfe-replaceable-platinum-electrode-holder",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PTFE body, for a platinum working electrode, electrode size 10 × 15mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Held Electrode Material",
+        "value": "Platinum"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "10 × 15mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 20000
+  },
+  {
+    "name": "PEEK Replaceable Glassy Carbon Electrode Holder Slit 1mm",
+    "slug": "peek-replaceable-glassy-carbon-electrode-holder-slit-1mm",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PEEK body, for a glassy carbon working electrode, electrode size slit 1mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PEEK"
+      },
+      {
+        "label": "Held Electrode Material",
+        "value": "Glassy Carbon"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "slit 1mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 20000
+  },
+  {
+    "name": "PTFE Replaceable Electrode Holder With Stainless Steel Crocodile Clip",
+    "slug": "ptfe-replaceable-electrode-holder-with-stainless-steel-crocodile-clip",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PTFE body, electrode size slit 3mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "slit 3mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 16000
+  },
+  {
+    "name": "PTFE Replaceable Titanium Electrode Holder",
+    "slug": "ptfe-replaceable-titanium-electrode-holder",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PTFE body, for a titanium working electrode, electrode size 10 × 15mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Held Electrode Material",
+        "value": "Titanium"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "10 × 15mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 10000
+  },
+  {
+    "name": "PTFE Replaceable Electrode Holder (MPG-10)",
+    "slug": "ptfe-replaceable-electrode-holder-mpg-10",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "PTFE interchangeable electrode holder (MPG-10) that clamps sheet material as the working electrode, with a gold-plated conducting pin. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "Sheet material"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 5999
+  },
+  {
+    "name": "Lengthened PTFE Replaceable Platinum Electrode Holder Ø6 × 100mm",
+    "slug": "lengthened-ptfe-replaceable-platinum-electrode-holder-6-100mm",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PTFE body, for a platinum working electrode, electrode size 10 × 15mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Held Electrode Material",
+        "value": "Platinum"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "10 × 15mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 20000
+  },
+  {
+    "name": "PTFE Replaceable Copper Electrode Holder",
+    "slug": "ptfe-replaceable-copper-electrode-holder",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PTFE body, for a copper working electrode, electrode size 10 × 15mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Held Electrode Material",
+        "value": "Copper"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "10 × 15mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 20000
+  },
+  {
+    "name": "PEEK Replaceable Glassy Carbon Electrode Holder Slit 8mm",
+    "slug": "peek-replaceable-glassy-carbon-electrode-holder-slit-8mm",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PEEK body, for a glassy carbon working electrode, electrode size slit 8mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PEEK"
+      },
+      {
+        "label": "Held Electrode Material",
+        "value": "Glassy Carbon"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "slit 8mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 16000
+  },
+  {
+    "name": "Detachable PEEK Replaceable Glassy Carbon Electrode Holder",
+    "slug": "detachable-peek-replaceable-glassy-carbon-electrode-holder",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PEEK body, for a glassy carbon working electrode, electrode size Ø3mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PEEK"
+      },
+      {
+        "label": "Held Electrode Material",
+        "value": "Glassy Carbon"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "Ø3mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 30000
+  },
+  {
+    "name": "PEEK Replaceable L-Shaped Glassy Carbon Electrode Holder Slit 3mm",
+    "slug": "peek-replaceable-l-shaped-glassy-carbon-electrode-holder-slit-3mm",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PEEK body, for a glassy carbon working electrode, electrode size slit 3mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PEEK"
+      },
+      {
+        "label": "Held Electrode Material",
+        "value": "Glassy Carbon"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "slit 3mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 20000
+  },
+  {
+    "name": "Detachable PEEK Replaceable Platinum Electrode Holder",
+    "slug": "detachable-peek-replaceable-platinum-electrode-holder",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PEEK body, for a platinum working electrode, electrode size 5 × 5mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PEEK"
+      },
+      {
+        "label": "Held Electrode Material",
+        "value": "Platinum"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "5 × 5mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 20000
+  },
+  {
+    "name": "PEEK Replaceable Glassy Carbon Electrode Holder Slit 3mm",
+    "slug": "peek-replaceable-glassy-carbon-electrode-holder-slit-3mm",
+    "categorySlug": "electrode-holders",
+    "shortDesc": "Replaceable working-electrode holder — PEEK body, for a glassy carbon working electrode, electrode size slit 3mm. Fits all major brands of potentiostats.",
+    "specs": [
+      {
+        "label": "Holder Body Material",
+        "value": "PEEK"
+      },
+      {
+        "label": "Held Electrode Material",
+        "value": "Glassy Carbon"
+      },
+      {
+        "label": "Electrode Size",
+        "value": "slit 3mm"
+      },
+      {
+        "label": "Compatibility",
+        "value": "Fits all major brands of potentiostats"
+      },
+      {
+        "label": "Contact Pin",
+        "value": "Gold-plated conducting pin"
+      },
+      {
+        "label": "Type",
+        "value": "Replaceable / interchangeable working-electrode holder"
+      }
+    ],
+    "price": 16000
+  }
+]

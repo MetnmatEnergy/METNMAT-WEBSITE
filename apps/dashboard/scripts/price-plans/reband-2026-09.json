@@ -1,0 +1,79 @@
+[
+ {
+  "slug": "microbial-fuel-cell-mfc-reactor",
+  "name": "Microbial Fuel Cell (MFC) Reactor",
+  "cat": "fuel-cells",
+  "from": 88500,
+  "to": 44999
+ },
+ {
+  "slug": "peek-co2rr-gas-diffusion-flow-cell-20-20-mm-co2-electrochemical-flow-cell",
+  "name": "PEEK CO₂RR Gas Diffusion Flow Cell – 20 × 20 mm CO₂ Electrochemical Flow Cell",
+  "cat": "co2-electrolysis",
+  "from": 178000,
+  "to": 54999
+ },
+ {
+  "slug": "in-situ-raman-electrochemical-cell-for-operando-raman-spectroscopy",
+  "name": "In Situ Raman Electrochemical Cell for Operando Raman Spectroscopy",
+  "cat": "co2-electrolysis",
+  "from": 182000,
+  "to": 54999
+ },
+ {
+  "slug": "ptfe-photoelectrochemical-cell-for-three-electrode-quantum-efficiency-ipce",
+  "name": "PTFE Photoelectrochemical Cell for Three-Electrode Quantum Efficiency & IPCE",
+  "cat": "photo-ec-reactors",
+  "from": 140000,
+  "to": 59999
+ },
+ {
+  "slug": "transparent-water-splitting-reactor",
+  "name": "Transparent Water Splitting Reactor",
+  "cat": "water-splitting-reactors",
+  "from": 47000,
+  "to": 49999
+ },
+ {
+  "slug": "5-cm2-research-scale-electrolyzer-cell-graphite-nickel-serpentine-flow-field",
+  "name": "5 cm² Research-Scale Electrolyzer Cell – Graphite & Nickel Serpentine Flow Field",
+  "cat": "water-splitting-reactors",
+  "from": 158000,
+  "to": 49999
+ },
+ {
+  "slug": "piperion-aem",
+  "name": "PiperION® AEM",
+  "cat": "aem-membranes",
+  "from": 18500,
+  "to": 5499
+ },
+ {
+  "slug": "l-shaped-glassy-carbon-electrode-peek-rod-3mm",
+  "name": "L-Shaped Glassy Carbon Electrode PEEK Rod Ø3mm",
+  "cat": "working-electrodes",
+  "from": 11000,
+  "to": 7999
+ },
+ {
+  "slug": "gold-wire-ring-counter-electrode-0-5-100mm",
+  "name": "Gold Wire Ring Counter Electrode Ø0.5 × 100mm",
+  "cat": "counter-electrodes",
+  "from": 60000,
+  "to": 8999
+ },
+ {
+  "slug": "noble-metal-plate-platinum-30-30-0-1mm",
+  "name": "Noble metal plate platinum 30 × 30 × 0.1mm",
+  "cat": "counter-electrodes",
+  "from": 35000,
+  "to": 8999
+ },
+ {
+  "slug": "noble-metal-plate-platinum-20-20-0-1mm",
+  "name": "Noble metal plate platinum 20 × 20 × 0.1mm",
+  "cat": "counter-electrodes",
+  "from": 30000,
+  "to": 8999
+ }
+]

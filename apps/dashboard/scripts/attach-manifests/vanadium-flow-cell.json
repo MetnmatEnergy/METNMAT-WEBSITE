@@ -1,0 +1,25 @@
+{
+  "slug": "vanadium-flow-cell-reactor",
+  "images": [
+    {
+      "file": "Vanadium Flow Cell Reactor.webp",
+      "alt": "Vanadium Flow Cell Reactor - three-quarter view of the transparent PMMA dual-chamber cell with its copper current tabs and wing-screw clamping"
+    },
+    {
+      "file": "Vanadium Flow Cell Reactor 2.webp",
+      "alt": "Vanadium Flow Cell Reactor - front view showing both chambers and the electrolyte inlet and outlet lines"
+    },
+    {
+      "file": "Vanadium Flow Cell Reactor 3.webp",
+      "alt": "Vanadium Flow Cell Reactor - top three-quarter view of the assembled cell"
+    },
+    {
+      "file": "Vanadium Flow Cell Reactor 4.webp",
+      "alt": "Vanadium Flow Cell Reactor - side view of the clamped stack and tubing connections"
+    },
+    {
+      "file": "Vanadium Flow Cell Reactor 5.webp",
+      "alt": "Vanadium Flow Cell Reactor - the cell dismantled into its end plates, flow-field plates, gaskets and fasteners"
+    }
+  ]
+}

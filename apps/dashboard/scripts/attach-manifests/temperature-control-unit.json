@@ -1,0 +1,21 @@
+{
+  "slug": "temperature-controlling-unit",
+  "images": [
+    {
+      "file": "Temperature Controlling Unit.webp",
+      "alt": "Temperature Controlling Unit - the control enclosure with its two PID temperature controllers, channel switches and circuit breaker, shown beside the cell it heats"
+    },
+    {
+      "file": "Temperature Controlling Unit 2.webp",
+      "alt": "Temperature Controlling Unit - front panel with both controllers powered and the heater channels switched on"
+    },
+    {
+      "file": "Temperature Controlling Unit 3.webp",
+      "alt": "Temperature Controlling Unit - close view of the two independently labelled PID temperature controllers"
+    },
+    {
+      "file": "Temperature Controlling Unit 4.webp",
+      "alt": "Temperature Controlling Unit - the control unit powering the heated cell it regulates"
+    }
+  ]
+}

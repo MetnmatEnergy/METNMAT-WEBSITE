@@ -1,0 +1,25 @@
+{
+  "slug": "triboelectric-measurement-setup",
+  "images": [
+    {
+      "file": "Triboelectric Measurement Setup.webp",
+      "alt": "Triboelectric Measurement Setup - three-quarter view along the actuator towards the sample holder"
+    },
+    {
+      "file": "Triboelectric Measurement Setup 2.webp",
+      "alt": "Triboelectric Measurement Setup - the complete rig: motor-driven linear actuator, sample stage and the Delta touchscreen control panel"
+    },
+    {
+      "file": "Triboelectric Measurement Setup 3.webp",
+      "alt": "Triboelectric Measurement Setup - side view of the drive, guide rails and mounting feet"
+    },
+    {
+      "file": "Triboelectric Measurement Setup 4.webp",
+      "alt": "Triboelectric Measurement Setup - opposite side view showing the control enclosure and indicator lamp"
+    },
+    {
+      "file": "Triboelectric Measurement Setup 5.webp",
+      "alt": "Triboelectric Measurement Setup - angled view of the assembled bench setup"
+    }
+  ]
+}

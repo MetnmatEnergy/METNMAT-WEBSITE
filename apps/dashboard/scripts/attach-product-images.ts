@@ -12,6 +12,13 @@
  *   npx tsx scripts/attach-product-images.ts scripts/attach-manifests/<product>.json --target=prod --dry-run
  *   npx tsx scripts/attach-product-images.ts scripts/attach-manifests/<product>.json --target=prod
  *
+ * Several manifests may be passed at once. They are all validated first, then
+ * applied in a SINGLE Payload boot — worth doing when a re-process sweeps the
+ * catalogue, since booting per product pays for a seed pass and a chatbot
+ * resync every time.
+ *
+ *   npx tsx scripts/attach-product-images.ts scripts/attach-manifests/*.json --target=dev --replace
+ *
  * Manifest shape (committed under scripts/attach-manifests/ so every attach run
  * stays auditable and repeatable):
  *
@@ -55,14 +62,18 @@ const DRY = argv.includes("--dry-run");
 const REPLACE = argv.includes("--replace");
 const IMAGE_DIR = path.resolve(APP_DIR, flag("images") ?? path.join("scripts", "_img_tmp"));
 
-function loadManifest(): AttachManifest {
-  const rel = argv.find((a) => !a.startsWith("--") && a.endsWith(".json"));
-  if (!rel) {
+function loadManifests(): AttachManifest[] {
+  const rels = argv.filter((a) => !a.startsWith("--") && a.endsWith(".json"));
+  if (rels.length === 0) {
     console.error(
-      "Usage: npx tsx scripts/attach-product-images.ts <manifest.json> --target=dev|prod [--images <dir>] [--dry-run] [--replace]"
+      "Usage: npx tsx scripts/attach-product-images.ts <manifest.json…> --target=dev|prod [--images <dir>] [--dry-run] [--replace]"
     );
     process.exit(2);
   }
+  return rels.map(loadOne);
+}
+
+function loadOne(rel: string): AttachManifest {
   const full = path.resolve(APP_DIR, rel);
   if (!fs.existsSync(full)) {
     console.error(`Manifest not found: ${full}`);
@@ -117,71 +128,89 @@ async function validateFiles(images: ManifestImage[]): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
-  const manifest = loadManifest();
+  const manifests = loadManifests();
   const { target, dbName } = assertTarget(argv);
   assertS3(target);
 
-  console.log(`\ntarget   ${target}  (database "${dbName}")`);
+  console.log(`
+target   ${target}  (database "${dbName}")`);
   console.log(`storage  ${process.env.STORAGE_PROVIDER || "(unset → gcs)"} ${process.env.S3_BUCKET ?? ""}`);
   console.log(`images   ${IMAGE_DIR}`);
-  console.log(`product  ${manifest.slug}`);
-  console.log(`mode     ${DRY ? "DRY RUN — nothing will be written" : "WRITING"}\n`);
+  console.log(`product  ${manifests.map((m) => m.slug).join(", ")}`);
+  console.log(`mode     ${DRY ? "DRY RUN — nothing will be written" : "WRITING"}
+`);
 
-  const errors = await validateFiles(manifest.images);
-  if (errors.length) {
-    console.error("Validation failed:");
-    errors.forEach((e) => console.error(`  ${e}`));
-    process.exit(1);
+  // Validate EVERY manifest before opening the database. A batch that fails
+  // halfway leaves some products updated and some not, which is exactly the
+  // state the single-manifest version was careful to avoid.
+  let total = 0;
+  for (const m of manifests) {
+    const errors = await validateFiles(m.images);
+    if (errors.length) {
+      console.error(`Validation failed for ${m.slug}:`);
+      errors.forEach((e) => console.error(`  ${e}`));
+      process.exit(1);
+    }
+    total += m.images.length;
   }
-  console.log(`${manifest.images.length} image(s) validated against the product master spec.`);
+  console.log(`${total} image(s) across ${manifests.length} product(s) validated against the product master spec.`);
 
   if (DRY) {
     console.log("Dry run — stopping before the database.");
     process.exit(0);
   }
 
+  // Payload boots ONCE for the whole batch. Booting per product costs a seed
+  // pass and a chatbot resync each time, which dominates the run when a
+  // re-process sweeps the whole catalogue.
   const { default: config } = await import("../src/payload.config");
   const payload = await getPayload({ config });
 
-  const found = await payload.find({
-    collection: "products",
-    where: { slug: { equals: manifest.slug } },
-    limit: 1,
-    depth: 0,
-  });
-  const product = found.docs[0];
-  if (!product) {
-    console.error(`Product not found by slug: ${manifest.slug}`);
-    process.exit(1);
-  }
-
-  const existing = ((product as { images?: { image?: unknown }[] }).images ?? []).length;
-  if (existing > 0 && !REPLACE) {
-    console.error(`Product already carries ${existing} image(s). Re-run with --replace to overwrite.`);
-    process.exit(1);
-  }
-
-  const ids: string[] = [];
-  for (const { file, alt } of manifest.images) {
-    const media = await payload.create({
-      collection: "media",
-      data: { alt, category: "product" },
-      filePath: path.join(IMAGE_DIR, file),
+  let done = 0;
+  for (const manifest of manifests) {
+    const found = await payload.find({
+      collection: "products",
+      where: { slug: { equals: manifest.slug } },
+      limit: 1,
+      depth: 0,
     });
-    ids.push(String(media.id));
-    console.log(`  media: ${file} -> ${media.id}`);
-  }
+    const product = found.docs[0];
+    if (!product) {
+      console.error(`Product not found by slug: ${manifest.slug}`);
+      process.exit(1);
+    }
 
-  await payload.update({
-    collection: "products",
-    id: product.id,
-    data: { images: ids.map((id) => ({ image: id })) },
-  });
-  console.log(`OK: ${manifest.slug} -> ${ids.length} images`);
+    const existing = ((product as { images?: { image?: unknown }[] }).images ?? []).length;
+    if (existing > 0 && !REPLACE) {
+      console.error(`${manifest.slug} already carries ${existing} image(s). Re-run with --replace to overwrite.`);
+      process.exit(1);
+    }
+
+    const ids: string[] = [];
+    for (const { file, alt } of manifest.images) {
+      const media = await payload.create({
+        collection: "media",
+        data: { alt, category: "product" },
+        filePath: path.join(IMAGE_DIR, file),
+      });
+      ids.push(String(media.id));
+      console.log(`  media: ${file} -> ${media.id}`);
+    }
+
+    await payload.update({
+      collection: "products",
+      id: product.id,
+      data: { images: ids.map((id) => ({ image: id })) },
+    });
+    console.log(`OK: ${manifest.slug} -> ${ids.length} images`);
+    done++;
+  }
 
   // The product afterChange hook schedules a debounced chatbot-catalog resync;
-  // give it a moment to run rather than killing it with the process.
-  console.log("waiting for the chatbot resync to settle...");
+  // give it a moment to run rather than killing it with the process. One wait
+  // covers the whole batch because the resync is debounced, not per-product.
+  console.log(`
+${done} product(s) updated. waiting for the chatbot resync to settle...`);
   await new Promise((r) => setTimeout(r, 8000));
   console.log("DONE");
   process.exit(0);

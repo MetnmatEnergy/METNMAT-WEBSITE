@@ -59,16 +59,27 @@ const storageIsLocal = (): boolean => {
   }
 };
 
-/** Fetch the stored original back through the CMS's own public media route. */
+/**
+ * Fetch the stored original back through the CMS's own public media route;
+ * on local-disk storage fall back to reading the file directly, so recompose
+ * scripts work without a running server.
+ */
 async function fetchStoredOriginal(filename: string): Promise<Buffer | null> {
   const origin = (process.env.CMS_URL || "http://localhost:3001").replace(/\/+$/, "");
   try {
     const res = await fetch(`${origin}/api/media/file/${encodeURIComponent(filename)}`);
-    if (!res.ok) return null;
-    return Buffer.from(await res.arrayBuffer());
+    if (res.ok) return Buffer.from(await res.arrayBuffer());
   } catch {
-    return null;
+    /* fall through to disk */
   }
+  if (storageIsLocal()) {
+    try {
+      return await fs.readFile(path.resolve(process.cwd(), "media", filename));
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 export const generateDisplayDerivative: CollectionBeforeChangeHook = async ({
@@ -85,6 +96,11 @@ export const generateDisplayDerivative: CollectionBeforeChangeHook = async ({
   let original: Buffer | null = null;
   let isNewFile = false;
 
+  // A recompose request (scripts/recompose-display.ts) re-runs the automatic
+  // pipeline on the stored original — including fresh subject detection, which
+  // re-seeds the focal point.
+  const forced = (req.context as Record<string, unknown> | undefined)?.recomposeDisplay === true;
+
   if (req.file?.data) {
     original = req.file.data;
     isNewFile = true;
@@ -93,11 +109,11 @@ export const generateDisplayDerivative: CollectionBeforeChangeHook = async ({
     const focalMoved =
       (typeof doc.focalX === "number" && doc.focalX !== previous.focalX) ||
       (typeof doc.focalY === "number" && doc.focalY !== previous.focalY);
-    if (!focalMoved) return data;
+    if (!focalMoved && !forced) return data;
     original = await fetchStoredOriginal(previous.filename);
     if (!original) {
       req.payload.logger.warn(
-        `[display] could not re-read "${previous.filename}" to recompose around the new focal point`
+        `[display] could not re-read "${previous.filename}" to recompose the display derivative`
       );
       return data;
     }
@@ -109,11 +125,12 @@ export const generateDisplayDerivative: CollectionBeforeChangeHook = async ({
     const analysis = await analyzeSubject(original);
     if (!analysis.width || !analysis.height) return data;
 
-    // A fresh file gets the detected focal point (staff can correct it later);
-    // a focal-only edit keeps the staff's choice as the composition bias.
+    // A fresh file (and a forced recompose) gets the detected focal point —
+    // staff can correct it later; a focal-only edit keeps the staff's choice
+    // as the composition bias.
     let focalX = analysis.focalX;
     let focalY = analysis.focalY;
-    if (isNewFile) {
+    if (isNewFile || forced) {
       doc.focalX = focalX;
       doc.focalY = focalY;
     } else {
@@ -121,13 +138,7 @@ export const generateDisplayDerivative: CollectionBeforeChangeHook = async ({
       focalY = typeof doc.focalY === "number" ? doc.focalY : previous.focalY ?? 50;
     }
 
-    const plan = planDisplayCrop(
-      analysis.width,
-      analysis.height,
-      analysis.box,
-      { x: focalX, y: focalY },
-      analysis.confident
-    );
+    const plan = planDisplayCrop(analysis, { x: focalX, y: focalY });
     const buf = await renderDisplay(original, plan);
 
     const sizes = { ...(doc.sizes ?? previous.sizes ?? {}) };
@@ -157,6 +168,7 @@ export const generateDisplayDerivative: CollectionBeforeChangeHook = async ({
 
     req.payload.logger.info(
       `[display] ${meta.filename}: ${plan.mode} crop ${plan.crop.width}×${plan.crop.height} of ${analysis.width}×${analysis.height}` +
+        (analysis.tiltDeg ? `, tilt ${analysis.tiltDeg.toFixed(1)}°` : "") +
         (analysis.confident
           ? ` (subject ${(analysis.coverage * 100).toFixed(0)}% of frame)`
           : " (low confidence — whole image kept)")

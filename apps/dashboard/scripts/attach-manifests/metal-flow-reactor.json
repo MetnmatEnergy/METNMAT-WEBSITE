@@ -1,0 +1,21 @@
+{
+  "slug": "metal-flow-battery-reactor",
+  "images": [
+    {
+      "file": "Metal-Flow Battery Reactor.webp",
+      "alt": "Metal-Flow Battery Reactor - three-quarter view of the transparent PMMA dual-chamber flow cell with its push-fit electrolyte fittings"
+    },
+    {
+      "file": "Metal-Flow Battery Reactor 2.webp",
+      "alt": "Metal-Flow Battery Reactor - front view showing both chambers and the membrane joint between them"
+    },
+    {
+      "file": "Metal-Flow Battery Reactor 3.webp",
+      "alt": "Metal-Flow Battery Reactor - opposite three-quarter view with the inlet and outlet ports"
+    },
+    {
+      "file": "Metal-Flow Battery Reactor 4.webp",
+      "alt": "Metal-Flow Battery Reactor - side view of the clamped cell body and compression bolts"
+    }
+  ]
+}
