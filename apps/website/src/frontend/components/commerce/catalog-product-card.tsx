@@ -14,9 +14,20 @@ import { cn } from "@/frontend/lib/utils";
 export function CatalogProductCard({
   product,
   layout = "grid",
+  priority = false,
 }: {
   product: Product;
   layout?: "grid" | "list";
+  /**
+   * Preload this card's photo. ProductImage has supported it all along; nothing
+   * passed it, so every card on the catalogue — including the first row, which
+   * is the largest thing above the fold and therefore the LCP element on the
+   * main browse path — waited for the lazy-loading observer.
+   *
+   * Set it only for the cards that are actually above the fold. Preloading the
+   * whole grid would trade one slow image for twelve competing ones.
+   */
+  priority?: boolean;
 }) {
   const href = `/shop/p/${product.slug}`;
   const isGrid = layout === "grid";
@@ -56,6 +67,7 @@ export function CatalogProductCard({
       >
         <ProductImage
           src={product.imageUrl}
+          priority={priority}
           alt=""
           // Most of the catalogue has no photo yet, so this placeholder is what
           // a shopper actually sees. Naming it after the product (rather than

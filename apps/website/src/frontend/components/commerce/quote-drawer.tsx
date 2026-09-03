@@ -87,7 +87,26 @@ export function QuoteDrawer() {
     if (mobile.replace(/\D/g, "").length < 10) errs.mobile = "Enter a valid mobile number.";
     if (design.length < 3) errs.design = "Describe your requirement.";
     setErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) {
+      /*
+       * Send the visitor to the problem.
+       *
+       * The panel is a full-height scrolling form, and the submit button sits at
+       * the bottom of it. Setting the error state alone wrote a red line into a
+       * <p> that was, by then, scrolled off the top — so tapping Submit with an
+       * empty requirement box did visibly NOTHING, and the natural next move was
+       * to tap again. Focusing scrolls the field into the panel's own scroll
+       * container for free and gives keyboard and screen-reader users the same
+       * landing point.
+       *
+       * Ordered by DOM position, not validation order, so focus lands on the
+       * topmost problem rather than whichever rule happened to run first. Same
+       * pattern as app/checkout/page.tsx.
+       */
+      const first = ["design", "name", "mobile", "email"].find((k) => errs[k]);
+      if (first) document.getElementById(`q-${first}`)?.focus();
+      return;
+    }
 
     // Only uploads that came back with a grant can be submitted — the API
     // refuses a bare id, so an ungranted upload would be dropped silently.
@@ -232,14 +251,17 @@ export function QuoteDrawer() {
               Your requirement
             </p>
             <div>
-              <label className={labelCls}>Design / requirement *</label>
+              <label htmlFor="q-design" className={labelCls}>Design / requirement *</label>
               <textarea
+                id="q-design"
+                aria-invalid={errors.design ? true : undefined}
+                aria-describedby={errors.design ? "q-design-err" : undefined}
                 name="design"
                 rows={3}
                 className={field}
                 placeholder="Describe what you need — application, drawing, tolerances…"
               />
-              {errors.design && <p className="mt-1 text-xs text-brand">{errors.design}</p>}
+              {errors.design && <p id="q-design-err" role="alert" className="mt-1 text-xs text-brand">{errors.design}</p>}
             </div>
             <div>
               <label className={labelCls}>Size / dimensions</label>
@@ -355,20 +377,46 @@ export function QuoteDrawer() {
               Contact details
             </p>
             <div>
-              <label className={labelCls}>Full name *</label>
-              <input name="name" className={field} placeholder="Your name" />
-              {errors.name && <p className="mt-1 text-xs text-brand">{errors.name}</p>}
+              <label htmlFor="q-name" className={labelCls}>Full name *</label>
+              <input
+                id="q-name"
+                name="name"
+                className={field}
+                placeholder="Your name"
+                autoComplete="name"
+                aria-invalid={errors.name ? true : undefined}
+                aria-describedby={errors.name ? "q-name-err" : undefined}
+              />
+              {errors.name && <p id="q-name-err" role="alert" className="mt-1 text-xs text-brand">{errors.name}</p>}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className={labelCls}>Mobile number *</label>
-                <input name="mobile" className={field} placeholder="+91 …" inputMode="tel" />
-                {errors.mobile && <p className="mt-1 text-xs text-brand">{errors.mobile}</p>}
+                <label htmlFor="q-mobile" className={labelCls}>Mobile number *</label>
+                <input
+                  id="q-mobile"
+                  name="mobile"
+                  className={field}
+                  placeholder="+91 …"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  aria-invalid={errors.mobile ? true : undefined}
+                  aria-describedby={errors.mobile ? "q-mobile-err" : undefined}
+                />
+                {errors.mobile && <p id="q-mobile-err" role="alert" className="mt-1 text-xs text-brand">{errors.mobile}</p>}
               </div>
               <div>
-                <label className={labelCls}>Email *</label>
-                <input name="email" type="email" className={field} placeholder="you@company.com" />
-                {errors.email && <p className="mt-1 text-xs text-brand">{errors.email}</p>}
+                <label htmlFor="q-email" className={labelCls}>Email *</label>
+                <input
+                  id="q-email"
+                  name="email"
+                  type="email"
+                  className={field}
+                  placeholder="you@company.com"
+                  autoComplete="email"
+                  aria-invalid={errors.email ? true : undefined}
+                  aria-describedby={errors.email ? "q-email-err" : undefined}
+                />
+                {errors.email && <p id="q-email-err" role="alert" className="mt-1 text-xs text-brand">{errors.email}</p>}
               </div>
             </div>
             <div>

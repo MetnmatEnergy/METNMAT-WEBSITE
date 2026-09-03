@@ -86,7 +86,7 @@ export default async function AboutPage() {
             ]}
             className="mb-6 justify-center"
           />
-          <Reveal className="flex justify-center">
+          <Reveal immediate className="flex justify-center">
             <Badge variant="dot">About METNMAT</Badge>
           </Reveal>
 
@@ -96,14 +96,14 @@ export default async function AboutPage() {
             subtitle="Turning materials science into scalable technologies."
           />
 
-          <Reveal delay={0.1}>
+          <Reveal immediate>
             <p className="mx-auto mt-2 max-w-2xl text-base leading-relaxed text-foreground/75 sm:text-lg">
               METNMAT Innovations develops advanced materials, electrochemical systems, reactors,
               catalysts, membranes, and research equipment for industry, academia, and R&amp;D laboratories.
             </p>
           </Reveal>
 
-          <Reveal delay={0.15}>
+          <Reveal immediate>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Button href="/contact" size="lg" className="w-full sm:w-auto">
                 Start a conversation <ArrowRight className="h-4 w-4" />

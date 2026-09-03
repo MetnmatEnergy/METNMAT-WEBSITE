@@ -132,8 +132,11 @@ export default async function AllProductsPage({
               ) : (
                 <>
                   <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                    {items.map((p) => (
-                      <CatalogProductCard key={p.slug} product={p} />
+                    {items.map((p, i) => (
+                      // The grid is 1/2/3 columns, so the first three are the
+                      // top row at the widest breakpoint and above the fold at
+                      // every breakpoint.
+                      <CatalogProductCard key={p.slug} product={p} priority={i < 3} />
                     ))}
                   </div>
                   {totalPages > 1 && (

@@ -8,6 +8,16 @@ type ShopTransition = {
   isPending: boolean;
   /** Clone the current query, apply `mutate`, reset paging, and navigate. */
   navigate: (mutate: (params: URLSearchParams) => void) => void;
+  /**
+   * Navigate to an already-built URL through the same transition.
+   *
+   * `navigate` is filter-shaped: it always resets `page` and keeps the scroll
+   * position, which is right when you tick a checkbox and want to watch the grid
+   * change under you. Paging needs neither of those — it must KEEP the page
+   * param it just set, and it must scroll to the top, because arriving at page 2
+   * still looking at the pagination bar is disorienting.
+   */
+  push: (url: string, opts?: { scroll?: boolean }) => void;
 };
 
 const Ctx = React.createContext<ShopTransition | null>(null);
@@ -37,7 +47,14 @@ export function ShopTransitionProvider({ children }: { children: React.ReactNode
     [router, pathname, searchParams]
   );
 
-  return <Ctx.Provider value={{ isPending, navigate }}>{children}</Ctx.Provider>;
+  const push = React.useCallback(
+    (url: string, opts?: { scroll?: boolean }) => {
+      startTransition(() => router.push(url, { scroll: opts?.scroll ?? false }));
+    },
+    [router]
+  );
+
+  return <Ctx.Provider value={{ isPending, navigate, push }}>{children}</Ctx.Provider>;
 }
 
 /** Required accessor — for components only ever rendered inside a listing. */

@@ -173,6 +173,27 @@ export function SearchBar({
     router.push(href);
   }
 
+  /**
+   * Click handler for a suggestion rendered as a real link.
+   *
+   * The rows used to be <button onClick={go}>. They looked like links, sat in a
+   * list of destinations, and behaved like neither: cmd-click and middle-click
+   * did nothing, "Open in new tab" was absent from the context menu, and the
+   * URL could not be copied. A suggestion IS a destination, so it should be an
+   * anchor with a real href — and `role="option"` is permitted on one, so the
+   * combobox semantics are unchanged.
+   *
+   * Plain clicks are still intercepted so the dropdown closes and the query
+   * clears; every modified click is left to the browser.
+   */
+  function onOptionClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+      return;
+    }
+    e.preventDefault();
+    go(href);
+  }
+
   function submit() {
     const term = q.trim();
     if (!term) return;
@@ -332,16 +353,16 @@ export function SearchBar({
                   ) : null}
                 </p>
                 {results.products.map((p, i) => (
-                  <button
+                  <a
                     key={p.slug}
                     id={optionId(i)}
                     role="option"
                     aria-selected={active === i}
-                    type="button"
+                    href={`/shop/p/${p.slug}`}
                     onMouseEnter={() => setActive(i)}
-                    onClick={() => go(`/shop/p/${p.slug}`)}
+                    onClick={(e) => onOptionClick(e, `/shop/p/${p.slug}`)}
                     className={cn(
-                      "flex w-full items-center gap-3 px-4 py-2 text-left",
+                      "flex w-full items-center gap-3 px-4 py-2 text-left no-underline",
                       active === i ? "bg-muted" : "hover:bg-muted/60"
                     )}
                   >
@@ -358,7 +379,7 @@ export function SearchBar({
                     <span className="shrink-0 text-xs font-semibold">
                       {p.price ? money(inclGST(p.price)) : "On request"}
                     </span>
-                  </button>
+                  </a>
                 ))}
               </div>
             )}
@@ -374,16 +395,16 @@ export function SearchBar({
                   {group.items.map((l) => {
                     const idx = runningIndex++;
                     return (
-                      <button
+                      <a
                         key={l.href}
                         id={optionId(idx)}
                         role="option"
                         aria-selected={active === idx}
-                        type="button"
+                        href={l.href}
                         onMouseEnter={() => setActive(idx)}
-                        onClick={() => go(l.href)}
+                        onClick={(e) => onOptionClick(e, l.href)}
                         className={cn(
-                          "flex w-full items-start gap-3 px-4 py-2 text-left",
+                          "flex w-full items-start gap-3 px-4 py-2 text-left no-underline",
                           active === idx ? "bg-muted" : "hover:bg-muted/60"
                         )}
                       >
@@ -396,7 +417,7 @@ export function SearchBar({
                             </span>
                           )}
                         </span>
-                      </button>
+                      </a>
                     );
                   })}
                 </div>

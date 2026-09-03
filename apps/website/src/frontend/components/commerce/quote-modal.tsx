@@ -77,7 +77,15 @@ export function QuoteModal() {
     if (mobile.replace(/\D/g, "").length < 10) errs.mobile = "Enter a valid mobile number.";
     if (inquiry.length < 3) errs.inquiry = "Please describe your requirement.";
     setErrors(errs);
-    if (Object.keys(errs).length) return;
+    if (Object.keys(errs).length) {
+      // The dialog scrolls, and Send sits at the bottom of it — so setting the
+      // error state alone left the message off-screen and the tap looked dead.
+      // Focus is safe here: useDialog already holds it inside this dialog.
+      // Ordered by DOM position so we land on the topmost problem.
+      const first = ["inquiry", "name", "mobile", "email"].find((k) => errs[k]);
+      if (first) document.getElementById(`qm-${first}`)?.focus();
+      return;
+    }
 
     // Only uploads that came back with a grant can be submitted — the API
     // refuses a bare id, so an ungranted upload would be dropped silently.
@@ -186,14 +194,17 @@ export function QuoteModal() {
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className={labelCls}>What do you need? *</label>
+                    <label htmlFor="qm-inquiry" className={labelCls}>What do you need? *</label>
                     <textarea
+                      id="qm-inquiry"
+                      aria-invalid={errors.inquiry ? true : undefined}
+                      aria-describedby={errors.inquiry ? "qm-inquiry-err" : undefined}
                       name="inquiry"
                       rows={3}
                       className={field}
                       placeholder="Describe the product, process, or challenge — material, application, tolerances…"
                     />
-                    {errors.inquiry && <p className="mt-1 text-xs text-brand">{errors.inquiry}</p>}
+                    {errors.inquiry && <p id="qm-inquiry-err" role="alert" className="mt-1 text-xs text-brand">{errors.inquiry}</p>}
                   </div>
 
                   <div>
@@ -304,9 +315,17 @@ export function QuoteModal() {
                   </div>
 
                   <div>
-                    <label className={labelCls}>Full name *</label>
-                    <input name="name" className={field} placeholder="Your name" />
-                    {errors.name && <p className="mt-1 text-xs text-brand">{errors.name}</p>}
+                    <label htmlFor="qm-name" className={labelCls}>Full name *</label>
+                    <input
+                      id="qm-name"
+                      name="name"
+                      className={field}
+                      placeholder="Your name"
+                      autoComplete="name"
+                      aria-invalid={errors.name ? true : undefined}
+                      aria-describedby={errors.name ? "qm-name-err" : undefined}
+                    />
+                    {errors.name && <p id="qm-name-err" role="alert" className="mt-1 text-xs text-brand">{errors.name}</p>}
                   </div>
 
                   <div>
@@ -315,15 +334,33 @@ export function QuoteModal() {
                   </div>
 
                   <div>
-                    <label className={labelCls}>Mobile number *</label>
-                    <input name="mobile" className={field} placeholder="+91 …" inputMode="tel" />
-                    {errors.mobile && <p className="mt-1 text-xs text-brand">{errors.mobile}</p>}
+                    <label htmlFor="qm-mobile" className={labelCls}>Mobile number *</label>
+                    <input
+                      id="qm-mobile"
+                      name="mobile"
+                      className={field}
+                      placeholder="+91 …"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      aria-invalid={errors.mobile ? true : undefined}
+                      aria-describedby={errors.mobile ? "qm-mobile-err" : undefined}
+                    />
+                    {errors.mobile && <p id="qm-mobile-err" role="alert" className="mt-1 text-xs text-brand">{errors.mobile}</p>}
                   </div>
 
                   <div>
-                    <label className={labelCls}>Email *</label>
-                    <input name="email" type="email" className={field} placeholder="you@company.com" />
-                    {errors.email && <p className="mt-1 text-xs text-brand">{errors.email}</p>}
+                    <label htmlFor="qm-email" className={labelCls}>Email *</label>
+                    <input
+                      id="qm-email"
+                      name="email"
+                      type="email"
+                      className={field}
+                      placeholder="you@company.com"
+                      autoComplete="email"
+                      aria-invalid={errors.email ? true : undefined}
+                      aria-describedby={errors.email ? "qm-email-err" : undefined}
+                    />
+                    {errors.email && <p id="qm-email-err" role="alert" className="mt-1 text-xs text-brand">{errors.email}</p>}
                   </div>
 
                   {status === "error" && (
