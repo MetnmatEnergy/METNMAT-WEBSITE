@@ -49,13 +49,43 @@ const files = walk(ROOT).map((p) => ({
   path: p.replace(ROOT, "src").split("\\").join("/"),
   src: readFileSync(p, "utf8"),
 }));
+const filesRaw = files;
 
-/** Every `.observe(<root>, { ...opts })` call in a file, with its options text. */
-function observeCalls(src: string): { root: string; opts: string }[] {
-  const out: { root: string; opts: string }[] = [];
-  const re = /\.observe\(\s*([^,()]+?)\s*,\s*(\{[\s\S]*?\})\s*\)/g;
+/**
+ * Every observer init object declared anywhere in the app, by name.
+ *
+ * Needed because the scan below used to require a brace literal at the call
+ * site. Hoisting the chat widget's inits into named constants — which this pass
+ * did, so a unit test could check them — made those very calls invisible to the
+ * scan. A rule that stops seeing code the moment it is tidied is not a rule.
+ */
+const INIT_CONSTANTS = new Map<string, string>();
+for (const f of filesRaw) {
+  const re = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*(\{[^{}]*\})/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(src))) out.push({ root: m[1]!.trim(), opts: m[2]! });
+  while ((m = re.exec(f.src))) INIT_CONSTANTS.set(m[1]!, m[2]!);
+}
+
+/**
+ * Every `.observe(<root>, <init>)` call in a file. `init` may be a brace literal
+ * or an identifier; identifiers are resolved against INIT_CONSTANTS so a hoisted
+ * config is inspected exactly like an inline one. `resolved` is false when an
+ * identifier could not be resolved, which the scan reports rather than ignores.
+ */
+function observeCalls(src: string): { root: string; opts: string; literal: boolean; resolved: boolean }[] {
+  const out: { root: string; opts: string; literal: boolean; resolved: boolean }[] = [];
+  const re = /\.observe\(\s*([^,()]+?)\s*,\s*([A-Za-z_$][\w$.]*|\{[\s\S]*?\})\s*\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src))) {
+    const root = m[1]!.trim();
+    const arg = m[2]!.trim();
+    if (arg.startsWith("{")) {
+      out.push({ root, opts: arg, literal: true, resolved: true });
+    } else {
+      const looked = INIT_CONSTANTS.get(arg.split(".").pop()!);
+      out.push({ root, opts: looked ?? "", literal: false, resolved: looked !== undefined });
+    }
+  }
   return out;
 }
 
@@ -123,7 +153,7 @@ describe("the chat widget never watches what it writes", () => {
     expect(chat.src).toMatch(/observe\(panel, PANEL_OBSERVER_INIT\)/);
     expect(chat.src).toMatch(/observe\(container, CONTAINER_OBSERVER_INIT\)/);
     expect(chat.src).toMatch(/observe\(document\.body, BODY_OBSERVER_INIT\)/);
-    const inline = observeCalls(chat.src);
+    const inline = observeCalls(chat.src).filter((c) => c.literal);
     expect(inline.map((c) => c.opts), "chat-widget must not inline an observer literal").toEqual([]);
   });
 });
@@ -145,6 +175,12 @@ describe("MutationObserver guardrails", () => {
     const offenders: string[] = [];
     for (const f of files) {
       for (const call of observeCalls(f.src)) {
+        if (!call.resolved) {
+          // Never silently skip: an init this scan cannot read is an init it
+          // cannot police, and that is how the previous version failed open.
+          offenders.push(`${f.path}: observe(${call.root}, …) — init could not be resolved for inspection`);
+          continue;
+        }
         const watchesAttributes = /attributes\s*:\s*true/.test(call.opts);
         const hasFilter = /attributeFilter\s*:/.test(call.opts);
         if (watchesAttributes && !hasFilter) {
@@ -216,6 +252,19 @@ describe("vaporize cost guardrails", () => {
   it("the wait timer is held in a ref and cleared, not discarded", () => {
     expect(vapour.src).toMatch(/waitTimerRef\.current = window\.setTimeout\(/);
     expect(vapour.src).toMatch(/window\.clearTimeout\(waitTimerRef\.current\)/);
+  });
+
+  it("the text advance is guarded against a duplicate frame", () => {
+    // The loop reschedules before React commits, so the completed branch can be
+    // re-entered with the same closure. The functional updater then applies
+    // BOTH increments and a stat is skipped — and because a slot runs one
+    // instance for the number and another for the label, the two can diverge
+    // permanently. The sibling wait-timer branch was already guarded; this is
+    // the same guard for the advance beside it.
+    expect(vapour.src).toMatch(/shouldAdvance\(vaporizeProgressRef\.current, allVaporized, advanced\)/);
+    expect(vapour.src).toMatch(/let advanced = false;/);
+    // The unguarded condition must not come back.
+    expect(vapour.src).not.toMatch(/if \(vaporizeProgressRef\.current >= 100 && allVaporized\)/);
   });
 
   it("the frame chain stops instead of respinning when there is nothing to draw", () => {

@@ -5,14 +5,14 @@ Every continuously-running mechanism reachable from a live route, classified. Pr
 independent lenses each (reproduce / severity / fix-safety), and cross-checked against
 runtime measurement on production in a real browser.
 
-**161 distinct mechanisms. 0 are FREEZE_CAPABLE.**
+**192 distinct mechanisms. 0 are FREEZE_CAPABLE.**
 
 | Classification | Count | Meaning |
 |---|---:|---|
 | FREEZE_CAPABLE | 0 | can hang the tab: unbounded, or a microtask/synchronous loop that never yields |
-| NEEDS_FIX | 44 | a real lifecycle or correctness defect (leak, duplicate, work after unmount) |
-| OPTIMIZED | 32 | correct and bounded, but carries meaningful steady-state cost |
-| SAFE | 85 | correct and cheap |
+| NEEDS_FIX | 49 | a real lifecycle or correctness defect (leak, duplicate, work after unmount) |
+| OPTIMIZED | 44 | correct and bounded, but carries meaningful steady-state cost |
+| SAFE | 99 | correct and cheap |
 
 A loop is **not** counted safe merely because it eventually yields. The distinction that
 matters for this incident is between work that is *expensive* and work that *never returns
@@ -44,6 +44,11 @@ Taken on `https://www.metnmat.com/` with the page visible and no user interactio
 Per-second sampling over 18 s showed **4 seconds with exactly zero rAF callbacks and zero
 canvas operations**, which is the idle-gate from `3d640b7` working: the vaporize loop stops
 entirely between dissolves rather than redrawing a static picture 60 times a second.
+
+The canvas backing scale is bounded as `min(dpr × 1.5, max(2, dpr))` — never supersampling
+beyond 1.5×, and never sampling below the display's own resolution. A DPR-1 desktop is
+unchanged from the original; a DPR-2 laptop drops from 9× the CSS pixel count to 4×, and a
+DPR-3 tablet from 20.25× to 9× while staying pixel-native.
 
 The six hero canvases were also confirmed to run in lockstep — over 32 s each completed
 exactly 5 vaporize cycles, drift 0 — so the number and its label cannot fall out of step.
@@ -89,24 +94,36 @@ exactly 5 vaporize cycles, drift 0 — so the number and its label cannot fall o
 | NEEDS_FIX | `frontend/components/ui/vapour-text-effect.tsx` | 245-251 | requestAnimationFrame | no | no | no | no | 60 rAF wakeups per second per affected canvas with zero output, unbounded in time. Each w… |
 | NEEDS_FIX | `frontend/components/ui/vapour-text-effect.tsx` | 237-243 | requestAnimationFrame | no | no | no | no | No steady-state cost. One visibly wrong frame per tab return or long stall: the stat snap… |
 | NEEDS_FIX | `frontend/components/ui/vapour-text-effect.tsx` | 174-194 | ReactEffect | no | no | no | no | No steady-state cost. One skipped stat per scroll-past that lands in the ~2.8 s animating… |
+| NEEDS_FIX | `frontend/components/ui/vapour-text-effect.tsx` | 180-200 | ReactEffect | no | no | no | no | No steady-state CPU cost — the effect runs twice per scroll past the hero. The cost is co… |
+| NEEDS_FIX | `frontend/components/ui/vapour-text-effect.tsx` | 234-249 | requestAnimationFrame | no | no | no | no | One anomalous frame per tab re-focus, on up to six canvases. No sustained cost - the clam… |
 | NEEDS_FIX | `frontend/lib/analytics/collector.ts` | 232-322 | addEventListener | yes | yes | yes | yes | Steady state with no consent toggling: 6 permanent listeners, never removed — acceptable … |
 | NEEDS_FIX | `frontend/lib/analytics/collector.ts` | 264-271 | addEventListener | yes | yes | yes | yes | Zero steady-state CPU (event-driven, fires only at unload). The cost is per-unload and pe… |
 | NEEDS_FIX | `frontend/lib/analytics/collector.ts` | 272-274 | addEventListener | yes | yes | yes | yes | After k consent grants, one tab-switch dispatches k handlers; handler 1 does the real sen… |
 | NEEDS_FIX | `frontend/lib/analytics/collector.ts` | 278-304 | addEventListener | no | yes | yes | yes | Zero on an idle page. Per click, with k live generations: k ancestor-chain walks. Typical… |
 | NEEDS_FIX | `frontend/lib/analytics/collector.ts` | 306-322 | addEventListener | no | yes | yes | yes | Zero on an idle page. Per focus change, k ancestor walks with a single-branch selector — … |
 | NEEDS_FIX | `frontend/lib/analytics/collector.ts` | 190-322 | addEventListener | no | yes | yes | yes | After k Accepts in one tab: 5k permanently-bound listeners instead of 5. Per anchor click… |
+| NEEDS_FIX | `frontend/lib/vapour-cycle.ts` | 23-28 | Other | no | no | no | no | This is the one place in 3d640b7 that trades output for cost, and the trade is worth quan… |
 | NEEDS_FIX | `test/observer-guardrails.test.ts` | 43-95 | Other | no | no | no | no | No runtime cost — this is a detection gap, not a workload. Its price is paid only when th… |
+| NEEDS_FIX | `test/observer-guardrails.test.ts` | 64-93 | Other | no | no | no | no | No runtime cost. The cost is a silent regression path back to the incident: the freeze ne… |
+| NEEDS_FIX | `test/observer-guardrails.test.ts` | 54-60, 140-156 | MutationObserver | no | no | no | no | No runtime cost. The cost is that the guardrail written specifically to stop this inciden… |
 | OPTIMIZED | `frontend/components/chat/chat-widget.tsx` | 204-219 | MutationObserver | yes | yes | no | no | Per callback: one getElementById (hash lookup, ~0.1 us) — negligible. The cost is record … |
 | OPTIMIZED | `frontend/components/chat/chat-widget.tsx` | 149-168 | LayoutRead | yes | yes | no | no | Today: 4 forced style recalculations per open/close cycle plus 1 per host theme toggle — … |
 | OPTIMIZED | `frontend/components/chat/chat-widget.tsx` | 71-89 | setTimeout | yes | yes | no | no | One 20 s timer and four one-shot listeners — nil while pending. The realised cost is the … |
+| OPTIMIZED | `frontend/components/chat/chat-widget.tsx` | 225-231, 244-253 | MutationObserver | yes | yes | no | no | One microtask containing one hash lookup per body-subtree mutation, for at most 30 second… |
+| OPTIMIZED | `frontend/components/chat/chat-widget.tsx` | 156-175 | LayoutRead | yes | yes | no | no | One forced style recalculation per panel style-attribute write. Measured by their code pa… |
 | OPTIMIZED | `frontend/components/commerce/product-gallery.tsx` | 130-135 | setInterval | yes | yes | no | no | 1000 / 4500 = 0.22 state commits per second on every product detail page, forever. Each c… |
 | OPTIMIZED | `frontend/components/commerce/shop-showcase.tsx` | 54-59 | setInterval | yes | yes | no | no | 0.2 state commits per second, forever, on /shop. Each commit re-renders the showcase and … |
 | OPTIMIZED | `frontend/components/commerce/shop-showcase.tsx` | 54-59 (and produc… | setInterval | yes | yes | no | yes | One React state update and one slide cross-fade every 5000ms (shop showcase) and every 45… |
 | OPTIMIZED | `frontend/components/commerce/store-provider.tsx` | 72-77 | ReactEffect | no | no | no | no | Idle page: exactly zero — neither effect runs without a state change, and StoreProvider d… |
+| OPTIMIZED | `frontend/components/commerce/store-provider.tsx` | 156-175 | ReactEffect | no | no | no | no | One JSON.stringify plus a synchronous localStorage write per cart or wishlist mutation - … |
 | OPTIMIZED | `frontend/components/home/hero-stats.tsx` | 189-193 | setInterval | yes | yes | no | no | One React render of HeroStats + 3 StaticSlots every 4 s, forever, on every phone and ever… |
 | OPTIMIZED | `frontend/components/home/hero-stats.tsx` | 60-92 | MutationObserver | yes | yes | no | yes | 2 getComputedStyle calls (one per useDisplayStyle instance) per notification. Notificatio… |
+| OPTIMIZED | `frontend/components/home/hero-stats.tsx` | 189-193 | setInterval | yes | yes | no | no | 0.25 wake-ups per second, each a React re-render of three <span> pairs, for the whole ses… |
+| OPTIMIZED | `frontend/components/home/hero-stats.tsx` | 60-92 | ResizeObserver | yes | yes | no | no | Two forced style recalculations per resize notification and per theme toggle, almost alwa… |
 | OPTIMIZED | `frontend/components/home/product-mosaic.tsx` | 60-72, 97-104 (wi… | Other | no | yes | no | no | getFeaturedProducts(8) split into two columns of 4, each duplicated → 8 MosaicCards per c… |
+| OPTIMIZED | `frontend/components/layout/site-footer.tsx` | 121-140 | Other | yes | yes | yes | yes | One additional renderer process plus the Google Maps embed runtime (conventionally 0.5-1.… |
 | OPTIMIZED | `frontend/components/layout/site-header.tsx` | 23, 25, 65-70 | LayoutRead | no | no | no | no | Header height is 56px (h-14) on mobile and 100px (h-14 + h-11) on desktop, spanning the f… |
+| OPTIMIZED | `frontend/components/ui/404-page-not-found.tsx` | 16-23 | Other | no | yes | no | no | 1,373,645 bytes of transfer, which is 27x the combined weight of every other image in pub… |
 | OPTIMIZED | `frontend/components/ui/animated-shader-background.tsx` | 126-146 | requestAnimationFrame | no | yes | no | no | Per frame, with ~800 transcendental ops per fragment (derivation quoted above). Desktop 1… |
 | OPTIMIZED | `frontend/components/ui/animated-shader-background.tsx` | 148-156 | ResizeObserver | no | yes | no | no | Steady state on a static page: zero — no notifications without a box-size change. Worst r… |
 | OPTIMIZED | `frontend/components/ui/animated-shader-background.tsx` | 29,39,60-118 | Other | no | yes | no | no | 2,147,974 fragments x ~839 special-function ops = 1.80 x 10^9 per frame; at the measured … |
@@ -121,12 +138,17 @@ exactly 5 vaporize cycles, drift 0 — so the number and its label cannot fall o
 | OPTIMIZED | `frontend/components/ui/radial-orbital-timeline.tsx` | 200-202 (with 37) | Other | no | no | no | no | 20 renders/s x 5 nodes x 2 invocations (detach with null, attach with element) = 200 ref … |
 | OPTIMIZED | `frontend/components/ui/radial-orbital-timeline.tsx` | 85-113 | setInterval | no | no | no | no | 1000 / 50 = 20 state commits per second while the orbit is on screen on /about. Each comm… |
 | OPTIMIZED | `frontend/components/ui/radial-orbital-timeline.tsx` | 85-113 | setInterval | no | no | no | no | 20 React renders per second while the orbit is on screen in a foreground tab. Each render… |
+| OPTIMIZED | `frontend/components/ui/spotlight-card.tsx` | 48-53, 91-107, 10… | requestAnimationFrame | no | yes | no | no | Ten cards on /shop. Per card the :root write invalidates 5 gradient surfaces (1 inline + … |
 | OPTIMIZED | `frontend/components/ui/vapour-text-effect.tsx` | 206-340 | requestAnimationFrame | no | no | no | no | Measured, six canvases, effectiveDpr 2, lg desktop (338x88 number + 338x72 label backing … |
 | OPTIMIZED | `frontend/components/ui/vapour-text-effect.tsx` | 342-369 | ReactEffect | no | no | no | no | Measured at effectiveDpr 2, six canvases, once per ~6.2 s cycle: ~650 KB of getImageData … |
+| OPTIMIZED | `frontend/components/ui/vapour-text-effect.tsx` | 212-360 | requestAnimationFrame | no | no | no | no | Duty cycle from the constants in hero-stats.tsx:49 (vaporizeDuration 1, fadeInDuration 1,… |
+| OPTIMIZED | `frontend/components/ui/vapour-text-effect.tsx` | 362-392 | ReactEffect | no | yes | no | no | One rebuild per canvas per cycle: 6 canvases / 6.4s = ~0.94 rebuilds per second, steady s… |
+| OPTIMIZED | `frontend/components/ui/vapour-text-effect.tsx` | 212-360 | requestAnimationFrame | no | no | no | no | Six canvases animating for roughly 2 s of every 5.4 s cycle, idle and scheduling nothing … |
 | OPTIMIZED | `frontend/lib/analytics/collector.ts` | 153-173, 275 | addEventListener | no | no | yes | no | One rAF and three layout reads (`scrollHeight`, `innerHeight`, `scrollY`) per scrolled fr… |
 | OPTIMIZED | `frontend/lib/analytics/collector.ts` | 216-225 | addEventListener | yes | yes | yes | no | One early-returning callback per cross-tab localStorage write, which on this site happens… |
 | OPTIMIZED | `frontend/lib/analytics/collector.ts` | 153-173, 275 | requestAnimationFrame | no | no | yes | no | Zero on an idle page — no scroll means no rAF is ever requested, so this contributes noth… |
 | OPTIMIZED | `frontend/lib/analytics/collector.ts` | 61-90, 126-146 | Other | yes | yes | yes | no | Per tracked event: at least 4 synchronous localStorage reads + 1 JSON.parse + at least 2 … |
+| OPTIMIZED | `frontend/lib/analytics/collector.ts` | 153-173, 279 | addEventListener | no | yes | yes | no | One forced layout read per animation frame while the visitor is actively scrolling - at m… |
 | OPTIMIZED | `frontend/lib/particle-render.ts` | 97-152 | Other | no | no | no | no | Measured, six canvases: 18,344 ops for a settled field at effectiveDpr 2; up to 36,016 op… |
 | SAFE | `app/about/page.tsx` | 27,75 | Other | no | no | no | no | Zero on every route except /about. On /about, one dynamically-imported chunk carrying ~12… |
 | SAFE | `app/api/geocode/pincode/route.ts` | 28-59 | setTimeout | no | no | no | no | One timer per request, cleared in a finally. No browser main-thread cost at all. |
@@ -143,8 +165,11 @@ exactly 5 vaporize cycles, drift 0 — so the number and its label cannot fall o
 | SAFE | `frontend/components/chat/chat-widget.tsx` | 91-102 | ReactEffect | yes | yes | yes | no | One cross-origin fetch of ~378 KiB total (the file's own measured figure, lines 21-24), o… |
 | SAFE | `frontend/components/chat/chat-widget.tsx` | 123-225 | MutationObserver | yes | yes | no | no | One getComputedStyle per notification. Notifications now occur only when the third-party … |
 | SAFE | `frontend/components/chat/chat-widget.tsx` | 149-199 | MutationObserver | yes | yes | no | no | Zero at rest. On a theme toggle: one extra host callback performing one getComputedStyle(… |
+| SAFE | `frontend/components/chat/chat-widget.tsx` | 190-220 | MutationObserver | yes | yes | no | no | Zero at rest. The panel's style attribute changes only when the visitor opens or closes t… |
+| SAFE | `frontend/components/chat/chat-widget.tsx` | 217 (with iframe-… | MutationObserver | yes | yes | no | no | One extra microtask per theme toggle, carrying one getComputedStyle. Immeasurable. |
 | SAFE | `frontend/components/commerce/cart-rail.tsx` | 61-76 | addEventListener | no | no | no | no | Zero at rest. Per click site-wide: one `targetPathname` call, which for non-left-clicks c… |
 | SAFE | `frontend/components/commerce/cart-toast.tsx` | 17-28 | setTimeout | yes | yes | no | no | One 5 s one-shot per cart removal. Zero idle cost. |
+| SAFE | `frontend/components/commerce/chat-cart-bridge.tsx` | 19-44 (with ifram… | addEventListener | yes | yes | no | no | One fetch and one cart mutation per deliberate 'Add to cart' tap inside the chat. Nothing… |
 | SAFE | `frontend/components/commerce/country-picker.tsx` | 52-58 | setTimeout | no | no | no | no | One 0 ms macrotask per dropdown open. Immaterial. |
 | SAFE | `frontend/components/commerce/country-picker.tsx` | 81-84 | ReactEffect | no | no | no | no | 1 forced layout per arrow-key press while the country dropdown is open. Zero otherwise. |
 | SAFE | `frontend/components/commerce/currency-provider.tsx` | 101-176 | ReactEffect | yes | no | no | no | One pre-paint pass over four storage reads (a cookie regex, two sessionStorage gets, one … |
@@ -162,6 +187,8 @@ exactly 5 vaporize cycles, drift 0 — so the number and its label cannot fall o
 | SAFE | `frontend/components/home/hero-stats.tsx` | 188-193 | setInterval | yes | yes | no | no | 0.25 state commits per second → three <span> text-node updates every 4 s. Roughly 0.02 ms… |
 | SAFE | `frontend/components/home/hero-stats.tsx` | 60-92 | MutationObserver | yes | yes | no | no | One getComputedStyle (a forced style recalc) per notification, x2 instances. Notification… |
 | SAFE | `frontend/components/home/hero-stats.tsx` | 94-104 | addEventListener | no | yes | no | no | One boolean write per media-query transition. |
+| SAFE | `frontend/components/home/hero-stats.tsx` | 63-89 | MutationObserver | no | yes | no | no | Two getComputedStyle calls per theme toggle and per genuine resize notification. Zero on … |
+| SAFE | `frontend/components/home/hero-stats.tsx` | 94-104 | addEventListener | yes | yes | no | no | Zero. Fires only on a genuine breakpoint or reduced-motion preference change. |
 | SAFE | `frontend/components/layout/mobile-nav.tsx` | 43-91 | addEventListener | no | no | no | no | Zero while the menu is closed, which is its state on essentially every page view. While o… |
 | SAFE | `frontend/components/layout/route-progress.tsx` | 48-73 | addEventListener | yes | no | no | no | Idle: zero. Two listeners for the life of the tab. Per click anywhere on the page: one `E… |
 | SAFE | `frontend/components/layout/route-progress.tsx` | 44-46 | ReactEffect | yes | no | no | no | At most one extra render of one component per navigation, and only on the first navigatio… |
@@ -174,11 +201,13 @@ exactly 5 vaporize cycles, drift 0 — so the number and its label cannot fall o
 | SAFE | `frontend/components/ui/animated-shader-background.tsx` | 158-165 | IntersectionObserver | no | yes | no | no | Effectively zero: a handful of callbacks per page, each doing one boolean test and a star… |
 | SAFE | `frontend/components/ui/animated-shader-background.tsx` | 148-156 | ResizeObserver | no | yes | no | no | Zero at rest. On a genuine resize, one setSize (which reallocates the backing store) and … |
 | SAFE | `frontend/components/ui/animated-shader-background.tsx` | 16-48, 128-185 | requestAnimationFrame | no | no | no | no | Full-viewport fragment-shader work at the display refresh rate, but only while the /about… |
+| SAFE | `frontend/components/ui/animated-text-cycle.tsx` | 55-81 | setInterval | no | no | no | no | One re-render every 2.6 s per instance, and only while that instance is on screen in a fo… |
 | SAFE | `frontend/components/ui/card-fan-carousel.tsx` | 214-291 | setTimeout | no | no | no | no | One 50 ms one-shot per mouseleave. Zero idle cost — this component does no work at all un… |
 | SAFE | `frontend/components/ui/deferred-image.tsx` | 30-66 | IntersectionObserver | no | no | no | yes | On /shop: one observer per category tile (ten in the current catalogue), created after th… |
 | SAFE | `frontend/components/ui/deferred-image.tsx` | 30-66 | IntersectionObserver | no | no | no | yes | One IntersectionObserver per deferred image, each living from the load event until that i… |
 | SAFE | `frontend/components/ui/progressive-flux-loader.tsx` | 197-232 | setTimeout | no | no | no | no | Zero today — the code path is unreachable because every call site is controlled. If it we… |
 | SAFE | `frontend/components/ui/progressive-flux-loader.tsx` | 198-232 | requestAnimationFrame | no | yes | no | yes | Zero today — the loop never starts. If the component were ever used uncontrolled it would… |
+| SAFE | `frontend/components/ui/progressive-flux-loader.tsx` | 185, 198-232, 301… | requestAnimationFrame | no | yes | no | no | Zero for the rAF chain — it never arms at the only call site. The sheen is one composited… |
 | SAFE | `frontend/components/ui/radial-orbital-timeline.tsx` | 84-105 | IntersectionObserver | yes | yes | no | no | Effectively zero at rest. An intersection crossing or a tab focus change costs one boolea… |
 | SAFE | `frontend/components/ui/radial-orbital-timeline.tsx` | 116-124 | addEventListener | no | yes | no | no | Zero at rest — resize events do not fire on an idle page. During an active window drag: o… |
 | SAFE | `frontend/components/ui/radial-orbital-timeline.tsx` | 170-175, 222, 238 | Other | no | yes | no | no | Zero main thread. Compositor-only (opacity and transform), on at most 7 small elements, s… |
@@ -199,6 +228,11 @@ exactly 5 vaporize cycles, drift 0 — so the number and its label cannot fall o
 | SAFE | `frontend/components/ui/vapour-text-effect.tsx` | 372-406 | ResizeObserver | no | yes | no | no | One object comparison per notification; zero renders and zero canvas work when the size i… |
 | SAFE | `frontend/components/ui/vapour-text-effect.tsx` | 439-484 | setTimeout | yes | yes | no | no | Zero in practice — always cancelled within the same commit. |
 | SAFE | `frontend/components/ui/vapour-text-effect.tsx` | 372-406 | ResizeObserver | no | no | no | yes | 1 getBoundingClientRect per mounted canvas at mount. hero-stats mounts 6 canvases (3 slot… |
+| SAFE | `frontend/components/ui/vapour-text-effect.tsx` | 395-421 | ResizeObserver | no | yes | no | no | One nextSize comparison per notification, and notifications only occur on real layout cha… |
+| SAFE | `frontend/components/ui/vapour-text-effect.tsx` | 319-332 | setTimeout | yes | no | no | no | One timer per canvas per cycle: 6 canvases / 6.4s = ~0.94 timer firings per second, each … |
+| SAFE | `frontend/components/ui/vapour-text-effect.tsx` | 483-507 | setTimeout | yes | yes | no | no | At most one firing per component lifetime, against a zero-sized canvas, so effectively ze… |
+| SAFE | `frontend/components/ui/vapour-text-effect.tsx` | 104-106 | ReactEffect | no | yes | no | no | One assignment per state transition, four per cycle per canvas. Zero. |
+| SAFE | `frontend/components/ui/vapour-text-effect.tsx` | 395-421 (with her… | ResizeObserver | no | yes | no | no | Zero at rest. Fires on genuine breakpoint changes and on the font-swap reflow, a handful … |
 | SAFE | `frontend/lib/analytics/collector.ts` | 118-124 | setTimeout | yes | yes | yes | no | At most one pending 5000ms timer at any instant, armed only by real user-generated events… |
 | SAFE | `frontend/lib/analytics/collector.ts` | 216-225 | addEventListener | yes | yes | yes | no | One listener per page load for the life of the page. Fires only when another tab writes l… |
 | SAFE | `frontend/lib/analytics/collector.ts` | 116-146,190-200 | setTimeout | yes | yes | yes | no | At most one live 5 s one-shot at any moment, page-wide, and only while events are pending… |
@@ -209,6 +243,8 @@ exactly 5 vaporize cycles, drift 0 — so the number and its label cannot fall o
 | SAFE | `frontend/lib/analytics/provider.tsx` | 27-40 | setTimeout | yes | no | no | no | One 300ms timer per navigation or consent change, always superseded rather than stacked. … |
 | SAFE | `frontend/lib/analytics/provider.tsx` | 21-40 | ReactEffect | yes | no | no | no | One listener for the tab's life plus one timer per navigation. Per fire: a single querySe… |
 | SAFE | `frontend/lib/analytics/provider.tsx` | 27-40 | setTimeout | yes | no | no | no | One 300 ms one-shot per navigation. Zero idle cost. |
+| SAFE | `frontend/lib/catalog.ts` | 296-325 (plus the… | Other | no | no | no | no | None. selectBrowsable is O(categories x tree depth) once per server render of the shop, n… |
+| SAFE | `frontend/lib/chat-widget-a11y.ts` | 79-100 | Other | no | no | no | no | None. |
 | SAFE | `frontend/lib/pay-flow.ts` | 59-76,136-179 | setTimeout | yes | yes | no | no | One timer per in-flight request and at most one per script load, all cleared on settle. Z… |
 | SAFE | `frontend/lib/stable-updates.ts` | 47-84 | Other | yes | yes | no | no | Four string/number comparisons per observer delivery. Its value is negative cost: it is w… |
 | SAFE | `middleware.ts` | 56-82 (and src/in… | Other | no | no | no | no | Middleware: a header read and two string comparisons per request, plus one URL clone on t… |
@@ -230,6 +266,9 @@ its element is off screen, does it survive unmount, and can it multiply across m
 | Upload scheduled from inside a `setState` updater | `commerce/attachment-uploader.tsx` | a re-invoked updater uploads the same file twice |
 | Confirmation timers discarded their handles | 4 commerce components + `ui/service-card-stack.tsx` | rapid clicks cut the confirmation short; timers outlive unmount |
 | The guardrail test itself failed open | `test/observer-guardrails.test.ts` | the incident, relocated to an element root, passed every rule |
+| Text advance unguarded against a duplicate frame | `ui/vapour-text-effect.tsx` | the loop reschedules before React commits, so the completed branch can run twice; a functional updater applies both increments, skipping a stat and permanently mismatching a number with its label. The sibling wait-timer branch was already guarded |
+| The DPR cap sampled *below* native above DPR 2 | `lib/vapour-cycle.ts` | a flat cap of 2 gave a DPR-3 screen two backing pixels per CSS pixel, so the browser upscaled and the reformed text came back softer than the CSS text beside it |
+| The scan went blind to hoisted observer configs | `test/observer-guardrails.test.ts` | moving the inits into named constants, which this same pass did, made those very calls invisible to the regex |
 
 ## Known and accepted, not fixed
 

@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, useState, createElement, useMemo, useCallback, memo } from "react";
 import { renderParticles, type Particle } from "@/frontend/lib/particle-render";
 import { nextSize } from "@/frontend/lib/stable-updates";
-import { effectiveDpr, isAnimating, type CycleState } from "@/frontend/lib/vapour-cycle";
+import { effectiveDpr, isAnimating, shouldAdvance, type CycleState } from "@/frontend/lib/vapour-cycle";
 
 // Adapted from the 21st.dev "vaporize text" effect. Trimmed the black-screen demo,
 // added an `onTextChange` callback (so a parent can sync sibling content — e.g. a
@@ -230,6 +230,13 @@ export default function VaporizeTextCycle({
 
     let lastTime = performance.now();
     let frameId: number;
+    /*
+     * One advance per effect run. The loop reschedules before React commits, so
+     * a duplicate frame can re-enter the completed branch with the same closure
+     * and increment the index twice. Scoped to the closure, so the next effect
+     * invocation — driven by the committed "fadingIn" — starts fresh.
+     */
+    let advanced = false;
 
     const animate = (currentTime: number) => {
       /*
@@ -291,8 +298,10 @@ export default function VaporizeTextCycle({
           const allVaporized = memoizedUpdateParticles(particlesRef.current, vaporizeX, deltaTime);
           memoizedRenderParticles(ctx, particlesRef.current);
 
-          // Check if vaporization is complete
-          if (vaporizeProgressRef.current >= 100 && allVaporized) {
+          // Check if vaporization is complete. Guarded against a duplicate
+          // frame, the same way the wait timer below is — see shouldAdvance.
+          if (shouldAdvance(vaporizeProgressRef.current, allVaporized, advanced)) {
+            advanced = true;
             setCurrentTextIndex(prevIndex => (prevIndex + 1) % texts.length);
             setAnimationState("fadingIn");
             fadeOpacityRef.current = 0;
