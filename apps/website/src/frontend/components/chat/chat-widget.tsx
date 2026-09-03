@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { CONSENT_EVENT, readConsent } from "@/frontend/lib/consent";
+import { planA11yWrites, PANEL_ID, type WidgetSnapshot } from "@/frontend/lib/chat-widget-a11y";
 
 /**
  * Loads the Metnmat customer-agent chat bubble.
@@ -122,44 +123,105 @@ export function ChatWidget() {
   React.useEffect(() => {
     if (!wake || !CHATBOT_URL) return;
 
-    const apply = () => {
+    /*
+     * THIS EFFECT FROZE THE HOMEPAGE. Read before touching it.
+     *
+     * The first version observed document.body with subtree+attributes and, on
+     * every callback, called launcher.setAttribute("aria-expanded", ...)
+     * unconditionally. setAttribute queues a mutation record even when the value
+     * is unchanged (DOM spec), the launcher is inside the observed subtree, and
+     * MutationObserver callbacks are microtasks that never yield to paint or
+     * input. The callback re-fired itself forever and the tab hung — "Page
+     * Unresponsive". It armed a few seconds after the visitor's first
+     * interaction, once the widget had built its DOM, which is exactly how the
+     * incident presented.
+     *
+     * Two independent guards now, either of which alone would break the cycle:
+     *
+     *  1. planA11yWrites() returns an EMPTY plan when the DOM already matches, so
+     *     a settled callback performs no write.
+     *  2. The observer never watches the attributes we write. Until the widget's
+     *     container exists we watch body for childList only; once it exists we
+     *     watch the panel's `style` attribute only (the widget toggles
+     *     `display` inline) and the container's children. Our aria-* and title
+     *     writes are filtered out at the source and cannot re-trigger us.
+     */
+    const snapshot = (): WidgetSnapshot => {
       const container = document.getElementById("chat-widget-container");
-      if (!container) return false;
-
+      if (!container) {
+        return {
+          hasContainer: false, iframeTitle: undefined, hasLauncher: false,
+          launcherExpanded: null, launcherControls: null, panelOpen: null,
+        };
+      }
       const iframe = container.querySelector("iframe");
-      if (iframe && !iframe.getAttribute("title")) {
-        iframe.setAttribute("title", "Chat with a METNMAT specialist");
-      }
-
       const launcher = container.querySelector("button");
-      const panel = document.getElementById("chat-widget-frame-container");
-      if (launcher && panel) {
-        const open = getComputedStyle(panel).display !== "none";
-        launcher.setAttribute("aria-expanded", String(open));
-        if (!launcher.getAttribute("aria-controls")) {
-          launcher.setAttribute("aria-controls", "chat-widget-frame-container");
-        }
-      }
-      return Boolean(iframe || launcher);
+      const panel = document.getElementById(PANEL_ID);
+      return {
+        hasContainer: true,
+        iframeTitle: iframe ? iframe.getAttribute("title") : undefined,
+        hasLauncher: Boolean(launcher),
+        launcherExpanded: launcher ? launcher.getAttribute("aria-expanded") : null,
+        launcherControls: launcher ? launcher.getAttribute("aria-controls") : null,
+        panelOpen: panel ? getComputedStyle(panel).display !== "none" : null,
+      };
     };
 
-    // The widget builds its DOM whenever its script finishes, so watch rather
-    // than guess at a delay — and keep watching, because `aria-expanded` has to
-    // follow the panel every time it is toggled.
-    const observer = new MutationObserver(() => {
-      try {
-        apply();
-      } catch {
-        /* their markup changed shape — leave it alone */
+    const apply = (): boolean => {
+      const s = snapshot();
+      if (!s.hasContainer) return false;
+      const container = document.getElementById("chat-widget-container")!;
+      const iframe = container.querySelector("iframe");
+      const launcher = container.querySelector("button");
+      for (const w of planA11yWrites(s)) {
+        const el = w.target === "iframe" ? iframe : launcher;
+        el?.setAttribute(w.name, w.value);
       }
+      return true;
+    };
+
+    let inner: MutationObserver | null = null;
+
+    // Phase B: the widget exists. Watch only what the WIDGET changes.
+    const watchWidget = () => {
+      const container = document.getElementById("chat-widget-container");
+      const panel = document.getElementById(PANEL_ID);
+      if (!container) return;
+      inner?.disconnect();
+      inner = new MutationObserver(() => {
+        try { apply(); } catch { /* their markup changed shape — leave it alone */ }
+      });
+      // The panel opens and closes by inline `display`; that is the one
+      // attribute change we need to follow.
+      if (panel) inner.observe(panel, { attributes: true, attributeFilter: ["style"] });
+      // And if the widget rebuilds its children, re-apply once.
+      inner.observe(container, { childList: true });
+    };
+
+    // Phase A: the widget's script is async and builds its DOM whenever it
+    // finishes. childList only — a child being added is not something our own
+    // attribute writes can ever produce.
+    const outer = new MutationObserver(() => {
+      if (!document.getElementById("chat-widget-container")) return;
+      outer.disconnect();
+      try { apply(); } catch { /* leave it alone */ }
+      watchWidget();
     });
+
     try {
-      apply();
-      observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+      if (apply()) {
+        watchWidget();
+      } else {
+        outer.observe(document.body, { childList: true, subtree: true });
+      }
     } catch {
       /* nothing to observe */
     }
-    return () => observer.disconnect();
+
+    return () => {
+      outer.disconnect();
+      inner?.disconnect();
+    };
   }, [wake]);
 
   return null;
