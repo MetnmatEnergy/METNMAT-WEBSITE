@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState, createElement, useMemo, useCallback, memo } from "react";
 import { renderParticles, type Particle } from "@/frontend/lib/particle-render";
 import { nextSize } from "@/frontend/lib/stable-updates";
+import { effectiveDpr, isAnimating, type CycleState } from "@/frontend/lib/vapour-cycle";
 
 // Adapted from the 21st.dev "vaporize text" effect. Trimmed the black-screen demo,
 // added an `onTextChange` callback (so a parent can sync sibling content — e.g. a
@@ -75,26 +76,39 @@ export default function VaporizeTextCycle({
   const isInView = useIsInView(wrapperRef as React.RefObject<HTMLElement>);
   const lastFontRef = useRef<string | null>(null);
   const particlesRef = useRef<Particle[]>([]);
-  const animationFrameRef = useRef<number | null>(null);
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
-  const [animationState, setAnimationState] = useState<"static" | "vaporizing" | "fadingIn" | "waiting">("static");
+  const [animationState, setAnimationState] = useState<CycleState>("static");
+  /*
+   * Mirror of animationState for the rebuild effect below, which must know
+   * whether the loop is running WITHOUT re-running (and re-sampling the whole
+   * canvas) on every state transition.
+   */
+  const animationStateRef = useRef<CycleState>("static");
+  /*
+   * The waiting→vaporizing timer. The upstream component discarded the id, so
+   * six 3.4 s timers outlived an unmount or a scroll away, and under load the
+   * final fade-in frame could run twice and schedule it twice.
+   */
+  const waitTimerRef = useRef<number | null>(null);
   const vaporizeProgressRef = useRef(0);
   const fadeOpacityRef = useRef(0);
   const [wrapperSize, setWrapperSize] = useState({ width: 0, height: 0 });
   const transformedDensity = transformValue(density, [0, 10], [0.3, 1], true);
+
+  useEffect(() => {
+    animationStateRef.current = animationState;
+  }, [animationState]);
 
   // Notify parent whenever the visible text changes (fires on mount with 0 too).
   useEffect(() => {
     onTextChange?.(currentTextIndex);
   }, [currentTextIndex, onTextChange]);
 
-  // Calculate device pixel ratio
-  const globalDpr = useMemo(() => {
-    if (typeof window !== "undefined") {
-      return window.devicePixelRatio * 1.5 || 1;
-    }
-    return 1;
-  }, []);
+  // Canvas backing scale — capped; see lib/vapour-cycle for the arithmetic.
+  const globalDpr = useMemo(
+    () => effectiveDpr(typeof window !== "undefined" ? window.devicePixelRatio : 1),
+    []
+  );
 
   // Memoize static styles
   const wrapperStyle = useMemo(() => ({
@@ -147,6 +161,15 @@ export default function VaporizeTextCycle({
     renderParticles(ctx, particles, globalDpr);
   }, [globalDpr]);
 
+  // One settled frame: what the loop would draw when nothing is moving.
+  const paintOnce = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    memoizedRenderParticles(ctx, particlesRef.current);
+  }, [memoizedRenderParticles]);
+
   // Start animation cycle when in view
   useEffect(() => {
     if (isInView) {
@@ -155,18 +178,49 @@ export default function VaporizeTextCycle({
       }, 0);
       return () => clearTimeout(startAnimationTimeout);
     } else {
-      // When component goes out of view, reset to static state
+      // Out of view: stop. The loop effect below refuses to run while
+      // !isInView, so there is no frame to cancel — but a pending wait timer
+      // would still flip the state on a canvas nobody can see. Do its reset now
+      // so re-entry starts a clean cycle (what the timer would have produced),
+      // and drop the timer.
       setAnimationState("static");
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+      if (waitTimerRef.current !== null) {
+        window.clearTimeout(waitTimerRef.current);
+        waitTimerRef.current = null;
+        vaporizeProgressRef.current = 0;
+        resetParticles(particlesRef.current);
       }
     }
   }, [isInView]);
 
-  // Animation loop - only run when in view
+  // And never let one outlive the component: client-side navigation away from
+  // "/" lands inside the 3.4 s window more often than not.
+  useEffect(
+    () => () => {
+      if (waitTimerRef.current !== null) window.clearTimeout(waitTimerRef.current);
+    },
+    []
+  );
+
+  // Animation loop - only run when in view, and only while something moves
   useEffect(() => {
     if (!isInView) return;
+
+    /*
+     * Nothing moves in `static` or `waiting`, which is most of every cycle
+     * (3.4 s of 5.4 s). The loop used to run through both regardless, clearing
+     * and redrawing every particle on all six hero canvases sixty times a
+     * second. The renderer's "one fillStyle per idle frame" assumption was
+     * false — every antialiased glyph edge carries its own alpha — so that was
+     * roughly 26,000 canvas operations a frame at DPR 2, for a picture that
+     * never changed. Paint the settled text once and schedule no frame; the
+     * wait timer (or the in-view effect) flips the state and this effect
+     * restarts.
+     */
+    if (!isAnimating(animationState)) {
+      paintOnce();
+      return;
+    }
 
     let lastTime = performance.now();
     let frameId: number;
@@ -199,12 +253,8 @@ export default function VaporizeTextCycle({
       // Clear canvas only if we're going to draw
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Update based on animation state
+      // Update based on animation state (only the moving states reach here)
       switch (animationState) {
-        case "static": {
-          memoizedRenderParticles(ctx, particlesRef.current);
-          break;
-        }
         case "vaporizing": {
           // Calculate progress based on duration
           vaporizeProgressRef.current += deltaTime * 100 / (animationDurations.VAPORIZE_DURATION / 1000);
@@ -249,16 +299,18 @@ export default function VaporizeTextCycle({
 
           if (fadeOpacityRef.current >= 1) {
             setAnimationState("waiting");
-            setTimeout(() => {
-              setAnimationState("vaporizing");
-              vaporizeProgressRef.current = 0;
-              resetParticles(particlesRef.current);
-            }, animationDurations.WAIT_DURATION);
+            // Guarded: this frame can run once more before React commits
+            // "waiting" and swaps the closure, and two timers meant two resets
+            // a frame apart, the second landing mid-dissolve.
+            if (waitTimerRef.current === null) {
+              waitTimerRef.current = window.setTimeout(() => {
+                waitTimerRef.current = null;
+                vaporizeProgressRef.current = 0;
+                resetParticles(particlesRef.current);
+                setAnimationState("vaporizing");
+              }, animationDurations.WAIT_DURATION);
+            }
           }
-          break;
-        }
-        case "waiting": {
-          memoizedRenderParticles(ctx, particlesRef.current);
           break;
         }
       }
@@ -281,6 +333,7 @@ export default function VaporizeTextCycle({
     globalDpr,
     memoizedUpdateParticles,
     memoizedRenderParticles,
+    paintOnce,
     animationDurations.FADE_IN_DURATION,
     animationDurations.WAIT_DURATION,
     animationDurations.VAPORIZE_DURATION,
@@ -296,6 +349,10 @@ export default function VaporizeTextCycle({
       currentTextIndex,
       transformedDensity,
     });
+    // Sampling leaves the canvas blank. While the loop runs, its next frame
+    // paints; in the idle states there is no next frame, so paint here — this
+    // is what keeps a theme switch or a resize visible mid-wait.
+    if (!isAnimating(animationStateRef.current)) paintOnce();
 
     const currentFont = font.fontFamily || "sans-serif";
     return handleFontChange({
@@ -309,7 +366,7 @@ export default function VaporizeTextCycle({
       transformedDensity,
       framerProps: { texts, font, color, alignment },
     });
-  }, [texts, font, color, alignment, wrapperSize, currentTextIndex, globalDpr, transformedDensity]);
+  }, [texts, font, color, alignment, wrapperSize, currentTextIndex, globalDpr, transformedDensity, paintOnce]);
 
   // Handle resize
   useEffect(() => {
@@ -326,23 +383,18 @@ export default function VaporizeTextCycle({
         // on every iteration. See lib/stable-updates.
         setWrapperSize((prev) => nextSize(prev, width, height));
       }
-
-      renderCanvas({
-        framerProps: { texts, font, color, alignment },
-        canvasRef: canvasRef as React.RefObject<HTMLCanvasElement>,
-        wrapperSize: { width: container.clientWidth, height: container.clientHeight },
-        particlesRef,
-        globalDpr,
-        currentTextIndex,
-        transformedDensity,
-      });
+      // Nothing else. This callback used to call renderCanvas directly as well,
+      // with the closure from the first render — so every notification
+      // re-sampled the canvas synchronously and painted texts[0] over whatever
+      // was showing, and a real size change rebuilt everything twice. The size
+      // state above feeds the rebuild effect, which has the current props; that
+      // is the one path.
     });
 
     resizeObserver.observe(container);
     return () => {
       resizeObserver.disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- observe once per mount; canvas re-renders via the effect above on the tracked deps
   }, []);
 
   // Initial size detection
@@ -564,11 +616,12 @@ const createParticles = (
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
 
-  // Calculate sampling rate based on DPR to maintain consistent particle density
-  const baseDPR = 3; // Base DPR we're optimizing for
-  const currentDPR = canvas.width / parseInt(canvas.style.width);
-  const baseSampleRate = Math.max(1, Math.round(currentDPR / baseDPR));
-  const sampleRate = Math.max(1, Math.round(baseSampleRate));
+  // Every pixel, deliberately. The upstream component thinned the sample at
+  // high DPR, which left visible gaps in the reformed text; this codebase kept
+  // full per-pixel alpha instead (below), and the thinning then never applied
+  // at any real DPR anyway. The particle count is bounded by the backing scale
+  // — see effectiveDpr — not by skipping pixels.
+  const sampleRate = 1;
 
   // Sample the text pixels and create particles
   for (let y = 0; y < canvas.height; y += sampleRate) {

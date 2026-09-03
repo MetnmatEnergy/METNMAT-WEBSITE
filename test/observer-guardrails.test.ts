@@ -106,4 +106,38 @@ describe("ResizeObserver guardrails", () => {
     expect(hero.src).not.toMatch(/setStyle\(\s*\{/);
     expect(hero.src).toMatch(/setStyle\(\(prev\) => nextDisplayStyle\(/);
   });
+
+  it("the vaporize ResizeObserver callback never re-samples the canvas itself", () => {
+    // The callback once called renderCanvas directly, with the closure from the
+    // first render: every notification re-sampled synchronously and painted
+    // texts[0] over the current stat, and a real size change rebuilt twice. The
+    // identity-gated size state feeds the rebuild effect; that is the one path.
+    const vapour = files.find((f) => f.path.endsWith("vapour-text-effect.tsx"))!;
+    const m = /new ResizeObserver\(([\s\S]*?)\);\s*resizeObserver\.observe/.exec(vapour.src);
+    expect(m, "could not locate the vaporize ResizeObserver body").not.toBeNull();
+    expect(m![1]).not.toMatch(/renderCanvas\(/);
+  });
+});
+
+describe("vaporize cost guardrails", () => {
+  const vapour = files.find((f) => f.path.endsWith("vapour-text-effect.tsx"))!;
+
+  it("the backing scale is capped, not devicePixelRatio × 1.5", () => {
+    expect(vapour.src).not.toMatch(/devicePixelRatio\s*\*\s*1\.5/);
+    expect(vapour.src).toMatch(/effectiveDpr\(/);
+  });
+
+  it("the frame loop is refused in the idle states before any frame is requested", () => {
+    const guard = vapour.src.indexOf("if (!isAnimating(animationState))");
+    const firstFrame = vapour.src.indexOf("requestAnimationFrame(");
+    expect(guard).toBeGreaterThan(-1);
+    expect(firstFrame).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(firstFrame);
+  });
+
+  it("the wait timer is held in a ref and cleared, not discarded", () => {
+    expect(vapour.src).toMatch(/waitTimerRef\.current = window\.setTimeout\(/);
+    expect(vapour.src).toMatch(/window\.clearTimeout\(waitTimerRef\.current\)/);
+    expect(vapour.src).not.toMatch(/^\s*setTimeout\(\(\) => \{\s*$/m);
+  });
 });

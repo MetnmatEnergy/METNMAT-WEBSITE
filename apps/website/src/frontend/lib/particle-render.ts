@@ -59,13 +59,12 @@ export type ParticleContext = {
  *   3. `ctx.fillRect(x, y, 1, 1)` — a draw call that cannot batch, because the
  *      style changed immediately before it.
  *
- * The particle count is not small. Sampling uses
- * `sampleRate = max(1, round(DPR / 3))`, which evaluates to 1 on every ordinary
- * display, so EVERY opaque pixel of the rendered text becomes a particle. The
- * homepage hero mounts six of these canvases at once — three visible stat slots,
- * each with a number and a label — all above the fold and therefore all in view
- * together. That is on the order of 30,000 particles at DPR 2, and roughly
- * double at DPR 3.
+ * The particle count is not small. Every opaque pixel of the rendered text
+ * becomes a particle, and the homepage hero mounts six of these canvases at
+ * once — three visible stat slots, each with a number and a label — all above
+ * the fold and therefore all in view together. Before the backing scale was
+ * capped (lib/vapour-cycle, effectiveDpr) that was 35,000 particles at DPR 2
+ * and 75,000 at DPR 3; capped, about 15,000 on any high-DPR display.
  *
  * Thirty thousand regex runs plus thirty thousand CSS colour parses plus thirty
  * thousand unbatchable draw calls, sixty times a second, is not a slow frame. It
@@ -74,10 +73,17 @@ export type ParticleContext = {
  *
  * WHAT THIS DOES INSTEAD
  * The colour prefix is precomputed at creation, so no regex runs here at all.
- * `fillStyle` is assigned only when the colour actually changes from the
- * previous particle — and during `static` and `waiting`, which is most of the
- * cycle, every particle shares one alpha, so that is ONE assignment for the
- * whole frame rather than thirty thousand.
+ * `fillStyle` is assigned only when the colour or alpha bucket changes from the
+ * previous particle. That is far fewer than one per particle, but it is NOT one
+ * per frame: every antialiased glyph edge carries its own alpha, and in scan
+ * order the edge/interior/edge transitions change the bucket on most edge
+ * pixels — measured at ~12,000 assignments per idle frame at DPR 2 across the
+ * six hero canvases. An earlier version of this comment claimed the idle states
+ * cost one assignment; it was wrong, and test/particle-render.test.ts now pins
+ * the true figure. The idle states are handled where they belong: the
+ * component no longer runs its frame loop while nothing moves
+ * (vapour-text-effect, `isAnimating`), so this function's per-frame cost is
+ * paid only while particles are actually in flight.
  *
  * Fully-opaque neighbours in the same row are then merged into a single wider
  * rect. Particles are created in scan order, so a glyph's interior is long runs

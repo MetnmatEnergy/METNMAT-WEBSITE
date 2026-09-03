@@ -168,3 +168,43 @@ describe("pixels are unchanged", () => {
     expect(rects).toHaveLength(2);
   });
 });
+
+describe("the honest idle cost", () => {
+  /**
+   * The renderer's header once claimed the idle states cost ONE fillStyle per
+   * frame because every particle "shares one alpha". They do not: antialiased
+   * glyph edges carry their own alpha, and in scan order each edge pixel
+   * changes the bucket. This fixture is one glyph row as sampling actually
+   * produces it — soft edge, solid interior, soft edge — and the counts are
+   * what an idle frame really paid, sixty times a second, on six canvases.
+   *
+   * The fix for that is not in this function. It is that the component no
+   * longer runs the loop at all while nothing moves (lib/vapour-cycle,
+   * isAnimating). These tests exist so the false premise cannot come back.
+   */
+  const glyphRow = (y: number) => [
+    particle(0, y, 0.2),
+    particle(1, y, 0.6),
+    ...Array.from({ length: 6 }, (_, i) => particle(2 + i, y, 1)),
+    particle(8, y, 0.6),
+    particle(9, y, 0.2),
+  ];
+
+  it("pays a style change at every edge transition, not one per frame", () => {
+    const { ctx, styleAssignments, rects } = recorder();
+    renderParticles(ctx, glyphRow(0), 1);
+    // 0.2 | 0.6 | 1 (merged run) | 0.6 | 0.2 — five buckets, five draws.
+    expect(styleAssignments).toHaveLength(5);
+    expect(rects).toHaveLength(5);
+  });
+
+  it("scales linearly with glyph rows — there is no idle shortcut in here", () => {
+    const rows = 100;
+    const { ctx, styleAssignments, rects } = recorder();
+    renderParticles(ctx, Array.from({ length: rows }, (_, y) => glyphRow(y)).flat(), 1);
+    // Consecutive rows meet at the same 0.2 bucket, so four changes per row
+    // after the first. Still O(rows), which is the point.
+    expect(styleAssignments).toHaveLength(4 * rows + 1);
+    expect(rects).toHaveLength(5 * rows);
+  });
+});
