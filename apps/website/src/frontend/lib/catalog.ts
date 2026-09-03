@@ -63,9 +63,11 @@ export type Product = {
   badges?: string[]; // "Bestseller", "New", "GST invoice"
   reviews?: Review[];
   imageAlts?: string[]; // media alt per gallery image, index-aligned with `images`
-  imageFulls?: string[]; // untouched originals for the lightbox, index-aligned with `images`
-  imageUrl?: string; // CMS-managed primary image (display derivative when available)
-  images?: string[]; // CMS-managed gallery
+  imageFulls?: string[]; // largest derivative (`zoom`) for the lightbox, index-aligned
+  imageUrl?: string; // CMS-managed primary image, at card size (`card`, 800×600)
+  imageSrcSet?: string; // full CMS ladder as a `srcset` for `imageUrl`
+  images?: string[]; // CMS-managed gallery, at PDP-stage size (`display`/`pdp`)
+  imageSrcSets?: string[]; // full CMS ladder per gallery image, index-aligned
   videoUrl?: string; // CMS-managed YouTube link, shown as a playable item in the gallery
   createdAt?: string; // CMS document creation date (ISO) — used for "Newest" sort
   updatedAt?: string; // CMS last-edit date (ISO) — used for sitemap lastModified

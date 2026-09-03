@@ -1,13 +1,17 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { X, ZoomIn, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { ProductImage } from "@/frontend/components/commerce/product-image";
 import { cn } from "@/frontend/lib/utils";
 
 const SLIDE_MS = 4500;
+
+// Slot widths for the browser's srcset pick: the stage is full-bleed on mobile
+// and a 640px column on desktop; the lightbox is capped at max-w-5xl.
+const STAGE_SIZES = "(max-width: 768px) 100vw, 640px";
+const ZOOM_SIZES = "(max-width: 768px) 100vw, 1024px";
 
 /** Extract the 11-char video id from any common YouTube URL form. */
 function youTubeId(url?: string): string | null {
@@ -18,7 +22,7 @@ function youTubeId(url?: string): string | null {
   return m ? m[1]! : null;
 }
 
-type Item = { kind: "image"; src: string } | { kind: "video"; id: string };
+type Item = { kind: "image"; src: string; srcSet?: string } | { kind: "video"; id: string };
 
 /**
  * Product gallery: auto-sliding main image (crossfade every ~4.5s, paused on
@@ -34,14 +38,21 @@ type Item = { kind: "image"; src: string } | { kind: "video"; id: string };
 export function ProductGallery({
   images,
   fulls,
+  srcSets,
   alts,
   name,
   videoUrl,
 }: {
   /** Display URLs (subject-aware 4:3 derivatives) for stage, thumbs, crossfade. */
   images: string[];
-  /** Untouched originals, index-aligned — the lightbox shows the complete photo. */
+  /** Largest derivative, index-aligned — the lightbox shows the complete photo. */
   fulls?: string[];
+  /**
+   * The CMS variant ladder per image as a `srcset`, index-aligned. Payload
+   * generated every entry at upload, so the browser picks the right file for the
+   * slot without the website process re-encoding anything. See mediaSrcSet().
+   */
+  srcSets?: string[];
   /** Media alt per image, index-aligned with `images` (optional, from the CMS). */
   alts?: string[];
   name: string;
@@ -50,10 +61,10 @@ export function ProductGallery({
   const videoId = youTubeId(videoUrl);
   const items = React.useMemo<Item[]>(
     () => [
-      ...images.map((src) => ({ kind: "image" as const, src })),
+      ...images.map((src, i) => ({ kind: "image" as const, src, srcSet: srcSets?.[i] })),
       ...(videoId ? [{ kind: "video" as const, id: videoId }] : []),
     ],
-    [images, videoId]
+    [images, srcSets, videoId]
   );
   const imagesLen = images.length;
 
@@ -166,9 +177,7 @@ export function ProductGallery({
   // The lightbox shows the COMPLETE photograph: the untouched original when the
   // CMS provides one, else the display file (identical for pre-pipeline media).
   const zoomSrc = current?.kind === "image" ? fulls?.[active] || current.src : null;
-  // Caption only when the CMS provides real alt text — the neutral fallback
-  // ("… — image 2") is fine for screen readers but is noise as a visible line.
-  const zoomCaption = current?.kind === "image" ? alts?.[active]?.trim() : undefined;
+  const zoomSrcSet = current?.kind === "image" ? srcSets?.[active] : undefined;
 
   return (
     // self-start + content-start: don't stretch to the (taller) details column —
@@ -186,15 +195,17 @@ export function ProductGallery({
         >
           {/* Image layers (crossfade) */}
           {images.map((src, i) => (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               key={src + i}
               src={src}
+              {...(srcSets?.[i] ? { srcSet: srcSets[i], sizes: STAGE_SIZES } : {})}
               alt={altFor(i)}
-              fill
-              sizes="(max-width: 768px) 100vw, 640px"
-              priority={i === 0}
+              loading={i === 0 ? "eager" : "lazy"}
+              decoding={i === 0 ? "sync" : "async"}
+              fetchPriority={i === 0 ? "high" : undefined}
               className={cn(
-                "object-contain transition-opacity duration-700",
+                "absolute inset-0 h-full w-full object-contain transition-opacity duration-700",
                 activeKind === "image" && i === active ? "opacity-100" : "opacity-0"
               )}
             />
@@ -317,6 +328,7 @@ export function ProductGallery({
                   // default 4:3 via twMerge.
                   <ProductImage
                     src={it.src}
+                    srcSet={it.srcSet}
                     alt={altFor(i)}
                     sizes="128px"
                     className="aspect-square h-full w-full"
@@ -383,28 +395,31 @@ export function ProductGallery({
               </button>
             </>
           )}
-          {/* Zoom view: the complete photograph (untouched original when the
-              CMS provides one), optimised through next/image. */}
+          {/* Zoom view: the complete photograph at the CMS `zoom` derivative
+              (2400×1800), with the ladder as srcset so a phone still gets a
+              sensibly sized file. No card or backing behind it — catalogue
+              masters carry their own background, so the enlargement is just the
+              photograph on the scrim. */}
           <div
             className="relative h-full w-full max-w-5xl touch-pan-y"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={onSwipeDown}
             onPointerUp={makeSwipeUp(goImage)}
           >
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={zoomSrc}
+              {...(zoomSrcSet ? { srcSet: zoomSrcSet, sizes: ZOOM_SIZES } : {})}
               alt={altFor(active)}
-              fill
-              sizes="(max-width: 768px) 100vw, 1200px"
-              className="rounded-lg object-contain"
+              decoding="async"
+              className="absolute inset-0 h-full w-full rounded-lg object-contain"
             />
           </div>
 
-          {/* Caption (the image's CMS alt) + position counter */}
+          {/* Position counter only. The alt text stays on the <Image> for
+              screen readers, but printing the product name over the enlarged
+              photograph just covers the thing the reader zoomed in to see. */}
           <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex flex-col items-center gap-1.5 px-16 text-center">
-            {zoomCaption && (
-              <p className="line-clamp-2 max-w-2xl text-sm text-white/85 drop-shadow-md">{zoomCaption}</p>
-            )}
             {manyImages && (
               <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium tabular-nums text-white/80">
                 {Math.min(active + 1, imagesLen)} / {imagesLen}

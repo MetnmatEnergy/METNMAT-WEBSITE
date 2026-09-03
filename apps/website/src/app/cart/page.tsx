@@ -102,6 +102,7 @@ export default function CartPage() {
                 {line.product.imageUrl ? (
                   <ProductImage
                     src={line.product.imageUrl}
+                    srcSet={line.product.imageSrcSet}
                     alt={line.product.name}
                     sizes="96px"
                     className="aspect-square h-full w-full"

@@ -67,6 +67,7 @@ export function CatalogProductCard({
       >
         <ProductImage
           src={product.imageUrl}
+          srcSet={product.imageSrcSet}
           priority={priority}
           alt=""
           // Most of the catalogue has no photo yet, so this placeholder is what

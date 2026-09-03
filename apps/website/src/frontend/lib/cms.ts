@@ -80,36 +80,87 @@ const apiStrict = cache(async function apiStrict<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 });
 
+type MediaSize = { url?: string; width?: number; height?: number };
+
 type Media =
   | {
       url?: string;
       alt?: string;
       width?: number;
       height?: number;
-      sizes?: { display?: { url?: string; width?: number; height?: number } };
+      sizes?: Partial<Record<LadderSize, MediaSize>>;
     }
   | string
   | null
   | undefined;
 
+/**
+ * The Media collection's 4:3 variant ladder (apps/dashboard/src/collections/Media.ts),
+ * ASCENDING by width. `display` sits after `pdp` deliberately: both render at
+ * 1600×1200, and where the subject-aware display derivative exists it must win.
+ *
+ * Payload generates these once, at upload. Serving them directly is what keeps
+ * `/_next/image` — and therefore sharp — off the website process entirely for
+ * product photography; see mediaVariants() below.
+ */
+const LADDER = ["micro", "thumb", "card", "pdp", "display", "zoom"] as const;
+type LadderSize = (typeof LADDER)[number];
+
 /** Absolute URL for a Payload media object (handles local + cloud storage). */
 export function mediaUrl(media: Media): string | undefined {
   if (!media || typeof media === "string") return undefined;
-  const u = media.url;
+  return absolute(media.url);
+}
+
+function absolute(u?: string): string | undefined {
   if (!u) return undefined;
   return u.startsWith("http") ? u : `${CMS}${u}`;
 }
 
 /**
- * Gallery/card URL for a media object: the subject-aware `display` derivative
- * (exact 4:3, generated at upload) when present, else the stored file — which
- * for pre-pipeline media IS the 4:3 master, so both render identically.
+ * Every ladder derivative Payload actually generated for this media, ascending
+ * by width, with the stored original as the final entry.
+ *
+ * Read from the record rather than reconstructed from the filename, because the
+ * ladder is NOT uniform: media uploaded before the 4:3 ladder landed carry only
+ * `card`, so guessing `<stem>-1600x1200.webp` for those would 404. Deduped by
+ * width, which is also how `display` supersedes `pdp` at 1600.
  */
-export function mediaDisplayUrl(media: Media): string | undefined {
-  if (!media || typeof media === "string") return undefined;
-  const u = media.sizes?.display?.url;
-  if (!u) return mediaUrl(media);
-  return u.startsWith("http") ? u : `${CMS}${u}`;
+export function mediaVariants(media: Media): { url: string; width: number }[] {
+  if (!media || typeof media === "string") return [];
+  const byWidth = new Map<number, string>();
+  for (const name of LADDER) {
+    const size = media.sizes?.[name];
+    const url = absolute(size?.url);
+    if (url && size?.width) byWidth.set(size.width, url);
+  }
+  const original = absolute(media.url);
+  if (original && media.width) byWidth.set(media.width, original);
+  return [...byWidth.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([width, url]) => ({ url, width }));
+}
+
+/**
+ * A `srcset` attribute over the whole ladder. Paired with a `sizes` hint the
+ * browser picks the variant that fits the slot — the same responsive selection
+ * next/image used to do, minus the server-side re-encode.
+ */
+export function mediaSrcSet(media: Media): string | undefined {
+  const variants = mediaVariants(media);
+  return variants.length > 1 ? variants.map((v) => `${v.url} ${v.width}w`).join(", ") : undefined;
+}
+
+/**
+ * The smallest derivative at least `minWidth` wide — the fallback `src` for a
+ * given surface (800 card grid · 1600 PDP stage · 2400 lightbox). Falls back to
+ * the largest variant, then to the stored file, so media with a short ladder
+ * still resolves.
+ */
+export function mediaAtLeast(media: Media, minWidth: number): string | undefined {
+  const variants = mediaVariants(media);
+  if (variants.length === 0) return mediaUrl(media);
+  return (variants.find((v) => v.width >= minWidth) ?? variants[variants.length - 1]!).url;
 }
 
 type CmsCategory = {
@@ -171,11 +222,16 @@ function mapProduct(d: CmsProduct): Product {
   // has no resolvable file and is dropped.
   const gallery = (d.images ?? [])
     .map((i) => ({
-      src: mediaDisplayUrl(i.image),
-      full: mediaUrl(i.image),
+      card: mediaAtLeast(i.image, 800), // grid card / cart / mosaic fallback src
+      src: mediaAtLeast(i.image, 1600), // PDP stage fallback src
+      full: mediaAtLeast(i.image, 2400), // lightbox fallback src
+      srcSet: mediaSrcSet(i.image) ?? "", // the whole ladder; the browser chooses
       alt: typeof i.image === "object" && i.image ? (i.image.alt ?? "").trim() : "",
     }))
-    .filter((g): g is { src: string; full: string; alt: string } => Boolean(g.src));
+    .filter(
+      (g): g is { card: string; src: string; full: string; srcSet: string; alt: string } =>
+        Boolean(g.src) && Boolean(g.card) && Boolean(g.full)
+    );
   return {
     slug: d.slug,
     name: d.name,
@@ -212,9 +268,11 @@ function mapProduct(d: CmsProduct): Product {
       }))
       .filter((sheet) => sheet.href),
     badges: d.badges ?? [],
-    imageUrl: gallery[0]?.src,
+    imageUrl: gallery[0]?.card,
+    imageSrcSet: gallery[0]?.srcSet || undefined,
     images: gallery.map((g) => g.src),
     imageFulls: gallery.map((g) => g.full),
+    imageSrcSets: gallery.map((g) => g.srcSet),
     imageAlts: gallery.map((g) => g.alt),
     videoUrl: d.videoUrl?.trim() || undefined,
     createdAt: d.createdAt,

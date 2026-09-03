@@ -20,6 +20,7 @@ function MosaicCard({ product, eager }: { product: Product; eager?: boolean }) {
           which Column de-lazies explicitly. */}
       <ProductImage
         src={product.imageUrl}
+        srcSet={product.imageSrcSet}
         alt={product.name}
         sizes="(max-width: 640px) 50vw, 280px"
         className="bg-white"

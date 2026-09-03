@@ -1017,6 +1017,7 @@ export default function CheckoutPage() {
                       // Was object-cover — cropped the edges off the product.
                       <ProductImage
                         src={l.product.imageUrl}
+                        srcSet={l.product.imageSrcSet}
                         alt={l.product.name}
                         sizes="96px"
                         className="aspect-square h-full w-full"
