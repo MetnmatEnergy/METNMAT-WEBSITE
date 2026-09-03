@@ -188,6 +188,11 @@ export function ChatWidget() {
     };
 
     let inner: MutationObserver | null = null;
+    // The exact panel element `inner` is currently watching. The widget can
+    // replace its own children, and an observer keeps watching the node it was
+    // given — a detached one — so without this the panel's open/close state
+    // silently stopped reaching aria-expanded for the rest of the page's life.
+    let watchedPanel: HTMLElement | null = null;
 
     // Phase B: the widget exists. Watch only what the WIDGET changes.
     const watchWidget = () => {
@@ -195,8 +200,15 @@ export function ChatWidget() {
       const panel = document.getElementById(PANEL_ID);
       if (!container) return;
       inner?.disconnect();
+      watchedPanel = panel;
       inner = new MutationObserver(() => {
-        try { apply(); } catch { /* their markup changed shape — leave it alone */ }
+        try {
+          apply();
+          // If the widget rebuilt its panel, follow the new node. Re-arming
+          // cannot loop: observing fires no callback of its own, and the
+          // attributes we write are not in any filter we install.
+          if (document.getElementById(PANEL_ID) !== watchedPanel) watchWidget();
+        } catch { /* their markup changed shape — leave it alone */ }
       });
       // The panel opens and closes by inline `display`; that is the one
       // attribute change we need to follow. These inits live in
@@ -213,21 +225,35 @@ export function ChatWidget() {
     const outer = new MutationObserver(() => {
       if (!document.getElementById("chat-widget-container")) return;
       outer.disconnect();
+      if (giveUp !== undefined) window.clearTimeout(giveUp);
       try { apply(); } catch { /* leave it alone */ }
       watchWidget();
     });
+
+    /*
+     * Phase A has to stop waiting eventually. If the widget's script never
+     * arrives — an ad blocker, a DNS failure, the chatbot host being down — the
+     * container never appears, and this observer would otherwise watch every
+     * childList mutation in the whole body subtree for the rest of the page's
+     * life. Each callback is only a getElementById, but a React app mutates the
+     * body subtree constantly, and the wait was unbounded. Thirty seconds is far
+     * longer than the script needs and costs a blocked visitor nothing.
+     */
+    let giveUp: number | undefined;
 
     try {
       if (apply()) {
         watchWidget();
       } else {
         outer.observe(document.body, BODY_OBSERVER_INIT);
+        giveUp = window.setTimeout(() => outer.disconnect(), 30000);
       }
     } catch {
       /* nothing to observe */
     }
 
     return () => {
+      if (giveUp !== undefined) window.clearTimeout(giveUp);
       outer.disconnect();
       inner?.disconnect();
     };
