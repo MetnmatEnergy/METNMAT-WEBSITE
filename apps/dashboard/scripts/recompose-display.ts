@@ -8,10 +8,17 @@
  *   cd apps/dashboard
  *   npx tsx scripts/recompose-display.ts --target=dev --slug=<product-slug>
  *   npx tsx scripts/recompose-display.ts --target=prod --media=<media-id>
+ *   npx tsx scripts/recompose-display.ts --target=prod --all --keep-focal
  *
  * Note: a recompose re-seeds focalX/focalY from fresh detection — a focal
  * point staff dragged by hand is replaced. Use the admin's focal editor
  * afterwards to correct individual images.
+ *
+ * --keep-focal recomposes around the point ALREADY stored instead. That is the
+ * mode a library-wide backfill must use: --all --keep-focal re-renders the
+ * whole ladder (micro/thumb/card/display) from each stored original without
+ * touching a single focal point staff have set. Plain --all re-detects, which
+ * over an edited library throws that work away.
  *
  * Environment: same shape as attach-product-images.ts (MONGODB_URI,
  * PAYLOAD_SECRET; STORAGE_PROVIDER/S3_* for prod). On prod the running CMS
@@ -33,8 +40,10 @@ const flag = (name: string): string | undefined => {
 async function main(): Promise<void> {
   const slug = flag("slug");
   const mediaId = flag("media");
-  if (!slug && !mediaId) {
-    console.error("Usage: npx tsx scripts/recompose-display.ts --target=dev|prod --slug=<product-slug> | --media=<media-id>");
+  const all = argv.includes("--all");
+  const keepFocal = argv.includes("--keep-focal");
+  if (!slug && !mediaId && !all) {
+    console.error("Usage: npx tsx scripts/recompose-display.ts --target=dev|prod --slug=<product-slug> | --media=<media-id> | --all [--keep-focal]");
     process.exit(2);
   }
   const { target, dbName } = assertTarget(argv);
@@ -47,6 +56,21 @@ async function main(): Promise<void> {
   let ids: string[] = [];
   if (mediaId) {
     ids = [mediaId];
+  } else if (all) {
+    // Product photography only — the hook returns early for every other
+    // category, so recomposing logos, covers and team photos would be a no-op
+    // that still re-PUTs their files.
+    const found = await payload.find({
+      collection: "media",
+      where: { category: { equals: "product" } },
+      pagination: false,
+      depth: 0,
+    });
+    ids = found.docs.map((d) => String((d as { id: string | number }).id));
+    if (!ids.length) {
+      console.error("No media with category=product found.");
+      process.exit(1);
+    }
   } else {
     const found = await payload.find({
       collection: "products",
@@ -76,7 +100,7 @@ async function main(): Promise<void> {
         collection: "media",
         id,
         data: {},
-        context: { recomposeDisplay: true },
+        context: { recomposeDisplay: keepFocal ? "keep-focal" : true },
       });
       console.log(`  ok: ${(doc as { filename?: string }).filename ?? id}`);
     } catch (e) {

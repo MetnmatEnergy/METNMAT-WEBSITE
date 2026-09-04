@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { mediaAtLeast, mediaSrcSet, mediaVariants } from "../apps/website/src/frontend/lib/cms";
 
 /**
@@ -101,5 +103,67 @@ describe("the gallery surfaces still get the composed crop", () => {
 
   it("the stage srcset still carries the whole ladder", () => {
     expect(mediaSrcSet(master) ?? "").toContain("cell-display-1600x1200.webp");
+  });
+});
+
+/**
+ * The contract BETWEEN the two apps, which is where this nearly went wrong.
+ *
+ * The CMS decides which rungs carry a subject-aware crop (SMALL_RUNGS, plus
+ * `display`). The website decides which rungs the lightbox may not offer
+ * (COMPOSED, in frontend/lib/cms.ts). Those two lists are the same fact stated
+ * in two repositories' worth of code, and nothing but this test makes them
+ * agree.
+ *
+ * The failure mode is not hypothetical — a cross-plan review caught it before
+ * it shipped. Composing a rung the website still believes is plain puts a crop
+ * into the one view that promises the complete photograph, and it surfaces at
+ * the LATER manual CMS deploy with no code change in between to point at.
+ * Composing `zoom` or `pdp` is worse still: it leaves the lightbox with nothing
+ * uncropped to fall back to at all.
+ */
+describe("the composed set matches across the two apps", () => {
+  const hook = readFileSync(
+    join(__dirname, "..", "apps", "dashboard", "src", "hooks", "product-display-derivative.ts"),
+    "utf8",
+  );
+  const web = readFileSync(
+    join(__dirname, "..", "apps", "website", "src", "frontend", "lib", "cms.ts"),
+    "utf8",
+  );
+
+  /** The rung names the CMS composes below `display`. */
+  const smallRungs = (() => {
+    const block = /const SMALL_RUNGS = \[([\s\S]*?)\] as const;/.exec(hook);
+    expect(block, "SMALL_RUNGS not found").not.toBeNull();
+    return [...block![1].matchAll(/\["([a-z]+)",\s*\d+\]/g)].map((m) => m[1]);
+  })();
+
+  /** The rung names the website refuses to serve as "uncropped". */
+  const composed = (() => {
+    const decl = /const COMPOSED = new Set\(\[([^\]]*)\]\)/.exec(web);
+    expect(decl, "COMPOSED not found").not.toBeNull();
+    return [...decl![1].matchAll(/"([a-z]+)"/g)].map((m) => m[1]);
+  })();
+
+  it("the CMS composes exactly the small rungs it claims to", () => {
+    expect(smallRungs).toEqual(["micro", "thumb", "card"]);
+  });
+
+  it("every rung the CMS composes is one the website treats as cropped", () => {
+    for (const rung of smallRungs) expect(composed).toContain(rung);
+    expect(composed).toContain("display");
+  });
+
+  it("the CMS composes NOTHING the lightbox depends on", () => {
+    // pdp, zoom and the stored original are all the uncropped ladder has.
+    // Composing either named rung empties it.
+    expect(smallRungs).not.toContain("pdp");
+    expect(smallRungs).not.toContain("zoom");
+  });
+
+  it("the website leaves pdp and zoom uncropped", () => {
+    expect(composed).not.toContain("pdp");
+    expect(composed).not.toContain("zoom");
   });
 });
