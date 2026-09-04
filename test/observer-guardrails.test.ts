@@ -348,3 +348,69 @@ describe("structural scan", () => {
     expect(getTracker).not.toMatch(/addEventListener\(/);
   });
 });
+
+describe("decorative animation loops are gated and release their resources", () => {
+  const shader = files.find((f) => f.path.endsWith("animated-shader-background.tsx"))!;
+  const highlighter = files.find((f) => f.path.endsWith("highlighter.tsx"))!;
+
+  it("both loops start through the shared gate, not an ad-hoc condition", () => {
+    // The rule (viewport AND tab-visibility AND reduced-motion AND not-already-
+    // running) is unit-tested once in loop-gate.test.ts. A component that
+    // hand-rolls it again is a component that can forget a condition.
+    for (const f of [shader, highlighter]) {
+      expect(f.src, `${f.path} must use shouldStartLoop`).toMatch(/shouldStartLoop\(\{/);
+    }
+  });
+
+  it("the shader releases its WebGL context, not just three's objects", () => {
+    // dispose() frees three.js's GPU objects but leaves the context alive.
+    // Browsers cap live contexts and silently evict the oldest.
+    expect(shader.src).toMatch(/renderer\.forceContextLoss\(\)/);
+    const loss = shader.src.indexOf("renderer.forceContextLoss()");
+    const dispose = shader.src.indexOf("renderer.dispose()");
+    expect(loss).toBeGreaterThan(-1);
+    expect(dispose).toBeGreaterThan(-1);
+    expect(loss, "forceContextLoss must come before dispose").toBeLessThan(dispose);
+  });
+
+  it("the shader advances on wall clock, not a fixed step per frame", () => {
+    // `iTime += 0.016` ran at double speed on a 120 Hz display.
+    expect(shader.src).not.toMatch(/iTime\.value \+= 0\.016/);
+    expect(shader.src).toMatch(/iTime\.value \+= delta/);
+  });
+
+  it("both loops observe intersection and tab visibility", () => {
+    for (const f of [shader, highlighter]) {
+      expect(f.src, `${f.path} IntersectionObserver`).toMatch(/new IntersectionObserver\(/);
+      expect(f.src, `${f.path} visibilitychange`).toMatch(/addEventListener\("visibilitychange"/);
+      expect(f.src, `${f.path} cleanup`).toMatch(/removeEventListener\("visibilitychange"/);
+    }
+  });
+
+  it("the highlighter no longer pushes the cursor through React state", () => {
+    // A mouse reports well above 60 Hz and /contact mounts three consumers, so
+    // this re-rendered the particle canvas and both groups per pointer sample.
+    expect(highlighter.src).not.toMatch(/useMousePosition/);
+    expect(highlighter.src).toMatch(/function useMouseMove\(/);
+    expect(highlighter.src).toMatch(/requestAnimationFrame\(\(\) => \{/);
+    expect(highlighter.src).toMatch(/"mousemove", handleMouseMove, \{ passive: true \}/);
+  });
+
+  it("the highlighter batches its layout reads ahead of its writes", () => {
+    // Reading a rect after writing a style forces a synchronous layout; the
+    // original interleaved them once per box, twice per box in fact.
+    const fn = /const onMouseMove = \(position: MousePosition\) => \{[\s\S]*?\n  \};/.exec(highlighter.src);
+    expect(fn, "HighlightGroup onMouseMove not found").not.toBeNull();
+    const body = fn![0];
+    const lastRead = body.lastIndexOf("getBoundingClientRect");
+    const firstWrite = body.indexOf("setProperty");
+    expect(lastRead).toBeGreaterThan(-1);
+    expect(firstWrite).toBeGreaterThan(-1);
+    expect(lastRead, "every rect must be read before the first style write").toBeLessThan(firstWrite);
+  });
+
+  it("the particle colour string is built once per colour, not per particle per frame", () => {
+    expect(highlighter.src).not.toMatch(/rgb\.join\(/);
+    expect(highlighter.src).toMatch(/const rgbPrefix = React\.useMemo\(/);
+  });
+});

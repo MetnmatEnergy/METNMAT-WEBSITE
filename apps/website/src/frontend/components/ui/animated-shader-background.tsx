@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { shouldStartLoop } from "@/frontend/lib/loop-gate";
 
 /**
  * Full-bleed animated plasma/aurora background (WebGL via three.js), recolored to
@@ -125,16 +126,33 @@ export function AnimatedShaderBackground({ className }: { className?: string }) 
 
     let frameId = 0;
     let running = false;
+    let lastTime = 0;
+    /*
+     * Both conditions must hold for the loop to run. The visibilitychange
+     * handler used to call start() on its own, so returning to the tab restarted
+     * a full-viewport fragment shader even when the hero was scrolled far off
+     * screen — the IntersectionObserver had stopped it, and coming back undid
+     * that without consulting it.
+     */
+    let inView = false;
     const renderOnce = () => renderer.render(scene, camera);
-    const loop = () => {
-      material.uniforms.iTime.value += 0.016;
+
+    const loop = (now: number) => {
+      // Wall clock, not a fixed 0.016 per frame. Frame-counting ran the
+      // animation at double speed on a 120 Hz display and skipped ahead by the
+      // whole pause after the loop had been stopped.
+      const delta = lastTime ? Math.min((now - lastTime) / 1000, 0.1) : 0;
+      lastTime = now;
+      material.uniforms.iTime.value += delta;
       renderOnce();
       frameId = requestAnimationFrame(loop);
     };
+
     const start = () => {
-      if (running || prefersReduced) return;
+      if (!shouldStartLoop({ alreadyRunning: running, prefersReducedMotion: prefersReduced, inView, pageHidden: document.hidden })) return;
       running = true;
-      loop();
+      lastTime = 0; // resume where it left off rather than jumping
+      frameId = requestAnimationFrame(loop);
     };
     const stop = () => {
       running = false;
@@ -142,8 +160,10 @@ export function AnimatedShaderBackground({ className }: { className?: string }) 
       frameId = 0;
     };
 
-    renderOnce(); // first frame immediately (also the static frame for reduced motion)
-    start();
+    // One frame now, so the hero is never an empty box. This is also the single
+    // static frame for prefers-reduced-motion. The loop itself is started by the
+    // IntersectionObserver below, once it confirms the element is on screen.
+    renderOnce();
 
     const ro = new ResizeObserver(() => {
       const s = sizeOf();
@@ -157,13 +177,16 @@ export function AnimatedShaderBackground({ className }: { className?: string }) 
 
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) start();
+        inView = Boolean(entries[0]?.isIntersecting);
+        if (inView) start();
         else stop();
       },
       { threshold: 0 }
     );
     io.observe(container);
 
+    // start() re-checks inView, so returning to the tab cannot resume a shader
+    // whose element is off screen.
     const onVisibility = () => {
       if (document.hidden) stop();
       else start();
@@ -180,6 +203,16 @@ export function AnimatedShaderBackground({ className }: { className?: string }) 
       }
       geometry.dispose();
       material.dispose();
+      /*
+       * dispose() frees three.js's own GPU objects but NOT the WebGL context.
+       * A browser allows only a small number of live contexts (Chrome ~16) and
+       * silently drops the oldest when that is exceeded — so repeatedly
+       * navigating to /about and away could evict a context still in use
+       * elsewhere, and the backgrounds would start failing to initialise.
+       * forceContextLoss() is three's documented way to hand it back now rather
+       * than whenever the renderer happens to be collected.
+       */
+      renderer.forceContextLoss();
       renderer.dispose();
     };
   }, []);
