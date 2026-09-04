@@ -108,9 +108,11 @@ export function ProductTabs({ product }: { product: Product }) {
 
         {tab === "Shipping & Returns" && (
           <div className="max-w-2xl space-y-3 text-sm text-muted-foreground">
-            <p className="flex items-center gap-2 font-medium text-foreground">
-              <Truck className="h-4 w-4 text-brand" /> {product.leadTime}
-            </p>
+            {product.leadTime ? (
+              <p className="flex items-center gap-2 font-medium text-foreground">
+                <Truck className="h-4 w-4 text-brand" /> {product.leadTime}
+              </p>
+            ) : null}
             <ul className="list-disc space-y-1 pl-5">
               <li>Shipping across India &amp; worldwide.</li>
               <li>GST invoice provided on every order.</li>

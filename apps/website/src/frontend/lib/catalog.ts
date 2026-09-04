@@ -53,7 +53,8 @@ export type Product = {
   inStock: boolean;
   moq: number; // minimum order quantity (B2B)
   unit: string; // "unit", "kg", "box", ...
-  leadTime: string; // e.g. "Ships in 1–2 weeks"
+  /** Optional. ABSENT means unknown — never substitute a shipping window. */
+  leadTime?: string;
   priceTiers: PriceTier[]; // bulk pricing (B2B)
   shortDesc: string;
   description?: unknown; // Payload Lexical rich text — rendered by <RichText> when non-empty
@@ -303,6 +304,27 @@ export function clampQty(product: Pick<Product, "moq">, qty: number): number {
  */
 export const isQuoteOnly = (product: Pick<Product, "price" | "productType">): boolean =>
   !product.price || product.productType === "quote-only" || product.productType === "discontinued";
+
+/**
+ * The availability word shown on the card and the buy box.
+ *
+ * Both used to read it from `inStock` alone, so a DISCONTINUED product — whose
+ * `inStock` stays true, because retiring something is a productType change and
+ * not a stock movement — advertised "In stock" on a page that simultaneously
+ * refused to sell it. Everything else already agreed it is not purchasable:
+ * isQuoteOnly covers it, create-order refuses it server-side, and the JSON-LD
+ * Offer is suppressed. Only the label disagreed.
+ *
+ * Quote-only is deliberately NOT special-cased: "In stock" and "request a
+ * quote" can both be true at once, so there is nothing to correct there.
+ */
+export function availabilityLabel(
+  product: Pick<Product, "inStock" | "productType">
+): "Discontinued" | "Made to order" | "In stock" {
+  if (product.productType === "discontinued") return "Discontinued";
+  if (product.productType === "made-to-order") return "Made to order";
+  return product.inStock ? "In stock" : "Made to order";
+}
 
 // ── Manual USD price (staff override) ─────────────────────────────────────────
 // `usdPrice` is the fixed USD a staff member sets for the BASE unit (GST-inclusive,

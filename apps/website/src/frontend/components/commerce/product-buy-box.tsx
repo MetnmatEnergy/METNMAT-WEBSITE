@@ -9,7 +9,7 @@ import { PlusOne } from "@/frontend/components/commerce/add-to-cart-button";
 import { WishlistButton } from "@/frontend/components/commerce/wishlist-button";
 import { RequestQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { Button } from "@/frontend/components/ui/button";
-import { inclGST, unitPriceForQty, usdFor, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
+import { availabilityLabel, inclGST, unitPriceForQty, usdFor, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { cn } from "@/frontend/lib/utils";
 
@@ -34,7 +34,8 @@ export function ProductBuyBox({ product }: { product: Product }) {
   const madeToOrder = product.productType === "made-to-order";
   const stock = (
     <p className={`mt-1 text-sm ${product.inStock && !madeToOrder ? "text-emerald-700 dark:text-emerald-400" : "text-amber-500"}`}>
-      {madeToOrder ? "Made to order" : product.inStock ? "In stock" : "Made to order"} · {product.leadTime}
+      {availabilityLabel(product)}
+      {product.leadTime ? ` · ${product.leadTime}` : null}
     </p>
   );
 

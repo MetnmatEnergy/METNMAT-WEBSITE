@@ -242,7 +242,7 @@ type CmsProduct = {
  *  staff flagged `public` are exposed on the storefront. */
 type CmsDocument = { id?: string; title?: string; filename?: string; url?: string; public?: boolean };
 
-function mapProduct(d: CmsProduct): Product {
+export function mapProduct(d: CmsProduct): Product {
   // Display URL (gallery/cards), full URL (lightbox = untouched original) and
   // alt are kept pairwise so the arrays stay index-aligned even when an entry
   // has no resolvable file and is dropped.
@@ -294,7 +294,11 @@ function mapProduct(d: CmsProduct): Product {
     inStock: d.inStock ?? true,
     moq: d.moq ?? 1,
     unit: d.unit ?? "unit",
-    leadTime: d.leadTime ?? "Ships in 1–2 weeks",
+    // NOT defaulted. A blank field means nobody stated a lead time, and
+    // "Ships in 1–2 weeks" was a delivery promise the business never made —
+    // rendered in the buy box, the shipping tab and the JSON-LD FAQ alike.
+    // CLAUDE.md: copy must trace to a real CMS field.
+    leadTime: d.leadTime?.trim() || undefined,
     priceTiers: d.priceTiers ?? [],
     shortDesc: d.shortDesc ?? "",
     description: d.description,

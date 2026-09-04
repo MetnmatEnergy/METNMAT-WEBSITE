@@ -7,7 +7,7 @@ import { RatingStars } from "@/frontend/components/commerce/rating-stars";
 import { AddToCartButton } from "@/frontend/components/commerce/add-to-cart-button";
 import { RequestQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { WishlistButton } from "@/frontend/components/commerce/wishlist-button";
-import { isQuoteOnly, type Product } from "@/frontend/lib/catalog";
+import { availabilityLabel, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { cn } from "@/frontend/lib/utils";
 
 /** Commerce product card — Amazon/Flipkart style. Supports grid + list layout. */
@@ -143,7 +143,7 @@ export function CatalogProductCard({
                 product.inStock ? "bg-emerald-500" : "bg-amber-500"
               )}
             />
-            {product.inStock ? "In stock" : "Made to order"}
+            {availabilityLabel(product)}
           </span>
         </div>
 
