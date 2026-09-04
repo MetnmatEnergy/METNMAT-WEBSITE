@@ -6,6 +6,7 @@ import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../h
 import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
 import { stockMovementHandler } from "../endpoints/stock";
 import { stockFieldsBeforeChange, recordOpeningStock } from "../hooks/stock-guard";
+import { productBeforeDelete } from "../hooks/product-guards";
 
 /**
  * Public reads see PUBLISHED products only.
@@ -30,7 +31,39 @@ export const Products: CollectionConfig = {
   admin: {
     group: "Catalog",
     useAsTitle: "name",
-    defaultColumns: ["name", "category", "sku", "price", "inStock", "featured"],
+    description:
+      "A new product saves as a DRAFT and is not on the website until you press Publish. The Status column below is the check.",
+    // `_status` sits immediately after the title, not buried mid-row, because
+    // this column exists to be the first thing the eye lands on. `versions.drafts`
+    // is on (below) and Payload injects `_status` with defaultValue "draft", so a
+    // Save that never reached Publish produced a row indistinguishable from the
+    // 131 live products — the "I added it and it never appeared" report. Payload
+    // renders three states here, not two: the third, "changed", is a PUBLISHED
+    // product carrying newer unpublished edits, which is the same complaint in
+    // its subtler form ("I edited it and the site still shows the old text").
+    defaultColumns: ["name", "_status", "category", "sku", "price", "inStock", "featured"],
+    // The list search box. Left unset, Payload searches `useAsTitle` ALONE, so a
+    // staff member holding a SKU — the code on the PO, the invoice and the shelf
+    // label — got an empty list for a product that plainly exists.
+    //
+    // Naming fields here REPLACES that single condition with an OR across all of
+    // them (payload/dist/utilities/mergeListSearchAndWhere.js), which is why
+    // "name" must stay in this list: drop it and plain name search breaks.
+    //
+    // Identifiers only, deliberately. Adding shortDesc/description would turn
+    // every marketing sentence into a hit and bury the exact-code lookup this
+    // exists for.
+    //
+    // Admin-only: `listSearchableFields` is read solely by
+    // `mergeListSearchAndWhere`, called from the List view and the bulk
+    // edit/delete drawers. It is on no REST path, so storefront querying and the
+    // `publishedRead` gate are unchanged.
+    //
+    // ONE key, not two. This line is the merge of two independently designed
+    // patches that each added their own `listSearchableFields`; together they
+    // were a duplicate property. If you are re-deriving one of them, edit this
+    // line rather than adding a second.
+    listSearchableFields: ["name", "sku", "brand"],
     // "Preview" button → the live storefront page for this product.
     preview: (doc) =>
       doc?.slug
@@ -604,6 +637,9 @@ export const Products: CollectionConfig = {
         return data;
       },
     ],
+    // Refuse before anything is removed — a product is not deletable while the
+    // stock ledger or a live order still points at it. See hooks/product-guards.
+    beforeDelete: [productBeforeDelete],
     // Stock only moves through lib/stock. A document save may not change it.
     beforeChange: [stockFieldsBeforeChange],
     afterChange: [recordOpeningStock, auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],

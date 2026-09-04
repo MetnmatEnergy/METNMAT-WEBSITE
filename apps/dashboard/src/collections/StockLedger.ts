@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageInventory, isStaff } from "../access";
+import { isStaff } from "../access";
 
 /**
  * Append-only record of every stock movement. Inventory is never silently
@@ -13,11 +13,29 @@ export const StockLedger: CollectionConfig = {
     group: "Catalog",
     useAsTitle: "movementType",
     defaultColumns: ["product", "movementType", "quantity", "newQuantity", "createdAt"],
-    description: "Append-only record of every stock movement.",
+    description:
+      "Append-only record of every stock movement. Rows are written by the system when stock actually moves — to change stock, use the Stock panel on the product itself.",
   },
   access: {
     read: isStaff,
-    create: canManageInventory,
+    /**
+     * No hand-written rows. The ledger RECORDS movements that happened; it does
+     * not cause them. `lib/stock.ts` is the only thing that moves stock, and it
+     * writes its row with `overrideAccess: true`, so the service, the order
+     * hooks and the opening-balance hook are all untouched by this.
+     *
+     * A row typed into the admin moved no stock at all, and — with update and
+     * delete already false — could never be corrected or withdrawn. Worse, it
+     * poisons the idempotency check in `hooks/order-stock.ts`, which asks the
+     * ledger whether an order's stock has already been applied: a hand row
+     * carrying a relatedOrder makes a real paid order skip its deduction.
+     *
+     * Staff adjust stock through the Stock panel on the product, which posts to
+     * /api/products/stock-movement. That endpoint enforces the same
+     * canManageInventory role set server-side (endpoints/stock.ts:37-45), so
+     * WHO may move stock is unchanged — only the way they do it.
+     */
+    create: () => false,
     update: () => false,
     delete: () => false,
   },

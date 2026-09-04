@@ -16,6 +16,8 @@ import {
   canReadStaff,
   PERMISSION_AREAS,
 } from "../apps/dashboard/src/access";
+import { AuditLogs } from "../apps/dashboard/src/collections/AuditLogs";
+import { IntegrationLogs } from "../apps/dashboard/src/collections/IntegrationLogs";
 
 type AnyAccess = (args: { req: { user: unknown } }) => unknown;
 const call = (fn: unknown, user: unknown) => (fn as AnyAccess)({ req: { user } });
@@ -130,5 +132,49 @@ describe("custom-role areas map to the right helpers (and ONLY those)", () => {
     // Every area combined still isn't super-admin/admin.
     const everything = withAreas(...PERMISSION_AREAS.map((a) => a.value));
     expect(hasRoleOrArea(everything, ["super-admin", "admin"], [])).toBe(false);
+  });
+});
+
+/**
+ * A helper existing is not the same as a collection using it.
+ *
+ * canReadAudit passed every test above while `audit-logs` read `isAdmin`, so
+ * the Administration area and the read-only-auditor role — the two things the
+ * helper exists for — could open integration-logs and not the audit trail.
+ * These assertions run against the REAL collection configs, so a future
+ * least-privilege sweep cannot quietly narrow the reader back.
+ */
+describe("audit + integration log collections are wired to canReadAudit", () => {
+  const auditAccess = AuditLogs.access as Record<string, unknown>;
+  const auditRead = auditAccess.read;
+  const integrationRead = (IntegrationLogs.access as Record<string, unknown>).read;
+
+  it("audit-logs reads through the same gate as integration-logs", () => {
+    expect(auditRead).toBe(canReadAudit);
+    expect(auditRead).toBe(integrationRead);
+  });
+
+  it("the read-only auditor and the Administration area can read the trail", () => {
+    expect(call(auditRead, { collection: "users", roles: ["read-only-auditor"] })).toBe(true);
+    expect(call(auditRead, withAreas("administration"))).toBe(true);
+    expect(call(auditRead, { collection: "users", roles: ["admin"] })).toBe(true);
+    expect(call(auditRead, { collection: "users", roles: ["super-admin"] })).toBe(true);
+  });
+
+  it("nobody else gains it — this widens read, it does not open it", () => {
+    expect(call(auditRead, { collection: "users", roles: ["marketing"] })).toBe(false);
+    expect(call(auditRead, { collection: "users", roles: ["sales"] })).toBe(false);
+    expect(call(auditRead, { collection: "users", roles: ["accounts"] })).toBe(false);
+    expect(call(auditRead, withAreas("catalog"))).toBe(false);
+    expect(call(auditRead, null)).toBe(false);
+    // A storefront customer has `role` (singular), never `roles`/`customRoles`.
+    expect(call(auditRead, { collection: "customers", id: "c1", role: "researcher" })).toBe(false);
+  });
+
+  it("the trail stays append-only — not even a super-admin may write it", () => {
+    const superAdmin = { collection: "users", roles: ["super-admin"] };
+    for (const op of ["create", "update", "delete"] as const) {
+      expect(call(auditAccess[op], superAdmin)).toBe(false);
+    }
   });
 });

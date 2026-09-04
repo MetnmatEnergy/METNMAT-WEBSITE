@@ -27,7 +27,10 @@ export const Projects: CollectionConfig = {
   admin: {
     group: "Site & Mobile App",
     useAsTitle: "title",
-    defaultColumns: ["title", "category", "order", "featured", "active"],
+    // Same defect as Products: `versions: { drafts: true }` is set below, so a
+    // project can read `active ✓` in this list and still be an unpublished draft —
+    // the column that looks like the visibility flag is not the one that decides it.
+    defaultColumns: ["title", "_status", "category", "order", "featured", "active"],
     description: "Case studies on the website's /projects page and per-project detail pages.",
   },
   access: {

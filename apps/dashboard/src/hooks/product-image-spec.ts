@@ -53,16 +53,25 @@ export function checkProductMaster(
  * collection. Non-image and metadata-only updates (no new file) pass straight
  * through, so editing alt text on an existing asset never trips the rule.
  */
-export const enforceProductImageSpec: CollectionBeforeValidateHook = async ({ data, req, operation }) => {
+export const enforceProductImageSpec: CollectionBeforeValidateHook = async ({ data, req }) => {
   const file = req.file;
   // No new binary → nothing to measure (alt-text edits, re-saves, bulk updates).
   if (!file?.data) return data;
 
-  // Only police product photography. On update the category may be absent from
-  // the patch, so fall back to the incoming doc's value.
+  // Only police product photography. Anything else — including an absent
+  // category — is out of scope. Media.category carries no default any more, so
+  // an unset value means the staff member has not chosen yet, and the field's
+  // own `required` rule reports exactly that, on the field, far more usefully
+  // than a resolution-floor error about an image whose resolution was never the
+  // problem. Collection beforeValidate runs before field validation, so
+  // returning here lets that rule fire. On update Payload has already
+  // back-filled `data.category` from the stored document during the field-level
+  // beforeValidate pass (getFallbackValue prefers siblingDoc over
+  // defaultValue), so an alt-text edit or a file replacement still sees the
+  // real category here — which is also why scripts/recompose-display.ts can
+  // send `data: {}` and still be recognised as a product photograph.
   const category = (data as Record<string, unknown> | undefined)?.category;
-  if (category !== undefined && category !== "product") return data;
-  if (category === undefined && operation === "create") return data;
+  if (category !== "product") return data;
 
   let width: number | undefined;
   let height: number | undefined;

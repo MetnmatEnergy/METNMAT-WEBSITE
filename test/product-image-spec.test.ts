@@ -58,9 +58,11 @@ describe("what the spec must NOT police", () => {
   it("rejects the project-banner shape as a product master", () => {
     // 1536x1024 is 3:2 — the shape every project cover uses. It is correctly
     // rejected AS A PRODUCT MASTER, which is exactly why non-product media must
-    // never be filed under category "product": Media.category defaults to
+    // never be filed under category "product": Media.category USED TO default to
     // "product", so nine project covers silently failed validation on upload
-    // until the seed started naming their category explicitly.
+    // until the seed started naming their category explicitly. The default is
+    // gone now — test/media-category.test.ts holds that line. The seed still
+    // names its categories, and this case stays as the record of why.
     const r = checkProductMaster(1536, 1024);
     expect(r.ok).toBe(false);
     expect(r.ratioOk).toBe(false);

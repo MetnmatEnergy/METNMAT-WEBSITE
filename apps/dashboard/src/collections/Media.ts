@@ -4,6 +4,7 @@ import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { enforceProductImageSpec } from "../hooks/product-image-spec";
 import { generateDisplayDerivative, writeDisplayDerivativeLocally } from "../hooks/product-display-derivative";
+import { mediaBeforeDelete } from "../hooks/media-guards";
 
 /**
  * Media library — all IMAGE assets (product, catalog, hero/marketing banners,
@@ -61,8 +62,31 @@ export const Media: CollectionConfig = {
       name: "category",
       type: "select",
       required: true,
-      defaultValue: "product",
-      admin: { description: "Used to organise the media library." },
+      // No defaultValue, deliberately. Payload fills a field default in the
+      // FIELD-level beforeValidate pass, which runs BEFORE this collection's
+      // beforeValidate hooks (payload/dist/collections/operations/create.js and
+      // .../utilities/update.js both order "beforeValidate - Fields" then
+      // "- Collections"). A default of "product" therefore arrived at
+      // enforceProductImageSpec indistinguishable from a staff choice, and that
+      // hook's "was it explicitly set?" guard was dead code. Fifteen of the
+      // seventeen upload fields pointing at this collection are NOT product
+      // photography — the site logo and favicon, Clients.logo, Team.photo, the
+      // Posts and Projects cover images, Categories.image — so the default was
+      // wrong far more often than right: a banner uploaded from any of those
+      // drawers was measured against the product resolution floor and
+      // re-composed by the display pipeline. Staff pick instead, and `required`
+      // turns an omission into an inline field error rather than a silent
+      // mis-filing. The pick is reachable everywhere it is now needed: the
+      // document drawer and the bulk-upload drawer both render the full
+      // collection form, and bulk upload's Apply changes sets one value across
+      // every queued file. Do not restore the ergonomics with
+      // defaultValue: "other" either — that would silently skip the resolution
+      // floor and the subject-aware crop on real product photographs, which is
+      // a quieter failure than the one being fixed here.
+      admin: {
+        description:
+          "Load-bearing, not just filing: the Product Image category enforces the product resolution floor (shortest side at least 900px) and generates the subject-aware gallery crop. Pick it only for product photography — banners, logos, team photos and article figures each have their own category.",
+      },
       options: [
         { label: "Product Image", value: "product" },
         { label: "Catalog Image", value: "catalog" },
@@ -85,6 +109,11 @@ export const Media: CollectionConfig = {
     // lightbox. Injected via req.payloadUploadSizes + data.sizes, which the
     // storage plugin persists like any configured size.
     beforeChange: [generateDisplayDerivative],
+    // Refuse before anything is removed — a file is not deletable while a
+    // product, page or settings screen still displays it. Runs ahead of
+    // deleteAssociatedFiles, so the S3 object survives the refusal too.
+    // See hooks/media-guards.
+    beforeDelete: [mediaBeforeDelete],
     afterChange: [writeDisplayDerivativeLocally, auditAfterChange, revalidateWebsiteAfterChange],
     afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete],
   },
