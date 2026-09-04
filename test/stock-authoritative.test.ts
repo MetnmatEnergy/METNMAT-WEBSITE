@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { stockFieldsBeforeChange } from "../apps/dashboard/src/hooks/stock-guard";
+import { planUpdate } from "../apps/dashboard/src/lib/stock";
 
 /**
  * The guard must preserve the stock the product ACTUALLY holds.
@@ -55,14 +56,16 @@ const fakeReq = (stored: Stored, opts: { fail?: boolean } = {}) => {
   });
   const collection = vi.fn(() => ({ findOne }));
   const warn = vi.fn();
+  const create = vi.fn();
   const req = {
     payload: {
+      create,
       db: { connection: { collection } },
       logger: { warn, error: vi.fn() },
     },
     user: { email: "staff@metnmat.com" },
   };
-  return { req, findOne, collection, warn };
+  return { req, findOne, collection, warn, create };
 };
 
 const save = async (
@@ -201,5 +204,66 @@ describe("the Payload behaviour this fix depends on", () => {
     const src = read("payload/dist/fields/hooks/beforeValidate/promise.js");
     expect(src).toMatch(/delete siblingData\[field\.name\]/);
     expect(src).toMatch(/overrideAccess \? true/);
+  });
+});
+
+describe("boundaries, and the paths the guard has to hold on", () => {
+  it("a genuine zero is preserved as zero, not mistaken for an unreadable count", async () => {
+    // A product that has sold out really does hold 0, and 0 is falsy. Any
+    // "looks empty, fall back" shortcut in the lookup would resurrect stock
+    // that is not on the shelf — an oversell created by the very guard meant
+    // to prevent one. Zero has to be an answer, not the absence of one.
+    const { req } = fakeReq({ stockQty: 0, reservedStock: 0 });
+    const data = await save({ stockQty: 50 }, { id: "p1", stockQty: 100 }, req);
+    expect(data.stockQty).toBe(0);
+  });
+
+  it("a negative stored count is reported as it stands, not quietly floored", async () => {
+    // Negative stock should not exist — every decrement is guarded by a filter
+    // that refuses to go below what is reserved. If one is ever seen, the save
+    // must preserve it rather than paper over it, so the discrepancy stays
+    // visible to whoever reconciles the ledger.
+    const { req } = fakeReq({ stockQty: -3 });
+    const data = await save({ stockQty: 0 }, { id: "p1", stockQty: 10 }, req);
+    expect(data.stockQty).toBe(-3);
+  });
+
+  it("the draft path and the publish path are guarded identically", async () => {
+    // Both run this hook — collection beforeChange does not branch on _status —
+    // so neither may be a way in. The draft path is the more dangerous of the
+    // two, because it never writes the main collection and so cannot be
+    // corrected by the write itself.
+    for (const _status of ["draft", "published"]) {
+      const { req } = fakeReq({ stockQty: 60 });
+      const data = await save({ _status, stockQty: 100 }, { id: "p1", stockQty: 100 }, req);
+      expect(data.stockQty, `_status: ${_status}`).toBe(60);
+    }
+  });
+
+  it("a save never writes a ledger row — only a real movement does", async () => {
+    // The ledger stays consistent because this path adds nothing to it. A save
+    // that recorded a movement would double-count against the adjustment the
+    // stock service already wrote.
+    const { req, create } = fakeReq({ stockQty: 60 });
+    await save({ stockQty: 500 }, { id: "p1", stockQty: 100 }, req);
+    expect(create, "a discarded write is not a stock movement").not.toHaveBeenCalled();
+  });
+
+  it("every field written outside Payload is a field this guard protects", async () => {
+    // The staleness only exists for fields the stock service writes through the
+    // native driver, because those mint no version. If a third such field is
+    // ever added, it inherits the same bug — and this fails until the guard
+    // covers it too. lowStockThreshold is deliberately absent: it is written
+    // only by ordinary saves, so its snapshot cannot fall behind.
+    const GUARDED = new Set(["stockQty", "reservedStock"]);
+    const types = ["stock-in", "stock-out", "reserved", "released", "damaged", "returned"] as const;
+    for (const t of types) {
+      const plan = planUpdate(t, 1);
+      const written = Object.keys((plan?.update as { $inc?: Record<string, number> })?.$inc ?? {});
+      expect(written.length, `${t} writes something`).toBeGreaterThan(0);
+      for (const f of written) {
+        expect(GUARDED.has(f), `${t} writes ${f}, which the guard does not protect`).toBe(true);
+      }
+    }
   });
 });
