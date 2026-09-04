@@ -21,7 +21,7 @@ import { staffError } from "../lib/staff-error";
  */
 
 /** One collection that can point at a media file, and how to say so. */
-type MediaRef = {
+export type MediaRef = {
   collection: string;
   /** Field paths whose value is a media id. Dotted paths cross ONE array hop. */
   paths: string[];
@@ -29,6 +29,18 @@ type MediaRef = {
   titleField: string;
   singular: string;
   plural: string;
+  /**
+   * This collection has drafts, so its published state is not its whole state.
+   *
+   * A draft REVISION of an already-published document is written only to the
+   * versions collection — `utilities/update.js` guards the main write with
+   * `if (!isSavingDraft)`. So an image added by an unpublished edit is invisible
+   * to a query against the main collection, and the guard counted zero.
+   *
+   * A newly CREATED draft is different: `create.js` writes the main collection
+   * unconditionally, so those were always visible and must not be counted twice.
+   */
+  drafts?: true;
 };
 
 /**
@@ -37,10 +49,10 @@ type MediaRef = {
  * anywhere and not listed here.
  */
 export const MEDIA_REFS: MediaRef[] = [
-  { collection: "products", paths: ["images.image", "ogImage"], titleField: "name", singular: "product", plural: "products" },
+  { collection: "products", paths: ["images.image", "ogImage"], titleField: "name", singular: "product", plural: "products", drafts: true },
   { collection: "categories", paths: ["image"], titleField: "name", singular: "category", plural: "categories" },
-  { collection: "projects", paths: ["coverImage", "gallery.image"], titleField: "title", singular: "project", plural: "projects" },
-  { collection: "posts", paths: ["coverImage", "ogImage"], titleField: "title", singular: "blog article", plural: "blog articles" },
+  { collection: "projects", paths: ["coverImage", "gallery.image"], titleField: "title", singular: "project", plural: "projects", drafts: true },
+  { collection: "posts", paths: ["coverImage", "ogImage"], titleField: "title", singular: "blog article", plural: "blog articles", drafts: true },
   { collection: "services", paths: ["image"], titleField: "title", singular: "service", plural: "services" },
   { collection: "team", paths: ["photo"], titleField: "name", singular: "team member", plural: "team members" },
   { collection: "clients", paths: ["logo"], titleField: "name", singular: "client logo", plural: "client logos" },
@@ -161,6 +173,13 @@ export type MediaRefLookup = {
     depth: number;
     overrideAccess: boolean;
   }): Promise<Record<string, unknown> | null>;
+  findVersions(args: {
+    collection: string;
+    where: Where;
+    limit: number;
+    depth: number;
+    overrideAccess: boolean;
+  }): Promise<{ totalDocs: number; docs: Record<string, unknown>[] }>;
 };
 
 /** `images.image` crosses an array — a supported single-query path, not a join. */
@@ -168,6 +187,30 @@ const whereForRef = (ref: MediaRef, id: string | number): Where =>
   ref.paths.length === 1
     ? { [ref.paths[0] as string]: { equals: id } }
     : { or: ref.paths.map((path) => ({ [path]: { equals: id } })) };
+
+/**
+ * The same question, asked of the unpublished head instead of the live document.
+ *
+ * A version row stores the whole document under `version`, so every field path
+ * gains that prefix. Two filters narrow it to the state that matters:
+ *
+ *   `latest`            — only the current head. Every superseded version also
+ *                         names the images it used, and honouring those would
+ *                         make a file undeletable forever once it had ever been
+ *                         referenced by anything.
+ *   `version._status`   — only a DRAFT head. A published head is already the
+ *                         main document, which `whereForRef` covers, so
+ *                         including it would count the same document twice.
+ */
+const whereForDraftRef = (ref: MediaRef, id: string | number): Where => ({
+  and: [
+    { latest: { equals: true } },
+    { "version._status": { equals: "draft" } },
+    ref.paths.length === 1
+      ? { [`version.${ref.paths[0] as string}`]: { equals: id } }
+      : { or: ref.paths.map((path) => ({ [`version.${path}`]: { equals: id } })) },
+  ],
+});
 
 /** Who still points at this media file. */
 export async function collectMediaUsages(
@@ -199,6 +242,39 @@ export async function collectMediaUsages(
     })
   );
 
+  /*
+   * The unpublished half, for the three collections that have drafts.
+   *
+   * Reported as its own line rather than folded into the count above, because
+   * "1 product" would send a staff member to a published page that does not
+   * show the image — the reference is in an edit nobody has published yet, and
+   * the message has to say so for them to find it.
+   *
+   * A failure here is NOT swallowed. Deleting media also deletes the S3 object
+   * (`deleteAssociatedFiles` runs after `beforeDelete`), so "we could not check"
+   * must never read as "nothing uses it". Refusing is recoverable; orphaning is
+   * not.
+   */
+  const draftUsages = await Promise.all(
+    MEDIA_REFS.filter((ref) => ref.drafts).map(async (ref): Promise<MediaUsage> => {
+      const res = await db.findVersions({
+        collection: ref.collection,
+        where: whereForDraftRef(ref, id),
+        limit: 3,
+        depth: 0,
+        overrideAccess: true,
+      });
+      return {
+        count: res?.totalDocs ?? 0,
+        singular: `${ref.singular} with unpublished changes`,
+        plural: `${ref.plural} with unpublished changes`,
+        examples: (res?.docs ?? [])
+          .map((doc) => (doc?.version as Record<string, unknown> | undefined)?.[ref.titleField])
+          .filter((v): v is string => typeof v === "string" && v.length > 0),
+      };
+    })
+  );
+
   const settings: string[] = [];
   for (const global of MEDIA_SETTINGS) {
     const doc = await db
@@ -207,7 +283,7 @@ export async function collectMediaUsages(
     if (mediaIdsInSettings(doc, global.paths).includes(target)) settings.push(global.label);
   }
 
-  return { usages: usages.filter((u) => u.count > 0), settings };
+  return { usages: [...usages, ...draftUsages].filter((u) => u.count > 0), settings };
 }
 
 export const mediaBeforeDelete: CollectionBeforeDeleteHook = async ({ req, id }) => {
