@@ -6,6 +6,8 @@ import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../h
 import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
 import { stockMovementHandler } from "../endpoints/stock";
 import { stockFieldsBeforeChange, recordOpeningStock } from "../hooks/stock-guard";
+import { inboundKeyMatches } from "../lib/internal-key";
+import { productPreviewUrl } from "../lib/preview-link";
 import { productBeforeDelete } from "../hooks/product-guards";
 
 /**
@@ -20,8 +22,17 @@ import { productBeforeDelete } from "../hooks/product-guards";
  * showing drafts. Customers are a DIFFERENT auth collection and are correctly
  * treated as public here.
  */
-const publishedRead: Access = ({ req: { user } }) => {
-  if ((user as { collection?: string } | null)?.collection === "users") return true;
+const xKey = (args: { req?: { headers?: unknown } }) =>
+  (args.req?.headers as Headers | undefined)?.get?.("x-internal-key");
+
+const publishedRead: Access = (args) => {
+  if ((args.req.user as { collection?: string } | null)?.collection === "users") return true;
+  // The website SERVER rendering a draft preview (Preview button ->
+  // /api/shop/preview -> draft-mode fetch) presents the purpose-scoped internal
+  // key. A browser never holds it — it lives only in the two server processes —
+  // so this widens nothing a public request can reach. Exactly the bypass Posts
+  // already carries, which is what makes the blog's draft preview work.
+  if (inboundKeyMatches(xKey(args), "CMS_PREVIEW_KEY")) return true;
   const gate: Where = { _status: { equals: "published" } };
   return gate;
 };
@@ -64,10 +75,18 @@ export const Products: CollectionConfig = {
     // were a duplicate property. If you are re-deriving one of them, edit this
     // line rather than adding a second.
     listSearchableFields: ["name", "sku", "brand"],
-    // "Preview" button → the live storefront page for this product.
+    // "Preview" button → the storefront THROUGH the website's draft-preview
+    // route, so an unpublished product (the only kind anyone needs to preview)
+    // renders instead of 404ing on the published-only public gate above.
+    // Falls back to the plain public URL when no shared secret is configured.
+    // See lib/preview-link.ts.
     preview: (doc) =>
       doc?.slug
-        ? `${(process.env.WEBSITE_URL || "https://www.metnmat.com").replace(/\/+$/, "")}/shop/p/${doc.slug}`
+        ? productPreviewUrl({
+            slug: String(doc.slug),
+            websiteUrl: process.env.WEBSITE_URL || "https://www.metnmat.com",
+            secret: process.env.CMS_PREVIEW_KEY || process.env.INTERNAL_API_KEY,
+          })
         : null,
   },
   access: {

@@ -339,6 +339,16 @@ export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
   return (await getAllProducts()).slice(0, limit); // fallback if none flagged
 }
 
+/**
+ * Map a RAW products doc — e.g. the draft version fetched by the admin preview
+ * flow — through the same normaliser the public fetchers use, so a preview
+ * renders identically to what publishing will produce. `unknown` in, because
+ * the CmsProduct shape is private to this module (mirrors mapCmsArticleFull).
+ */
+export function mapCmsProduct(doc: unknown): Product {
+  return mapProduct(doc as CmsProduct);
+}
+
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   // Strict: null here means the CMS answered and had no such slug, so the route
   // may 404. A CMS outage throws instead of masquerading as a missing product.

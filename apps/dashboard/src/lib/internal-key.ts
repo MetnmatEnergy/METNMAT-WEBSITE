@@ -8,7 +8,7 @@ import { timingSafeEqual } from "crypto";
  * duplicated rather than shared because packages/types carries types only and
  * the two apps build independently.
  */
-const PLACEHOLDER_SECRET = "PLACEHOLDER_SET_ME";
+export const PLACEHOLDER_SECRET = "PLACEHOLDER_SET_ME";
 
 /**
  * Constant-time secret comparison. A plain `===` on secrets leaks length and

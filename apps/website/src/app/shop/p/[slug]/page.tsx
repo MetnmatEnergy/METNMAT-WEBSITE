@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { draftMode } from "next/headers";
 import { notFound } from "next/navigation";
 import { Container } from "@/frontend/components/ui/container";
 import { Truck, BadgeCheck, FileText, ShieldCheck } from "lucide-react";
@@ -10,7 +11,7 @@ import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd, productFaqs, faqJsonLd } from "@/frontend/components/seo/json-ld";
 import { productMetaDescription } from "@/frontend/lib/seo";
-import { inclGST, isQuoteOnly } from "@/frontend/lib/catalog";
+import { inclGST, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
 import {
@@ -18,7 +19,9 @@ import {
   getCategoryBySlug,
   getProductsByCategory,
   getProductSitemapEntries,
+  mapCmsProduct,
 } from "@/frontend/lib/cms";
+import { getDraftProductRaw } from "@/backend/services/catalog.service";
 
 /**
  * Makes the route ISR-cacheable. A dynamic segment needs either
@@ -53,6 +56,28 @@ export async function generateStaticParams(): Promise<Params[]> {
 
 type Params = { slug: string };
 
+/**
+ * Draft preview. When the CMS Preview button has turned draft mode on
+ * (/api/shop/preview), read the product's LATEST DRAFT through the server-side
+ * internal key instead of the public API — which only ever returns published
+ * documents, and therefore 404'd for exactly the products staff wanted to
+ * preview. Mirrors the blog's loadArticle().
+ *
+ * Draft mode does not disturb normal traffic: `draftMode()` inside a prerender
+ * returns a disabled instance without marking the route dynamic, and a request
+ * that DOES carry the bypass cookie skips the ISR cache entirely (verified in
+ * next@15.1.6 base-server.js:1321 — `if (!isPreviewMode && isSSG …)` is what
+ * assigns the cache key — and dist/server/request/draft-mode.js).
+ */
+async function loadProduct(slug: string): Promise<{ product: Product | null; preview: boolean }> {
+  const { isEnabled } = await draftMode();
+  if (isEnabled) {
+    const raw = await getDraftProductRaw(slug);
+    if (raw) return { product: mapCmsProduct(raw), preview: true };
+  }
+  return { product: await getProductBySlug(slug), preview: false };
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -60,6 +85,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
+  // A never-published product has no public version, so the fetch above is empty
+  // and the notFound() below would fire before the page body ever ran. Draft
+  // mode is only on when a signed preview link set it. noindex regardless, so a
+  // leaked preview URL can never be indexed. (Same escape hatch as the blog.)
+  if (!product && (await draftMode()).isEnabled) {
+    return { title: "Draft preview", robots: { index: false } };
+  }
   // 404 HERE, not just in the page body. generateMetadata runs before the
   // response starts, so this is the only place that can still set a 404 STATUS
   // — returning placeholder metadata instead produced a soft-404: the 404 page
@@ -115,7 +147,7 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const { product, preview } = await loadProduct(slug);
   if (!product) notFound();
 
   const category = await getCategoryBySlug(product.categorySlug);
@@ -127,7 +159,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
   return (
     <Container className="py-8">
-      <AnalyticsEntity type="product" slug={product.slug} />
+      {preview && (
+        <div className="mb-6 rounded-md bg-brand px-4 py-2 text-center text-sm font-semibold text-brand-foreground">
+          Draft preview — this version is not public. Close this tab and use the CMS to publish.
+        </div>
+      )}
+      {/* A staff preview is not customer traffic: never record it. */}
+      {!preview && <AnalyticsEntity type="product" slug={product.slug} />}
       {/* The Offer below names its seller by reference ({@id: #organization}).
           Without the full node on this page that reference dangles, so the
           seller resolves to a bare name. Emitting it here makes it resolvable;
