@@ -45,7 +45,7 @@ export const Products: CollectionConfig = {
     group: "Catalog",
     useAsTitle: "name",
     description:
-      "A new product saves as a DRAFT and is not on the website until you press Publish. The Status column below is the check.",
+      "A new product saves as a DRAFT and is not on the website until you press Publish — the Status column below is the check. Once published it appears on Shop → All products and on its category page straight away; tick Featured to also show it on the Shop home page.",
     // `_status` sits immediately after the title, not buried mid-row, because
     // this column exists to be the first thing the eye lands on. `versions.drafts`
     // is on (below) and Payload injects `_status` with defaultValue "draft", so a
@@ -108,7 +108,7 @@ export const Products: CollectionConfig = {
         {
           label: "Essentials",
           description:
-            "What the product is. Name + Category + one Image is the minimum to publish.",
+            "What the product is. Name and Category are required — the web address fills itself in from the name. Add at least one image before publishing, or the shop shows a placeholder where the photo should be.",
           fields: [
             {
               type: "row",
@@ -175,6 +175,7 @@ export const Products: CollectionConfig = {
                 {
                   name: "sku",
                   type: "text",
+                  label: "SKU",
                   // Indexed because it is a LOOKUP key, not just a label:
                   // hooks/order-stock.ts falls back to it when a renamed slug
                   // no longer resolves, inside the paid-order webhook path, and
@@ -529,7 +530,7 @@ export const Products: CollectionConfig = {
           defaultValue: "in-stock",
           admin: {
             description:
-              "Controls the storefront CTA. In stock / Made to order = buyable (Add to cart). Quote only / Discontinued = enquiry-only: no Buy button, no price shown, no purchase Offer in SEO data.",
+              "Controls the storefront CTA. In stock / Made to order = buyable (Add to cart) — but ONLY if the Price is above 0; leave the price empty and the shop shows 'Price on request' whatever is chosen here. Quote only / Discontinued = enquiry-only: no Buy button, no price shown, no purchase Offer in SEO data.",
           },
           options: [
             { label: "In stock", value: "in-stock" },
@@ -577,7 +578,7 @@ export const Products: CollectionConfig = {
               admin: {
                 width: "33%",
                 description:
-                  "On-hand quantity. Set the opening balance here while creating the product — after that it is moved only with Adjust stock below, which records who changed it and why. Does NOT itself hide the Buy button — use the In-stock toggle above for that.",
+                  "On-hand quantity. Set the opening balance here on the very FIRST save — after that it is moved only with Adjust stock below, which records who changed it and why. Does NOT itself hide the Buy button — use the In-stock toggle above for that.",
               },
             },
             {

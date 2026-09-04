@@ -62,7 +62,10 @@ export const Categories: CollectionConfig = {
       name: "parent",
       type: "relationship",
       relationTo: "categories",
-      admin: { description: "Leave empty for a top-level department." },
+      admin: {
+        description:
+          "Leave empty for a top-level department. If you opened this from a product, you almost always want to pick the department this belongs under — otherwise it becomes a new department in the shop menu.",
+      },
     },
     { name: "image", type: "upload", relationTo: "media" },
     {

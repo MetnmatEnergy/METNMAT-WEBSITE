@@ -148,3 +148,56 @@ describe("the delete guards are actually wired to the collections", () => {
     expect(hooks.beforeDelete ?? []).toContain(mediaBeforeDelete);
   });
 });
+
+/**
+ * Sentences staff read and act on, each previously untrue in a way that
+ * produces a support ticket rather than an error.
+ *
+ * These assert the REAL config, not source text, because the failure mode is a
+ * string drifting back to something inaccurate — which no type or lint catches.
+ */
+describe("the form does not promise things that are not so", () => {
+  const desc = (c: { admin?: unknown }) => String((c.admin as { description?: unknown })?.description ?? "");
+
+  it("does not claim an image is required to publish — nothing enforces one", () => {
+    // `images` has no minRows; a product publishes with zero and the storefront
+    // renders the branded placeholder. Promising otherwise sends staff hunting
+    // for a validation error that will never appear.
+    const essentials = JSON.stringify(Products.fields);
+    expect(essentials).not.toMatch(/one Image is the minimum to publish/);
+    expect(essentials).toMatch(/placeholder where the photo should be/);
+  });
+
+  it("warns that a blank price overrides the In-stock choice", () => {
+    // catalog.ts isQuoteOnly(): `!product.price || ...` — a missing price makes
+    // the product quote-only no matter what productType says.
+    expect(JSON.stringify(Products.fields)).toMatch(/ONLY if the Price is above 0/);
+  });
+
+  it("says where a published product actually appears", () => {
+    // /shop shows departments + FEATURED only. New products land on /shop/all
+    // and their category page. This is the likeliest "I published it and it is
+    // not there" report.
+    expect(desc(Products)).toMatch(/All products/);
+    expect(desc(Products)).toMatch(/Featured/);
+  });
+
+  it("labels SKU as SKU, not the derived 'Sku'", () => {
+    // Payload derives the column header AND the empty-cell placeholder from the
+    // field name, so the list read "Sku" and "<No Sku>".
+    const sku = JSON.stringify(Products.fields).match(/"name":"sku"[^}]*"label":"([^"]*)"/);
+    expect(sku?.[1]).toBe("SKU");
+  });
+
+  it("says the opening stock box locks after the FIRST save, not after 'creating'", () => {
+    // With drafts on, "creating" ends at the first save — someone who saves a
+    // draft and comes back finds the box read-only.
+    expect(JSON.stringify(Products.fields)).toMatch(/on the very FIRST save/);
+  });
+
+  it("warns that a category created from a product becomes a department", () => {
+    // The product field says "pick the most specific sub-category", then its "+"
+    // opens this form with parent empty.
+    expect(JSON.stringify(Categories.fields)).toMatch(/becomes a new department in the shop menu/);
+  });
+});
