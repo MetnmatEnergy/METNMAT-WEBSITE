@@ -207,46 +207,71 @@ export const inclGST = (value: number): number => Math.round(value * (1 + GST_RA
 export const gstPortionOf = (inclValue: number): number =>
   Math.round(inclValue - inclValue / (1 + GST_RATE));
 
-/** Effective unit price for a given quantity using tier breaks. */
-export function unitPriceForQty(product: Product, qty: number): number {
-  /*
-   * The DEEPEST qualifying break, and only a sane one.
-   *
-   * This one function decides both the tier table printed on the product page
-   * and the amount create-order/route.ts charges and snapshots onto the order
-   * and the GST invoice — so a defect here is the difference between the price
-   * on the page and the price on the card.
-   *
-   * It used to keep the LAST tier in ARRAY order that the quantity qualified
-   * for. Payload array rows are drag-reorderable, and a price list is naturally
-   * written deepest-first ("100+ = 1450, 25+ = 1650"), so which row won depended
-   * on typing order: the page printed 1450 and the checkout charged 1650.
-   *
-   * The row is also validated here rather than trusted. Products.priceTiers had
-   * no min, no max and no validate, and `required: true` does not exclude 0
-   * (payload's number validator tests `!value && !isNumber(value)`, and
-   * isNumber(0) is true). A negative tier price reached lineTotal: on a
-   * single-line cart Razorpay rejected the negative amount, and on a mixed cart
-   * the total stayed positive and simply charged less, producing a real paid
-   * order at an arbitrary discount. Products.ts now refuses to SAVE such a row;
-   * this refuses to CHARGE one, which also covers rows written before that
-   * validation existed.
-   *
-   * A tier is ignored unless it is strictly better than the base price. That
-   * makes "buy more, pay more" impossible by construction rather than by rule.
-   */
+/**
+ * The tier rows this product will actually be charged on, in ascending order.
+ *
+ * ONE RULE, TWO READERS. This decides both the bulk table printed on the
+ * product page and the amount `create-order/route.ts` charges and snapshots
+ * onto the order and the GST invoice. They used to be separate: `unitPriceForQty`
+ * filtered and picked the deepest break, while `PriceTiers` mapped over
+ * `product.priceTiers` in stored order and printed every row. A defect in
+ * either is the difference between the price on the page and the price on the
+ * card, so they are derived from this instead of agreeing by discipline.
+ *
+ * WHAT IS DROPPED, and why the table must drop it too. Products.priceTiers had
+ * no min, no max and no validate, and `required: true` does not exclude 0
+ * (payload's number validator tests `!value && !isNumber(value)`, and
+ * isNumber(0) is true). A negative tier price reached lineTotal: on a
+ * single-line cart Razorpay rejected the negative amount, and on a mixed cart
+ * the total stayed positive and simply charged less, producing a real paid
+ * order at an arbitrary discount. Products.ts refuses to SAVE such a row now —
+ * but rows written before that validation existed are still in the database,
+ * and the table was still advertising them as bulk prices nothing would honour.
+ *
+ * A tier above the base price is dropped as well, so buying more can never cost
+ * more than buying one. (Between two tiers that rule is not enforced anywhere:
+ * `validatePriceTiers` checks each row against the base, not against its
+ * neighbours. Deepest-qualifying still wins, which is the long-standing
+ * behaviour and is left exactly as it was.)
+ *
+ * SORTING is the other half. Payload array rows are drag-reorderable and a
+ * price list is naturally written deepest-first ("100+ = 1450, 25+ = 1650").
+ * Stored that way the table's base row read `moq–(priceTiers[0].minQty - 1)`,
+ * printing "10–99" for a base price that actually stopped applying at 25.
+ *
+ * A duplicated break keeps the FIRST row, matching what the old
+ * `minQty <= deepest` skip did. `validatePriceTiers` refuses duplicates now, so
+ * this only concerns legacy data — but the table and the charge still have to
+ * agree about which of the two wins.
+ */
+export function honouredPriceTiers(product: Product): PriceTier[] {
   const base = Number.isFinite(product.price) ? product.price : 0;
-  let price = base;
-  let deepest = -1;
+
+  const kept: PriceTier[] = [];
+  const seen = new Set<number>();
+
   for (const tier of product.priceTiers ?? []) {
     const minQty = Number(tier?.minQty);
-    const tierPrice = Number(tier?.price);
+    const price = Number(tier?.price);
     if (!Number.isFinite(minQty) || minQty < 1) continue;
-    if (!Number.isFinite(tierPrice) || tierPrice <= 0) continue;
-    if (base > 0 && tierPrice > base) continue;
-    if (qty < minQty || minQty <= deepest) continue;
-    deepest = minQty;
-    price = tierPrice;
+    if (!Number.isFinite(price) || price <= 0) continue;
+    if (base > 0 && price > base) continue;
+    if (seen.has(minQty)) continue;
+    seen.add(minQty);
+    kept.push({ minQty, price });
+  }
+
+  return kept.sort((a, b) => a.minQty - b.minQty);
+}
+
+/** Effective unit price for a given quantity using tier breaks. */
+export function unitPriceForQty(product: Product, qty: number): number {
+  // The DEEPEST qualifying break. Ascending order means the last row the
+  // quantity reaches is that break, so this cannot disagree with the table
+  // built from the same list.
+  let price = Number.isFinite(product.price) ? product.price : 0;
+  for (const tier of honouredPriceTiers(product)) {
+    if (qty >= tier.minQty) price = tier.price;
   }
   return price;
 }

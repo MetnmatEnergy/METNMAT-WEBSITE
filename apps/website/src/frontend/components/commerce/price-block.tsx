@@ -1,6 +1,6 @@
 "use client";
 
-import { inclGST, usdFor, type Product } from "@/frontend/lib/catalog";
+import { honouredPriceTiers, inclGST, usdFor, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { cn } from "@/frontend/lib/utils";
 
@@ -54,7 +54,17 @@ export function PriceBlock({
 /** B2B bulk pricing tiers table. */
 export function PriceTiers({ product }: { product: Product }) {
   const { money } = useCurrency();
-  if (!product.priceTiers.length) return null;
+  /*
+   * The rows the checkout will actually honour, ascending — not the raw stored
+   * array. Mapping `product.priceTiers` directly printed rows in whatever order
+   * they were typed, so a price list written deepest-first ("100+, then 25+")
+   * made the base row claim `moq–99` for a price that stopped applying at 25.
+   * It also printed tiers the pricer ignores — a zero/negative price, or one
+   * above the base — advertising a bulk rate nothing would charge.
+   * See honouredPriceTiers in lib/catalog.
+   */
+  const rows = honouredPriceTiers(product);
+  if (!rows.length) return null;
   return (
     <div className="rounded-xl border border-border">
       <p className="border-b border-border px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -64,11 +74,11 @@ export function PriceTiers({ product }: { product: Product }) {
         <tbody>
           <tr className="border-b border-border">
             <td className="px-4 py-2 text-muted-foreground">
-              {product.moq}–{(product.priceTiers[0]?.minQty ?? product.moq) - 1} {product.unit}
+              {product.moq}–{(rows[0]?.minQty ?? product.moq) - 1} {product.unit}
             </td>
             <td className="px-4 py-2 text-right font-medium">{money(inclGST(product.price), usdFor(product, inclGST(product.price)))}</td>
           </tr>
-          {product.priceTiers.map((t, i) => (
+          {rows.map((t, i) => (
             <tr key={i} className="border-b border-border last:border-0">
               <td className="px-4 py-2 text-muted-foreground">
                 {t.minQty}+ {product.unit}
