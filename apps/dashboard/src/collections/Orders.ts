@@ -2,6 +2,7 @@ import type { CollectionConfig } from "payload";
 import { internalOrderOrManage, isSuperAdmin, fieldAccountsOrInternal } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { orderBeforeChange, orderBeforeDelete } from "../hooks/order-workflow";
+import { orderStockAfterChange } from "../hooks/order-stock";
 import { linkAnalyticsConversion } from "../hooks/analytics-conversion";
 
 /**
@@ -284,7 +285,7 @@ export const Orders: CollectionConfig = {
   hooks: {
     beforeChange: [orderBeforeChange],
     beforeDelete: [orderBeforeDelete],
-    afterChange: [auditAfterChange, linkAnalyticsConversion],
+    afterChange: [auditAfterChange, linkAnalyticsConversion, orderStockAfterChange],
     afterDelete: [auditAfterDelete],
   },
   timestamps: true,
