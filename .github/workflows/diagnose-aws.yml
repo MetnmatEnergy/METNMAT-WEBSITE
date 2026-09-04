@@ -63,7 +63,14 @@ jobs:
         run: |
           set -uo pipefail
           case "${{ inputs.service }}" in
-            dashboard) NAMES="MONGODB_URI PAYLOAD_SECRET PAYLOAD_PIN_PEPPER INTERNAL_API_KEY CMS_OAUTH_KEY RESEND_API_KEY OPEN_EXCHANGE_RATES_APP_ID DIRECTOR_PIN" ;;
+            # DIRECTOR_EMAIL earns its place here the same way QUOTE_FROM_EMAIL did
+            # below: without it `ensureDirectorAccount` returns at its first line and
+            # the entire director bootstrap is a silent no-op — no error, no log, and
+            # DIRECTOR_PIN looks correctly populated while doing nothing at all.
+            # DIRECTOR_PIN_FORCE is listed so a break-glass flag left switched on is
+            # visible: it rewrites the director's PIN from the environment on EVERY
+            # boot, and a pm2 memory-restart is a boot.
+            dashboard) NAMES="MONGODB_URI PAYLOAD_SECRET PAYLOAD_PIN_PEPPER INTERNAL_API_KEY CMS_OAUTH_KEY RESEND_API_KEY OPEN_EXCHANGE_RATES_APP_ID DIRECTOR_PIN DIRECTOR_EMAIL DIRECTOR_NAME DIRECTOR_PIN_FORCE" ;;
             # QUOTE_FROM_EMAIL / QUOTE_NOTIFY_EMAIL were absent from this list, which is
           # how they went missing in the GCP->EC2 move without anyone noticing. An
           # unset QUOTE_FROM_EMAIL falls back to Resend's SANDBOX sender, which only
