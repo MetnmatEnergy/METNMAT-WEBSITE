@@ -143,7 +143,26 @@ export const Products: CollectionConfig = {
                   admin: {
                     width: "50%",
                     description:
-                      "URL segment (auto-generated from the product name when blank), e.g. 'aluminum-sheet'. Changing it changes the product's public URL.",
+                      "URL segment. Leave it blank and it is made from the product name — e.g. 'aluminum-sheet'. Changing it later changes the product's public URL.",
+                  },
+                  /*
+                   * Empty is allowed HERE because beforeValidate fills it a
+                   * moment later. Without this, the admin refuses to submit a
+                   * blank slug (payload text validator -> required error;
+                   * @payloadcms/ui Form/index.js:285 blocks on any invalid
+                   * field), so the request never reaches the server and the
+                   * auto-generation the description promises can never run.
+                   *
+                   * Runs client-side AND server-side, so both agree. The slug
+                   * is still mandatory: a product cannot end up without one,
+                   * because a name that yields nothing sluggable is rejected
+                   * right here.
+                   */
+                  validate: (value: unknown, args: unknown) => {
+                    if (typeof value === "string" && value.trim() !== "") return true;
+                    const data = (args as { data?: { name?: unknown } } | undefined)?.data;
+                    if (slugify(String(data?.name ?? ""))) return true;
+                    return "Enter a URL segment, or a product name it can be made from.";
                   },
                   // Auto-fill from the name so a product can never be saved without a
                   // slug. This mirrors Projects/Posts, and matters beyond convenience:

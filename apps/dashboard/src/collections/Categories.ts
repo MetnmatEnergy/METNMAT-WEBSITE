@@ -37,7 +37,19 @@ export const Categories: CollectionConfig = {
       required: true,
       unique: true,
       index: true,
-      admin: { description: "URL segment, e.g. 'crucibles'. Auto-generated from the name when blank." },
+      admin: { description: "URL segment, e.g. 'crucibles'. Leave it blank and it is made from the name." },
+      /*
+       * Same reason as Products.slug — see the long note there. This one is
+       * reachable from the "+" beside the Category picker on the product form,
+       * so a staff member hits it while creating a product, not only from the
+       * Categories screen.
+       */
+      validate: (value: unknown, args: unknown) => {
+        if (typeof value === "string" && value.trim() !== "") return true;
+        const data = (args as { data?: { name?: unknown } } | undefined)?.data;
+        if (slugify(String(data?.name ?? ""))) return true;
+        return "Enter a URL segment, or a category name it can be made from.";
+      },
       // Normalise so a hand-typed value ("Raw Materials & Alloys") can't become a
       // broken public URL, and fill from the name when left empty. Matches
       // Products/Projects/Posts.
