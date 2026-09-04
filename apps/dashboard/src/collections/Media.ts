@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageAssets, publicRead } from "../access";
+import { canManageAssets, canUploadMedia, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { enforceProductImageSpec } from "../hooks/product-image-spec";
@@ -14,7 +14,10 @@ export const Media: CollectionConfig = {
   admin: { group: "Site & Mobile App", useAsTitle: "filename", description: "Images & banners." },
   access: {
     read: publicRead,
-    create: canManageAssets,
+    // Anyone who may author a product may add its imagery; changing or deleting
+    // what is already in the library stays with the asset managers. See
+    // canUploadMedia for why the two were split.
+    create: canUploadMedia,
     update: canManageAssets,
     delete: canManageAssets,
   },

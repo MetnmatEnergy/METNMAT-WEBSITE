@@ -180,6 +180,37 @@ export const canManageAssets: Access = ({ req: { user } }) =>
   hasRole(user as UserLike, "super-admin", "admin", "marketing") ||
   hasArea(user, "assets", "content");
 
+/**
+ * Put an image INTO the library — which is not the same as managing the library.
+ *
+ * THE BUG. `Products.create` gates on canManageCatalog; `Media.create` gated on
+ * canManageAssets. The two sets do not overlap for `sales`, `operations-manager`,
+ * or any designed role holding only the Catalog area — so those people could
+ * create a product and then had no way to give it a photograph. Not merely a
+ * hidden button: @payloadcms/ui computes the upload control's `canCreate` purely
+ * from the media collection's create permission, so the dropzone and the Upload
+ * button do not render at all and only "Choose from existing" remains. Nothing
+ * on screen explains why, so it reads as a broken uploader.
+ *
+ * It has not bitten yet only because the single live staff account is the
+ * director super-admin. It fires the moment a Sales or Catalog role is issued.
+ *
+ * THE RULE. Anyone who may author a product may add its imagery. This widens
+ * CREATE only — `update` and `delete` stay with canManageAssets, so a catalog
+ * author can add an asset but cannot re-caption or remove someone else's. That
+ * is the same reasoning canManageAssets already applies to content editors
+ * ("content editors need to upload the images their pages use"), applied to the
+ * catalog.
+ *
+ * Payload's create access is a boolean and cannot be narrowed by a Where, so
+ * this does not restrict WHICH media category a catalog author may create. That
+ * is acceptable: creating an asset is additive and audit-logged, and they can
+ * already create products. What it deliberately withholds is the power to alter
+ * or destroy assets that are already in the library.
+ */
+export const canUploadMedia: Access = (args) =>
+  canManageAssets(args) === true || canManageCatalog(args) === true;
+
 /** Website settings (globals): fixed content roles or a Settings-area custom role. */
 export const canManageSettings: Access = ({ req: { user } }) =>
   hasRole(user as UserLike, "super-admin", "admin", "marketing") || hasArea(user, "settings");

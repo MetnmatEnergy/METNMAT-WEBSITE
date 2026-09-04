@@ -2,6 +2,7 @@ import path from "path";
 import { existsSync } from "fs";
 import type { Payload } from "payload";
 import { decideDirectorPinWrite, directorPinForced } from "./lib/director-pin";
+import { hasAttachedImage, decideCategorySeed } from "./lib/seed-ownership";
 import { derivePinLookup } from "./lib/pin";
 import { seedCategories, seedProducts, type SeedCategory } from "./catalog-data";
 import {
@@ -102,10 +103,12 @@ const ALL_SEED_CATEGORIES: SeedCategory[] = [
 ];
 
 /**
- * Attach the department banner images. Only fills a category with no image yet,
- * and reuses an already-uploaded Media row by filename rather than minting a new
- * one — so this is idempotent across retries, concurrent boots and redeploys,
- * and never leaves orphaned uploads in the bucket.
+ * Attach the department banner images.
+ *
+ * Fills a category that has NO image, and never touches one that has. Reuses an
+ * already-uploaded Media row by filename rather than minting a new one, so this
+ * is idempotent across retries, concurrent boots and redeploys and leaves no
+ * orphaned uploads in the bucket.
  */
 async function ensureCategoryImages(payload: Payload): Promise<void> {
   for (const { slug, asset, alt } of CATEGORY_IMAGES) {
@@ -125,14 +128,30 @@ async function ensureCategoryImages(payload: Payload): Promise<void> {
       if (!doc) continue;
 
       const filename = path.basename(asset);
-      // Compare against the filename actually attached, not merely "is something
-      // attached". The previous test skipped whenever ANY image was set, which
-      // meant a category pointing at a file that no longer exists stayed broken
-      // for exactly as long as the broken pointer survived — and after the GCS
-      // move that was all of them.
-      const currentFile =
-        doc.image && typeof doc.image === "object" ? doc.image.filename : undefined;
-      if (currentFile === filename) continue; // already the banner we ship
+      /*
+       * OWNERSHIP, NOT FILENAME. Anything already attached is somebody's choice,
+       * so the default is only ever filled IN — never swapped OUT.
+       *
+       * THE BUG THIS FIXES. The test used to be `currentFile === filename`:
+       * skip only when the attached file IS the one shipped in this repository.
+       * A banner a staff member uploaded is by definition not that file, so it
+       * was replaced on the next boot — a deploy, or an unattended PM2 memory
+       * restart. Ten of the eleven departments were affected.
+       *
+       * That test was widened deliberately, to repair categories left pointing
+       * at files that died in the GCS to S3 move. It fixed a real problem and
+       * then kept running: a one-off migration expressed as a permanent rule.
+       * The migration is long finished, and the cost of leaving it in place is
+       * silently destroying staff work.
+       *
+       * A relationship whose target row is GONE is still repaired — Payload
+       * returns null for it at depth 1, so an empty slot and a dangling pointer
+       * are both "no image" here. What is NOT repaired is a media row that
+       * exists while its underlying file 404s: telling those apart needs a live
+       * S3 round trip per department on every boot, and getting it wrong means
+       * overwriting a real upload. Re-attach that one by hand.
+       */
+      if (hasAttachedImage(doc.image)) continue; // theirs, or ours from an earlier boot — either way, keep it
       const filePath = path.resolve(process.cwd(), asset);
       if (!existsSync(filePath)) {
         payload.logger.warn(`[seed] category banner asset missing: ${filePath}`);
@@ -211,7 +230,7 @@ async function cleanupMalformed(payload: Payload): Promise<void> {
   }
 }
 
-async function ensureCategory(
+export async function ensureCategory(
   payload: Payload,
   // SeedCategory rather than a restatement of its fields: the inline copy had
   // already fallen behind it, which is how a new field silently stops being
@@ -222,26 +241,34 @@ async function ensureCategory(
   const parent = c.parentSlug ? ids[c.parentSlug] : undefined;
   const found = await payload.find({ collection: "categories", where: { slug: { equals: c.slug } }, limit: 1 });
   if (found.docs[0]) {
+    /*
+     * CREATE-IF-MISSING. An existing category is staff-owned and is not written
+     * to — only its id is recorded, so sub-categories seeded later can still
+     * resolve it as their parent.
+     *
+     * THE BUG THIS FIXES. This used to issue an unconditional update of name,
+     * blurb, order and parent, on the reasoning that "the seed is authoritative
+     * for names and ordering". Seed runs in onInit on EVERY boot, and a PM2
+     * memory restart is a boot — so renaming a department, fixing a typo in a
+     * blurb, or moving one up the menu was reverted silently, often hours later
+     * with no deploy in between. To the person who made the edit that is not a
+     * policy, it is data loss, and nothing in the admin marked those fields as
+     * deploy-owned.
+     *
+     * It also contradicted this file's own stated invariant — "Boot must NEVER
+     * delete or overwrite staff-managed data" — and the rule products already
+     * follow ("continue; // staff-owned"), and that globals follow via
+     * seedGlobalIfUnset.
+     *
+     * Nothing is repaired here, deliberately. Re-filling a blurb that is empty
+     * would overwrite the decision of a staff member who cleared it, and there
+     * is no way to tell those two states apart. To change a department name on
+     * production now, edit it in the admin, or write a one-shot migration the
+     * way rebrandHomepageCopy does — the same route every other seeded value
+     * already requires.
+     */
     ids[c.slug] = String(found.docs[0].id);
-    await payload.update({
-      collection: "categories",
-      id: found.docs[0].id,
-      // null, not undefined. An undefined value is "field not supplied" and
-      // leaves the existing parent in place, so promoting a sub-category to a
-      // department would silently do nothing. null clears the relationship.
-      // `hidden` is written only when the seed entry states one. Sending it
-      // unconditionally would un-hide, on every boot, any department staff had
-      // chosen to hide — the seed is authoritative for names and ordering, not
-      // for a merchandising decision someone made in the admin.
-      data: {
-        name: c.name,
-        blurb: c.blurb,
-        order: c.order ?? 0,
-        parent: parent ?? null,
-        ...(c.hidden === undefined ? {} : { hidden: c.hidden }),
-      },
-    });
-    return;
+    if (decideCategorySeed(found.docs[0]) === "leave-alone") return;
   }
   const doc = await payload.create({
     collection: "categories",
@@ -1259,14 +1286,12 @@ async function ensureProjectCovers(payload: Payload): Promise<void> {
       if (!doc) continue;
 
       const filename = path.basename(asset);
-      // Same rule as the category banners: compare the attached FILENAME with
-      // the asset being shipped, rather than asking whether a cover exists at
-      // all. Every one of these projects had a cover set and every one of those
-      // files 404s — the media rows outlived the GCS bucket — so "a cover is
-      // already set" was true and useless.
-      const currentFile =
-        doc.coverImage && typeof doc.coverImage === "object" ? doc.coverImage.filename : undefined;
-      if (currentFile === filename) continue;
+      // Same rule as the category banners, and it was wrong here for the same
+      // reason: comparing the attached filename with the asset we ship answers
+      // "is this OUR default?", so a cover a staff member chose — which is never
+      // our file — was replaced on the next boot. The filename test was adopted
+      // to repair covers orphaned by the GCS→S3 move; that migration is over.
+      if (hasAttachedImage(doc.coverImage)) continue;
       const filePath = path.resolve(process.cwd(), asset);
       if (!existsSync(filePath)) {
         payload.logger.warn(`[seed] project cover asset missing: ${filePath}`);
@@ -1468,9 +1493,10 @@ async function ensureBlogCovers(payload: Payload): Promise<void> {
       if (!doc) continue;
 
       const filename = path.basename(asset);
-      const currentFile =
-        doc.coverImage && typeof doc.coverImage === "object" ? doc.coverImage.filename : undefined;
-      if (currentFile === filename) continue;
+      // Third instance of the same rule; see ensureCategoryImages. A cover an
+      // author picked is not the file we ship, so the filename comparison
+      // classified every real choice as replaceable.
+      if (hasAttachedImage(doc.coverImage)) continue;
 
       const filePath = path.resolve(process.cwd(), asset);
       if (!existsSync(filePath)) {
