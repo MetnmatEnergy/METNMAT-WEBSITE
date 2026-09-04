@@ -1,6 +1,13 @@
 "use client";
 
-import { basePriceRange, honouredPriceTiers, inclGST, usdFor, type Product } from "@/frontend/lib/catalog";
+import {
+  basePriceRange,
+  honouredPriceTiers,
+  inclGST,
+  isQuoteOnly,
+  usdFor,
+  type Product,
+} from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { cn } from "@/frontend/lib/utils";
 
@@ -19,6 +26,19 @@ export function PriceBlock({
   className?: string;
 }) {
   const { money } = useCurrency();
+  /*
+   * Products.productType states the rule in its own field description:
+   * "Quote only / Discontinued = enquiry-only: no Buy button, no price shown,
+   * no purchase Offer in SEO data." The Buy button and the SEO Offer were
+   * suppressed; the PRICE was not, because this block only ever checked
+   * `price > 0`. A retired product keeps its price — retiring is a productType
+   * change — so the ordinary case showed a figure the CMS says to withhold,
+   * with an MRP strike-through and a discount badge beside it.
+   *
+   * inclGST(0) is 0 and formatINR(0) already reads "On request", so the
+   * suppressed state needs no new wording.
+   */
+  const quoteOnly = isQuoteOnly(product);
   const discount =
     product.mrp && product.price
       ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
@@ -34,17 +54,19 @@ export function PriceBlock({
           size === "sm" && "text-base"
         )}
       >
-        {money(inclGST(product.price), usdFor(product, inclGST(product.price)))}
+        {quoteOnly
+          ? money(0, undefined)
+          : money(inclGST(product.price), usdFor(product, inclGST(product.price)))}
       </span>
-      {product.mrp && product.price > 0 && (
+      {!quoteOnly && product.mrp && product.price > 0 && (
         <span className="text-sm text-muted-foreground line-through">
           {money(inclGST(product.mrp), usdFor(product, inclGST(product.mrp)))}
         </span>
       )}
-      {discount > 0 && (
+      {!quoteOnly && discount > 0 && (
         <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">{discount}% off</span>
       )}
-      {product.price > 0 && (
+      {!quoteOnly && product.price > 0 && (
         <span className="text-xs text-muted-foreground">/ {product.unit} · incl. GST</span>
       )}
     </div>
@@ -63,6 +85,9 @@ export function PriceTiers({ product }: { product: Product }) {
    * above the base — advertising a bulk rate nothing would charge.
    * See honouredPriceTiers in lib/catalog.
    */
+  // "No price shown" covers this table too — it is nothing but prices, and it
+  // sat beside an "On request" base row on an item the checkout refuses to sell.
+  if (isQuoteOnly(product)) return null;
   const rows = honouredPriceTiers(product);
   if (!rows.length) return null;
   // Null when every order already qualifies for a tier — printing a base row
