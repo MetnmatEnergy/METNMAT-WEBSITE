@@ -5,6 +5,7 @@ import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { inboundKeyMatches } from "../lib/internal-key";
 import { readingTimeFromLexical, slugify, validateHttpUrl } from "../lib/blog";
+import { slugBeforeDuplicate } from "../lib/duplicate-slug";
 import { slugFromTitleValidator } from "../lib/slug-validate";
 
 const xKey = (args: { req?: { headers?: unknown } }) =>
@@ -133,6 +134,8 @@ export const Posts: CollectionConfig = {
               // Filled by the COLLECTION-level beforeChange below rather than a
               // field hook, but the admin blocks identically. Same rule.
               validate: slugFromTitleValidator({ source: "title", noun: "article" }),
+              // Duplicating twice would otherwise collide on the unique slug.
+              hooks: { beforeDuplicate: [slugBeforeDuplicate()] },
               admin: {
                 description:
                   "URL segment (auto-generated from the title when blank). Changing it after publication creates an automatic redirect from the old URL.",

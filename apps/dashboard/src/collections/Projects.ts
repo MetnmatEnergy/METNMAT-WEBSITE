@@ -3,6 +3,7 @@ import { canManageContent } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { slugify, validateHttpUrl } from "../lib/blog";
+import { slugBeforeDuplicate } from "../lib/duplicate-slug";
 import { slugFromTitleValidator } from "../lib/slug-validate";
 
 /**
@@ -59,6 +60,7 @@ export const Projects: CollectionConfig = {
               admin: { description: "URL segment (auto-generated from the title when blank), e.g. 'oxygen-free-copper-alloy'." },
               hooks: {
                 beforeValidate: [({ value, data }) => slugify((value as string) || data?.title || "")],
+                beforeDuplicate: [slugBeforeDuplicate()],
               },
             },
             { name: "subtitle", type: "text", admin: { description: "One-line tagline shown under the title (optional)." } },

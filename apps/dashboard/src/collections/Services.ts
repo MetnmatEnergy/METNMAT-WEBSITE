@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 import { canManageContent, publicRead } from "../access";
 import { slugify } from "../lib/blog";
+import { slugBeforeDuplicate } from "../lib/duplicate-slug";
 import { slugFromTitleValidator } from "../lib/slug-validate";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
@@ -41,6 +42,7 @@ export const Services: CollectionConfig = {
       // and fill from the title when left empty. Matches Products/Projects/Posts.
       hooks: {
         beforeValidate: [({ value, data }) => slugify((value as string) || (data?.title as string) || "")],
+        beforeDuplicate: [slugBeforeDuplicate()],
       },
     },
     { name: "summary", type: "textarea", required: true, admin: { description: "One- or two-line description shown on the service card." } },

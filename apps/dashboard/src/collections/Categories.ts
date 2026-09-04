@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 import { canManageCatalog, publicRead } from "../access";
 import { slugify } from "../lib/blog";
+import { slugBeforeDuplicate } from "../lib/duplicate-slug";
 import { slugFromTitleValidator } from "../lib/slug-validate";
 import { categoryOrderDefault } from "../lib/category-order";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
@@ -55,6 +56,7 @@ export const Categories: CollectionConfig = {
       // Products/Projects/Posts.
       hooks: {
         beforeValidate: [({ value, data }) => slugify((value as string) || (data?.name as string) || "")],
+        beforeDuplicate: [slugBeforeDuplicate()],
       },
     },
     { name: "blurb", type: "text" },

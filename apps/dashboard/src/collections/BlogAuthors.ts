@@ -3,6 +3,7 @@ import { canManageContent, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { slugify, validateHttpUrl } from "../lib/blog";
+import { slugBeforeDuplicate } from "../lib/duplicate-slug";
 
 /**
  * Blog authors — METNMAT staff and external contributors. Public read: the
@@ -34,6 +35,7 @@ export const BlogAuthors: CollectionConfig = {
       admin: { description: "Auto-generated from the name when left blank." },
       hooks: {
         beforeValidate: [({ value, data }) => slugify((value as string) || data?.name || "")],
+        beforeDuplicate: [slugBeforeDuplicate()],
       },
     },
     {

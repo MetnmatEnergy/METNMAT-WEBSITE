@@ -1,6 +1,7 @@
 import type { Access, CollectionConfig, Where } from "payload";
 import { canManageCatalog, fieldAccountsOrInternal } from "../access";
 import { slugify, validateHttpUrl } from "../lib/blog";
+import { slugBeforeDuplicate } from "../lib/duplicate-slug";
 import { slugFromTitleValidator } from "../lib/slug-validate";
 import { validatePriceTiers } from "../lib/price-tiers";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
@@ -171,6 +172,7 @@ export const Products: CollectionConfig = {
                       ({ value, data }) =>
                         slugify((value as string) || (data?.name as string) || ""),
                     ],
+                    beforeDuplicate: [slugBeforeDuplicate()],
                   },
                 },
                 {

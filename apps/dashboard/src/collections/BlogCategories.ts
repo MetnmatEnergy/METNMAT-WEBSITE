@@ -3,6 +3,7 @@ import { canManageContent, publicRead } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { slugify } from "../lib/blog";
+import { slugBeforeDuplicate } from "../lib/duplicate-slug";
 
 /**
  * Blog categories (Insights, Materials, Electrochemistry, …) — the primary
@@ -33,6 +34,7 @@ export const BlogCategories: CollectionConfig = {
       admin: { description: "Auto-generated from the name when left blank." },
       hooks: {
         beforeValidate: [({ value, data }) => slugify((value as string) || data?.name || "")],
+        beforeDuplicate: [slugBeforeDuplicate()],
       },
     },
     { name: "description", type: "textarea" },
