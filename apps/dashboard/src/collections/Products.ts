@@ -2,6 +2,7 @@ import type { Access, CollectionConfig, Where } from "payload";
 import { canManageCatalog, fieldAccountsOrInternal } from "../access";
 import { slugify, validateHttpUrl } from "../lib/blog";
 import { slugFromTitleValidator } from "../lib/slug-validate";
+import { validatePriceTiers } from "../lib/price-tiers";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
@@ -350,9 +351,20 @@ export const Products: CollectionConfig = {
               name: "priceTiers",
               type: "array",
               labels: { singular: "Tier", plural: "Bulk price tiers" },
+              /*
+               * Validated as a SET, not row by row, because the rules that
+               * matter are about the rows together: two breaks at the same
+               * quantity, or a "bulk" price above the base price.
+               *
+               * Payload hands the whole array as the value and the merged
+               * product as siblingData, so the base price is reachable here.
+               * Runs client-side and server-side alike, so the message appears
+               * inline rather than as a failed save.
+               */
+              validate: validatePriceTiers,
               fields: [
-                { name: "minQty", type: "number", required: true },
-                { name: "price", type: "number", required: true },
+                { name: "minQty", type: "number", required: true, min: 1, admin: { description: "Order this many or more to get the tier price." } },
+                { name: "price", type: "number", required: true, min: 0, admin: { description: "Price per unit at this quantity. Must be below the base price." } },
               ],
             },
           ],

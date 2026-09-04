@@ -209,9 +209,44 @@ export const gstPortionOf = (inclValue: number): number =>
 
 /** Effective unit price for a given quantity using tier breaks. */
 export function unitPriceForQty(product: Product, qty: number): number {
-  let price = product.price;
-  for (const tier of product.priceTiers) {
-    if (qty >= tier.minQty && tier.price) price = tier.price;
+  /*
+   * The DEEPEST qualifying break, and only a sane one.
+   *
+   * This one function decides both the tier table printed on the product page
+   * and the amount create-order/route.ts charges and snapshots onto the order
+   * and the GST invoice — so a defect here is the difference between the price
+   * on the page and the price on the card.
+   *
+   * It used to keep the LAST tier in ARRAY order that the quantity qualified
+   * for. Payload array rows are drag-reorderable, and a price list is naturally
+   * written deepest-first ("100+ = 1450, 25+ = 1650"), so which row won depended
+   * on typing order: the page printed 1450 and the checkout charged 1650.
+   *
+   * The row is also validated here rather than trusted. Products.priceTiers had
+   * no min, no max and no validate, and `required: true` does not exclude 0
+   * (payload's number validator tests `!value && !isNumber(value)`, and
+   * isNumber(0) is true). A negative tier price reached lineTotal: on a
+   * single-line cart Razorpay rejected the negative amount, and on a mixed cart
+   * the total stayed positive and simply charged less, producing a real paid
+   * order at an arbitrary discount. Products.ts now refuses to SAVE such a row;
+   * this refuses to CHARGE one, which also covers rows written before that
+   * validation existed.
+   *
+   * A tier is ignored unless it is strictly better than the base price. That
+   * makes "buy more, pay more" impossible by construction rather than by rule.
+   */
+  const base = Number.isFinite(product.price) ? product.price : 0;
+  let price = base;
+  let deepest = -1;
+  for (const tier of product.priceTiers ?? []) {
+    const minQty = Number(tier?.minQty);
+    const tierPrice = Number(tier?.price);
+    if (!Number.isFinite(minQty) || minQty < 1) continue;
+    if (!Number.isFinite(tierPrice) || tierPrice <= 0) continue;
+    if (base > 0 && tierPrice > base) continue;
+    if (qty < minQty || minQty <= deepest) continue;
+    deepest = minQty;
+    price = tierPrice;
   }
   return price;
 }

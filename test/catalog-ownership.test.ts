@@ -9,6 +9,7 @@ import {
   canManageCatalog,
   canUploadMedia,
 } from "../apps/dashboard/src/access";
+import { Media } from "../apps/dashboard/src/collections/Media";
 
 /**
  * Boot must never overwrite staff-managed data, and anyone who can author a
@@ -236,10 +237,23 @@ describe("anyone who can author a product can add its image", () => {
 });
 
 describe("upload rights are not a grant of library management", () => {
-  it("Media widens CREATE only — update and delete stay with the asset managers", () => {
+  it("Media widens create AND update, but never delete", () => {
+    /*
+     * CORRECTED, deliberately. This asserted "create only", which was the stated
+     * decision when create was widened and turned out to be incomplete:
+     * Media.category is required, has no default, and decides whether the
+     * resolution floor and the subject-aware crop run at all. Someone who picked
+     * the wrong option could neither fix it (update refused) nor remove it
+     * (delete refused), so the only move was to upload again and leave a second
+     * orphan they also could not remove.
+     *
+     * DELETE stays narrow, and that is the half worth protecting: mediaBeforeDelete
+     * already refuses anything a product or page still displays, so widening
+     * delete would grant nothing except power over other people's orphans.
+     */
     const media = withoutComments(readFileSync(join(CMS, "collections/Media.ts"), "utf8"));
     expect(media).toMatch(/create: canUploadMedia/);
-    expect(media).toMatch(/update: canManageAssets/);
+    expect(media).toMatch(/update: canUploadMedia/);
     expect(media).toMatch(/delete: canManageAssets/);
   });
 
@@ -309,5 +323,70 @@ describe("all three seed image fillers share the rule, because all three had the
 
   it("imports the shared predicate rather than re-implementing it", () => {
     expect(seed).toMatch(/import \{ hasAttachedImage, decideCategorySeed \} from "\.\/lib\/seed-ownership"/);
+  });
+});
+
+/**
+ * The unfinished edge of widening Media.create.
+ *
+ * Earlier today `create` was widened to canUploadMedia so a catalog role could
+ * add a product photo. `update` was deliberately left at canManageAssets, on the
+ * reasoning that adding an asset is not managing the library. That reasoning is
+ * right about OTHER people's assets and wrong about the uploader's own mistake.
+ *
+ * Media.category is `required: true` with NO default, chosen from eight options,
+ * and it is load-bearing rather than filing: `product` is what enforces the
+ * resolution floor and generates the subject-aware gallery crop. Pick the wrong
+ * one and the photo uploads unprocessed. The employee then cannot correct it —
+ * update is refused — and cannot delete it either, so their only move is to
+ * upload the file again, creating a second row they also cannot remove.
+ *
+ * Deletion stays with canManageAssets deliberately: mediaBeforeDelete already
+ * refuses anything a product or page still displays, so the only thing widening
+ * delete would add is the power to remove someone else's unreferenced asset.
+ */
+describe("a catalog role can correct the image it just uploaded", () => {
+  const withArea = (...areas: string[]) =>
+    ({ req: { user: { collection: "users", roles: [], customRoles: [{ isActive: true, areas }] } } }) as never;
+  const withRole = (...roles: string[]) =>
+    ({ req: { user: { collection: "users", roles } } }) as never;
+
+  const catalogOnly = withArea("catalog");
+
+  it("can author products — the premise", () => {
+    expect(canManageCatalog(catalogOnly)).toBe(true);
+  });
+
+  it("can upload the image", () => {
+    expect(canUploadMedia(catalogOnly)).toBe(true);
+  });
+
+  it("can ALSO fix its category or alt text afterwards", () => {
+    // The failing case. Without this the employee uploads a photo with the wrong
+    // category, the resolution floor and the gallery crop are skipped, and there
+    // is no route back: update refused, delete refused.
+    expect(canUploadMedia(catalogOnly)).toBe(true);
+    expect((Media.access as Record<string, unknown>).update).toBe(canUploadMedia);
+  });
+
+  it("still cannot DELETE library assets", () => {
+    // Narrow on purpose. mediaBeforeDelete already protects anything in use, so
+    // widening delete would only add power over other people's orphans.
+    expect((Media.access as Record<string, unknown>).delete).toBe(canManageAssets);
+    expect(canManageAssets(catalogOnly)).toBe(false);
+  });
+
+  it("grants nothing to someone who could not author a product", () => {
+    for (const u of [withArea("support"), withArea("accounts"), withRole("inventory"), withRole()]) {
+      expect(canManageCatalog(u)).toBe(false);
+      expect(canUploadMedia(u)).toBe(false);
+    }
+  });
+
+  it("asset managers keep full control", () => {
+    for (const u of [withRole("super-admin"), withRole("admin"), withRole("marketing"), withArea("assets")]) {
+      expect(canUploadMedia(u)).toBe(true);
+      expect(canManageAssets(u)).toBe(true);
+    }
   });
 });

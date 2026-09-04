@@ -19,7 +19,23 @@ export const Media: CollectionConfig = {
     // what is already in the library stays with the asset managers. See
     // canUploadMedia for why the two were split.
     create: canUploadMedia,
-    update: canManageAssets,
+    /*
+     * UPDATE is widened with create, and DELETE deliberately is not.
+     *
+     * `category` is required, has no default, is chosen from eight options, and
+     * is load-bearing rather than filing: "product" is what enforces the
+     * resolution floor and generates the subject-aware gallery crop. Pick the
+     * wrong one and the photo uploads unprocessed — and with update refused the
+     * uploader had no way back, because delete is refused too. Their only move
+     * was to upload the file again, creating a second row they also could not
+     * remove. Being allowed to start a task and not finish it is worse than not
+     * being allowed to start.
+     *
+     * Delete stays narrow because mediaBeforeDelete already refuses anything a
+     * product or page still displays, so widening it would add nothing except
+     * power over someone else's unreferenced orphans.
+     */
+    update: canUploadMedia,
     delete: canManageAssets,
   },
   upload: {
