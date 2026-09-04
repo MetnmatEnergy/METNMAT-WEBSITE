@@ -2,6 +2,8 @@ import type { CollectionConfig } from "payload";
 import { internalTicketOrManage, isAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { notifyTicketReply } from "../hooks/ticket-notify";
+import { ticketNumberBeforeValidate } from "../hooks/ticket-number";
+import { ticketNumberValidator } from "../lib/ticket-number";
 
 /**
  * Customer support tickets. Raised from the website (post-order help) by the
@@ -29,7 +31,24 @@ export const Tickets: CollectionConfig = {
     {
       type: "row",
       fields: [
-        { name: "ticketNumber", type: "text", required: true, unique: true, index: true, admin: { width: "50%", readOnly: true } },
+        {
+          name: "ticketNumber",
+          type: "text",
+          required: true,
+          unique: true,
+          index: true,
+          // Replaces the built-in text validator rather than running beside it,
+          // so `required` stays declared and true while a blank is accepted and
+          // filled in by `ticketNumberBeforeValidate`. Without this the browser
+          // refuses to submit a read-only empty box and no ticket can be
+          // raised from the admin at all.
+          validate: ticketNumberValidator(),
+          admin: {
+            width: "50%",
+            readOnly: true,
+            description: "Created automatically when the ticket is saved.",
+          },
+        },
         {
           name: "status",
           type: "select",
@@ -131,6 +150,7 @@ export const Tickets: CollectionConfig = {
     { name: "source", type: "text", admin: { position: "sidebar", readOnly: true } },
   ],
   hooks: {
+    beforeValidate: [ticketNumberBeforeValidate],
     afterChange: [auditAfterChange, notifyTicketReply],
     afterDelete: [auditAfterDelete],
   },
