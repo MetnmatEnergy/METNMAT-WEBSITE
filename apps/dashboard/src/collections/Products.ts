@@ -5,6 +5,7 @@ import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
 import { stockMovementHandler } from "../endpoints/stock";
+import { stockFieldsBeforeChange, recordOpeningStock } from "../hooks/stock-guard";
 
 /**
  * Public reads see PUBLISHED products only.
@@ -472,8 +473,14 @@ export const Products: CollectionConfig = {
               min: 0,
               admin: {
                 width: "33%",
+                // Read-only because stock moves through the ledger, not through
+                // saving this form. The panel below is the way to change it.
+                // This is a UI affordance only — the value is pinned
+                // server-side in hooks/stock-guard as well, because the REST
+                // API does not honour readOnly.
+                readOnly: true,
                 description:
-                  "On-hand quantity (internal/informational — does NOT itself hide the Buy button; use the In-stock toggle above for that).",
+                  "On-hand quantity. Set it with Adjust stock below, which records who changed it and why. Editable on a new product as the opening balance. Does NOT itself hide the Buy button — use the In-stock toggle above for that.",
               },
             },
             {
@@ -481,7 +488,11 @@ export const Products: CollectionConfig = {
               type: "number",
               min: 0,
               defaultValue: 0,
-              admin: { width: "33%" },
+              admin: {
+                width: "33%",
+                readOnly: true,
+                description: "Held against orders. Move it with Reserve / Release below.",
+              },
             },
             {
               name: "lowStockThreshold",
@@ -561,7 +572,9 @@ export const Products: CollectionConfig = {
         return data;
       },
     ],
-    afterChange: [auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
+    // Stock only moves through lib/stock. A document save may not change it.
+    beforeChange: [stockFieldsBeforeChange],
+    afterChange: [recordOpeningStock, auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
     afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete, syncChatbotAfterDelete],
   },
 };

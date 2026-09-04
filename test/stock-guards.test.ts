@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { planUpdate } from "../apps/dashboard/src/lib/stock";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * The filters that make a stock movement safe under concurrency.
@@ -102,5 +104,50 @@ describe("unknown movements produce no plan", () => {
   it("returns null rather than an unguarded write", () => {
     expect(planUpdate("adjustment" as never, 1)).toBeNull();
     expect(planUpdate("nonsense" as never, 1)).toBeNull();
+  });
+});
+
+describe("the product form cannot move stock", () => {
+  /**
+   * Structural checks on the wiring, because the arithmetic above is only
+   * protective if the collection actually routes through it. Each of these has
+   * a matching way to fail: delete the hook, delete the readOnly, or point the
+   * opening-balance hook at the wrong service function.
+   */
+  const read = (p: string) => readFileSync(join(__dirname, "..", "apps", "dashboard", "src", p), "utf8");
+  const products = read("collections/Products.ts");
+  const guard = read("hooks/stock-guard.ts");
+
+  it("Products runs the guard on every save", () => {
+    expect(products).toMatch(/beforeChange:\s*\[stockFieldsBeforeChange\]/);
+  });
+
+  it("Products records an opening balance on create", () => {
+    expect(products).toMatch(/afterChange:\s*\[recordOpeningStock,/);
+  });
+
+  it("both stock fields are read-only in the admin", () => {
+    // readOnly is only an affordance — the server-side pin above is what
+    // actually enforces it — but without it the form invites an edit that will
+    // be silently discarded, which is worse than not offering it.
+    const stockField = /name: "stockQty",[\s\S]{0,700}?readOnly: true/;
+    const reservedField = /name: "reservedStock",[\s\S]{0,500}?readOnly: true/;
+    expect(products).toMatch(stockField);
+    expect(products).toMatch(reservedField);
+  });
+
+  it("the guard exempts create, so an opening balance can still be entered", () => {
+    expect(guard).toMatch(/operation !== "update"/);
+  });
+
+  it("the opening balance RECORDS rather than re-applies", () => {
+    // recordStockMovement would $inc a quantity the create has already written,
+    // leaving the product holding double what was entered.
+    expect(guard).toMatch(/recordOpeningBalance/);
+    expect(guard).not.toMatch(/recordStockMovement/);
+  });
+
+  it("a discarded write is logged, not swallowed", () => {
+    expect(guard).toMatch(/logger\?\.warn|logger\.warn/);
   });
 });

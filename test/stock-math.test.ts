@@ -4,6 +4,7 @@ import {
   applyRecount,
   availableStock,
   stockMovementForTransition,
+  preserveStockFields,
   type MovementType,
   type StockState,
 } from "../apps/dashboard/src/lib/stock-math";
@@ -254,5 +255,82 @@ describe("which order transitions move stock", () => {
     const outs = STATUSES.flatMap((f) => STATUSES.map((t) => stockMovementForTransition(f, t)));
     expect(outs.filter((o) => o === "stock-out").length).toBeGreaterThan(0);
     expect(outs.filter((o) => o === "returned").length).toBeGreaterThan(0);
+  });
+});
+
+describe("a document save cannot move stock", () => {
+  /**
+   * The bypass: `stockQty` and `reservedStock` were ordinary editable fields, so
+   * typing a number and pressing Save wrote past the ledger — no row, no reason,
+   * no author. And because a save rewrites the whole document from a snapshot
+   * the browser read minutes ago, it could silently undo a movement made in
+   * between.
+   */
+  it("keeps the stored value and reports the discarded attempt", () => {
+    const r = preserveStockFields({ stockQty: 500 }, { stockQty: 12 });
+    expect(r.preserve.stockQty).toBe(12);
+    expect(r.discarded).toEqual([{ field: "stockQty", attempted: 500, kept: 12 }]);
+  });
+
+  it("pins the field even when the value already matches", () => {
+    // Pinning unconditionally is what makes the field immutable through this
+    // path, rather than merely usually-equal to the stored value.
+    const r = preserveStockFields({ stockQty: 12 }, { stockQty: 12 });
+    expect(r.preserve.stockQty).toBe(12);
+    expect(r.discarded).toEqual([]);
+  });
+
+  it("leaves a field alone when the save does not mention it", () => {
+    // A patch that only changes the price must not rewrite stock at all.
+    const r = preserveStockFields({ name: "x" } as Record<string, unknown>, { stockQty: 12 });
+    expect(r.preserve).toEqual({});
+    expect(r.discarded).toEqual([]);
+  });
+
+  it("guards reservedStock the same way", () => {
+    const r = preserveStockFields({ reservedStock: 99 }, { reservedStock: 3 });
+    expect(r.preserve.reservedStock).toBe(3);
+    expect(r.discarded).toEqual([{ field: "reservedStock", attempted: 99, kept: 3 }]);
+  });
+
+  it("treats a cleared field as an attempt to set zero", () => {
+    const r = preserveStockFields({ stockQty: null }, { stockQty: 7 });
+    expect(r.preserve.stockQty).toBe(7);
+    expect(r.discarded).toEqual([{ field: "stockQty", attempted: 0, kept: 7 }]);
+  });
+
+  it("survives a product that has never been counted", () => {
+    const r = preserveStockFields({ stockQty: 5 }, {});
+    expect(r.preserve.stockQty).toBe(0);
+    expect(r.discarded).toEqual([{ field: "stockQty", attempted: 5, kept: 0 }]);
+  });
+
+  it("does not choke on a non-numeric attempt", () => {
+    const r = preserveStockFields({ stockQty: "lots" as unknown as number }, { stockQty: 4 });
+    expect(r.preserve.stockQty).toBe(4);
+    expect(r.discarded[0]?.attempted).toBe(0);
+  });
+
+  it("DISCARDS rather than refuses, so a stale draft can still be published", () => {
+    // The reason this is not a rejection. Drafts snapshot every field. Sell one
+    // unit and the published stock moves; a draft taken beforehand still holds
+    // the old number. Refusing the mismatch would mean any stock movement
+    // permanently blocked publishing any older draft — an error the editor
+    // cannot clear and did not cause.
+    const staleDraft = { stockQty: 10, name: "Widget" };
+    const afterASale = { stockQty: 9 };
+    const r = preserveStockFields(staleDraft, afterASale);
+    // No throw, and the publish carries the authoritative figure.
+    expect(r.preserve.stockQty).toBe(9);
+    expect(r.discarded).toHaveLength(1);
+  });
+
+  it("both fields at once", () => {
+    const r = preserveStockFields(
+      { stockQty: 1, reservedStock: 1 },
+      { stockQty: 40, reservedStock: 6 },
+    );
+    expect(r.preserve).toEqual({ stockQty: 40, reservedStock: 6 });
+    expect(r.discarded.map((d) => d.field).sort()).toEqual(["reservedStock", "stockQty"]);
   });
 });

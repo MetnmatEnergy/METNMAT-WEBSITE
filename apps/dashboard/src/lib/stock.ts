@@ -178,6 +178,38 @@ async function appendLedger(
 }
 
 /**
+ * Record where a newly created product's count started.
+ *
+ * Deliberately does NOT go through `recordStockMovement`. A create has already
+ * written `stockQty` by the time any hook can see the document, so applying a
+ * `stock-in` of the same amount would `$inc` it a second time and leave the
+ * product holding double what was entered. The quantity is not being applied
+ * here — it is already applied — only recorded, so the ledger reconciles
+ * against the product from its first row rather than starting mid-story.
+ *
+ * Returns null rather than throwing: a product is real whether or not its
+ * opening row was written, and losing the create over an audit row would be a
+ * poor trade.
+ */
+export async function recordOpeningBalance(
+  payload: Payload,
+  input: { productId: string; quantity: number; userId?: string },
+  req?: PayloadRequest
+): Promise<string | null> {
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) return null;
+  const zero: StockState = { stockQty: 0, reservedStock: 0 };
+  return appendLedger(payload, req, {
+    productId: input.productId,
+    movementType: "stock-in",
+    quantity: input.quantity,
+    previous: zero,
+    next: { stockQty: input.quantity, reservedStock: 0 },
+    reason: "Opening balance (product created)",
+    ...(input.userId ? { userId: input.userId } : {}),
+  });
+}
+
+/**
  * Why the movement was refused, phrased for the person who attempted it.
  *
  * Reached only when the atomic filter did not match, so the document is re-read

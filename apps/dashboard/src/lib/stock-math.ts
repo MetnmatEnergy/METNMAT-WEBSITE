@@ -166,6 +166,63 @@ export function applyRecount(
   };
 }
 
+export type DiscardedWrite = {
+  field: keyof StockState;
+  attempted: number;
+  kept: number;
+};
+
+/**
+ * What a document save is allowed to do to the stock fields: nothing.
+ *
+ * THE BYPASS THIS CLOSES. Stock moves through `lib/stock.ts`, which is atomic
+ * and leaves a ledger row naming who moved it and why. But `stockQty` and
+ * `reservedStock` were still ordinary fields on the product form, so typing a
+ * new number and pressing Save wrote straight past all of it — no ledger row, no
+ * reason, no author. Worse, a form save writes the WHOLE document from a
+ * snapshot the browser read minutes ago, so it could silently undo a movement
+ * that happened in between.
+ *
+ * WHY THIS DISCARDS RATHER THAN REFUSES. Refusing looks stricter and is wrong
+ * here. Products have drafts enabled, and a draft holds a snapshot of every
+ * field from the moment it was taken. Sell one unit and the published stock
+ * moves; the older draft still carries the previous number. Rejecting a
+ * mismatch would mean that any stock movement permanently blocked publishing
+ * any draft created before it — the editor would face an error they cannot
+ * clear and did not cause. Keeping the stored value makes the field simply
+ * immutable through this path, which is the actual rule.
+ *
+ * The discarded attempts are returned so the hook can log them rather than
+ * swallow them silently.
+ */
+export function preserveStockFields(
+  data: Partial<Record<keyof StockState, unknown>> | null | undefined,
+  original: Partial<Record<keyof StockState, unknown>> | null | undefined
+): { preserve: Partial<StockState>; discarded: DiscardedWrite[] } {
+  const preserve: Partial<StockState> = {};
+  const discarded: DiscardedWrite[] = [];
+  if (!data) return { preserve, discarded };
+
+  for (const field of ["stockQty", "reservedStock"] as const) {
+    // A key that is absent is a partial update that does not mention stock, and
+    // must be left alone — forcing a value in would rewrite the field on every
+    // unrelated patch.
+    if (!(field in data)) continue;
+
+    const attempted = Number(data[field]);
+    const kept = Number(original?.[field]);
+    const attemptedN = Number.isFinite(attempted) ? attempted : 0;
+    const keptN = Number.isFinite(kept) ? kept : 0;
+
+    // Always pin to the stored value, even when they match: that is what makes
+    // the field immutable through this path rather than merely usually-equal.
+    preserve[field] = keptN;
+    if (attemptedN !== keptN) discarded.push({ field, attempted: attemptedN, kept: keptN });
+  }
+
+  return { preserve, discarded };
+}
+
 /**
  * Which stock movement, if any, an order status change implies.
  *
