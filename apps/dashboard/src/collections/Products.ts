@@ -2,6 +2,7 @@ import type { Access, CollectionConfig, Where } from "payload";
 import { canManageCatalog, fieldAccountsOrInternal } from "../access";
 import { slugify, validateHttpUrl } from "../lib/blog";
 import { slugBeforeDuplicate } from "../lib/duplicate-slug";
+import { mayAdjustStock } from "../lib/inventory-access";
 import { slugFromTitleValidator } from "../lib/slug-validate";
 import { validatePriceTiers } from "../lib/price-tiers";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
@@ -631,7 +632,25 @@ export const Products: CollectionConfig = {
           // server-side service the order hooks use.
           name: "stockAdjust",
           type: "ui",
-          admin: { components: { Field: "/admin/StockAdjust" } },
+          admin: {
+            /*
+             * Shown only to staff the server would actually accept.
+             *
+             * A `ui` field holds no data, so it cannot carry field `access`,
+             * and without a condition the collection READ permission was the
+             * only gate — so this panel rendered, live and interactive, for
+             * roles endpoints/stock.ts refuses. `sales` is the default role for
+             * a new account, so that was the DEFAULT experience. Worst case was
+             * read-only-auditor: Payload passes no `readOnly` prop to a custom
+             * Field, so the one panel that should have been inert was the only
+             * usable thing on an otherwise read-only form.
+             *
+             * This grants nothing. The server check is unchanged and is still
+             * what decides; this only stops offering an action that would fail.
+             */
+            condition: (_data, _siblingData, { user }) => mayAdjustStock(user),
+            components: { Field: "/admin/StockAdjust" },
+          },
         },
         {
           type: "row",

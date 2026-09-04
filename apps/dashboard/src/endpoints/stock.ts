@@ -1,5 +1,6 @@
 import type { PayloadRequest } from "payload";
-import { hasRoleOrArea, type Role } from "../access";
+import { type Role } from "../access";
+import { mayAdjustStock } from "../lib/inventory-access";
 import { recordStockMovement, recountStock } from "../lib/stock";
 import { availableStock, type MovementType } from "../lib/stock-math";
 
@@ -33,14 +34,13 @@ const DIRECTIONAL: ReadonlySet<string> = new Set([
   "returned",
 ]);
 
-/** The roles and areas that may move stock — the same set as canManageInventory. */
-const INVENTORY_ROLES: Role[] = ["super-admin", "admin", "operations-manager", "inventory"] as Role[];
-
 export async function stockMovementHandler(req: PayloadRequest): Promise<Response> {
   const { payload } = req;
 
   const user = req.user as { roles?: Role[]; email?: string; id?: string } | null;
-  if (!hasRoleOrArea(user, INVENTORY_ROLES, ["operations"])) {
+  // Shared with the admin panel's render condition, so the two cannot drift.
+  // This is still the check that decides; the UI gate is only a courtesy.
+  if (!mayAdjustStock(user)) {
     return Response.json({ error: "You do not have permission to change stock." }, { status: 401 });
   }
 
