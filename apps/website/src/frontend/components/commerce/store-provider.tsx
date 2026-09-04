@@ -69,6 +69,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setReady(true);
   }, []);
 
+  /*
+   * Mirrors of the committed state.
+   *
+   * removeFromCart and undoRemove need to READ the cart (or the last removed
+   * line) before they write it. They used to do that by reaching into a
+   * setState updater and calling another setState from inside it — but an
+   * updater must be a pure function of the state it is handed, and React may
+   * call it more than once for a single update. Reading a ref keeps both
+   * callbacks on empty deps, so their identity stays stable for consumers.
+   */
+  const cartRef = React.useRef<CartItem[]>([]);
+  const lastRemovedRef = React.useRef<CartItem | null>(null);
+  React.useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
+  React.useEffect(() => {
+    lastRemovedRef.current = lastRemoved;
+  }, [lastRemoved]);
+
   React.useEffect(() => {
     if (ready) localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }, [cart, ready]);
@@ -110,23 +129,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const removeFromCart = React.useCallback((key: string) => {
-    setCart((prev) => {
-      const removed = prev.find((i) => itemKey(i) === key);
-      if (removed) setLastRemoved(removed);
-      return prev.filter((i) => itemKey(i) !== key);
-    });
+    // The line being removed is read from the committed cart; the cart itself
+    // is still filtered through an updater, so the removal is exact even if two
+    // removals land in one tick.
+    const removed = cartRef.current.find((i) => itemKey(i) === key);
+    setCart((prev) => prev.filter((i) => itemKey(i) !== key));
+    if (removed) setLastRemoved(removed);
   }, []);
   const clearCart = React.useCallback(() => setCart([]), []);
 
   const undoRemove = React.useCallback(() => {
-    setLastRemoved((removed) => {
-      if (removed) {
-        setCart((prev) =>
-          prev.some((i) => itemKey(i) === itemKey(removed)) ? prev : [...prev, removed]
-        );
-      }
-      return null;
-    });
+    const removed = lastRemovedRef.current;
+    setLastRemoved(null);
+    if (!removed) return;
+    // Still guarded against a double-add: the line may already be back if the
+    // visitor re-added it by hand before hitting undo.
+    setCart((prev) =>
+      prev.some((i) => itemKey(i) === itemKey(removed)) ? prev : [...prev, removed]
+    );
   }, []);
   const dismissRemoved = React.useCallback(() => setLastRemoved(null), []);
 

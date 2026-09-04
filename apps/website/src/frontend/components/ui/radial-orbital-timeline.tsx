@@ -45,29 +45,47 @@ export default function RadialOrbitalTimeline({ timelineData }: RadialOrbitalTim
     }
   };
 
+  /*
+   * Selecting a node touches five pieces of state. They all used to be set from
+   * INSIDE the setExpandedItems updater, which is not what an updater is for.
+   *
+   * A state updater must be a pure function of the state it is handed. React is
+   * free to call it more than once for a single update — StrictMode does so
+   * deliberately in development, and a render that gets discarded and retried
+   * does so in production — and every one of those invocations re-fired
+   * setActiveNodeId, setAutoRotate, setPulseEffect and, through
+   * centerViewOnNode, setRotationAngle. Nothing visibly broke because each of
+   * those writes happens to be idempotent, which is precisely what makes the
+   * pattern worth removing before someone adds a write that is not: a counter,
+   * an append, a toggle read from its own previous value.
+   *
+   * The decision is now made once, from the committed state, and the writes are
+   * plain sequential calls — the shape handleContainerClick above already uses.
+   * React batches them into a single re-render, so the behaviour is unchanged.
+   * toggleItem only ever runs from a click handler, so reading committed state
+   * cannot miss a concurrent update.
+   */
   const toggleItem = (id: number) => {
-    setExpandedItems((prev) => {
-      const newState: Record<number, boolean> = {};
-      Object.keys(prev).forEach((key) => {
-        newState[parseInt(key)] = false;
-      });
-      newState[id] = !prev[id];
+    const willExpand = !expandedItems[id];
 
-      if (!prev[id]) {
-        setActiveNodeId(id);
-        setAutoRotate(false);
-        const relatedItems = getRelatedItems(id);
-        const newPulse: Record<number, boolean> = {};
-        relatedItems.forEach((relId) => (newPulse[relId] = true));
-        setPulseEffect(newPulse);
-        centerViewOnNode(id);
-      } else {
-        setActiveNodeId(null);
-        setAutoRotate(true);
-        setPulseEffect({});
-      }
-      return newState;
-    });
+    // Exactly one node open at a time: everything currently open closes.
+    const nextExpanded: Record<number, boolean> = {};
+    for (const key of Object.keys(expandedItems)) nextExpanded[parseInt(key)] = false;
+    nextExpanded[id] = willExpand;
+    setExpandedItems(nextExpanded);
+
+    if (willExpand) {
+      setActiveNodeId(id);
+      setAutoRotate(false);
+      const newPulse: Record<number, boolean> = {};
+      getRelatedItems(id).forEach((relId) => (newPulse[relId] = true));
+      setPulseEffect(newPulse);
+      centerViewOnNode(id);
+    } else {
+      setActiveNodeId(null);
+      setAutoRotate(true);
+      setPulseEffect({});
+    }
   };
 
   /**

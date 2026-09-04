@@ -52,6 +52,19 @@ const files = walk(ROOT).map((p) => ({
 const filesRaw = files;
 
 /**
+ * Source with comments removed.
+ *
+ * Every rule below matches source text, and prose kept defeating them in both
+ * directions: a comment naming the old API failed an assertion that the API was
+ * gone, and a comment containing the word "cycling" SATISFIED an assertion that
+ * a guard was present — so deleting the guard went unnoticed. A rule about code
+ * should read code.
+ */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+}
+
+/**
  * Every observer init object declared anywhere in the app, by name.
  *
  * Needed because the scan below used to require a brace literal at the call
@@ -322,6 +335,41 @@ describe("structural scan", () => {
     expect(offenders, offenders.join("\n")).toEqual([]);
   });
 
+  it("no setState is called from inside another setState's updater", () => {
+    // An updater must be a pure function of the state it is handed. React may
+    // call it more than once for a single update — StrictMode does so on
+    // purpose in development, and a discarded-and-retried render does so in
+    // production — so every nested write fires again each time.
+    //
+    // The orbital timeline set four other pieces of state (five, counting
+    // centerViewOnNode's setRotationAngle) from inside its setExpandedItems
+    // updater. Nothing visibly broke only because each write happened to be
+    // idempotent, which is exactly what makes the pattern worth removing before
+    // somebody adds one that is not.
+    const offenders: string[] = [];
+    for (const f of files) {
+      const src = stripComments(f.src);
+      const re = /\bset[A-Z]\w*\(\s*\(?\s*\w+\s*\)?\s*=>\s*\{/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(src))) {
+        let i = re.lastIndex - 1;
+        let depth = 0;
+        for (; i < src.length; i++) {
+          if (src[i] === "{") depth++;
+          else if (src[i] === "}") {
+            depth--;
+            if (depth === 0) break;
+          }
+        }
+        const nested = [...src.slice(re.lastIndex, i).matchAll(/\bset[A-Z]\w*\(/g)].map((x) => x[0]);
+        if (nested.length) {
+          offenders.push(`${f.path}: ${m[0].trim()} … ${nested.join(" ")}`);
+        }
+      }
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+
   it("only the reference-counted module writes the body scroll lock", () => {
     // Five overlays each saved and restored `overflow` independently, so an
     // interleaved close restored "hidden" and stranded the page unscrollable.
@@ -437,19 +485,6 @@ describe("timed carousels and reveals", () => {
     expect(callback![1], "must disconnect on entry, not just on unmount").toMatch(/io\.disconnect\(\)/);
     expect(code).toMatch(/animate=\{entered \? "visible" : "hidden"\}/);
   });
-
-  /**
-   * Source with comments removed.
-   *
-   * Every one of these rules matches source text, and prose kept defeating
-   * them in both directions: a comment naming the old API failed an assertion
-   * that the API was gone, and a comment containing the word "cycling"
-   * SATISFIED an assertion that a guard was present — so deleting the guard
-   * went unnoticed. A rule about code should read code.
-   */
-  function stripComments(src: string): string {
-    return src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
-  }
 
   /** The `useEffect` block that owns a file's setInterval, deps array included. */
   function intervalEffect(src: string): string {
