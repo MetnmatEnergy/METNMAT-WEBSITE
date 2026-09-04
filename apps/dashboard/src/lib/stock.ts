@@ -245,6 +245,35 @@ function toObjectId(payload: Payload, id: string): unknown {
 }
 
 /**
+ * The stock this product actually holds, read from the `products` collection.
+ *
+ * This is the same document every movement above writes, and that is the entire
+ * point. Anything that needs the current count must ask this document rather
+ * than a version snapshot: the movements here go through the native driver
+ * specifically so Payload cannot see them, which also means they mint no
+ * version. A snapshot can therefore be arbitrarily far behind the truth and has
+ * no way to notice.
+ *
+ * Returns null rather than a zeroed state when the count cannot be established —
+ * the driver is unreachable, or there is no such document. Zero is a real stock
+ * level and must never be invented; a caller that gets null still knows it was
+ * not told an answer.
+ */
+export async function readAuthoritativeStock(
+  payload: Payload,
+  productId: string
+): Promise<StockState | null> {
+  const conn = connection(payload);
+  if (!conn) return null;
+
+  const col = productsCollection(conn);
+  if (!col) return null;
+
+  const doc = await col.findOne({ _id: toObjectId(payload, productId) });
+  return doc ? stateOf(doc) : null;
+}
+
+/**
  * Apply a directional stock movement and record it.
  *
  * Returns `{ ok: false, error }` rather than throwing for business refusals —

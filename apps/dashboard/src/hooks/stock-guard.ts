@@ -1,6 +1,6 @@
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook } from "payload";
 import { preserveStockFields } from "../lib/stock-math";
-import { recordOpeningBalance } from "../lib/stock";
+import { readAuthoritativeStock, recordOpeningBalance } from "../lib/stock";
 
 /**
  * Stock is moved by the service, never by saving the product form.
@@ -27,6 +27,38 @@ import { recordOpeningBalance } from "../lib/stock";
  */
 
 /**
+ * What the product actually holds, or null if that cannot be established.
+ *
+ * `originalDoc` is the obvious thing to preserve from and the wrong one. For a
+ * collection with drafts enabled Payload fills it from
+ * `getLatestCollectionVersion`, which returns `latestVersion.version` — a
+ * SNAPSHOT. Snapshots are written by `saveVersion`, which only runs on a Payload
+ * save, while `lib/stock.ts` writes through the native driver and mints no
+ * version. So a movement made through the ledger changes the document and
+ * leaves every snapshot untouched, and preserving from one reverts the movement.
+ *
+ * Returning null on failure keeps the guard exactly as strong as it was before —
+ * the caller falls back to the snapshot — rather than failing open.
+ */
+async function liveStock(
+  req: Parameters<CollectionBeforeChangeHook>[0]["req"] | undefined,
+  originalDoc: { id?: unknown } | undefined,
+) {
+  const id = originalDoc?.id;
+  if (!id || !req?.payload) return null;
+
+  try {
+    return await readAuthoritativeStock(req.payload, String(id));
+  } catch (err) {
+    req.payload.logger?.warn(
+      { err, product: id },
+      "[stock] could not read the authoritative count — preserving from the version snapshot instead",
+    );
+    return null;
+  }
+}
+
+/**
  * Discard any attempt to change stock through a document save.
  *
  * Create is exempt: the value entered on a new product is its opening balance,
@@ -41,7 +73,14 @@ export const stockFieldsBeforeChange: CollectionBeforeChangeHook = async ({
 }) => {
   if (!data || operation !== "update") return data;
 
-  const { preserve, discarded } = preserveStockFields(data, originalDoc);
+  // A save that never mentions stock is a partial update that must be left
+  // alone. Checking first also keeps every unrelated edit — which is most of
+  // them — from paying for a database round trip.
+  if (!("stockQty" in data) && !("reservedStock" in data)) return data;
+
+  const original = (await liveStock(req, originalDoc)) ?? originalDoc;
+
+  const { preserve, discarded } = preserveStockFields(data, original);
   Object.assign(data, preserve);
 
   if (discarded.length) {
