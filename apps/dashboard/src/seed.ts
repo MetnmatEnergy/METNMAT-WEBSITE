@@ -1,6 +1,7 @@
 import path from "path";
 import { existsSync } from "fs";
 import type { Payload } from "payload";
+import { decideDirectorPinWrite, directorPinForced } from "./lib/director-pin";
 import { seedCategories, seedProducts, type SeedCategory } from "./catalog-data";
 import {
   seedServices,
@@ -738,7 +739,15 @@ async function scrubPinBearingEmails(payload: Payload): Promise<void> {
  * committed to git. On boot, when DIRECTOR_EMAIL + DIRECTOR_PIN are set, ensure
  * that account exists as an ACTIVE super-admin. It is created through the local
  * API (not a raw insert), so the PIN-derived password is hashed with the real
- * production pepper — meaning the 4-digit PIN sign-in works in prod. When
+ * production pepper — meaning the 4-digit PIN sign-in works in prod.
+ *
+ * THE PIN IS SEEDED, NOT ENFORCED. This used to overwrite the PIN on every
+ * boot, so a PIN changed in the admin UI was reverted by the next restart and
+ * the person who set it was locked out with no explanation — seen in production
+ * on 2026-09-04. It is now written only when the account has none, or when
+ * DIRECTOR_PIN_FORCE=true asks for it deliberately. That flag is the break-glass
+ * path: the password is an HMAC of the PIN, so a forgotten PIN cannot be
+ * recovered any other way. See lib/director-pin. When
  * DIRECTOR_RESET=true, every OTHER staff account is removed AFTER the director
  * is confirmed present (so a "fresh single-admin" CMS can be provisioned with no
  * risk of lockout). Storefront customers are a separate collection and are NEVER
@@ -773,14 +782,21 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
       for (const dup of docs.slice(1)) {
         await payload.delete({ collection: "users", id: dup.id, overrideAccess: true });
       }
+      const decision = decideDirectorPinWrite(
+        (docs[0] as { pin?: unknown }).pin,
+        directorPinForced(process.env),
+      );
       await payload.update({
         collection: "users",
         id: directorId,
-        data: { name, email, pin, roles: ["super-admin"] },
+        // The PIN is deliberately absent unless it needs writing: including it
+        // makes Users.beforeChange re-derive the password, which is what
+        // silently changed the credential on every restart.
+        data: { name, email, roles: ["super-admin"], ...(decision.write ? { pin } : {}) },
         overrideAccess: true,
       });
       payload.logger.warn(
-        `[seed] director super-admin ensured: ${email}${docs.length > 1 ? ` (removed ${docs.length - 1} duplicate match(es))` : ""}`,
+        `[seed] director super-admin ensured: ${email} (pin ${decision.reason})${docs.length > 1 ? ` (removed ${docs.length - 1} duplicate match(es))` : ""}`,
       );
     } else {
       const created = await payload.create({
