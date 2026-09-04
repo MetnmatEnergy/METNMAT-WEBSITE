@@ -2,6 +2,7 @@ import type { CollectionConfig } from "payload";
 import { canManageAssets, internalOrIsStaff } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
+import { documentBeforeDelete } from "../hooks/document-guards";
 
 /**
  * Document assets. PRIVATE BY DEFAULT: quotation PDFs (Quotations/Enquiries),
@@ -59,6 +60,9 @@ export const Documents: CollectionConfig = {
     },
   ],
   hooks: {
+    // An invoice PDF is a statutory record (see Invoices.ts) but lives here,
+    // where delete access is wider. Refuse while anything still points at it.
+    beforeDelete: [documentBeforeDelete],
     afterChange: [auditAfterChange, revalidateWebsiteAfterChange],
     afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete],
   },
