@@ -9,6 +9,7 @@ import { stockFieldsBeforeChange, recordOpeningStock } from "../hooks/stock-guar
 import { inboundKeyMatches } from "../lib/internal-key";
 import { productPreviewUrl } from "../lib/preview-link";
 import { productBeforeDelete } from "../hooks/product-guards";
+import { productSlugRedirectAfterChange } from "../hooks/slug-redirects";
 
 /**
  * Public reads see PUBLISHED products only.
@@ -143,7 +144,7 @@ export const Products: CollectionConfig = {
                   admin: {
                     width: "50%",
                     description:
-                      "URL segment. Leave it blank and it is made from the product name — e.g. 'aluminum-sheet'. Changing it later changes the product's public URL.",
+                      "URL segment. Leave it blank and it is made from the product name — e.g. 'aluminum-sheet'. Changing it later changes the product's public URL; once the product is published the old URL redirects here automatically, so existing links keep working.",
                   },
                   /*
                    * Empty is allowed HERE because beforeValidate fills it a
@@ -178,6 +179,12 @@ export const Products: CollectionConfig = {
                 {
                   name: "sku",
                   type: "text",
+                  // Indexed because it is a LOOKUP key, not just a label:
+                  // hooks/order-stock.ts falls back to it when a renamed slug
+                  // no longer resolves, inside the paid-order webhook path, and
+                  // the website's getProductBySku queries it too. Unindexed
+                  // equality here is a collection scan.
+                  index: true,
                   admin: {
                     width: "50%",
                     description:
@@ -680,7 +687,13 @@ export const Products: CollectionConfig = {
     beforeDelete: [productBeforeDelete],
     // Stock only moves through lib/stock. A document save may not change it.
     beforeChange: [stockFieldsBeforeChange],
-    afterChange: [recordOpeningStock, auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
+    // Renaming a product must not 404 its indexed URL. BEFORE the revalidate
+    // hook, deliberately: afterChange hooks are awaited in order
+    // (payload/dist/collections/operations/utilities/update.js:330-341), and
+    // pinging the website to purge before the redirect row exists lets it cache
+    // a 404 for the URL we are trying to rescue. Posts.ts has these two the
+    // other way round.
+    afterChange: [recordOpeningStock, auditAfterChange, productSlugRedirectAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
     afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete, syncChatbotAfterDelete],
   },
 };

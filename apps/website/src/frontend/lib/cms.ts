@@ -403,6 +403,38 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   return doc ? mapProduct(doc) : null;
 }
 
+/**
+ * Current slug for an OLD (renamed) product slug, or null.
+ *
+ * ONE HOP, ALWAYS. The redirect row holds a relationship to the product, not a
+ * destination slug, so however many times the product has been renamed the
+ * destination is read from the live document. /shop/p/<first-ever-slug> lands
+ * on today's URL in a single 301; redirects never point at other redirects.
+ *
+ * Only called from the 404 branch of /shop/p/[slug], so a URL that resolves
+ * pays nothing for this.
+ *
+ * Non-strict `api` on purpose (mirrors resolveBlogSlugRedirect): the caller has
+ * already made a STRICT product query that succeeded, so a CMS outage would
+ * have thrown long before reaching here. It cannot turn an outage into a 404.
+ */
+export async function resolveProductSlugRedirect(oldSlug: string): Promise<string | null> {
+  const data = await api<{ docs: { product?: { slug?: string } | string }[] }>(
+    `/api/product-slug-redirects?depth=1&limit=1&where[oldSlug][equals]=${encodeURIComponent(oldSlug)}`
+  );
+  const target = data?.docs?.[0]?.product;
+  // A DELETED or UNPUBLISHED target populates as its bare id rather than an
+  // object — payload/dist/fields/hooks/afterRead/relationshipPopulationPromise
+  // .js:46-49, "ids are visible regardless of access controls". So the string
+  // case IS the dangling case, and null here makes the old URL 404 instead of
+  // 301ing into a 404.
+  const slug = target && typeof target === "object" ? target.slug ?? null : null;
+  if (!slug || slug === oldSlug) return null;
+  // Belt: re-check through the public gate, so a target that is present but not
+  // publicly visible never becomes a redirect destination.
+  return (await getProductBySlug(slug)) ? slug : null;
+}
+
 export async function getProductBySku(sku: string): Promise<Product | null> {
   const data = await api<{ docs: CmsProduct[] }>(
     `/api/products?depth=1&limit=1&where[sku][equals]=${encodeURIComponent(sku)}`
@@ -611,6 +643,26 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
   // CmsUnavailableError rather than read as "no such category".
   if (!doc || doc.hidden === true) return null;
   return mapCategory(doc);
+}
+
+/**
+ * Current slug for an OLD (renamed) category slug, or null. Same one-hop
+ * mechanism as resolveProductSlugRedirect, with one real difference.
+ *
+ * Categories.access.read is `publicRead` (() => true), so unlike a draft
+ * product a HIDDEN category populates through the relationship perfectly well.
+ * The visibility re-check below is therefore not belt-and-braces here, it is
+ * load-bearing: without it a retired department's old URL would 301 to its new
+ * URL, which 404s. getCategoryBySlug already returns null for hidden.
+ */
+export async function resolveCategorySlugRedirect(oldSlug: string): Promise<string | null> {
+  const data = await api<{ docs: { category?: { slug?: string } | string }[] }>(
+    `/api/category-slug-redirects?depth=1&limit=1&where[oldSlug][equals]=${encodeURIComponent(oldSlug)}`
+  );
+  const target = data?.docs?.[0]?.category;
+  const slug = target && typeof target === "object" ? target.slug ?? null : null;
+  if (!slug || slug === oldSlug) return null;
+  return (await getCategoryBySlug(slug)) ? slug : null;
 }
 
 export async function getTopCategories(): Promise<Category[]> {

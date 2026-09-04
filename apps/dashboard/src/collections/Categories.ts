@@ -4,6 +4,7 @@ import { slugify } from "../lib/blog";
 import { categoryOrderDefault } from "../lib/category-order";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { categoryBeforeDelete } from "../hooks/category-guards";
+import { categorySlugRedirectAfterChange } from "../hooks/slug-redirects";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 // A category rename changes products' subcategory label (and can shift the bot's
 // 5-value enum bucket), so a category edit must also resync the chatbot catalog.
@@ -37,7 +38,10 @@ export const Categories: CollectionConfig = {
       required: true,
       unique: true,
       index: true,
-      admin: { description: "URL segment, e.g. 'crucibles'. Leave it blank and it is made from the name." },
+      admin: {
+        description:
+          "URL segment, e.g. 'crucibles'. Leave it blank and it is made from the name. Changing it changes the department's public URL; the old URL redirects here automatically, so existing links keep working.",
+      },
       /*
        * Same reason as Products.slug — see the long note there. This one is
        * reachable from the "+" beside the Category picker on the product form,
@@ -95,7 +99,9 @@ export const Categories: CollectionConfig = {
     // Refuse before anything is removed — a category is not deletable while
     // products or sub-categories still point at it. See hooks/category-guards.
     beforeDelete: [categoryBeforeDelete],
-    afterChange: [auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
+    // Renaming a department must not 404 its indexed URL. Before the revalidate
+    // hook for the same ordering reason as Products.ts.
+    afterChange: [auditAfterChange, categorySlugRedirectAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
     afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete, syncChatbotAfterDelete],
   },
 };

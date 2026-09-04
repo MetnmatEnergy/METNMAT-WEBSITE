@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { draftMode } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Container } from "@/frontend/components/ui/container";
 import { Truck, BadgeCheck, FileText, ShieldCheck } from "lucide-react";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
@@ -17,6 +17,7 @@ import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
 import {
   getProductBySlug,
   getCategoryBySlug,
+  resolveProductSlugRedirect,
   getProductsByCategory,
   getProductSitemapEntries,
   mapCmsProduct,
@@ -92,6 +93,17 @@ export async function generateMetadata({
   if (!product && (await draftMode()).isEnabled) {
     return { title: "Draft preview", robots: { index: false } };
   }
+  // Renamed product? 301 the old indexed URL to the current one. This sits
+  // BELOW the draft-mode escape hatch above deliberately — a signed preview of a
+  // draft whose slug changed must render the preview, not get redirected away.
+  //
+  // The lookup is inside this branch, so a product that resolves — the common
+  // case, every real page view — never queries the redirect collection at all.
+  // Same placement as /blog/[slug] (blog/[slug]/page.tsx:51-53).
+  if (!product) {
+    const target = await resolveProductSlugRedirect(slug);
+    if (target) permanentRedirect(`/shop/p/${target}`);
+  }
   // 404 HERE, not just in the page body. generateMetadata runs before the
   // response starts, so this is the only place that can still set a 404 STATUS
   // — returning placeholder metadata instead produced a soft-404: the 404 page
@@ -148,7 +160,13 @@ export async function generateMetadata({
 export default async function ProductPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
   const { product, preview } = await loadProduct(slug);
-  if (!product) notFound();
+  if (!product) {
+    // Reached only when generateMetadata took the draft-mode escape hatch and
+    // returned metadata instead of throwing. Mirrors blog/[slug]/page.tsx:89-93.
+    const target = await resolveProductSlugRedirect(slug);
+    if (target) permanentRedirect(`/shop/p/${target}`);
+    notFound();
+  }
 
   const category = await getCategoryBySlug(product.categorySlug);
   const parent = category?.parent ? await getCategoryBySlug(category.parent) : null;

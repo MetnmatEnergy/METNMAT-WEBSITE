@@ -24,6 +24,8 @@ import { BlogReactions } from "./collections/BlogReactions";
 import { BlogSubmissions } from "./collections/BlogSubmissions";
 import { BlogSubmissionFiles } from "./collections/BlogSubmissionFiles";
 import { BlogSlugRedirects } from "./collections/BlogSlugRedirects";
+import { ProductSlugRedirects } from "./collections/ProductSlugRedirects";
+import { CategorySlugRedirects } from "./collections/CategorySlugRedirects";
 import { Faqs } from "./collections/Faqs";
 import { Team } from "./collections/Team";
 import { Clients } from "./collections/Clients";
@@ -258,6 +260,9 @@ export default buildConfig({
     Products,
     Categories,
     StockLedger,
+    // Renamed-URL 301s, written by the slug-change hooks on the two above.
+    ProductSlugRedirects,
+    CategorySlugRedirects,
     // Site & Mobile App (website content + assets)
     Services,
     Projects,

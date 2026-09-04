@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Container } from "@/frontend/components/ui/container";
 import { JsonLd, breadcrumbJsonLd, itemListJsonLd } from "@/frontend/components/seo/json-ld";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
@@ -17,6 +17,7 @@ import {
   getProductsByCategory,
   getSubCategories,
   getAllCategories,
+  resolveCategorySlugRedirect,
 } from "@/frontend/lib/cms";
 import { parseShopQuery, shopFacets, applyShopQuery, hasActiveFilters } from "@/frontend/lib/shop-query";
 import { pageMetadata } from "@/frontend/lib/seo";
@@ -33,6 +34,16 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { category } = await params;
   const cat = await getCategoryBySlug(category);
+  // Renamed department? 301 the old indexed URL to the current one, in one hop.
+  // Only runs when the category did not resolve, so a real department page pays
+  // nothing for this.
+  if (!cat) {
+    const target = await resolveCategorySlugRedirect(category);
+    // The query string (filters, ?page=N) is intentionally not carried over: the
+    // filtered views are noindex anyway (see the robots block below), and the
+    // URLs worth rescuing are the clean department URLs in the index.
+    if (target) permanentRedirect(`/shop/c/${target}`);
+  }
   // 404 HERE so the response carries a real 404 STATUS — see the note in
   // shop/p/[slug]. Building "Category" placeholder metadata instead meant every
   // bogus /shop/c/* URL answered HTTP 200 with the 404 page inside it.
@@ -72,7 +83,11 @@ export default async function CategoryPage({
   const { category } = await params;
   const sp = await searchParams;
   const cat = await getCategoryBySlug(category);
-  if (!cat) notFound();
+  if (!cat) {
+    const target = await resolveCategorySlugRedirect(category);
+    if (target) permanentRedirect(`/shop/c/${target}`);
+    notFound();
+  }
 
   const [all, subs, allCategories] = await Promise.all([
     getProductsByCategory(category),
