@@ -299,15 +299,42 @@ React state updates across three consumers plus 2N forced layouts each.
 
 | Mechanism | Where | Why it is being left |
 |---|---|---|
-| framer-motion's shared viewport observer never unobserves | `ui/reveal.tsx` via framer-motion 11.18 | the leak is inside the library, costs microseconds per frame, and `once: true` stops the callback doing work. Rewriting Reveal would touch every animated section on the site for no measurable gain |
-*(The three rows that stood here — the unreleased WebGL context, the shader loop
-restarting off-screen, and the ungated particle loop — were fixed in `8f4a9f0`.
-See below.)*
 | `setState` calls nested inside a `setState` updater | `ui/radial-orbital-timeline.tsx` (/about) | React anti-pattern, no observed misbehaviour; wants its own change with a visual check |
-| Carousel intervals run while the tab is hidden | `commerce/product-gallery.tsx`, `commerce/shop-showcase.tsx` | a cheap index change every few seconds, not an animation loop; gating them is a small follow-up |
 
-None of these is freeze-capable. Each is recorded here so the next session does not have to
-re-derive it.
+Everything else recorded here has since been fixed: the WebGL context leak, the
+off-screen shader restart and the ungated particle loop in `8f4a9f0`, and the
+framer-motion observer leak plus both carousel intervals in `9217c71`.
+
+## Fixed in `9217c71`
+
+| Mechanism | File | What it was |
+|---|---|---|
+| framer-motion never unobserved a viewport target | `ui/reveal.tsx` | `InViewFeature.startObserver()` returns the unsubscribe from `observeIntersection`; `mount()` discards it and `unmount()` is empty. The observer is cached forever in a module-level WeakMap keyed on `document`, and an IntersectionObserver holds a **strong** reference to its targets — so each visit to /about left fifteen detached elements permanently observed and alive. Reveal now owns a one-shot observer and disconnects on entry |
+| Product gallery advanced every 4.5 s regardless | `commerce/product-gallery.tsx` | a tab left open in the background kept advancing and decoding the next image; now gated, and reduced motion stops the auto-advance as it already did on the banner |
+| Shop banner advanced every 5 s regardless | `commerce/shop-showcase.tsx` | same, every 5 s |
+| The gate existed in four private copies | `lib/use-visible-in-viewport.ts` | consolidated; copies drift, which is how the shader came to check the viewport in one caller and forget it in the other |
+
+### Verified in production on `9217c71`
+
+Again against an ungated control rAF chain in the same page:
+
+| Check | Control rAF | Result |
+|---|---:|---|
+| /about reveals, after scrolling the full page | — | 28 elements hidden before scrolling, **1** after, and **no invisible text** |
+| /shop banner, in view (12 s) | 60 /s | 16 carousel mutations |
+| /shop banner, **scrolled away** (12 s) | 60 /s | **0 mutations** |
+| /shop banner, back in view (12 s) | 60 /s | 12 mutations |
+
+**Not verified live:** the product gallery's gate. Repeated attempts on a product
+page landed while the preview pane was throttled to ~1 fps, and a throttled pane
+stalls the IntersectionObserver too, so the measurement cannot separate the gate
+from the environment. It uses the identical hook proven above on /shop; the ref
+is attached to the component's outermost element, which always renders, so the
+observer can never fail to attach; and the structural guardrail fails if either
+the guard or its dependency is removed.
+
+None of what remains is freeze-capable. Each item is recorded here so the next
+session does not have to re-derive it.
 
 ## How the guardrails work now
 
