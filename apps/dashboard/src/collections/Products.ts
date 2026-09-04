@@ -471,16 +471,39 @@ export const Products: CollectionConfig = {
               name: "stockQty",
               type: "number",
               min: 0,
+              /*
+               * Editable while creating the product, locked once it exists.
+               *
+               * `admin.readOnly: true` was unconditional, which contradicted this
+               * field's own description and broke the opening balance: a brand
+               * new product could never be given a starting count, so
+               * `recordOpeningStock` — the create hook that exists precisely to
+               * write that first ledger row — could not fire from the admin at
+               * all. Every product began at zero and its ledger began at the
+               * first adjustment, which is the reconciliation gap the ledger was
+               * added to close.
+               *
+               * Field access is operation-scoped, so it expresses the rule that
+               * `readOnly` cannot. Verified in the installed packages:
+               * getFieldPermissions() resolves `operation` against 'create' or
+               * 'update' (payload/dist/utilities/getFieldPermissions.js), and
+               * RenderFields forces `isReadOnly = true` when that permission is
+               * absent (@payloadcms/ui .../RenderFields/index.js:66). So the
+               * field renders editable on a new product and read-only forever
+               * after, with no custom component.
+               *
+               * This is not the security boundary. Field access is skipped
+               * entirely under `overrideAccess: true`, which the seed and the
+               * importer both use, so the value stays pinned server-side in
+               * hooks/stock-guard.ts. That hook is what actually stops a REST
+               * caller moving stock behind the ledger's back; this makes the
+               * form tell the truth about it.
+               */
+              access: { update: () => false },
               admin: {
                 width: "33%",
-                // Read-only because stock moves through the ledger, not through
-                // saving this form. The panel below is the way to change it.
-                // This is a UI affordance only — the value is pinned
-                // server-side in hooks/stock-guard as well, because the REST
-                // API does not honour readOnly.
-                readOnly: true,
                 description:
-                  "On-hand quantity. Set it with Adjust stock below, which records who changed it and why. Editable on a new product as the opening balance. Does NOT itself hide the Buy button — use the In-stock toggle above for that.",
+                  "On-hand quantity. Set the opening balance here while creating the product — after that it is moved only with Adjust stock below, which records who changed it and why. Does NOT itself hide the Buy button — use the In-stock toggle above for that.",
               },
             },
             {
@@ -488,10 +511,19 @@ export const Products: CollectionConfig = {
               type: "number",
               min: 0,
               defaultValue: 0,
+              // No opening value, ever: reserved stock is a claim made by an
+              // order, so a number typed here would describe a reservation that
+              // does not exist. Locked on create as well as update — unlike
+              // stockQty, which has a legitimate opening balance. On update
+              // hooks/stock-guard.ts pins it too; on create, field access is the
+              // whole guard, which is sufficient because the only callers that
+              // skip it (seed, importer) do not set the field.
+              access: { create: () => false, update: () => false },
               admin: {
                 width: "33%",
                 readOnly: true,
-                description: "Held against orders. Move it with Reserve / Release below.",
+                description:
+                  "Held against orders. Moved by the order lifecycle and by Reserve / Release below — never typed in.",
               },
             },
             {

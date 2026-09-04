@@ -126,14 +126,23 @@ describe("the product form cannot move stock", () => {
     expect(products).toMatch(/afterChange:\s*\[recordOpeningStock,/);
   });
 
-  it("both stock fields are read-only in the admin", () => {
-    // readOnly is only an affordance — the server-side pin above is what
-    // actually enforces it — but without it the form invites an edit that will
-    // be silently discarded, which is worse than not offering it.
-    const stockField = /name: "stockQty",[\s\S]{0,700}?readOnly: true/;
-    const reservedField = /name: "reservedStock",[\s\S]{0,500}?readOnly: true/;
-    expect(products).toMatch(stockField);
-    expect(products).toMatch(reservedField);
+  it("neither stock field can be typed into on an EXISTING product", () => {
+    // This used to assert `admin.readOnly: true` on both fields, and that is
+    // what made the opening balance unenterable: `readOnly` is not
+    // operation-aware, so locking the form on update locked it on create too.
+    // The test below in this same file — "the guard exempts create, so an
+    // opening balance can still be entered" — asserted the opposite intent, and
+    // both passed. Two green tests disagreeing about the same behaviour is the
+    // shape of this bug.
+    //
+    // Field access IS operation-scoped, so it states the real rule. Comments are
+    // stripped first: the fix's own comment quotes the old `readOnly: true`, and
+    // a source scan must not be satisfied — or misled — by prose.
+    const src = products.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+    expect(src).toMatch(/name: "stockQty",[\s\S]{0,400}?access: \{ update: \(\) => false \}/);
+    expect(src).toMatch(
+      /name: "reservedStock",[\s\S]{0,400}?access: \{ create: \(\) => false, update: \(\) => false \}/
+    );
   });
 
   it("the guard exempts create, so an opening balance can still be entered", () => {
@@ -149,5 +158,98 @@ describe("the product form cannot move stock", () => {
 
   it("a discarded write is logged, not swallowed", () => {
     expect(guard).toMatch(/logger\?\.warn|logger\.warn/);
+  });
+});
+
+/**
+ * The opening balance must be typeable, and nothing else about stock must be.
+ *
+ * WHAT WAS BROKEN. Closing the direct-write bypass put `admin.readOnly: true` on
+ * `stockQty` unconditionally. `readOnly` is not operation-aware, so it locked the
+ * field on CREATE as well — and the field's own description said "Editable on a
+ * new product as the opening balance". The description was right about the
+ * intent and the code did not implement it: a new product could never be given a
+ * starting count, so `recordOpeningStock` (the create hook whose entire job is
+ * writing that first ledger row) could not fire from the admin at all. Every
+ * product began at zero, and its ledger began at the first adjustment — exactly
+ * the reconciliation gap the ledger exists to close.
+ *
+ * THE FIX. Field access IS operation-scoped, so `access: { update: () => false }`
+ * says what `readOnly` cannot. The last block asserts that behaviour against the
+ * installed packages rather than against a description of them.
+ */
+const CMS_SRC = join(__dirname, "..", "apps", "dashboard", "src");
+/** Comments are stripped so a phrase in a comment can never satisfy — or trip — an assertion. */
+const withoutComments = (s: string) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+describe("stock fields are editable exactly when they should be", () => {
+  const products = withoutComments(readFileSync(join(CMS_SRC, "collections/Products.ts"), "utf8"));
+  /**
+   * The source text of one field definition, sliced by string position rather
+   * than matched by regex — the field bodies contain braces and quotes, and a
+   * regex that survives both is harder to read than the thing it asserts.
+   */
+  const field = (name: string) => {
+    const start = products.indexOf(`name: "${name}",`);
+    expect(start, `${name} field not found`).toBeGreaterThan(-1);
+    const end = products.indexOf("\n            },", start);
+    expect(end, `${name} field has no recognisable end`).toBeGreaterThan(start);
+    return products.slice(start, end);
+  };
+
+  it("stockQty is NOT unconditionally read-only — that is what broke the opening balance", () => {
+    expect(field("stockQty")).not.toMatch(/readOnly: true/);
+  });
+
+  it("stockQty is locked on update, so a save can never move stock", () => {
+    expect(field("stockQty")).toMatch(/access: \{ update: \(\) => false \}/);
+  });
+
+  it("stockQty stays editable on create — no create:false slipped in with it", () => {
+    expect(field("stockQty")).not.toMatch(/create: \(\) => false/);
+  });
+
+  it("reservedStock is locked on BOTH operations — it has no opening value", () => {
+    // A number typed here would describe a reservation no order ever made.
+    const f = field("reservedStock");
+    expect(f).toMatch(/create: \(\) => false/);
+    expect(f).toMatch(/update: \(\) => false/);
+  });
+
+  it("the description no longer promises something the field cannot do", () => {
+    // The old copy said "Editable on a new product" beside readOnly: true.
+    const f = field("stockQty");
+    expect(f).toMatch(/opening balance/);
+    expect(f).toMatch(/Adjust stock/);
+  });
+
+  it("the server-side pin is still there — field access is not the boundary", () => {
+    // overrideAccess: true skips field access entirely, and the seed and the
+    // importer both use it. hooks/stock-guard.ts is what actually holds.
+    expect(products).toMatch(/beforeChange: \[stockFieldsBeforeChange\]/);
+    expect(products).toMatch(/afterChange: \[recordOpeningStock/);
+  });
+});
+
+describe("the Payload behaviour the create/update split relies on", () => {
+  const ROOT_DIR = join(__dirname, "..");
+  const payloadUtil = readFileSync(
+    join(ROOT_DIR, "apps/dashboard/node_modules/payload/dist/utilities/getFieldPermissions.js"),
+    "utf8",
+  );
+  const renderFields = readFileSync(
+    join(ROOT_DIR, "apps/dashboard/node_modules/@payloadcms/ui/dist/forms/RenderFields/index.js"),
+    "utf8",
+  );
+
+  it("field permissions are resolved per OPERATION, not once per field", () => {
+    // If this stopped being operation-scoped, `update: () => false` would lock
+    // the field on create again and the opening balance would silently vanish.
+    expect(payloadUtil).toMatch(/operation in permissions\[field\.name\] && permissions\[field\.name\]\[operation\]/);
+  });
+
+  it("the admin renders a field read-only when that operation is not permitted", () => {
+    expect(renderFields).toMatch(/if \("name" in field && !hasOperationPermission\) \{\s*isReadOnly = true;/);
   });
 });
