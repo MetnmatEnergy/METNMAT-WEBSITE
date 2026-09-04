@@ -21,22 +21,39 @@ import { staffError } from "../lib/staff-error";
 export function categoryDeleteBlocker(counts: {
   products: number;
   children: number;
+  /**
+   * Products filed here by an edit nobody has published yet. Counted apart
+   * because "1 product" would send staff to a shop listing that does not show
+   * it — the move is real, it just is not live.
+   */
+  draftProducts?: number;
   name?: string | null;
 }): string | null {
   const { products, children } = counts;
-  if (products <= 0 && children <= 0) return null;
+  // Optional and coerced: a caller that omits it must read as "none", never as
+  // "unknown, so block". An omitted count previously produced a refusal naming
+  // "undefined products", which the existing empty-category test caught.
+  const draftProducts = Number(counts.draftProducts) || 0;
+  if (products <= 0 && children <= 0 && draftProducts <= 0) return null;
 
   const label = counts.name ? `"${counts.name}"` : "This category";
   const parts: string[] = [];
   if (products > 0) parts.push(`${products} product${products === 1 ? "" : "s"}`);
+  if (draftProducts > 0) {
+    parts.push(
+      `${draftProducts} product${draftProducts === 1 ? "" : "s"} with unpublished changes filing ${draftProducts === 1 ? "it" : "them"} here`,
+    );
+  }
   if (children > 0) parts.push(`${children} sub-categor${children === 1 ? "y" : "ies"}`);
 
-  const what = parts.join(" and ");
+  const what =
+    parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+  const anyProducts = products > 0 || draftProducts > 0;
   const fix =
-    products > 0 && children > 0
+    anyProducts && children > 0
       ? "Move the products to another category and re-parent or remove the sub-categories first."
-      : products > 0
-        ? "Move those products to another category first, or hide this one instead of deleting it."
+      : anyProducts
+        ? "Move those products to another category first — publishing or discarding the draft changes counts — or hide this one instead of deleting it."
         : "Re-parent or remove the sub-categories first.";
 
   return `${label} still has ${what}. ${fix}`;
@@ -47,10 +64,37 @@ export const categoryBeforeDelete: CollectionBeforeDeleteHook = async ({ req, id
 
   // Two counts, not two document fetches — `count` is an aggregation and does
   // not pull the matching rows across.
-  const [products, children, category] = await Promise.all([
+  /*
+   * Three counts, because the published filing is not the whole filing.
+   *
+   * Products has drafts, so a draft REVISION moving a product INTO this
+   * category is written only to _products_versions (utilities/update.js guards
+   * the main write with `if (!isSavingDraft)`). Counting the main collection
+   * alone let the category be deleted, and publishing afterwards left
+   * Products.category — a REQUIRED relationship — pointing at nothing.
+   *
+   * The reverse needs nothing: a draft moving a product OUT still counts here,
+   * because the published document is still filed in this category. Refusing
+   * then is conservative rather than wrong.
+   *
+   * Sub-categories need no version search — Categories has no versions key, so
+   * its main collection IS its whole state.
+   */
+  const [products, draftProducts, children, category] = await Promise.all([
     payload.count({
       collection: "products",
       where: { category: { equals: id } },
+      overrideAccess: true,
+    }),
+    payload.countVersions({
+      collection: "products",
+      where: {
+        and: [
+          { latest: { equals: true } },
+          { "version._status": { equals: "draft" } },
+          { "version.category": { equals: id } },
+        ],
+      },
       overrideAccess: true,
     }),
     payload.count({
@@ -65,6 +109,7 @@ export const categoryBeforeDelete: CollectionBeforeDeleteHook = async ({ req, id
 
   const blocker = categoryDeleteBlocker({
     products: products.totalDocs,
+    draftProducts: draftProducts.totalDocs,
     children: children.totalDocs,
     name: (category as { name?: string } | null)?.name ?? null,
   });
