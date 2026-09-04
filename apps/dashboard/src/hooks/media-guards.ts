@@ -65,12 +65,24 @@ export const MEDIA_REFS: MediaRef[] = [
  * most damaging to remove.
  */
 /*
- * KNOWN GAP, stated rather than hidden. Media embedded in a blog article BODY
- * as a Lexical upload node is not counted here — seed.ts builds such nodes, and
- * three live articles carry authored inline diagrams. Deleting one of those
- * files is still permitted and still leaves a broken image. Walking Lexical
- * trees across every article is a different and much larger change than a table
- * of field paths, so it is filed separately rather than bolted on here.
+ * KNOWN GAP, stated rather than hidden — and WIDER than it used to say here.
+ *
+ * Media embedded as a Lexical upload node inside a rich-text field is not
+ * counted. That is FIVE fields, not just the blog:
+ *
+ *   Posts.body, Products.description, Projects.body, Services.description,
+ *   and the `about` field on the company global.
+ *
+ * seed.ts builds such nodes, and three live articles carry authored inline
+ * diagrams. Deleting one of those files is still permitted and still leaves a
+ * broken image — and unlike the draft-revision gap, this one needs no drafts at
+ * all: a reference inside a PUBLISHED rich-text body is missed just the same,
+ * because the value is buried in a JSON tree rather than at a queryable field
+ * path.
+ *
+ * Walking Lexical trees across five collections is a different and much larger
+ * change than a table of field paths, so it stays filed separately rather than
+ * bolted on here. The count above is the honest scope of what is not covered.
  */
 export const MEDIA_SETTINGS: { slug: string; label: string; paths: string[] }[] = [
   {
