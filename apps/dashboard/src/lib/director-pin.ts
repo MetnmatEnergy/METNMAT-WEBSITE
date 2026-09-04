@@ -1,18 +1,25 @@
 /**
  * Whether the director bootstrap may write the PIN from `DIRECTOR_PIN`.
  *
- * THE BUG THIS FIXES. `ensureDirectorAccount()` runs inside `seed()`, which runs
- * in `onInit` on EVERY CMS boot — a deploy, a PM2 memory restart, anything. When
- * it found the director it issued an unconditional update including `pin`, and
- * `Users.beforeChange` keeps the real password in lockstep by deriving it from
- * the PIN. So a PIN changed in the admin UI was silently reverted to the
- * environment value on the next restart, and the person who set it was locked
- * out with no indication of why. Observed in production on 2026-09-04: a PIN set
- * in the UI stopped working the moment a deploy restarted the CMS.
+ * WHAT THIS GUARDS. `ensureDirectorAccount()` runs inside `seed()`, which runs in
+ * `onInit` on EVERY CMS boot — a deploy, a PM2 memory restart, anything. When it
+ * found the director it issued an unconditional update including `pin`, so the
+ * stored PIN was reset to the environment value on every restart. The function's
+ * own docstring called that "fully idempotent"; it was not.
  *
- * The function's own docstring claimed it was "fully idempotent". It was not:
- * idempotent means running it twice changes nothing, and this changed the
- * credential every time.
+ * ⚠ CORRECTION (2026-09-04). This guard was first written believing the restart
+ * also reverted the LOGIN CREDENTIAL, and that this explained a production
+ * lockout. It did not, and it could not have: a password assigned in a
+ * collection `beforeChange` hook is dead code on update in Payload 3.85.1 — the
+ * value is snapshotted before those hooks run. The credential was not being
+ * reverted; it was frozen at whatever the account was CREATED with, and no PIN
+ * change through any path had ever moved it. That separate defect is fixed in
+ * `hooks/pin-credential.ts`, which carries the evidence.
+ *
+ * The correction makes this guard MORE load-bearing, not less. Until that fix,
+ * seed's update could not change the credential whatever it wrote. Now it can —
+ * so without the rule below, every restart really would overwrite a PIN the
+ * director had set in the UI.
  *
  * THE RULE NOW, which matches what the rest of this codebase already does —
  * globals seed only when unset, products are never updated once created:

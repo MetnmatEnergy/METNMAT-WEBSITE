@@ -129,9 +129,24 @@ The IAM task role already grants the dashboard the right S3 actions
 `PAYLOAD_SECRET` can be regenerated safely — no collection uses encrypted fields,
 so it only invalidates sessions. **`PAYLOAD_PIN_PEPPER` cannot be regenerated
 casually:** a staff password *is* `HMAC(pepper, pin)`. `DIRECTOR_EMAIL` (restored
-in `fd4e939`) is what re-derives the director's password on boot, so it must be
-deployed *before* the pepper changes. PIN-only staff get a synthetic
-`@staff.metnmat.local` address and cannot receive a password reset.
+in `fd4e939`) is what lets the seed find the director on boot. PIN-only staff get
+a synthetic `@staff.metnmat.local` address and cannot receive a password reset.
+
+> **⚠ Correction, 2026-09-04.** This paragraph originally said the boot seed
+> "re-derives the director's password", and the migration plan below still leans
+> on that as the recovery path for a pepper change. **It never did.** In Payload
+> 3.85.1 a password assigned in a collection `beforeChange` hook is dead code on
+> update — the value is snapshotted at the top of `updateDocument()`, before those
+> hooks run. `ensureDirectorAccount` updates through that path, so the director's
+> credential was frozen at whatever the account was CREATED with, and a boot after
+> a pepper change would have logged success while leaving everyone locked out.
+>
+> Fixed in `hooks/pin-credential.ts` (a `beforeOperation` hook, which runs before
+> the snapshot), with the ordering asserted against the installed Payload in
+> `test/pin-credential.test.ts` so a version bump cannot silently undo it. The
+> ordering advice above — `DIRECTOR_EMAIL` before any pepper change — is still
+> right, but it was not sufficient on its own and is not a rotation plan; see
+> `docs/upgrade/pin-pepper-rotation.md`, which carries its own correction banner.
 
 ## 4. IAM review
 

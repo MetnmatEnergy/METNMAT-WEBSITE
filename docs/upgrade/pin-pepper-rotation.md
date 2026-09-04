@@ -1,5 +1,34 @@
 # Rotating `PAYLOAD_PIN_PEPPER`
 
+> ## ⛔ DO NOT FOLLOW THIS PROCEDURE YET — corrections pending (2026-09-04)
+>
+> Two things this document was written on top of turned out to be wrong. The
+> *analysis* of what the pepper protects still stands; the **procedure does not**.
+>
+> 1. **It describes PIN storage that no longer exists.** `Users.pin` is now
+>    virtual and write-only; what persists is `pinLookup`, an HMAC under a
+>    separate label (`lib/pin.ts`, `test/pin-storage.test.ts`). Every step below
+>    that reads a PIN out of MongoDB to re-derive it **cannot work** — that is the
+>    point of the change, and it makes rotation strictly harder, not easier.
+> 2. **It assumes writing a PIN changes the credential.** In Payload 3.85.1 a
+>    password assigned in a collection `beforeChange` hook is dead code on
+>    update — the value is snapshotted before those hooks run. Until
+>    `hooks/pin-credential.ts` (added 2026-09-04) no PIN change through any path
+>    had ever moved the credential. Any rotation step that "just re-saves each
+>    user" would have reported success and changed nothing.
+>
+> **What rotation now actually costs.** With the PIN no longer recoverable from
+> the database, a new pepper invalidates every derived password AND every stored
+> lookup, and nothing on the server can reproduce them. Rotation therefore means
+> **every member of staff is issued a new PIN** — it is a credential reset for the
+> whole team, not a background key change. That is a scheduling decision, not a
+> deploy step, and this document needs rewriting around it before anyone runs it.
+>
+> Still true and still worth acting on: the pepper is 4 characters against a
+> documented minimum of 16, and `derivePassword` is a single HMAC over a
+> 10,000-candidate space, so the pepper is the entire secret.
+
+
 Written 2026-09-04 after the production check found the pepper is **4 characters**
 against a documented minimum of 16 (`deploy/README.md`).
 

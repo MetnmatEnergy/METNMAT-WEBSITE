@@ -861,8 +861,10 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
         collection: "users",
         id: directorId,
         // The PIN is deliberately absent unless it needs writing: including it
-        // makes Users.beforeChange re-derive the password, which is what
-        // silently changed the credential on every restart.
+        // makes Users.beforeOperation re-derive the password (hooks/pin-credential.ts),
+        // so an unconditional write here would reset the director's credential on
+        // every boot. Set DIRECTOR_PIN_FORCE=true for the deliberate break-glass
+        // reset; see lib/director-pin.ts.
         data: { name, email, roles: ["super-admin"], ...(decision.write ? { pin } : {}) },
         overrideAccess: true,
       });

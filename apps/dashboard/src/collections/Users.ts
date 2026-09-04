@@ -12,6 +12,7 @@ import {
   ROLE_OPTIONS,
 } from "../access";
 import { derivePassword, derivePinLookup, PIN_REGEX } from "../lib/pin";
+import { syncPinPassword } from "../hooks/pin-credential";
 
 export const Users: CollectionConfig = {
   slug: "users",
@@ -119,6 +120,15 @@ export const Users: CollectionConfig = {
     },
   ],
   hooks: {
+    /*
+     * MUST stay beforeOperation. Payload snapshots `data.password` at the top of
+     * updateDocument() and decides there whether to hash it — 99 lines before
+     * collection beforeChange hooks run — so a password assigned in beforeChange
+     * is never read on update. Moving this into beforeChange would silently stop
+     * PIN changes from taking effect, exactly as before. Full evidence, with
+     * line numbers from the installed Payload, in hooks/pin-credential.ts.
+     */
+    beforeOperation: [syncPinPassword],
     beforeValidate: [
       async ({ req, operation, data, originalDoc }) => {
         if (!data) return data;
@@ -169,13 +179,17 @@ export const Users: CollectionConfig = {
     beforeChange: [
       async ({ req, operation, data }) => {
         /*
-         * Keep the real password in lockstep with the PIN so /pin-login can
-         * authenticate through Payload's own login() machinery, and record the
-         * lookup that sign-in will match on.
+         * Record the lookup that sign-in matches on, and drop the PIN.
          *
          * `pin` is virtual, so it is not persisted — but it is deleted here as
          * well rather than relied upon, because this is the single place that
          * decides a credential is never written down.
+         *
+         * The password assignment below is what makes a CREATE work: create.js
+         * reads the password after its hooks. It does NOT make an update work —
+         * see the beforeOperation note above — which is why syncPinPassword
+         * exists. Both derive the same deterministic value, so the two paths
+         * cannot disagree.
          */
         if (data?.pin != null && data.pin !== "") {
           const pin = String(data.pin);
