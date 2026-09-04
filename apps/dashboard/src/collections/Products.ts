@@ -4,6 +4,7 @@ import { slugify, validateHttpUrl } from "../lib/blog";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
+import { stockMovementHandler } from "../endpoints/stock";
 
 /**
  * Public reads see PUBLISHED products only.
@@ -492,6 +493,15 @@ export const Products: CollectionConfig = {
           ],
         },
         {
+          // Typing a new number into stockQty above writes no ledger row, no
+          // reason and no author, and can silently overwrite a concurrent
+          // change. This panel is the authorized path: it goes through the same
+          // server-side service the order hooks use.
+          name: "stockAdjust",
+          type: "ui",
+          admin: { components: { Field: "/admin/StockAdjust" } },
+        },
+        {
           type: "row",
           fields: [
             {
@@ -520,6 +530,14 @@ export const Products: CollectionConfig = {
         },
       ],
     },
+  ],
+  endpoints: [
+    /**
+     * POST /api/products/stock-movement
+     * The authorized way to change stock. Authorization mirrors
+     * canManageInventory exactly and is enforced server-side.
+     */
+    { path: "/stock-movement", method: "post", handler: stockMovementHandler },
   ],
   hooks: {
     // Derive internationalPricing for rows written before the field existed.

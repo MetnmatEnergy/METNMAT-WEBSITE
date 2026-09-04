@@ -32,6 +32,7 @@ import { default as default_5bb2f6096a92e2f61cc9ec9ae0fca71e } from '../../../ad
 import { default as default_a5a338611b4a2fc3303c9dc046438703 } from '../../../admin/NavLogo'
 import { default as default_8111ae29cf52208bf19d3f279ff19eeb } from '../../../admin/NavShortcuts'
 import { default as default_cdbd8f4edb65b040e69c1cb1b024ac33 } from '../../../admin/SiteAnalyticsView'
+import { default as default_3b7e21c0a94f5d8e6c02fa17bd45e9c3 } from '../../../admin/StockAdjust'
 // BOTH storage client upload handlers are kept here on purpose, and the reason
 // is the same for each: whichever storage plugin is active registers a ROOT
 // admin provider referencing its clientHandler key, and if that key is missing
@@ -91,6 +92,7 @@ export const importMap = {
   "/admin/NavLogo#default": default_a5a338611b4a2fc3303c9dc046438703,
   "/admin/NavShortcuts#default": default_8111ae29cf52208bf19d3f279ff19eeb,
   "/admin/SiteAnalyticsView#default": default_cdbd8f4edb65b040e69c1cb1b024ac33,
+  "/admin/StockAdjust#default": default_3b7e21c0a94f5d8e6c02fa17bd45e9c3,
   "@payloadcms/storage-gcs/client#GcsClientUploadHandler": GcsClientUploadHandler_06e62ca02c7c441053a9b643e5545934,
   "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_1f4b9d7c3ea28065b1c47d9e02fa63b8,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
