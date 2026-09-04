@@ -66,6 +66,36 @@ export function productDeleteBlocker(counts: {
   return `${label} still has ${what}. ${fix}`;
 }
 
+/**
+ * The slugs this product used to have, newest-first, from the redirect table.
+ *
+ * Fails CLOSED and LOUD rather than silently: an empty list here would quietly
+ * narrow the guard back to the current slug, which is the exact hole this
+ * closes. If the table cannot be read the delete still has the current slug and
+ * the SKU to match on, and the failure is logged rather than swallowed.
+ */
+async function readFormerSlugs(
+  payload: { find: (args: never) => Promise<unknown>; logger?: { warn: (m: string) => void } },
+  id: string | number,
+): Promise<string[]> {
+  try {
+    const res = await payload.find({
+      collection: "product-slug-redirects",
+      where: { product: { equals: id } },
+      limit: 100,
+      depth: 0,
+      overrideAccess: true,
+    } as never);
+    const docs = (res as { docs?: Array<{ oldSlug?: unknown }> } | null)?.docs ?? [];
+    return docs.map((d) => String(d?.oldSlug ?? "").trim()).filter((v) => v.length > 0);
+  } catch (e) {
+    payload.logger?.warn(
+      `[product-guards] could not read former slugs for ${String(id)} (${(e as Error).message}) — matching on the current slug and SKU only`,
+    );
+    return [];
+  }
+}
+
 export const productBeforeDelete: CollectionBeforeDeleteHook = async ({ req, id }) => {
   const { payload } = req;
 
@@ -73,9 +103,33 @@ export const productBeforeDelete: CollectionBeforeDeleteHook = async ({ req, id 
   // product has to be read before the order count can be asked for.
   const product = (await payload
     .findByID({ collection: "products", id, depth: 0, overrideAccess: true })
-    .catch(() => null)) as { name?: string; slug?: string } | null;
+    .catch(() => null)) as { name?: string; slug?: string; sku?: string } | null;
 
   const slug = (product?.slug ?? "").trim();
+  const sku = (product?.sku ?? "").trim();
+
+  /*
+   * EVERY name this product has ever answered to, not just its current one.
+   *
+   * An order line snapshots the product as TEXT — productName, slug, sku —
+   * frozen at purchase so history survives the product being retired. There is
+   * no product relationship on an order to query instead, so the only way to
+   * connect an old line back to a live product is through an identifier the
+   * line recorded.
+   *
+   * Matching the CURRENT slug alone meant a rename unlocked the delete: the
+   * snapshot still said "pump", the product now said "pump-v2", the count fell
+   * to zero and the guard waved it through. It bit `pending` orders in
+   * particular, because stock moves on the transition INTO paid — so a paid
+   * order already had a stock-ledger row keyed by the product ID, which a
+   * rename cannot touch, while a pending one had nothing but the slug.
+   *
+   * product-slug-redirects is the rename-proof link: its rows point at the
+   * product BY ID and are written by the same hook that renames it. It is the
+   * table the storefront already 301s through, so this adds a reader, not a
+   * mechanism.
+   */
+  const formerSlugs = await readFormerSlugs(payload, id);
 
   // Two counts, not two document fetches — `count` is an aggregation and does
   // not pull the matching rows across.
@@ -99,14 +153,23 @@ export const productBeforeDelete: CollectionBeforeDeleteHook = async ({ req, id 
       where: { and: [{ product: { equals: id } }, { relatedOrder: { exists: true } }] },
       overrideAccess: true,
     }),
-    slug
+    slug || sku
       ? payload.count({
           collection: "orders",
           where: {
             and: [
-              // `items` is an ARRAY field. A dot path into it matches any line —
-              // there is no product relationship on an order to query instead.
-              { "items.slug": { equals: slug } },
+              {
+                // `items` is an ARRAY field, so a dot path matches ANY line.
+                // Slug OR sku, because either may be the only surviving link:
+                // a rename made while the product was unpublished mints no
+                // redirect row, leaving the SKU snapshot as the sole thread.
+                or: [
+                  ...(slug || formerSlugs.length
+                    ? [{ "items.slug": { in: [slug, ...formerSlugs].filter(Boolean) } }]
+                    : []),
+                  ...(sku ? [{ "items.sku": { equals: sku } }] : []),
+                ],
+              },
               { status: { in: [...LIVE_ORDER_STATUSES] } },
             ],
           },
