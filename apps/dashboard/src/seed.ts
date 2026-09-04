@@ -307,11 +307,38 @@ async function purgeDanglingMedia(payload: Payload): Promise<void> {
   }
 }
 
-async function cleanupMalformed(payload: Payload): Promise<void> {
+/**
+ * Products worth removing on boot: a broken PUBLIC url, and nothing else.
+ *
+ * DRAFTS ARE EXCLUDED, and that exclusion is the point. Save Draft submits with
+ * `skipValidation: true`, which skips the field `validate` functions — including
+ * slugFromTitleValidator, whose whole job is refusing a name that cannot be
+ * slugified. A draft named "!!!", or saved before the name was typed, therefore
+ * stores an empty slug quite legitimately, and this used to delete it at the
+ * next restart. A PM2 memory-restart is a restart, so staff lost unfinished
+ * work with nothing but a log line to explain it.
+ *
+ * A draft with an empty slug is not a broken page: it is not public, and it
+ * cannot be published, because publishing runs the validation Save Draft
+ * skipped. The published case — the one that actually breaks a URL — is
+ * unchanged.
+ *
+ * `not_equals` rather than `equals: "published"`: Mongo $ne also matches
+ * documents where the field is absent, so products written before drafts
+ * existed are still cleaned.
+ */
+export const MALFORMED_PRODUCT_WHERE = {
+  and: [
+    { or: [{ slug: { equals: "" } }, { slug: { exists: false } }] },
+    { _status: { not_equals: "draft" } },
+  ],
+} as const;
+
+export async function cleanupMalformed(payload: Payload): Promise<void> {
   try {
     const res = await payload.delete({
       collection: "products",
-      where: { or: [{ slug: { equals: "" } }, { slug: { exists: false } }] },
+      where: MALFORMED_PRODUCT_WHERE as never,
     });
     const removed = (res as { docs?: unknown[] })?.docs?.length ?? 0;
     if (removed) payload.logger.info(`[seed] Removed ${removed} malformed product(s).`);
