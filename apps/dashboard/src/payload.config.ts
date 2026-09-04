@@ -6,6 +6,7 @@ import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { gcsStorage } from "@payloadcms/storage-gcs";
 import { s3Storage } from "@payloadcms/storage-s3";
 import { describeStorage, resolveStorageConfig } from "./lib/storage-config";
+import { MAX_UPLOAD_BYTES, uploadLimitMessage } from "./lib/upload-limit";
 import sharp from "sharp";
 
 import { Users } from "./collections/Users";
@@ -349,7 +350,20 @@ export default buildConfig({
   secret: process.env.PAYLOAD_SECRET || "",
   db: mongooseAdapter({ url: process.env.MONGODB_URI || "" }),
   sharp,
-  upload: { limits: { fileSize: 25_000_000 } },
+  /*
+   * The ceiling is unchanged; the failure mode is what was wrong.
+   *
+   * `abortOnLimit` defaults to FALSE, and without it the parser's limit handler
+   * does nothing at all — the stream runs on, the partial buffer becomes the
+   * file, and it is flagged `truncated: true`, a flag nothing in payload/dist
+   * ever reads. An oversized photo was therefore saved cut in half and looked
+   * like a successful upload. See lib/upload-limit.ts for the full trace.
+   */
+  upload: {
+    limits: { fileSize: MAX_UPLOAD_BYTES },
+    abortOnLimit: true,
+    responseOnLimit: uploadLimitMessage(),
+  },
   typescript: { outputFile: path.resolve(dirname, "payload-types.ts") },
   cors: trustedOrigins,
   csrf: trustedOrigins,
