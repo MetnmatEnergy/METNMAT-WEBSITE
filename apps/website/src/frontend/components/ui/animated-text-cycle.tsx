@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useVisibleInViewport } from "@/frontend/lib/use-visible-in-viewport";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Variants } from "framer-motion";
 
@@ -49,28 +50,8 @@ export default function AnimatedTextCycle({
    * covers the breakpoint case without touching the markup. Anyone who can
    * actually see the badge sees exactly what they saw before.
    */
-  const [inView, setInView] = useState(true);
-  const [pageVisible, setPageVisible] = useState(true);
-
-  useEffect(() => {
-    const el = hostRef.current;
-    // Fail open: without IntersectionObserver the words must still cycle.
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
-      threshold: 0,
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const sync = () => setPageVisible(!document.hidden);
-    sync();
-    document.addEventListener("visibilitychange", sync);
-    return () => document.removeEventListener("visibilitychange", sync);
-  }, []);
-
-  const cycling = inView && pageVisible && words.length > 1;
+  const visible = useVisibleInViewport(hostRef);
+  const cycling = visible && words.length > 1;
 
   useEffect(() => {
     if (!cycling) return;

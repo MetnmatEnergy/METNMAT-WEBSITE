@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useVisibleInViewport } from "@/frontend/lib/use-visible-in-viewport";
 import { X, ZoomIn, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { MediaPlaceholder } from "@/frontend/components/ui/card";
 import { ProductImage } from "@/frontend/components/commerce/product-image";
@@ -88,6 +89,9 @@ export function ProductGallery({
   // surfaces set touch-action pan-y so vertical scrolling stays native while
   // horizontal gestures reach us; a recognised swipe suppresses the click that
   // follows it, so swiping never doubles as "open the lightbox" or "play".
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  // Auto-advance only while the gallery is on screen in a foreground tab.
+  const visible = useVisibleInViewport(rootRef);
   const swipeStart = React.useRef<{ x: number; y: number } | null>(null);
   const swipedRef = React.useRef(false);
   const onSwipeDown = (e: React.PointerEvent) => {
@@ -127,12 +131,25 @@ export function ProductGallery({
     if (activeKind !== "video") setPlaying(false);
   }, [activeKind]);
 
-  // Auto-slide the images only — never auto-jump to (or off) the video.
+  /*
+   * Auto-slide the images only — never auto-jump to (or off) the video.
+   *
+   * Also only while someone can actually see it. The timer used to run for the
+   * life of the page: a product tab left open in the background kept advancing
+   * its gallery, re-rendering and decoding the next image every 4.5 s forever.
+   * And reduced motion now stops the automatic advance, matching the sibling
+   * shop carousel — the arrows and thumbnails still work, so nothing is lost.
+   */
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
   React.useEffect(() => {
     if (!manyImages || zoom || hovered || playing || activeKind !== "image") return;
+    if (!visible || reduceMotion) return;
     const t = setInterval(() => setActive((a) => (a + 1) % imagesLen), SLIDE_MS);
     return () => clearInterval(t);
-  }, [manyImages, zoom, hovered, playing, activeKind, imagesLen]);
+  }, [manyImages, zoom, hovered, playing, activeKind, imagesLen, visible, reduceMotion]);
 
   // Arrow-key navigation (images) + focus trap while the lightbox is open.
   React.useEffect(() => {
@@ -183,7 +200,7 @@ export function ProductGallery({
     // self-start + content-start: don't stretch to the (taller) details column —
     // otherwise the grid distributes the extra height as a huge gap between the
     // main image and the thumbnails.
-    <div className="grid content-start gap-2 self-start">
+    <div ref={rootRef} className="grid content-start gap-2 self-start">
       {/* Main media — 4:3 frame */}
       {hasMedia ? (
         <div

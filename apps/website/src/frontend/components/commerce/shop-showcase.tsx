@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useVisibleInViewport } from "@/frontend/lib/use-visible-in-viewport";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/frontend/lib/utils";
@@ -41,6 +42,10 @@ export function ShopShowcase() {
    * initial fetch from five banners to two. `reveal` only ever grows, so a slide
    * already shown is not torn down and re-fetched when it comes round again.
    */
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  // Advance only while the banner is on screen in a foreground tab.
+  const visible = useVisibleInViewport(rootRef);
+
   const [reveal, setReveal] = React.useState(1);
   React.useEffect(() => {
     setReveal((r) => Math.max(r, Math.min(active + 1, count - 1)));
@@ -53,13 +58,18 @@ export function ShopShowcase() {
 
   React.useEffect(() => {
     if (paused || count < 2) return;
+    // The banner used to keep cycling while scrolled past and while the tab sat
+    // in the background — each tick a state change that reveals and decodes the
+    // next banner image.
+    if (!visible) return;
     if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const t = setInterval(() => setActive((a) => (a + 1) % count), INTERVAL_MS);
     return () => clearInterval(t);
-  }, [paused, count]);
+  }, [paused, count, visible]);
 
   return (
     <div
+      ref={rootRef}
       role="group"
       aria-roledescription="carousel"
       aria-label="Product showcase"

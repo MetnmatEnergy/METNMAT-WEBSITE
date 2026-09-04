@@ -414,3 +414,105 @@ describe("decorative animation loops are gated and release their resources", () 
     expect(highlighter.src).toMatch(/const rgbPrefix = React\.useMemo\(/);
   });
 });
+
+describe("timed carousels and reveals", () => {
+  const byName = (n: string) => files.find((f) => f.path.endsWith(n))!;
+
+  it("Reveal owns its observer instead of using framer-motion's leaky whileInView", () => {
+    // framer-motion 11.18.2's InViewFeature.startObserver() returns the
+    // unsubscribe from observeIntersection, mount() discards it, and unmount()
+    // is empty — so targets are never unobserved. The observer is cached
+    // forever in a module-level WeakMap keyed on `document`, and an
+    // IntersectionObserver holds a STRONG reference to its targets, so every
+    // visit to /about left fifteen detached elements permanently alive.
+    const reveal = byName("reveal.tsx");
+    const code = stripComments(reveal.src);
+    expect(code).not.toMatch(/whileInView/);
+    expect(code).not.toMatch(/viewport=\{\{/);
+    expect(code).toMatch(/new IntersectionObserver\(/);
+    // One-shot: it must stop observing once the element has been seen. The
+    // disconnect has to sit inside the callback, not only in the cleanup.
+    const callback = /new IntersectionObserver\(([\s\S]*?)\{ rootMargin/.exec(code);
+    expect(callback, "could not isolate the observer callback").not.toBeNull();
+    expect(callback![1], "must disconnect on entry, not just on unmount").toMatch(/io\.disconnect\(\)/);
+    expect(code).toMatch(/animate=\{entered \? "visible" : "hidden"\}/);
+  });
+
+  /**
+   * Source with comments removed.
+   *
+   * Every one of these rules matches source text, and prose kept defeating
+   * them in both directions: a comment naming the old API failed an assertion
+   * that the API was gone, and a comment containing the word "cycling"
+   * SATISFIED an assertion that a guard was present — so deleting the guard
+   * went unnoticed. A rule about code should read code.
+   */
+  function stripComments(src: string): string {
+    return src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+  }
+
+  /** The `useEffect` block that owns a file's setInterval, deps array included. */
+  function intervalEffect(src: string): string {
+    const at = src.indexOf("setInterval(");
+    expect(at, "no setInterval in this file").toBeGreaterThan(-1);
+    const start = src.lastIndexOf("useEffect(", at);
+    const end = src.indexOf("]);", at);
+    expect(start, "no enclosing useEffect").toBeGreaterThan(-1);
+    expect(end, "no deps array after the interval").toBeGreaterThan(at);
+    return src.slice(start, end + 3);
+  }
+
+  it("every wall-clock cycler is gated on viewport AND tab visibility", () => {
+    // These ran for the life of the page: a product tab left open in the
+    // background kept advancing its gallery and decoding the next image.
+    //
+    // Checking that the file merely CALLS the hook is not enough — the call can
+    // stay while the guard that uses it is deleted. The guard has to be inside
+    // the effect that owns the timer, and `visible` has to be in its deps or
+    // the effect never re-runs when visibility changes.
+    for (const name of [
+      "commerce/product-gallery.tsx",
+      "commerce/shop-showcase.tsx",
+      "ui/animated-text-cycle.tsx",
+    ]) {
+      const f = byName(name);
+      expect(f.src, `${name} must use the shared gate`).toMatch(/useVisibleInViewport\(/);
+      const effect = intervalEffect(stripComments(f.src));
+      const split = effect.lastIndexOf("}, [");
+      expect(split, `${name}: could not find the deps array`).toBeGreaterThan(-1);
+      // Body and deps are checked separately, or the deps array alone satisfies
+      // the body's assertion and deleting the guard goes unnoticed.
+      const body = effect.slice(0, split);
+      const deps = effect.slice(split);
+      expect(body, `${name}: the interval effect body must consult the gate`).toMatch(
+        /\bvisible\b|\bcycling\b/
+      );
+      expect(deps, `${name}: the gate must be a dependency of the interval effect`).toMatch(
+        /\bvisible\b|\bcycling\b/
+      );
+    }
+  });
+
+  it("the gate is one implementation, not a copy per component", () => {
+    // Hand-rolling this is what let the /about shader check the viewport in one
+    // caller and forget it in the other.
+    const hook = byName("lib/use-visible-in-viewport.ts");
+    expect(hook.src).toMatch(/new IntersectionObserver\(/);
+    expect(hook.src).toMatch(/io\.disconnect\(\)/);
+    expect(hook.src).toMatch(/addEventListener\("visibilitychange"/);
+    expect(hook.src).toMatch(/removeEventListener\("visibilitychange"/);
+    expect(hook.src).toMatch(/return inView && pageVisible;/);
+
+    // No consumer may re-derive it with its own observer plus listener pair.
+    const consumers = [
+      "commerce/product-gallery.tsx",
+      "commerce/shop-showcase.tsx",
+      "ui/animated-text-cycle.tsx",
+    ].map(byName);
+    for (const f of consumers) {
+      expect(stripComments(f.src), `${f.path} must not hand-roll the gate`).not.toMatch(
+        /addEventListener\("visibilitychange"/
+      );
+    }
+  });
+});
