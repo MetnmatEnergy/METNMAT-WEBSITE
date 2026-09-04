@@ -1,5 +1,6 @@
 import type { CollectionBeforeValidateHook } from "payload";
 import sharp from "sharp";
+import { staffError } from "../lib/staff-error";
 
 /**
  * Product photograph acceptance, enforced at upload time.
@@ -76,7 +77,7 @@ export const enforceProductImageSpec: CollectionBeforeValidateHook = async ({ da
 
   const { ok, shortSide } = checkProductPhoto(width, height);
   if (!ok) {
-    throw new Error(
+    throw staffError(
       `Product photographs need a shortest side of at least ${PRODUCT_IMAGE_SPEC.minShortSide}px to stay sharp ` +
         `on the product page. Received ${width} × ${height} (shortest side ${shortSide}px). ` +
         `Upload the camera original rather than a messenger-app recompress.`

@@ -13,6 +13,7 @@ import {
 } from "../access";
 import { derivePassword, derivePinLookup, PIN_REGEX } from "../lib/pin";
 import { syncPinPassword } from "../hooks/pin-credential";
+import { staffError } from "../lib/staff-error";
 
 export const Users: CollectionConfig = {
   slug: "users",
@@ -141,7 +142,7 @@ export const Users: CollectionConfig = {
         if (data.pin != null) {
           const pin = String(data.pin);
           if (!PIN_REGEX.test(pin)) {
-            throw new Error("PIN must be exactly 4 digits (0–9).");
+            throw staffError("PIN must be exactly 4 digits (0–9).");
           }
           // Enforce uniqueness ourselves (avoids unique-index collisions on the
           // many recovery accounts that legitimately have no PIN).
@@ -161,7 +162,7 @@ export const Users: CollectionConfig = {
             overrideAccess: true,
           });
           if (clash.totalDocs > 0) {
-            throw new Error("That PIN is already in use — choose a different 4-digit PIN.");
+            throw staffError("That PIN is already in use — choose a different 4-digit PIN.");
           }
 
           // Staff don't need a real mailbox; auto-fill a synthetic, unique email

@@ -2,6 +2,7 @@ import type { CollectionBeforeChangeHook, CollectionBeforeDeleteHook } from "pay
 import { hasRoleOrArea, type Role } from "../access";
 import { inboundKeyMatches } from "../lib/internal-key";
 import { bumpCounter, countersModel, istYear2 } from "./customer-code";
+import { staffError } from "../lib/staff-error";
 
 /**
  * Order workflow integrity:
@@ -134,7 +135,7 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
     const to = (d.status ?? "pending") as OrderStatus;
     // A non-finance staffer must not forge an order already in a payment state.
     if (!internal && PAYMENT_STATES.has(to) && !hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
-      throw new Error(`Only Accounts/Admin can create an order in the "${to}" state.`);
+      throw staffError(`Only Accounts/Admin can create an order in the "${to}" state.`);
     }
     stampTransition(undefined, to);
     await mintInvoiceIfNeeded(undefined, to);
@@ -151,13 +152,13 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
     // Concretely: a payment.failed webhook delivered minutes late must not take
     // a "paid" order back to "failed" (paid→failed is not a legal move).
     if (!(ALLOWED[from] ?? []).includes(to)) {
-      throw new Error(`Invalid order status change: "${from}" → "${to}".`);
+      throw staffError(`Invalid order status change: "${from}" → "${to}".`);
     }
     // Role gates apply to staff only — the internal key is a verified-payment
     // signal from the website server, not a person.
     if (!internal) {
       if (PAYMENT_STATES.has(to) && !hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
-        throw new Error(`Only Accounts/Admin can move an order to "${to}".`);
+        throw staffError(`Only Accounts/Admin can move an order to "${to}".`);
       }
       if (
         FULFILMENT_STATES.has(to) &&
@@ -167,7 +168,7 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
           ["operations", "accounts"],
         )
       ) {
-        throw new Error(`Only Operations/Inventory/Accounts/Admin can move an order to "${to}".`);
+        throw staffError(`Only Operations/Inventory/Accounts/Admin can move an order to "${to}".`);
       }
     }
   }
@@ -180,7 +181,7 @@ export const orderBeforeChange: CollectionBeforeChangeHook = async ({
   if (!internal && !hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
     for (const f of AMOUNT_FIELDS) {
       if (d?.[f] !== undefined && JSON.stringify(d[f]) !== JSON.stringify(originalDoc[f])) {
-        throw new Error(`You don't have permission to change order ${f}.`);
+        throw staffError(`You don't have permission to change order ${f}.`);
       }
     }
   }
@@ -197,7 +198,7 @@ export const orderBeforeDelete: CollectionBeforeDeleteHook = async ({ req, id })
   });
   const status = (order as { status?: OrderStatus })?.status;
   if (status && UNDELETABLE.has(status)) {
-    throw new Error(
+    throw staffError(
       `This order is "${status}" — paid/fulfilled orders cannot be deleted (use the "cancelled" status instead).`,
     );
   }

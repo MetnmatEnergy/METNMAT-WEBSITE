@@ -1,5 +1,6 @@
 import type { CollectionBeforeChangeHook } from "payload";
 import { hasRoleOrArea, type Role } from "../access";
+import { staffError } from "../lib/staff-error";
 
 /**
  * Quotation workflow gates:
@@ -22,21 +23,21 @@ export const quotationBeforeChange: CollectionBeforeChangeHook = async ({
   // create a quotation already "approved"/"sent", skipping commercial approval.
   if (operation === "create" && (to === "approved" || to === "sent")) {
     if (!hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
-      throw new Error(`Only Accounts/Admin can create a quotation in the "${to}" state.`);
+      throw staffError(`Only Accounts/Admin can create a quotation in the "${to}" state.`);
     }
     if (to === "sent" && !data.quotationFile) {
-      throw new Error("Attach the quotation PDF before marking it Sent.");
+      throw staffError("Attach the quotation PDF before marking it Sent.");
     }
   }
 
   if (operation === "update" && to !== from) {
     if (to === "approved" && !hasRoleOrArea(user, ["super-admin", "admin", "accounts"], ["accounts"])) {
-      throw new Error("Only Accounts/Admin can approve a quotation.");
+      throw staffError("Only Accounts/Admin can approve a quotation.");
     }
     if (to === "sent") {
-      if (from !== "approved") throw new Error("A quotation must be approved before it can be sent.");
+      if (from !== "approved") throw staffError("A quotation must be approved before it can be sent.");
       if (!data.quotationFile && !originalDoc?.quotationFile) {
-        throw new Error("Attach the quotation PDF before marking it Sent.");
+        throw staffError("Attach the quotation PDF before marking it Sent.");
       }
     }
   }
@@ -58,11 +59,11 @@ export const taskBeforeChange: CollectionBeforeChangeHook = async ({ data, origi
 
   if ((operation === "update" || operation === "create") && to === "done") {
     if (!data.completionNote && !originalDoc?.completionNote) {
-      throw new Error("Add a completion note before marking the task Done.");
+      throw staffError("Add a completion note before marking the task Done.");
     }
     const type = (data.taskType ?? originalDoc?.taskType) as string | undefined;
     if (type === "quotation" && !data.relatedQuotation && !originalDoc?.relatedQuotation) {
-      throw new Error("A quotation task needs a linked quotation before it can be marked Done.");
+      throw staffError("A quotation task needs a linked quotation before it can be marked Done.");
     }
   }
   return data;
@@ -75,7 +76,7 @@ export const returnBeforeChange: CollectionBeforeChangeHook = async ({ data, ori
   const to = (data.status ?? from) as string;
   if (operation === "update" && to !== from && (to === "resolved" || to === "closed")) {
     if (!data.resolution && !originalDoc?.resolution) {
-      throw new Error("Add a resolution note before marking this return Resolved/Closed.");
+      throw staffError("Add a resolution note before marking this return Resolved/Closed.");
     }
   }
   return data;
@@ -94,16 +95,16 @@ export const enquiryBeforeChange: CollectionBeforeChangeHook = async ({ data, or
   if (operation === "update" && to !== from) {
     const has = (k: string) => Boolean((data as Record<string, unknown>)[k] ?? originalDoc?.[k]);
     if (to === "quotation-sent" && !has("quotationRef") && !has("quotationFile")) {
-      throw new Error("Attach a quotation (file or reference) before marking 'Quotation sent'.");
+      throw staffError("Attach a quotation (file or reference) before marking 'Quotation sent'.");
     }
     if (to === "not-feasible" && !has("technicalNote")) {
-      throw new Error("Add a technical note before marking 'Not feasible'.");
+      throw staffError("Add a technical note before marking 'Not feasible'.");
     }
     if (to === "closed" && !has("closeReason")) {
-      throw new Error("Add a close reason before marking this RFQ Closed.");
+      throw staffError("Add a close reason before marking this RFQ Closed.");
     }
     if (to === "lost" && !has("lossReason")) {
-      throw new Error("Add a loss reason before marking this RFQ Lost.");
+      throw staffError("Add a loss reason before marking this RFQ Lost.");
     }
   }
   return data;

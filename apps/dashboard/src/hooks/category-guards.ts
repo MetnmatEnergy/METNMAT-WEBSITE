@@ -1,4 +1,5 @@
 import type { CollectionBeforeDeleteHook } from "payload";
+import { staffError } from "../lib/staff-error";
 
 /**
  * A category may not be deleted out from under the things that point at it.
@@ -68,5 +69,5 @@ export const categoryBeforeDelete: CollectionBeforeDeleteHook = async ({ req, id
     name: (category as { name?: string } | null)?.name ?? null,
   });
 
-  if (blocker) throw new Error(blocker);
+  if (blocker) throw staffError(blocker);
 };
