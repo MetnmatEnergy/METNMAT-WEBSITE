@@ -297,13 +297,37 @@ React state updates across three consumers plus 2N forced layouts each.
 
 ## Known and accepted, not fixed
 
-| Mechanism | Where | Why it is being left |
-|---|---|---|
-| `setState` calls nested inside a `setState` updater | `ui/radial-orbital-timeline.tsx` (/about) | React anti-pattern, no observed misbehaviour; wants its own change with a visual check |
+**Nothing remains on this list.** Everything recorded here has been fixed: the
+WebGL context leak, the off-screen shader restart and the ungated particle loop
+in `8f4a9f0`; the framer-motion observer leak and both carousel intervals in
+`9217c71`; the nested `setState` updaters in `da113f5`.
 
-Everything else recorded here has since been fixed: the WebGL context leak, the
-off-screen shader restart and the ungated particle loop in `8f4a9f0`, and the
-framer-motion observer leak plus both carousel intervals in `9217c71`.
+## Fixed in `da113f5`
+
+A state updater must be a pure function of the state it is handed. React may
+call it more than once for a single update — StrictMode does so deliberately in
+development, and a discarded-and-retried render does so in production — so every
+`setState` nested inside one fires again on each invocation.
+
+| Mechanism | File | What it was |
+|---|---|---|
+| Four other writes inside the `setExpandedItems` updater | `ui/radial-orbital-timeline.tsx` | five counting the `setRotationAngle` reached through `centerViewOnNode`. Nothing visibly broke because each write happened to be idempotent — which is what made it invisible until someone added one that was not |
+| `setLastRemoved` inside the `setCart` updater | `commerce/store-provider.tsx` | found by writing the repo-wide rule, not by the audit |
+| `setCart` inside the `setLastRemoved` updater | `commerce/store-provider.tsx` | the undo path, same shape |
+
+The cart callbacks now read what they need from refs mirroring committed state,
+which keeps their empty dependency arrays — so their identity stays stable for
+consumers — while the cart itself is still filtered through a pure updater, so a
+removal is exact even if two land in the same tick.
+
+### Verified in production on `da113f5`
+
+| Check | Result |
+|---|---|
+| Orbital timeline: click a node | detail expands (+161 chars), rotation pauses, view re-centres |
+| Orbital timeline: click the background | detail collapses (−161 chars), rotation resumes — control 20.2 rAF/s |
+| Cart: add → remove → undo | 1 line → 0 with undo offered → 1 restored |
+| Cart: clear (with its confirmation step) | 0 lines, body overflow unset, page still scrolls |
 
 ## Fixed in `9217c71`
 
