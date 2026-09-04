@@ -5,6 +5,7 @@ import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../h
 import { enforceProductImageSpec } from "../hooks/product-image-spec";
 import { generateDisplayDerivative, writeDisplayDerivativeLocally } from "../hooks/product-display-derivative";
 import { mediaBeforeDelete } from "../hooks/media-guards";
+import { mediaReplaceGuard } from "../hooks/media-replace-guard";
 
 /**
  * Media library — all IMAGE assets (product, catalog, hero/marketing banners,
@@ -115,6 +116,22 @@ export const Media: CollectionConfig = {
       ],
     },
     { name: "caption", type: "text" },
+    {
+      /*
+       * Only needed when swapping the FILE on an image other pages already
+       * show. A product holds this record's id, not a copy of the picture, so a
+       * replacement repoints every page using it at once. mediaReplaceGuard
+       * refuses once, names what would change, and clears this again on the way
+       * through — so it authorises one replacement rather than staying open.
+       */
+      name: "confirmReplace",
+      type: "checkbox",
+      label: "Replace it everywhere",
+      admin: {
+        description:
+          "Only needed when you upload a new file over an image that other pages already use. Tick it to confirm you mean to change the picture on all of them. Editing the details here — alt text, category, caption — never needs it.",
+      },
+    },
   ],
   hooks: {
     // Resolution floor for product photographs (product category only —
@@ -124,7 +141,9 @@ export const Media: CollectionConfig = {
     // fills its frame while the stored original stays untouched for the
     // lightbox. Injected via req.payloadUploadSizes + data.sizes, which the
     // storage plugin persists like any configured size.
-    beforeChange: [generateDisplayDerivative],
+    // Ask before a replacement changes pages the uploader may not know about.
+    // Ahead of the derivative work so a refused replace costs no sharp render.
+    beforeChange: [mediaReplaceGuard, generateDisplayDerivative],
     // Refuse before anything is removed — a file is not deletable while a
     // product, page or settings screen still displays it. Runs ahead of
     // deleteAssociatedFiles, so the S3 object survives the refusal too.
