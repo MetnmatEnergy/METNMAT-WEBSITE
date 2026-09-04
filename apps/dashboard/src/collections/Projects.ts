@@ -3,6 +3,7 @@ import { canManageContent } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { slugify, validateHttpUrl } from "../lib/blog";
+import { slugFromTitleValidator } from "../lib/slug-validate";
 
 /**
  * Anonymous readers (the website) only see PUBLISHED, ACTIVE projects — drafts
@@ -54,6 +55,7 @@ export const Projects: CollectionConfig = {
               required: true,
               unique: true,
               index: true,
+              validate: slugFromTitleValidator({ source: "title", noun: "project" }),
               admin: { description: "URL segment (auto-generated from the title when blank), e.g. 'oxygen-free-copper-alloy'." },
               hooks: {
                 beforeValidate: [({ value, data }) => slugify((value as string) || data?.title || "")],

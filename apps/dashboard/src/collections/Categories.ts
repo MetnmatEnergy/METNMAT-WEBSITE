@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 import { canManageCatalog, publicRead } from "../access";
 import { slugify } from "../lib/blog";
+import { slugFromTitleValidator } from "../lib/slug-validate";
 import { categoryOrderDefault } from "../lib/category-order";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { categoryBeforeDelete } from "../hooks/category-guards";
@@ -48,12 +49,7 @@ export const Categories: CollectionConfig = {
        * so a staff member hits it while creating a product, not only from the
        * Categories screen.
        */
-      validate: (value: unknown, args: unknown) => {
-        if (typeof value === "string" && value.trim() !== "") return true;
-        const data = (args as { data?: { name?: unknown } } | undefined)?.data;
-        if (slugify(String(data?.name ?? ""))) return true;
-        return "Enter a URL segment, or a category name it can be made from.";
-      },
+      validate: slugFromTitleValidator({ source: "name", noun: "department" }),
       // Normalise so a hand-typed value ("Raw Materials & Alloys") can't become a
       // broken public URL, and fill from the name when left empty. Matches
       // Products/Projects/Posts.

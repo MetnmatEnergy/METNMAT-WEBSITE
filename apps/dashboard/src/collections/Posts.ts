@@ -5,6 +5,7 @@ import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { inboundKeyMatches } from "../lib/internal-key";
 import { readingTimeFromLexical, slugify, validateHttpUrl } from "../lib/blog";
+import { slugFromTitleValidator } from "../lib/slug-validate";
 
 const xKey = (args: { req?: { headers?: unknown } }) =>
   (args.req?.headers as Headers | undefined)?.get?.("x-internal-key");
@@ -129,6 +130,9 @@ export const Posts: CollectionConfig = {
               required: true,
               unique: true,
               index: true,
+              // Filled by the COLLECTION-level beforeChange below rather than a
+              // field hook, but the admin blocks identically. Same rule.
+              validate: slugFromTitleValidator({ source: "title", noun: "article" }),
               admin: {
                 description:
                   "URL segment (auto-generated from the title when blank). Changing it after publication creates an automatic redirect from the old URL.",

@@ -1,6 +1,7 @@
 import type { Access, CollectionConfig, Where } from "payload";
 import { canManageCatalog, fieldAccountsOrInternal } from "../access";
 import { slugify, validateHttpUrl } from "../lib/blog";
+import { slugFromTitleValidator } from "../lib/slug-validate";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { syncChatbotAfterChange, syncChatbotAfterDelete } from "../hooks/sync-chatbot";
@@ -159,12 +160,7 @@ export const Products: CollectionConfig = {
                    * because a name that yields nothing sluggable is rejected
                    * right here.
                    */
-                  validate: (value: unknown, args: unknown) => {
-                    if (typeof value === "string" && value.trim() !== "") return true;
-                    const data = (args as { data?: { name?: unknown } } | undefined)?.data;
-                    if (slugify(String(data?.name ?? ""))) return true;
-                    return "Enter a URL segment, or a product name it can be made from.";
-                  },
+                  validate: slugFromTitleValidator({ source: "name", noun: "product" }),
                   // Auto-fill from the name so a product can never be saved without a
                   // slug. This mirrors Projects/Posts, and matters beyond convenience:
                   // the storefront addresses products by slug, and seed's

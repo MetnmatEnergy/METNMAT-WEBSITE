@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Products } from "../apps/dashboard/src/collections/Products";
 import { Categories } from "../apps/dashboard/src/collections/Categories";
+import { Services } from "../apps/dashboard/src/collections/Services";
+import { Projects } from "../apps/dashboard/src/collections/Projects";
+import { Posts } from "../apps/dashboard/src/collections/Posts";
 import type { Field } from "payload";
 
 /**
@@ -110,5 +113,50 @@ describe("the hook that fills it still exists", () => {
     const src = read(file);
     expect(src).toMatch(/beforeValidate: \[\s*\(\{ value, data \}\)/);
     expect(src).toMatch(/slugify\(\(value as string\) \|\| \(data\?\.name as string\) \|\| ""\)/);
+  });
+});
+
+/**
+ * The same defect existed in five collections, with two different severities.
+ *
+ * Products, Projects and Posts have `versions.drafts`, so SaveDraftButton
+ * submits with skipValidation:true — staff could Save draft, watch the slug
+ * appear, then Publish. Annoying, survivable.
+ *
+ * Categories and Services have NO versions key, so the admin renders a plain
+ * Save button that validates. EVERY save was refused, with no button to press
+ * instead. Categories is the one that mattered most: the "+" beside the Category
+ * picker on the product form opens it in the middle of adding a product.
+ */
+describe("every slug field in the CMS accepts the blank its help text invites", () => {
+  const CASES: Array<[string, { fields: Field[] }, string, string]> = [
+    ["Products", Products as never, "name", "Reference Electrode"],
+    ["Categories", Categories as never, "name", "Crucibles"],
+    ["Services", Services as never, "title", "Failure Analysis"],
+    ["Projects", Projects as never, "title", "Heat Treatment Study"],
+    ["Posts", Posts as never, "title", "Why Electrodes Drift"],
+  ];
+
+  it.each(CASES)("%s.slug accepts empty when %s is set", (_label, config, source, value) => {
+    const f = slugField(config);
+    expect(f.validate!("", { data: { [source]: value } } as never)).toBe(true);
+  });
+
+  it.each(CASES)("%s.slug still refuses when there is nothing to derive from", (_l, config) => {
+    const f = slugField(config);
+    expect(f.validate!("", { data: {} } as never)).toBeTypeOf("string");
+  });
+
+  it.each(CASES)("%s.slug is still declared required", (_l, config) => {
+    expect(slugField(config).required).toBe(true);
+  });
+
+  it("the two WITHOUT drafts are covered — they had no Save-draft escape hatch", () => {
+    // If either grows a versions key later this assertion is merely stale, not
+    // wrong; if either LOSES its validator, the collection becomes unsaveable.
+    for (const c of [Categories, Services] as Array<{ versions?: unknown; fields: Field[] }>) {
+      expect(c.versions).toBeUndefined();
+      expect(slugField(c).validate).toBeTypeOf("function");
+    }
   });
 });

@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload";
 import { canManageContent, publicRead } from "../access";
 import { slugify } from "../lib/blog";
+import { slugFromTitleValidator } from "../lib/slug-validate";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 
@@ -30,6 +31,9 @@ export const Services: CollectionConfig = {
       required: true,
       unique: true,
       index: true,
+      // No `versions` on this collection, so there is no Save-draft button to
+      // skip validation — before this, EVERY save was refused. See lib/slug-validate.
+      validate: slugFromTitleValidator({ source: "title", noun: "service" }),
       admin: {
         description: "URL anchor, e.g. 'product-process-development'. Auto-generated from the title when blank.",
       },
