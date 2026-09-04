@@ -63,7 +63,8 @@ export type Product = {
   badges?: string[]; // "Bestseller", "New", "GST invoice"
   reviews?: Review[];
   imageAlts?: string[]; // media alt per gallery image, index-aligned with `images`
-  imageFulls?: string[]; // largest derivative (`zoom`) for the lightbox, index-aligned
+  imageFulls?: string[]; // widest UNCROPPED file for the lightbox, index-aligned
+  imageFullSrcSets?: string[]; // uncropped ladder per image — never resolves to the display crop
   imageUrl?: string; // CMS-managed primary image, at card size (`card`, 800×600)
   imageSrcSet?: string; // full CMS ladder as a `srcset` for `imageUrl`
   images?: string[]; // CMS-managed gallery, at PDP-stage size (`display`/`pdp`)
@@ -284,6 +285,62 @@ export function lineUsdValue(
 }
 
 /**
+ * parent slug → child slugs. The taxonomy is stored as one flat list of `parent`
+ * pointers, so every tree question starts by inverting it. Built once per walk.
+ */
+function childrenBySlug<C extends { slug: string; parent?: string }>(
+  cats: readonly C[]
+): Map<string, string[]> {
+  const childrenOf = new Map<string, string[]>();
+  for (const c of cats) {
+    if (!c.parent) continue;
+    childrenOf.set(c.parent, [...(childrenOf.get(c.parent) ?? []), c.slug]);
+  }
+  return childrenOf;
+}
+
+/**
+ * `root` plus every descendant, to any depth.
+ *
+ * Iterative with a visited set, and that is load-bearing rather than defensive:
+ * `Categories.parent` is a plain self-relationship with no cycle guard, so a
+ * staff member can point a category at itself or make an A↔B pair from the admin
+ * UI. Bad data must not hang a server render of a customer-facing page.
+ */
+function walkBranch(childrenOf: Map<string, string[]>, root: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const stack = [root];
+  while (stack.length) {
+    const s = stack.pop()!;
+    if (seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+    stack.push(...(childrenOf.get(s) ?? []));
+  }
+  return out;
+}
+
+/**
+ * Every category slug whose products belong on `slug`'s listing page — itself
+ * plus all descendants.
+ *
+ * THE BUG THIS EXISTS FOR. The department page collected children ONE level deep
+ * while selectBrowsable, which feeds the sitemap, already walked the whole
+ * branch. The two therefore disagreed about what belongs to a department: the
+ * first third level — Electrodes → Reference Electrodes → Ag/AgCl — dropped every
+ * product under the grandchild off the Electrodes page, which rendered "No
+ * products in this category yet" at a URL the sitemap was still submitting.
+ * ONE traversal, used by both, is what stops them drifting apart again.
+ */
+export function categoryBranchSlugs<C extends { slug: string; parent?: string }>(
+  cats: readonly C[],
+  slug: string
+): string[] {
+  return walkBranch(childrenBySlug(cats), slug);
+}
+
+/**
  * Categories with something in them — the pure half of getBrowsableCategories.
  *
  * Separated from the fetching so it can be tested against fixed data: this
@@ -291,7 +348,8 @@ export function lineUsdValue(
  * thing to find out from production.
  *
  * A parent counts as stocked when any descendant has products, because that is
- * where its listing page draws from.
+ * where its listing page draws from — the same branch getProductsByCategory
+ * draws from, through the same walk.
  */
 export function selectBrowsable<
   C extends { slug: string; parent?: string },
@@ -300,26 +358,6 @@ export function selectBrowsable<
   const own = new Map<string, number>();
   for (const p of prods) own.set(p.categorySlug, (own.get(p.categorySlug) ?? 0) + 1);
 
-  const childrenOf = new Map<string, string[]>();
-  for (const c of cats) {
-    if (!c.parent) continue;
-    childrenOf.set(c.parent, [...(childrenOf.get(c.parent) ?? []), c.slug]);
-  }
-
-  // Iterative with a visited set: categories that point at each other are bad
-  // data, not a reason to hang the shop page.
-  const stocked = (slug: string): boolean => {
-    const seen = new Set<string>();
-    const stack = [slug];
-    while (stack.length) {
-      const s = stack.pop()!;
-      if (seen.has(s)) continue;
-      seen.add(s);
-      if ((own.get(s) ?? 0) > 0) return true;
-      stack.push(...(childrenOf.get(s) ?? []));
-    }
-    return false;
-  };
-
-  return cats.filter((c) => stocked(c.slug));
+  const childrenOf = childrenBySlug(cats);
+  return cats.filter((c) => walkBranch(childrenOf, c.slug).some((s) => (own.get(s) ?? 0) > 0));
 }

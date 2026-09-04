@@ -10,7 +10,7 @@
 import { cache } from "react";
 import { DEFAULT_TAX_POLICY, taxPolicyFrom, type TaxPolicy } from "./tax";
 import type { Product, Category } from "@/frontend/lib/catalog";
-import { selectBrowsable } from "@/frontend/lib/catalog";
+import { categoryBranchSlugs, selectBrowsable } from "@/frontend/lib/catalog";
 import {
   services as phServices,
   projects as phProjects,
@@ -126,10 +126,32 @@ function absolute(u?: string): string | undefined {
  * `card`, so guessing `<stem>-1600x1200.webp` for those would 404. Deduped by
  * width, which is also how `display` supersedes `pdp` at 1600.
  */
-export function mediaVariants(media: Media): { url: string; width: number }[] {
+const COMPOSED = new Set(["micro", "thumb", "card", "display"]);
+
+export function mediaVariants(
+  media: Media,
+  opts?: { uncroppedOnly?: boolean }
+): { url: string; width: number }[] {
   if (!media || typeof media === "string") return [];
   const byWidth = new Map<number, string>();
   for (const name of LADDER) {
+    // `display` is the ONLY composed entry: for product photography the
+    // display-derivative hook replaces Payload's plain render with a
+    // subject-aware crop. A surface that promises the complete photograph must
+    // exclude it, or it shows the crop whenever that is the widest file the
+    // upload produced. Every other entry, and the stored file, is uncropped.
+    /*
+     * The COMPOSED rungs — every size the display-derivative hook may replace
+     * with a subject-aware crop for product photography. A surface promising
+     * the complete photograph must skip all of them, not just `display`.
+     *
+     * Only `display` is composed today. The set is written out anyway because
+     * the narrow `name === "display"` form becomes a customer-visible mobile
+     * regression the moment micro/thumb/card are composed too: the lightbox
+     * srcset carries the full ladder, and a 390px DPR-2 phone resolves
+     * ZOOM_SIZES to the 800w `card` candidate.
+     */
+    if (opts?.uncroppedOnly && COMPOSED.has(name)) continue;
     const size = media.sizes?.[name];
     const url = absolute(size?.url);
     if (url && size?.width) byWidth.set(size.width, url);
@@ -146,8 +168,8 @@ export function mediaVariants(media: Media): { url: string; width: number }[] {
  * browser picks the variant that fits the slot — the same responsive selection
  * next/image used to do, minus the server-side re-encode.
  */
-export function mediaSrcSet(media: Media): string | undefined {
-  const variants = mediaVariants(media);
+export function mediaSrcSet(media: Media, opts?: { uncroppedOnly?: boolean }): string | undefined {
+  const variants = mediaVariants(media, opts);
   return variants.length > 1 ? variants.map((v) => `${v.url} ${v.width}w`).join(", ") : undefined;
 }
 
@@ -157,8 +179,12 @@ export function mediaSrcSet(media: Media): string | undefined {
  * the largest variant, then to the stored file, so media with a short ladder
  * still resolves.
  */
-export function mediaAtLeast(media: Media, minWidth: number): string | undefined {
-  const variants = mediaVariants(media);
+export function mediaAtLeast(
+  media: Media,
+  minWidth: number,
+  opts?: { uncroppedOnly?: boolean }
+): string | undefined {
+  const variants = mediaVariants(media, opts);
   if (variants.length === 0) return mediaUrl(media);
   return (variants.find((v) => v.width >= minWidth) ?? variants[variants.length - 1]!).url;
 }
@@ -224,13 +250,30 @@ function mapProduct(d: CmsProduct): Product {
     .map((i) => ({
       card: mediaAtLeast(i.image, 800), // grid card / cart / mosaic fallback src
       src: mediaAtLeast(i.image, 1600), // PDP stage fallback src
-      full: mediaAtLeast(i.image, 2400), // lightbox fallback src
+      // The lightbox promises the COMPLETE photograph, so its src AND its
+      // srcset come from the uncropped ladder only. Since the upload gate
+      // dropped to a 900px shortest side (hooks/product-image-spec.ts), a
+      // source under 2400x1800 gets no `zoom` and no `pdp` — Payload omits a
+      // size whose target exceeds the source in both axes — while `display` is
+      // forced with withoutEnlargement:false. That made the composed crop the
+      // widest entry, so "smallest at least 2400, else the largest" landed on
+      // it and the zoom view served a cropped upscale. Excluding `display`
+      // leaves the stored original as the widest: the whole photo at its native
+      // pixels. For a >=2400 master `zoom` still wins, exactly as before.
+      full: mediaAtLeast(i.image, 2400, { uncroppedOnly: true }), // lightbox fallback src
+      fullSrcSet: mediaSrcSet(i.image, { uncroppedOnly: true }) ?? "", // lightbox ladder
       srcSet: mediaSrcSet(i.image) ?? "", // the whole ladder; the browser chooses
       alt: typeof i.image === "object" && i.image ? (i.image.alt ?? "").trim() : "",
     }))
     .filter(
-      (g): g is { card: string; src: string; full: string; srcSet: string; alt: string } =>
-        Boolean(g.src) && Boolean(g.card) && Boolean(g.full)
+      (g): g is {
+        card: string;
+        src: string;
+        full: string;
+        fullSrcSet: string;
+        srcSet: string;
+        alt: string;
+      } => Boolean(g.src) && Boolean(g.card) && Boolean(g.full)
     );
   return {
     slug: d.slug,
@@ -272,6 +315,7 @@ function mapProduct(d: CmsProduct): Product {
     imageSrcSet: gallery[0]?.srcSet || undefined,
     images: gallery.map((g) => g.src),
     imageFulls: gallery.map((g) => g.full),
+    imageFullSrcSets: gallery.map((g) => g.fullSrcSet),
     imageSrcSets: gallery.map((g) => g.srcSet),
     imageAlts: gallery.map((g) => g.alt),
     videoUrl: d.videoUrl?.trim() || undefined,
@@ -517,9 +561,31 @@ export async function searchSite(
 }
 
 // ── Categories ────────────────────────────────────────────────────────────────
-export async function getAllCategories(): Promise<Category[]> {
+/**
+ * The RAW category tree, hidden departments included. Deliberately NOT exported.
+ *
+ * "Hide from the storefront" has to hold for every public surface at once, and
+ * the way it failed was a caller reaching for the unfiltered list without
+ * knowing the flag existed — the filter rail, the sub-category chips and site
+ * search each did exactly that. Only two uses are legitimate: computing the
+ * public set, and resolving a parent's children when LISTING PRODUCTS.
+ */
+async function fetchCategoryTree(): Promise<Category[]> {
   const data = await api<{ docs: CmsCategory[] }>("/api/categories?depth=1&limit=200&sort=order");
   return (data?.docs ?? []).map(mapCategory);
+}
+
+/**
+ * Every category a member of the public may be shown, or sent to.
+ *
+ * Public-by-default is the point. This is the list behind the filter rail on
+ * /shop/all and on each category page, the sub-category chips, and the Category
+ * results in site search — all of which used to read the raw tree, so a
+ * department ticked "Hide from the storefront" disappeared from the shop grid
+ * and the header menu and stayed reachable from everywhere else.
+ */
+export async function getAllCategories(): Promise<Category[]> {
+  return (await fetchCategoryTree()).filter((c) => !c.hidden);
 }
 
 /**
@@ -535,7 +601,16 @@ export async function getCategoryBySlug(slug: string): Promise<Category | null> 
     `/api/categories?depth=1&limit=1&where[slug][equals]=${encodeURIComponent(slug)}`
   );
   const doc = data?.docs?.[0];
-  return doc ? mapCategory(doc) : null;
+  // A hidden department has no public identity: "there is no such category" is
+  // the honest answer, and it is the one every caller already handles. The
+  // route 404s (it already calls notFound() on null, in generateMetadata as
+  // well as the page, so the STATUS is a real 404) and the product breadcrumb
+  // degrades to Home > Shop > Product instead of linking a retired department —
+  // in the visible trail and in the BreadcrumbList JSON-LD alike. Note this is
+  // NOT folded into the `where` clause: a CMS outage must still throw
+  // CmsUnavailableError rather than read as "no such category".
+  if (!doc || doc.hidden === true) return null;
+  return mapCategory(doc);
 }
 
 export async function getTopCategories(): Promise<Category[]> {
@@ -552,7 +627,10 @@ export async function getTopCategories(): Promise<Category[]> {
  * automatically removes a real part of the range on a guess.
  */
 export async function getVisibleCategories(): Promise<Category[]> {
-  return (await getAllCategories()).filter((c) => !c.hidden);
+  // getAllCategories() IS the public set now. Kept as a named alias because the
+  // header and the shop grid read better calling it, and renaming those two
+  // call sites would be churn with no behaviour behind it.
+  return getAllCategories();
 }
 
 /** Top-level departments — the shop grid and the header menu. */
@@ -577,11 +655,24 @@ export async function getSubCategories(parentSlug: string): Promise<Category[]> 
   return (await getAllCategories()).filter((c) => c.parent === parentSlug);
 }
 
+/**
+ * Every product on a department's listing page — the category's own, plus
+ * everything filed under it at ANY depth.
+ *
+ * One level was not enough. `Categories.parent` has no depth limit, so the first
+ * third level (Electrodes → Reference Electrodes → Ag/AgCl) hid the grandchild's
+ * products here while the sitemap — which walks the whole branch through
+ * selectBrowsable — went on listing the URLs. Both now use the same walk, so the
+ * page and the sitemap cannot disagree about what a department contains.
+ *
+ * Costs no extra requests: both lists are already fetched, and the per-request
+ * React cache() around `api` means the category list is shared with the page's
+ * own fetchCategoryTree() call. The walk is in-memory over ~26 rows and is
+ * cycle-safe.
+ */
 export async function getProductsByCategory(slug: string): Promise<Product[]> {
-  const cats = await getAllCategories();
-  const childSlugs = cats.filter((c) => c.parent === slug).map((c) => c.slug);
-  const all = [slug, ...childSlugs];
-  return (await getAllProducts()).filter((p) => all.includes(p.categorySlug));
+  const branch = new Set(categoryBranchSlugs(await fetchCategoryTree(), slug));
+  return (await getAllProducts()).filter((p) => branch.has(p.categorySlug));
 }
 
 // ── Website content (services / projects / blog / faq / team / clients) ───────

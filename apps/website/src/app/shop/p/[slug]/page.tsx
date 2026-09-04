@@ -208,6 +208,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           <ProductGallery
             images={product.images ?? []}
             fulls={product.imageFulls}
+            fullSrcSets={product.imageFullSrcSets}
             srcSets={product.imageSrcSets}
             alts={product.imageAlts}
             name={product.name}

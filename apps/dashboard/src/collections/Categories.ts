@@ -75,7 +75,7 @@ export const Categories: CollectionConfig = {
       label: "Hide from the storefront",
       admin: {
         description:
-          "Keeps the category and anything in it, but removes it from the shop grid, the header menu and the sitemap. Use for a department you are not selling yet, or one you have retired. Visibility is set here rather than inferred from whether the category happens to be empty — an empty department is often deliberate, and guessing gets it wrong in both directions.",
+          "Removes the category from the whole public storefront: the shop grid, the header menu, the filter sidebar, the sub-category chips, site search, the sitemap, product breadcrumbs — and its own page, which starts returning 404. The products filed under it are NOT hidden: they stay purchasable and keep appearing under their visible parent department. To take a product off the shop, unpublish the product. Use this for a department you are not selling yet, or one you have retired. Visibility is set here rather than inferred from whether the category happens to be empty — an empty department is often deliberate, and guessing gets it wrong in both directions.",
       },
     },
   ],

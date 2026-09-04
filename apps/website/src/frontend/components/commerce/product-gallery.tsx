@@ -39,6 +39,7 @@ type Item = { kind: "image"; src: string; srcSet?: string } | { kind: "video"; i
 export function ProductGallery({
   images,
   fulls,
+  fullSrcSets,
   srcSets,
   alts,
   name,
@@ -46,8 +47,17 @@ export function ProductGallery({
 }: {
   /** Display URLs (subject-aware 4:3 derivatives) for stage, thumbs, crossfade. */
   images: string[];
-  /** Largest derivative, index-aligned — the lightbox shows the complete photo. */
+  /** Widest UNCROPPED file per image, index-aligned — the complete photograph. */
   fulls?: string[];
+  /**
+   * The uncropped ladder per image as a `srcset`, for the lightbox only. Kept
+   * separate from `srcSets` because that one includes the composed `display`
+   * derivative — a subject-aware crop for product photography, and the widest
+   * entry whenever the source was uploaded under 2400px. Omit it and the
+   * lightbox uses `fulls` alone, which is still the complete photograph; it
+   * must never silently fall back to `srcSets`.
+   */
+  fullSrcSets?: string[];
   /**
    * The CMS variant ladder per image as a `srcset`, index-aligned. Payload
    * generated every entry at upload, so the browser picks the right file for the
@@ -191,10 +201,15 @@ export function ProductGallery({
     }
   }, [zoom]);
 
-  // The lightbox shows the COMPLETE photograph: the untouched original when the
-  // CMS provides one, else the display file (identical for pre-pipeline media).
+  // The lightbox shows the COMPLETE photograph, so the src and the srcset both
+  // come from the uncropped side of the CMS ladder (mediaVariants'
+  // `uncroppedOnly`). `srcSets` includes the composed `display` derivative,
+  // which is a subject-aware crop; for any source under 2400px wide it is the
+  // widest candidate, so using it here handed the browser a cropped upscale in
+  // the one view that promises the whole photo. No fallback to `srcSets`:
+  // absent `fullSrcSets` means no srcset, and `zoomSrc` alone is correct.
   const zoomSrc = current?.kind === "image" ? fulls?.[active] || current.src : null;
-  const zoomSrcSet = current?.kind === "image" ? srcSets?.[active] : undefined;
+  const zoomSrcSet = current?.kind === "image" ? fullSrcSets?.[active] : undefined;
 
   return (
     // self-start + content-start: don't stretch to the (taller) details column —
