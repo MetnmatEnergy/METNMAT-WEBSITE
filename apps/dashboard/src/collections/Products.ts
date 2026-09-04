@@ -645,7 +645,11 @@ export const Products: CollectionConfig = {
               type: "select",
               defaultValue: "approved",
               access: { update: fieldAccountsOrInternal },
-              admin: { width: "50%", description: "Commercial sign-off on the price." },
+              admin: {
+                width: "50%",
+                description:
+                  "Commercial sign-off, for tracking only — it does NOT stop a product being published or bought. A product marked Pending review is on sale like any other; use Draft if it should not be live yet.",
+              },
               options: [
                 { label: "Approved", value: "approved" },
                 { label: "Pending review", value: "pending" },
