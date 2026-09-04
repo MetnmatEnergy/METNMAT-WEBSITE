@@ -2,6 +2,7 @@ import type { CollectionConfig } from "payload";
 import { canManageCatalog, publicRead } from "../access";
 import { slugify } from "../lib/blog";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
+import { categoryBeforeDelete } from "../hooks/category-guards";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 // A category rename changes products' subcategory label (and can shift the bot's
 // 5-value enum bucket), so a category edit must also resync the chatbot catalog.
@@ -53,6 +54,9 @@ export const Categories: CollectionConfig = {
     },
   ],
   hooks: {
+    // Refuse before anything is removed — a category is not deletable while
+    // products or sub-categories still point at it. See hooks/category-guards.
+    beforeDelete: [categoryBeforeDelete],
     afterChange: [auditAfterChange, revalidateWebsiteAfterChange, syncChatbotAfterChange],
     afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete, syncChatbotAfterDelete],
   },
