@@ -3,6 +3,7 @@ import { existsSync } from "fs";
 import type { Payload } from "payload";
 import { decideDirectorPinWrite, directorPinForced } from "./lib/director-pin";
 import { hasAttachedImage, decideCategorySeed } from "./lib/seed-ownership";
+import { classifyProbe, purgeMode, purgeSummary } from "./lib/media-purge";
 import { derivePinLookup } from "./lib/pin";
 import { seedCategories, seedProducts, type SeedCategory } from "./catalog-data";
 import {
@@ -214,6 +215,95 @@ async function retireDepartments(payload: Payload): Promise<void> {
     } catch (e) {
       payload.logger.warn(`[seed] retiring ${slug} failed: ${(e as Error).message}`);
     }
+  }
+}
+
+/**
+ * Remove media rows whose file no longer exists.
+ *
+ * 59 rows were inherited from the Cloud Run deployment and point at objects
+ * that did not survive the move to S3. They cannot be repaired — there is no
+ * source image left to derive from — and they clutter the library staff pick
+ * images out of. See lib/media-purge.ts for why "created before the cutover" is
+ * NOT the test: 91 rows predate it, only 59 are dead, and 29 of the survivors
+ * are the department banners currently on the storefront.
+ *
+ * OFF unless MEDIA_PURGE_DANGLING says otherwise. Run it as "report" first,
+ * read the list in the log, then "true". Like DIRECTOR_RESET this is a
+ * deliberate, supervised one-off and must not be left set on a server — every
+ * boot is a boot, including a PM2 memory restart.
+ *
+ * THREE THINGS KEEP THIS SAFE:
+ *  1. A row goes only on a definitive 404 from the CMS's own serving path.
+ *     Anything else — a timeout, a refusal while the HTTP server is still
+ *     coming up, a 403, a 500 — leaves it alone. This runs from the background
+ *     seed, so "not listening yet" is expected and must never read as "gone".
+ *  2. The delete goes through payload.delete, so hooks/media-guards.ts runs and
+ *     REFUSES anything still referenced by a product, category, project, post,
+ *     service, team member, client, blog author or the branding/SEO globals.
+ *     Verified in payload's deleteByID.js: access is skipped under
+ *     overrideAccess, beforeDelete hooks are not.
+ *  3. It never fails boot.
+ */
+async function purgeDanglingMedia(payload: Payload): Promise<void> {
+  const mode = purgeMode(process.env);
+  if (mode === "off") return;
+
+  const base = (process.env.CMS_SELF_URL || `http://127.0.0.1:${process.env.PORT || 3200}`).replace(/\/+$/, "");
+  const counts = { probed: 0, dead: 0, alive: 0, unknown: 0, deleted: 0, refused: 0 };
+
+  try {
+    const rows = await payload.find({
+      collection: "media",
+      limit: 5000,
+      depth: 0,
+      overrideAccess: true,
+    });
+
+    for (const doc of rows.docs as Array<{ id: string | number; url?: string; filename?: string }>) {
+      if (!doc.url) continue;
+      counts.probed += 1;
+
+      let probe;
+      try {
+        const res = await fetch(`${base}${doc.url}`, {
+          method: "GET",
+          headers: { range: "bytes=0-0" },
+          signal: AbortSignal.timeout(8000),
+        });
+        probe = classifyProbe(res.status);
+      } catch (e) {
+        probe = classifyProbe(null, (e as Error).message);
+      }
+
+      if (probe.verdict === "alive") { counts.alive += 1; continue; }
+      if (probe.verdict === "unknown") {
+        counts.unknown += 1;
+        payload.logger.warn(`[seed] media purge: could not verify '${doc.filename ?? doc.id}' (${probe.reason}) — leaving it`);
+        continue;
+      }
+
+      counts.dead += 1;
+      if (mode === "report") {
+        payload.logger.warn(`[seed] media purge WOULD DELETE: ${doc.filename ?? doc.id}`);
+        continue;
+      }
+
+      try {
+        await payload.delete({ collection: "media", id: doc.id, overrideAccess: true });
+        counts.deleted += 1;
+        payload.logger.warn(`[seed] media purge deleted dead row: ${doc.filename ?? doc.id}`);
+      } catch (e) {
+        // Almost always mediaBeforeDelete refusing because something still
+        // points at it. That is the guard working: clear the reference first.
+        counts.refused += 1;
+        payload.logger.warn(`[seed] media purge refused '${doc.filename ?? doc.id}': ${(e as Error).message}`);
+      }
+    }
+
+    payload.logger.warn(purgeSummary({ ...counts, mode }));
+  } catch (e) {
+    payload.logger.error(`[seed] media purge failed (continuing boot): ${(e as Error).message}`);
   }
 }
 
@@ -1847,6 +1937,8 @@ export async function seedContentAndCatalogue(payload: Payload): Promise<void> {
   // Departments now exist → attach their banners, then retire the ones the
   // category document dropped (empty ones only).
   await ensureCategoryImages(payload);
+  // After the banners are attached, so a row this removes is one nothing wanted.
+  await purgeDanglingMedia(payload);
   await retireDepartments(payload);
 
   // 3) (Opt-in only) remove stale categories (now that no products reference them).
