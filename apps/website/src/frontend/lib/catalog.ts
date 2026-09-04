@@ -265,6 +265,32 @@ export function honouredPriceTiers(product: Product): PriceTier[] {
   return kept.sort((a, b) => a.minQty - b.minQty);
 }
 
+/**
+ * The quantity range the BASE price actually applies to, or null if none.
+ *
+ * Null means every possible order already qualifies for a tier, so printing a
+ * base row would advertise a price no order can be charged.
+ *
+ * validatePriceTiers refuses a break at or below the MOQ for exactly this
+ * reason — its comment describes the page printing "an inverted range
+ * (10-1 pc) that reads as a rendering glitch" — but that guard is gated on
+ * `moq > 1`, and the CMS default MOQ is 1. A product with MOQ 1 and a tier
+ * starting at quantity 1 therefore saves cleanly and produced exactly the
+ * inverted range the validator was written to prevent.
+ *
+ * Sorting did not solve it: the row is computed from the LOWEST break, and the
+ * lowest break is the problem.
+ */
+export function basePriceRange(product: Product): { from: number; to: number } | null {
+  const rows = honouredPriceTiers(product);
+  if (!rows.length) return null;
+
+  const moq = Number.isFinite(product.moq) && product.moq > 0 ? product.moq : 1;
+  const to = (rows[0] as PriceTier).minQty - 1;
+
+  return to < moq ? null : { from: moq, to };
+}
+
 /** Effective unit price for a given quantity using tier breaks. */
 export function unitPriceForQty(product: Product, qty: number): number {
   // The DEEPEST qualifying break. Ascending order means the last row the

@@ -1,6 +1,6 @@
 "use client";
 
-import { honouredPriceTiers, inclGST, usdFor, type Product } from "@/frontend/lib/catalog";
+import { basePriceRange, honouredPriceTiers, inclGST, usdFor, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { cn } from "@/frontend/lib/utils";
 
@@ -65,6 +65,9 @@ export function PriceTiers({ product }: { product: Product }) {
    */
   const rows = honouredPriceTiers(product);
   if (!rows.length) return null;
+  // Null when every order already qualifies for a tier — printing a base row
+  // then advertises a price nothing can be charged, and renders "1-0 unit".
+  const baseRange = basePriceRange(product);
   return (
     <div className="rounded-xl border border-border">
       <p className="border-b border-border px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -72,12 +75,14 @@ export function PriceTiers({ product }: { product: Product }) {
       </p>
       <table className="w-full text-sm">
         <tbody>
-          <tr className="border-b border-border">
-            <td className="px-4 py-2 text-muted-foreground">
-              {product.moq}–{(rows[0]?.minQty ?? product.moq) - 1} {product.unit}
-            </td>
-            <td className="px-4 py-2 text-right font-medium">{money(inclGST(product.price), usdFor(product, inclGST(product.price)))}</td>
-          </tr>
+          {baseRange ? (
+            <tr className="border-b border-border">
+              <td className="px-4 py-2 text-muted-foreground">
+                {baseRange.from}–{baseRange.to} {product.unit}
+              </td>
+              <td className="px-4 py-2 text-right font-medium">{money(inclGST(product.price), usdFor(product, inclGST(product.price)))}</td>
+            </tr>
+          ) : null}
           {rows.map((t, i) => (
             <tr key={i} className="border-b border-border last:border-0">
               <td className="px-4 py-2 text-muted-foreground">

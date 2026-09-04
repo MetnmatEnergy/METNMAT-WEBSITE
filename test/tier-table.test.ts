@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  basePriceRange,
   honouredPriceTiers,
   unitPriceForQty,
   type Product,
@@ -166,6 +167,91 @@ describe("the table and the charge cannot disagree", () => {
   });
 });
 
+/**
+ * The base row must not advertise a price no order can be charged.
+ *
+ * `validatePriceTiers` refuses a break at or below the MOQ, because then every
+ * possible order gets the tier and the base price never applies — its comment
+ * says the page would print "an inverted range ('10–1 pc') that reads as a
+ * rendering glitch". But that guard is gated on `moq > 1` (price-tiers.ts:48),
+ * and the CMS default MOQ is 1 (Products.ts:342). So a product with MOQ 1 and a
+ * tier starting at quantity 1 saves cleanly, and the table printed "1–0 unit"
+ * beside a base price the checkout would never charge.
+ *
+ * Sorting alone did not fix this — the row is computed from the LOWEST break,
+ * and the lowest break is the problem. The base row is now omitted whenever the
+ * range it would describe is empty.
+ */
+describe("the base row is omitted when the base price is unreachable", () => {
+  it("MOQ 1 with a tier starting at 1 prints no base row", () => {
+    // The reachable case validatePriceTiers does not cover.
+    const p = P({ price: 1000, moq: 1, priceTiers: [{ minQty: 1, price: 900 }] } as Partial<Product>);
+    expect(basePriceRange(p)).toBeNull();
+    // And the pricer agrees the base is never charged.
+    expect(unitPriceForQty(p, 1)).toBe(900);
+  });
+
+  it("a break at exactly the MOQ prints no base row", () => {
+    const p = P({ price: 1800, moq: 10, priceTiers: [{ minQty: 10, price: 1650 }] } as Partial<Product>);
+    expect(basePriceRange(p)).toBeNull();
+    expect(unitPriceForQty(p, 10)).toBe(1650);
+  });
+
+  it("a break below the MOQ prints no base row either", () => {
+    const p = P({ price: 1800, moq: 25, priceTiers: [{ minQty: 10, price: 1650 }] } as Partial<Product>);
+    expect(basePriceRange(p)).toBeNull();
+  });
+
+  it("an ordinary product still gets its base range", () => {
+    const p = P({ price: 1800, moq: 10, priceTiers: [{ minQty: 25, price: 1650 }] } as Partial<Product>);
+    expect(basePriceRange(p)).toEqual({ from: 10, to: 24 });
+  });
+
+  it("a single-unit range is still a real range", () => {
+    const p = P({ price: 1000, moq: 1, priceTiers: [{ minQty: 2, price: 900 }] } as Partial<Product>);
+    expect(basePriceRange(p)).toEqual({ from: 1, to: 1 });
+  });
+
+  it("the range is taken from the lowest HONOURED break, not the stored first", () => {
+    const p = P({
+      price: 1800,
+      moq: 10,
+      priceTiers: [
+        { minQty: 100, price: 1450 },
+        { minQty: 25, price: 1650 },
+      ],
+    } as Partial<Product>);
+    expect(basePriceRange(p)).toEqual({ from: 10, to: 24 });
+  });
+
+  it("a rejected tier does not shorten the base range", () => {
+    // A row priced above base is ignored by the pricer, so it must not decide
+    // where the base price stops applying either.
+    const p = P({
+      price: 1800,
+      moq: 10,
+      priceTiers: [
+        { minQty: 15, price: 9999 },
+        { minQty: 25, price: 1650 },
+      ],
+    } as Partial<Product>);
+    expect(basePriceRange(p)).toEqual({ from: 10, to: 24 });
+  });
+
+  it("a nonsensical MOQ falls back to 1 rather than producing a negative range", () => {
+    const p = P({ price: 1800, moq: 0, priceTiers: [{ minQty: 25, price: 1650 }] } as Partial<Product>);
+    expect(basePriceRange(p)).toEqual({ from: 1, to: 24 });
+  });
+
+  it("whatever the range says, the pricer agrees at both its ends", () => {
+    const p = P({ price: 1800, moq: 10, priceTiers: [{ minQty: 25, price: 1650 }] } as Partial<Product>);
+    const r = basePriceRange(p)!;
+    expect(unitPriceForQty(p, r.from)).toBe(1800);
+    expect(unitPriceForQty(p, r.to)).toBe(1800);
+    expect(unitPriceForQty(p, r.to + 1)).toBe(1650);
+  });
+});
+
 describe("the table is wired to the shared rule", () => {
   const src = readFileSync(
     join(
@@ -193,6 +279,14 @@ describe("the table is wired to the shared rule", () => {
 
   it("no longer takes the base range from the raw first row", () => {
     expect(src).not.toMatch(/product\.priceTiers\[0\]/);
+  });
+
+  it("asks basePriceRange rather than computing the range inline", () => {
+    expect(src).toMatch(/basePriceRange\(product\)/);
+  });
+
+  it("omits the base row entirely when there is no range", () => {
+    expect(src).toMatch(/baseRange \?/);
   });
 
   it("still hides the table when there is nothing to show", () => {
