@@ -3,21 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, useMotionValue, useTransform } from "framer-motion";
-import {
-  Rocket,
-  Lightbulb,
-  Gauge,
-  Target,
-  Flame,
-  Cpu,
-  Microscope,
-  Factory,
-  ChevronLeft,
-  ChevronRight,
-  ArrowRight,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { cn } from "@/frontend/lib/utils";
+import { serviceIcon } from "@/frontend/lib/service-icons";
 
 /**
  * Draggable service card stack — adapted from the provided 21st.dev CardStack
@@ -27,17 +15,6 @@ import { cn } from "@/frontend/lib/utils";
  * Every card stays in the DOM for SEO/AT, and /services#slug deep links spin
  * the matching card to the front.
  */
-
-const ICONS: Record<string, LucideIcon> = {
-  rocket: Rocket,
-  lightbulb: Lightbulb,
-  gauge: Gauge,
-  target: Target,
-  flame: Flame,
-  cpu: Cpu,
-  microscope: Microscope,
-  factory: Factory,
-};
 
 // Generic fallback chips — only used for a service that has no entry in
 // SERVICE_DETAILS (real per-service capability chips are supplied via `points`).
@@ -158,7 +135,7 @@ export function ServiceCardStack({ items }: { items: ServiceStackItem[] }) {
             const isFront = i === 0;
             const draggable = isFront && !coarsePointer;
             const hidden = i > VISIBLE_DEPTH;
-            const Icon = (s.icon && ICONS[s.icon]) || Rocket;
+            const Icon = serviceIcon(s.icon);
             const number = String(itemIdx + 1).padStart(2, "0");
             const points = s.points?.length ? s.points : FALLBACK_POINTS;
 

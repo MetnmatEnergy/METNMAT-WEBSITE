@@ -4,8 +4,7 @@ import { Container } from "@/frontend/components/ui/container";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { ServiceCardStack, type ServiceStackItem } from "@/frontend/components/ui/service-card-stack";
-import { LazyCardFanCarousel } from "@/frontend/components/ui/card-fan-carousel.lazy";
-import type { CardItem } from "@/frontend/components/ui/card-fan-carousel";
+import { ServiceGlowGrid, type ServiceGridItem } from "@/frontend/components/services/service-glow-grid";
 import { CtaBand } from "@/frontend/components/home/cta";
 import { JsonLd, organizationJsonLd } from "@/frontend/components/seo/json-ld";
 import { getServices } from "@/frontend/lib/cms";
@@ -46,16 +45,22 @@ const APPROACH: { icon: LucideIcon; step: string; title: string; body: string }[
 export default async function ServicesPage() {
   const services = await getServices();
 
-  // Showcase = the headline services as a fanned card deck (capped at 8).
-  const fanCards: CardItem[] = services
-    .slice(0, 8)
-    .map((s) => ({
-      imgUrl: SERVICE_IMAGES[s.slug],
-      alt: s.title,
-      title: s.title,
-      linkUrl: `/services#${s.slug}`,
-    }))
-    .filter((c) => Boolean(c.imgUrl));
+  /*
+   * Showcase = every service at once, as a bento grid.
+   *
+   * The fanned deck clipped all but the front card and cut titles off mid-word,
+   * so reaching the eighth service meant paging a carousel. Rows are computed
+   * from the count (see bentoRows), so adding a service cannot strand a card.
+   *
+   * The description is the real explanatory sentence from SERVICE_DETAILS,
+   * falling back to the CMS summary — nothing is written for the layout.
+   */
+  const gridItems: ServiceGridItem[] = services.map((s) => ({
+    slug: s.slug,
+    title: s.title,
+    icon: s.icon,
+    description: SERVICE_DETAILS[s.slug]?.detail ?? s.summary,
+  }));
 
   const detailCards: ServiceStackItem[] = services.map((s) => {
     const detail = SERVICE_DETAILS[s.slug];
@@ -113,12 +118,13 @@ export default async function ServicesPage() {
         ]}
       />
 
-      {/* Fanned service deck — hover to spread the cards; tap a card to jump to
-          that service's detail. Arrows/dots paginate the 8 disciplines. */}
-      {fanCards.length > 0 && (
+      {/* Every service at once — each card links to its own detail below. */}
+      {gridItems.length > 0 && (
         <section className="section pt-0" aria-label="Our services">
-          <h2 className="sr-only">Our services</h2>
-          <LazyCardFanCarousel cards={fanCards} />
+          <Container>
+            <h2 className="sr-only">Our services</h2>
+            <ServiceGlowGrid items={gridItems} />
+          </Container>
         </section>
       )}
 
