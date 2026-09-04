@@ -2,6 +2,7 @@ import path from "path";
 import { existsSync } from "fs";
 import type { Payload } from "payload";
 import { decideDirectorPinWrite, directorPinForced } from "./lib/director-pin";
+import { derivePinLookup } from "./lib/pin";
 import { seedCategories, seedProducts, type SeedCategory } from "./catalog-data";
 import {
   seedServices,
@@ -735,6 +736,73 @@ async function scrubPinBearingEmails(payload: Payload): Promise<void> {
 }
 
 /**
+ * Move staff PINs out of cleartext.
+ *
+ * The `pin` field used to be ordinary text, so MongoDB held every staff
+ * credential in the clear, indexed, beside the password hash. Field-level access
+ * limited who could read it through Payload's API and did nothing about anyone
+ * able to read the collection itself.
+ *
+ * TWO PHASES, ON PURPOSE. This writes the derived lookup and leaves the
+ * cleartext alone. Clearing it is a separate, flag-gated pass. Doing both at
+ * once would mean that a failure halfway — a dropped connection, a bad document
+ * — could clear a PIN whose lookup had not been written, and since the PIN is
+ * the credential and nothing else can reproduce it, that account would be
+ * unreachable forever. Writing first is additive and reversible; only purge once
+ * sign-in has been seen to work.
+ *
+ * Uses the native driver deliberately: `pin` is now a virtual field, so Payload
+ * will not read the legacy stored value at all.
+ *
+ * Idempotent. Only touches documents that still need it, so a repeat run is a
+ * no-op and a partial run is fixed by running again.
+ */
+async function migratePinsOutOfCleartext(payload: Payload): Promise<void> {
+  const conn = (payload.db as unknown as { connection?: { collection?: (n: string) => unknown; db?: { collection: (n: string) => unknown } } })?.connection;
+  const col = (conn?.collection?.("users") ?? conn?.db?.collection("users")) as
+    | {
+        find: (f: unknown) => { toArray: () => Promise<Array<Record<string, unknown>>> };
+        updateOne: (f: unknown, u: unknown) => Promise<unknown>;
+        updateMany: (f: unknown, u: unknown) => Promise<{ modifiedCount?: number }>;
+      }
+    | undefined;
+  if (!col) return;
+
+  try {
+    // Phase 1 — additive. Give every legacy PIN its lookup.
+    const pending = await col
+      .find({ pin: { $exists: true, $nin: [null, ""] }, pinLookup: { $exists: false } })
+      .toArray();
+
+    let written = 0;
+    for (const doc of pending) {
+      const pin = String(doc.pin ?? "");
+      if (!/^\d{4}$/.test(pin)) continue;
+      await col.updateOne({ _id: doc._id }, { $set: { pinLookup: derivePinLookup(pin) } });
+      written += 1;
+    }
+    if (written) payload.logger.warn(`[seed] pin lookup written for ${written} staff account(s)`);
+
+    // Phase 2 — destructive, and only when explicitly asked for. Every document
+    // touched here already has a lookup, so sign-in continues to work; what goes
+    // is the ability to READ the PIN back, which is the point.
+    if (process.env.PIN_CLEARTEXT_PURGE === "true") {
+      const res = await col.updateMany(
+        { pin: { $exists: true }, pinLookup: { $exists: true, $nin: [null, ""] } },
+        { $unset: { pin: "" } },
+      );
+      payload.logger.warn(
+        `[seed] cleartext PIN purged from ${res?.modifiedCount ?? 0} staff account(s) — PINs can no longer be read back, only reset`,
+      );
+    }
+  } catch (e) {
+    // Never fail boot over this: a CMS that will not start is worse than one
+    // still holding cleartext, and the next boot retries.
+    payload.logger.error(`[seed] pin migration failed (continuing boot): ${(e as Error).message}`);
+  }
+}
+
+/**
  * Director / super-admin bootstrap — env-driven so no credential is ever
  * committed to git. On boot, when DIRECTOR_EMAIL + DIRECTOR_PIN are set, ensure
  * that account exists as an ACTIVE super-admin. It is created through the local
@@ -767,7 +835,8 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
     // create would hit. If several match, keep the earliest and delete the rest.
     const matches = await payload.find({
       collection: "users",
-      where: { or: [{ email: { equals: email } }, { pin: { equals: pin } }] },
+      // Matched on the derived lookup — the PIN itself is no longer stored.
+      where: { or: [{ email: { equals: email } }, { pinLookup: { equals: derivePinLookup(pin) } }] },
       sort: "createdAt",
       limit: 50,
       depth: 0,
@@ -783,7 +852,9 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
         await payload.delete({ collection: "users", id: dup.id, overrideAccess: true });
       }
       const decision = decideDirectorPinWrite(
-        (docs[0] as { pin?: unknown }).pin,
+        // The stored lookup stands in for "this account already has a PIN": the
+        // PIN itself is not readable any more, which is the whole point.
+        (docs[0] as { pinLookup?: unknown }).pinLookup,
         directorPinForced(process.env),
       );
       await payload.update({
@@ -1698,6 +1769,10 @@ async function ensureUserCodeIndex(payload: Payload): Promise<void> {
  */
 export async function seedCritical(payload: Payload): Promise<void> {
   await ensureSuperAdmin(payload);
+  // Before the director bootstrap, which now matches on the derived lookup: a
+  // legacy account still holding only a cleartext PIN would otherwise be found
+  // by email alone, and one holding neither would look like a fresh install.
+  await migratePinsOutOfCleartext(payload);
   await ensureDirectorAccount(payload);
   await scrubPinBearingEmails(payload);
   await cleanupMalformed(payload);

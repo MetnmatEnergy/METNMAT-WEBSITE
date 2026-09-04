@@ -17,6 +17,30 @@ export function derivePassword(pin: string): string {
   return createHmac("sha256", PEPPER).update(`metnmat:pin:${pin}`).digest("hex");
 }
 
+/**
+ * The value stored in place of the PIN, so sign-in can still find an account by
+ * equality without the credential itself being in the database.
+ *
+ * WHY THE LABEL DIFFERS FROM derivePassword. This value is STORED, in the clear,
+ * in the same document as the password hash. If it were the same derivation, the
+ * database would hold the account's actual pre-hash password in plaintext —
+ * strictly worse than the four digits it replaced. The distinct label makes the
+ * two outputs independent: knowing the stored lookup tells you nothing about the
+ * password, and neither reveals the PIN.
+ *
+ * Determinism is the point. Sign-in derives the lookup from the submitted PIN
+ * and matches on equality, so the field stays indexable and the login path does
+ * not change shape.
+ *
+ * This is not a substitute for a slow hash. Four digits is 10,000 candidates, so
+ * anyone holding the database AND the pepper can enumerate it — the pepper is
+ * what they must not have, which is why its length matters (see
+ * docs/upgrade/pin-pepper-rotation.md).
+ */
+export function derivePinLookup(pin: string): string {
+  return createHmac("sha256", PEPPER).update(`metnmat:pinlookup:${pin}`).digest("hex");
+}
+
 export const PIN_REGEX = /^\d{4}$/;
 
 // ── Brute-force protection lives in pin-throttle.ts ─────────────────────────

@@ -1,6 +1,6 @@
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { derivePassword, PIN_REGEX } from "../../lib/pin";
+import { derivePassword, derivePinLookup, PIN_REGEX } from "../../lib/pin";
 import {
   countAttempt,
   clearAttempts,
@@ -87,9 +87,11 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
+    // Matched on the derived lookup — the PIN itself is not stored. Same shape,
+    // same index, no credential in the database.
     const found = await payload.find({
       collection: "users",
-      where: { pin: { equals: pin } },
+      where: { pinLookup: { equals: derivePinLookup(pin) } },
       limit: 1,
       depth: 0,
       overrideAccess: true,

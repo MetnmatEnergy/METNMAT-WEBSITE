@@ -11,7 +11,7 @@ import {
   hasRole,
   ROLE_OPTIONS,
 } from "../access";
-import { derivePassword, PIN_REGEX } from "../lib/pin";
+import { derivePassword, derivePinLookup, PIN_REGEX } from "../lib/pin";
 
 export const Users: CollectionConfig = {
   slug: "users",
@@ -51,18 +51,45 @@ export const Users: CollectionConfig = {
       },
     },
     {
+      /*
+       * WRITE-ONLY. Type a PIN here to SET one; the value is never stored and
+       * never shown back. What persists is `pinLookup` below.
+       *
+       * It used to be an ordinary text field, so MongoDB held the four digits in
+       * the clear, indexed, in the same document as the password hash. Field
+       * access limited who could read it through Payload's API, but anyone able
+       * to read the collection itself — a backup, an aggregation, a compromised
+       * connection string — had every staff credential without needing the
+       * pepper or breaking anything.
+       *
+       * The visible consequence: a super-admin can no longer look up a colleague's
+       * forgotten PIN. They set a new one. That is the correct behaviour for a
+       * credential and is the point of the change, not a side effect of it.
+       */
       name: "pin",
       type: "text",
       label: "4-digit login PIN",
       maxLength: 4,
-      index: true,
+      virtual: true,
       admin: {
-        placeholder: "e.g. 4821",
+        placeholder: "Enter 4 digits to set a new PIN",
         description:
-          "The employee signs in with this 4-digit key. Must be unique. Leave blank for an email/password recovery-only account.",
+          "Write-only. Enter a 4-digit key to SET or CHANGE this person's PIN. Existing PINs are not stored and cannot be shown — if one is forgotten, set a new one. Leave blank to keep the current PIN, or clear it via Remove PIN.",
       },
-      // Only a super-admin can see or set PINs (they're a login credential).
-      access: { read: fieldSuperAdmin, create: fieldSuperAdmin, update: fieldSuperAdmin },
+      access: { read: () => false, create: fieldSuperAdmin, update: fieldSuperAdmin },
+    },
+    {
+      /*
+       * HMAC of the PIN under a label distinct from the password derivation, so
+       * this value cannot serve as the password even though it is stored plainly.
+       * Sign-in derives the same value from the submitted PIN and matches on
+       * equality, which keeps the lookup indexed.
+       */
+      name: "pinLookup",
+      type: "text",
+      index: true,
+      admin: { hidden: true, readOnly: true },
+      access: { read: () => false, create: () => false, update: () => false },
     },
     {
       name: "roles",
@@ -108,11 +135,14 @@ export const Users: CollectionConfig = {
           }
           // Enforce uniqueness ourselves (avoids unique-index collisions on the
           // many recovery accounts that legitimately have no PIN).
+          // Compared on the derived value, because the PIN itself is no longer
+          // stored to compare against. The derivation is deterministic, so two
+          // people choosing the same PIN still collide here.
           const clash = await req.payload.find({
             collection: "users",
             where: {
               and: [
-                { pin: { equals: pin } },
+                { pinLookup: { equals: derivePinLookup(pin) } },
                 ...(originalDoc?.id ? [{ id: { not_equals: originalDoc.id } }] : []),
               ],
             },
@@ -138,10 +168,20 @@ export const Users: CollectionConfig = {
     ],
     beforeChange: [
       async ({ req, operation, data }) => {
-        // Keep the real password in lockstep with the PIN so /pin-login can
-        // authenticate through Payload's own login() machinery.
+        /*
+         * Keep the real password in lockstep with the PIN so /pin-login can
+         * authenticate through Payload's own login() machinery, and record the
+         * lookup that sign-in will match on.
+         *
+         * `pin` is virtual, so it is not persisted — but it is deleted here as
+         * well rather than relied upon, because this is the single place that
+         * decides a credential is never written down.
+         */
         if (data?.pin != null && data.pin !== "") {
-          data.password = derivePassword(String(data.pin));
+          const pin = String(data.pin);
+          data.password = derivePassword(pin);
+          data.pinLookup = derivePinLookup(pin);
+          delete data.pin;
         }
         // The very first user to register becomes the Super Admin — but ONLY when
         // bootstrap is allowed (dev, or ALLOW_FIRST_USER_BOOTSTRAP=true in prod).
