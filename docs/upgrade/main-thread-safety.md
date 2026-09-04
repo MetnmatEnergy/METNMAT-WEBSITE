@@ -269,15 +269,40 @@ its element is off screen, does it survive unmount, and can it multiply across m
 | Text advance unguarded against a duplicate frame | `ui/vapour-text-effect.tsx` | the loop reschedules before React commits, so the completed branch can run twice; a functional updater applies both increments, skipping a stat and permanently mismatching a number with its label. The sibling wait-timer branch was already guarded |
 | The DPR cap sampled *below* native above DPR 2 | `lib/vapour-cycle.ts` | a flat cap of 2 gave a DPR-3 screen two backing pixels per CSS pixel, so the browser upscaled and the reformed text came back softer than the CSS text beside it |
 | The scan went blind to hoisted observer configs | `test/observer-guardrails.test.ts` | moving the inits into named constants, which this same pass did, made those very calls invisible to the regex |
+| WebGL context never released on unmount | `ui/animated-shader-background.tsx` | `dispose()` frees three.js's objects but not the context; browsers cap live contexts (~16) and silently evict the oldest. Now `forceContextLoss()` before dispose |
+| Shader loop restarted on tab focus without re-checking intersection | `ui/animated-shader-background.tsx` | `visibilitychange` called `start()` directly, undoing the IntersectionObserver's stop |
+| Shader advanced time by a fixed step per frame | `ui/animated-shader-background.tsx` | `iTime += 0.016` runs at double speed on a 120 Hz display and leaps after a pause; now wall clock, clamped |
+| 120-particle loop ran regardless of viewport, tab or reduced motion | `ui/highlighter.tsx` | six canvas ops per particle per frame, always; now gated, with the init frame serving reduced motion |
+| Cursor pushed through React state on every mousemove | `ui/highlighter.tsx` | three consumers on /contact re-rendered per pointer sample, to compute values React never renders. Now a ref behind one rAF-coalesced passive listener |
+| Layout reads interleaved with style writes, twice per box | `ui/highlighter.tsx` | each write forced the next read to recalculate layout; reads are now batched ahead of writes, and halved |
+
+### Verified in production on `8f4a9f0`
+
+Measured against an ungated control rAF chain running in the same page, so a
+throttled pane cannot be mistaken for a working gate:
+
+| Page | Control rAF | Loop activity |
+|---|---:|---:|
+| /about, shader in view | 0.7–1.5 /s | 0.7–1.5 draws/s (matches the control exactly) |
+| /about, **scrolled away** | 1–2 /s | **0 draws/s** |
+| /about, back in view | 1–2 /s | resumes, matches control |
+| /contact, particles in view | 57.9 /s | 6,953 arcs/s |
+| /contact, **scrolled away** | 59.8–60.5 /s | **0 arcs/s** |
+| /contact, back in view | 60.3 /s | 7,236 arcs/s |
+
+On /contact the browser was still delivering a full 60 frames a second while the
+loop drew nothing at all. 200 dispatched `mousemove` events produced **1**
+`--mouse-x` write, where the previous implementation would have produced 200
+React state updates across three consumers plus 2N forced layouts each.
 
 ## Known and accepted, not fixed
 
 | Mechanism | Where | Why it is being left |
 |---|---|---|
 | framer-motion's shared viewport observer never unobserves | `ui/reveal.tsx` via framer-motion 11.18 | the leak is inside the library, costs microseconds per frame, and `once: true` stops the callback doing work. Rewriting Reveal would touch every animated section on the site for no measurable gain |
-| WebGL context never explicitly released | `ui/animated-shader-background.tsx` (/about) | real, but /about only; browsers cap live contexts and evict silently. Needs a considered fix plus a device test, not a rushed one |
-| Shader loop restarts on tab focus without re-checking intersection | `ui/animated-shader-background.tsx` (/about) | renders full-tilt while scrolled away; same file, same caveat |
-| 120-particle rAF loop with no visibility or reduced-motion gate | `ui/highlighter.tsx` (/contact) | /contact only; the gate is the same shape as the one applied to `animated-text-cycle` |
+*(The three rows that stood here — the unreleased WebGL context, the shader loop
+restarting off-screen, and the ungated particle loop — were fixed in `8f4a9f0`.
+See below.)*
 | `setState` calls nested inside a `setState` updater | `ui/radial-orbital-timeline.tsx` (/about) | React anti-pattern, no observed misbehaviour; wants its own change with a visual check |
 | Carousel intervals run while the tab is hidden | `commerce/product-gallery.tsx`, `commerce/shop-showcase.tsx` | a cheap index change every few seconds, not an animation loop; gating them is a small follow-up |
 
