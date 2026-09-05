@@ -302,10 +302,10 @@ describe("the two call sites still share one expression", () => {
     // Unchanged by this work, asserted again because the refactor moved the
     // body of unitPriceForQty.
     expect(read("frontend/components/commerce/product-buy-box.tsx")).toMatch(
-      /inclGST\(unitPriceForQty\(product, qty\)\)/,
+      /inclGSTForProduct\(product, unitPriceForQty\(product, qty\)\)/,
     );
     expect(read("app/api/checkout/create-order/route.ts")).toMatch(
-      /inclGST\(unitPriceForQty\(product, qty\)\)/,
+      /inclGSTForProduct\(product, unitPriceForQty\(product, qty\)\)/,
     );
   });
 });

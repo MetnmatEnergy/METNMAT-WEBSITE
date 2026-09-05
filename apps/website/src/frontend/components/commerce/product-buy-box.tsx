@@ -9,7 +9,7 @@ import { PlusOne } from "@/frontend/components/commerce/add-to-cart-button";
 import { WishlistButton } from "@/frontend/components/commerce/wishlist-button";
 import { RequestQuoteButton } from "@/frontend/components/commerce/request-quote-button";
 import { Button } from "@/frontend/components/ui/button";
-import { availabilityLabel, inclGST, unitPriceForQty, usdFor, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
+import { availabilityLabel, inclGSTForProduct, unitPriceForQty, usdFor, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { cn } from "@/frontend/lib/utils";
 
@@ -96,10 +96,10 @@ export function ProductBuyBox({ product }: { product: Product }) {
   }
 
   // Display GST-inclusive prices (catalog stores base prices excl. GST).
-  const unit = inclGST(unitPriceForQty(product, qty));
+  const unit = inclGSTForProduct(product, unitPriceForQty(product, qty));
   const total = unit * qty;
   const hasDiscount = !!product.mrp && product.mrp > product.price;
-  const mrpIncl = hasDiscount ? inclGST(product.mrp!) : 0;
+  const mrpIncl = hasDiscount ? inclGSTForProduct(product, product.mrp!) : 0;
   const off = hasDiscount ? Math.round((1 - product.price / product.mrp!) * 100) : 0;
 
   function handleAdd() {

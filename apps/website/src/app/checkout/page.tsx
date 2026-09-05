@@ -7,7 +7,7 @@ import { Lock, Loader2, ShieldCheck, FileText, Check, HelpCircle, Truck, Package
 import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { useStore } from "@/frontend/components/commerce/store-provider";
-import { formatINR, inclGST, usdFor, lineUsdValue, GST_RATE, type Product } from "@/frontend/lib/catalog";
+import { formatINR, inclGSTForProduct, usdFor, lineUsdValue, soleGstRate, type Product } from "@/frontend/lib/catalog";
 import { getTracker } from "@/frontend/lib/analytics/collector";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { site } from "@/frontend/lib/site";
@@ -351,9 +351,12 @@ export default function CheckoutPage() {
   const busy = isBusy(payStatus);
 
   // Display GST-inclusive totals (catalog stores base prices excl. GST).
-  const subtotalIncl = cartLines.reduce((n, l) => n + inclGST(l.unitPrice) * l.qty, 0);
+  const subtotalIncl = cartLines.reduce((n, l) => n + inclGSTForProduct(l.product, l.unitPrice) * l.qty, 0);
   const subtotalExcl = cartLines.reduce((n, l) => n + l.unitPrice * l.qty, 0);
   const gstAmount = subtotalIncl - subtotalExcl;
+  // Naming a percentage is only honest when the cart HAS one. Mixed rates get
+  // the amount without a rate rather than a number that matches no line.
+  const cartGstRate = soleGstRate(cartLines);
   const itemCount = cartLines.reduce((n, l) => n + l.qty, 0);
   const usdSubtotal =
     currency === "USD"
@@ -1038,7 +1041,7 @@ export default function CheckoutPage() {
                   </div>
                   <span className="shrink-0 text-sm font-medium tabular-nums">
                     {l.product.price
-                      ? money(inclGST(l.unitPrice) * l.qty, usdFor(l.product, inclGST(l.unitPrice) * l.qty))
+                      ? money(inclGSTForProduct(l.product, l.unitPrice) * l.qty, usdFor(l.product, inclGSTForProduct(l.product, l.unitPrice) * l.qty))
                       : "On request"}
                   </span>
                 </li>
@@ -1050,7 +1053,7 @@ export default function CheckoutPage() {
                 <span className="tabular-nums text-foreground">{money(subtotalExcl)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
-                <span>GST ({Math.round(GST_RATE * 100)}%)</span>
+                <span>{cartGstRate === null ? "GST" : `GST (${cartGstRate}%)`}</span>
                 <span className="tabular-nums text-foreground">{money(gstAmount)}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">

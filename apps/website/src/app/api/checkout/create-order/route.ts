@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProductBySlug, getUsdRate, getTaxPolicy } from "@/frontend/lib/cms";
-import { unitPriceForQty, inclGST, clampQty, usdFor, isQuoteOnly } from "@/frontend/lib/catalog";
+import { unitPriceForQty, inclGSTForProduct, gstRateFor, clampQty, usdFor, isQuoteOnly } from "@/frontend/lib/catalog";
 import { isIndiaName } from "@/frontend/lib/countries";
 import { resolveTax } from "@/frontend/lib/tax";
 import type { Region } from "@/frontend/lib/region";
@@ -144,7 +144,11 @@ export async function POST(req: Request) {
     if (i.size && !size && (product.sizes ?? []).length > 0) {
       return bad(`"${product.name}" doesn't come in "${i.size}" — please re-select the size.`);
     }
-    const unitIncl = inclGST(unitPriceForQty(product, qty));
+    // The product's own rate decides the charge, exactly as the storefront
+    // decided the price it displayed. Snapshotted per line below, because a
+    // cart may mix rates and the invoice has to show which applied to what.
+    const lineGstRate = gstRateFor(product);
+    const unitIncl = inclGSTForProduct(product, unitPriceForQty(product, qty));
     usdApprox += usdFor(product, unitIncl * qty) ?? (unitIncl * qty) / usdRate;
     orderItems.push({
       productName: product.name,
@@ -157,6 +161,12 @@ export async function POST(req: Request) {
       // Snapshotted for the GST invoice (HSN column) and export paperwork.
       hsnSac: product.hsnSac,
       countryOfOrigin: product.countryOfOrigin,
+      // The rate this line was actually charged at, frozen here. A cart can mix
+      // rates, so the order cannot carry a single one — and the rate on the
+      // product may change later, while the invoice must keep saying what was
+      // billed. Same reason unitPrice is a snapshot rather than a lookup.
+      taxRatePercent: lineGstRate,
+      taxAmount: (unitIncl * qty) - Math.round((unitIncl * qty) / (1 + lineGstRate / 100)),
     });
   }
   const subtotal = orderItems.reduce((n, it) => n + it.lineTotal, 0);
@@ -168,7 +178,23 @@ export async function POST(req: Request) {
   const taxRegion: Region = isIndiaName(country) ? "IN" : "INTL";
   const taxPolicy = await getTaxPolicy();
   const taxLine = resolveTax(taxRegion, subtotal, taxPolicy);
-  const gstAmount = taxLine.amount;
+
+  /*
+   * GST is summed PER LINE, not derived from one order-level rate.
+   *
+   * Every line already knows the rate it was charged at, and a cart may mix
+   * them — a 5% consumable beside an 18% instrument. Deriving the total from a
+   * single rate would misstate the tax on every mixed order, and the invoice is
+   * a statutory document.
+   *
+   * A zero-rated export still zeroes the whole order: that treatment is decided
+   * by where the order ships, and it overrides the per-product rates rather than
+   * competing with them.
+   */
+  const gstAmount =
+    taxLine.ratePercent <= 0
+      ? 0
+      : orderItems.reduce((n, it) => n + (it.taxAmount ?? 0), 0);
   const total = subtotal; // shipping arranged separately for B2B lab equipment
 
   // Capture what the customer saw (display context — the charge stays INR).

@@ -7,7 +7,7 @@ import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { QuantityStepper } from "@/frontend/components/commerce/quantity-stepper";
 import { useStore } from "@/frontend/components/commerce/store-provider";
-import { inclGST, usdFor, lineUsdValue, type Product } from "@/frontend/lib/catalog";
+import { inclGSTForProduct, usdFor, lineUsdValue, type Product } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { ProductImage } from "@/frontend/components/commerce/product-image";
 import { RegionBar } from "@/frontend/components/commerce/region-bar";
@@ -41,7 +41,7 @@ export default function CartPage() {
     removeFromCart(key);
   }
   // Display GST-inclusive totals (catalog stores base prices excl. GST).
-  const subtotalIncl = cartLines.reduce((n, l) => n + inclGST(l.unitPrice) * l.qty, 0);
+  const subtotalIncl = cartLines.reduce((n, l) => n + inclGSTForProduct(l.product, l.unitPrice) * l.qty, 0);
   // For USD visitors, honor any staff-set USD price (base unit) so totals match the PDP.
   const usdSubtotal =
     currency === "USD"
@@ -146,7 +146,7 @@ export default function CartPage() {
                   </div>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {money(inclGST(line.unitPrice), usdFor(line.product, inclGST(line.unitPrice)))} / {line.product.unit} · incl. GST
+                  {money(inclGSTForProduct(line.product, line.unitPrice), usdFor(line.product, inclGSTForProduct(line.product, line.unitPrice)))} / {line.product.unit} · incl. GST
                 </p>
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
                   <QuantityStepper
@@ -156,7 +156,7 @@ export default function CartPage() {
                   />
                   <span className="font-semibold">
                     {line.product.price
-                      ? money(inclGST(line.unitPrice) * line.qty, usdFor(line.product, inclGST(line.unitPrice) * line.qty))
+                      ? money(inclGSTForProduct(line.product, line.unitPrice) * line.qty, usdFor(line.product, inclGSTForProduct(line.product, line.unitPrice) * line.qty))
                       : "On request"}
                   </span>
                 </div>

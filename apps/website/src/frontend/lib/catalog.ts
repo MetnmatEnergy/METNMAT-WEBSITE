@@ -39,7 +39,12 @@ export type Product = {
   brand: string;
   categorySlug: string;
   sku: string;
-  price: number; // base unit price (INR)
+  price: number; // base unit price (INR), EXCLUDING GST
+  /**
+   * GST percent for this product (0/5/12/18/28). Absent means the site rate.
+   * Prices are stored excluding tax, so this decides what the customer PAYS.
+   */
+  gstRate?: number;
   usdPrice?: number; // fixed USD price, GST-INCLUSIVE (only meaningful in FIXED_USD)
   /**
    * How the international price is decided. Staff choose this explicitly in the
@@ -198,15 +203,101 @@ export function formatINR(value: number): string {
 /**
  * GST display. Catalog prices are stored EXCLUDING GST; the site shows
  * GST-inclusive prices everywhere (B2C-friendly, like Amazon).
+ *
+ * PER PRODUCT, not site-wide. `Products.gstRate` used to be locked, and its own
+ * description said why: "checkout does not yet honour per-product rates, so this
+ * field is locked to avoid promising what billing doesn't deliver." It is
+ * honoured now — display, cart, the amount sent to Razorpay and the figure
+ * snapshotted onto the order all read the product's own rate through the
+ * functions below.
+ *
+ * THE RATE IS A PRICE, NOT PAPERWORK. Prices are stored excluding tax, so ₹100
+ * at 18% is ₹118 to the customer and at 5% it is ₹105. Changing the rate changes
+ * what is charged. `lib/tax.ts:28-32` already flags that this is easy to do by
+ * accident while meaning only to correct a tax line, which is why the CMS field
+ * now prints the resulting price beside it.
  */
-export const GST_RATE = 0.18;
 
-/** GST-inclusive price, rounded to the rupee. 0 stays 0 (quote-only). */
-export const inclGST = (value: number): number => Math.round(value * (1 + GST_RATE));
+/** The site default, and the fallback for any product without a usable rate. */
+export const DEFAULT_GST_RATE_PERCENT = 18;
 
-/** The GST amount contained inside a GST-inclusive value (for invoices/summaries). */
+/** The real Indian GST slabs. Anything else is a typo, not a rate. */
+export const GST_SLABS = [0, 5, 12, 18, 28] as const;
+
+/** Kept for callers that genuinely mean "the site rate" rather than a product's. */
+export const GST_RATE = DEFAULT_GST_RATE_PERCENT / 100;
+
+export const isValidGstRate = (rate: unknown): boolean =>
+  typeof rate === "number" && (GST_SLABS as readonly number[]).includes(rate);
+
+/**
+ * The rate that applies to a product, as a percent.
+ *
+ * Falls back to the site rate rather than to zero: an unreadable rate must not
+ * silently make a sale tax-free. A genuine 0 is honoured, because exempt is a
+ * real slab — testing truthiness here would have billed 18% on an exempt
+ * product, which is a tax error rather than a display one.
+ *
+ * A rate outside the legal range is refused rather than charged: negative would
+ * refund tax on every sale, and an absurd one would overcharge.
+ */
+export function gstRateFor(product?: Pick<Product, "gstRate"> | null): number {
+  const raw: unknown = product?.gstRate;
+
+  // ABSENT is checked before coercing, because `Number(null)` and `Number("")`
+  // are both 0 — and 0 is a LEGAL slab here, so coercing first would read a
+  // missing rate as "exempt" and quietly sell everything tax-free. That is the
+  // exact inverse of the truthiness trap this function exists to avoid, and it
+  // is a tax error rather than a display one.
+  if (raw === null || raw === undefined || raw === "") return DEFAULT_GST_RATE_PERCENT;
+
+  const rate = Number(raw);
+  if (!Number.isFinite(rate) || rate < 0 || rate > 28) return DEFAULT_GST_RATE_PERCENT;
+  return rate;
+}
+
+/** GST-inclusive price at an explicit percent rate, rounded to the rupee. */
+export const inclGSTAt = (value: number, ratePercent: number): number =>
+  Math.round(value * (1 + ratePercent / 100));
+
+/** The GST contained inside an inclusive value at an explicit percent rate. */
+export const gstPortionAt = (inclValue: number, ratePercent: number): number =>
+  Math.round(inclValue - inclValue / (1 + ratePercent / 100));
+
+/**
+ * A product's inclusive price. THE one to reach for when a product is in hand —
+ * the shown price and the charged price both come through here, so they cannot
+ * disagree per product any more than they could per quantity.
+ */
+export const inclGSTForProduct = (
+  product: Pick<Product, "gstRate"> | null | undefined,
+  value: number,
+): number => inclGSTAt(value, gstRateFor(product));
+
+/**
+ * The one GST rate a set of lines shares, or null when they differ.
+ *
+ * The checkout summary prints "GST (18%)" beside a single tax figure. With one
+ * rate that is a true statement; with a 5% consumable beside an 18% instrument
+ * it is a false one, on the last screen a customer reads before paying. Null
+ * means the caller must drop the percentage rather than pick one.
+ *
+ * An empty cart has no rate to name either.
+ */
+export function soleGstRate(
+  lines: ReadonlyArray<{ product: Pick<Product, "gstRate"> }>,
+): number | null {
+  if (!lines.length) return null;
+  const rates = new Set(lines.map((l) => gstRateFor(l.product)));
+  return rates.size === 1 ? [...rates][0]! : null;
+}
+
+/** GST-inclusive price at the SITE rate. Use inclGSTForProduct when you have a product. */
+export const inclGST = (value: number): number => inclGSTAt(value, DEFAULT_GST_RATE_PERCENT);
+
+/** The GST amount contained inside a GST-inclusive value at the SITE rate. */
 export const gstPortionOf = (inclValue: number): number =>
-  Math.round(inclValue - inclValue / (1 + GST_RATE));
+  gstPortionAt(inclValue, DEFAULT_GST_RATE_PERCENT);
 
 /**
  * The tier rows this product will actually be charged on, in ascending order.
@@ -376,7 +467,7 @@ export function usdFor(product: Product, inclGstInr: number): number | undefined
   // until someone remembered to clear the other field too.
   if (pricingMode(product) !== "FIXED_USD") return undefined;
   if (!product.usdPrice || product.usdPrice <= 0 || product.price <= 0) return undefined;
-  const base = inclGST(product.price);
+  const base = inclGSTForProduct(product, product.price);
   if (base <= 0) return undefined;
   return Math.round(((inclGstInr * product.usdPrice) / base) * 100) / 100;
 }
@@ -388,7 +479,7 @@ export function lineUsdValue(
   qty: number,
   usdRate: number
 ): number {
-  const inclTotal = inclGST(effectiveUnitInr) * qty;
+  const inclTotal = inclGSTForProduct(product, effectiveUnitInr) * qty;
   return usdFor(product, inclTotal) ?? inclTotal / usdRate;
 }
 

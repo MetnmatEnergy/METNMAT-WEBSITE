@@ -154,6 +154,25 @@ export const Orders: CollectionConfig = {
         {
           type: "row",
           fields: [
+            /*
+             * The rate this line was CHARGED at, frozen at purchase.
+             *
+             * Per line, not per order: a cart can mix a 5% consumable with an
+             * 18% instrument, and the invoice has to show which applied to
+             * what. Snapshotted for the same reason unitPrice is — the rate on
+             * the product may be edited later, and an issued invoice must keep
+             * asserting what was actually billed.
+             *
+             * Absent on orders placed before per-product GST existed; those
+             * were all charged at the site rate of 18%.
+             */
+            { name: "taxRatePercent", type: "number", admin: { width: "50%", readOnly: true, description: "GST % charged on this line (frozen at purchase)." } },
+            { name: "taxAmount", type: "number", admin: { width: "50%", readOnly: true, description: "GST contained in the line total (₹)." } },
+          ],
+        },
+        {
+          type: "row",
+          fields: [
             { name: "hsnSac", type: "text", label: "HSN / SAC", admin: { width: "50%", description: "Snapshotted at purchase — printed on the GST invoice." } },
             { name: "countryOfOrigin", type: "text", admin: { width: "50%" } },
           ],

@@ -3,6 +3,7 @@ import { canManageCatalog, fieldAccountsOrInternal } from "../access";
 import { slugify, validateHttpUrl } from "../lib/blog";
 import { slugBeforeDuplicate } from "../lib/duplicate-slug";
 import { mayAdjustStock } from "../lib/inventory-access";
+import { gstSlabValidator } from "../lib/gst-slabs";
 import { slugFromTitleValidator } from "../lib/slug-validate";
 import { validatePriceTiers } from "../lib/price-tiers";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
@@ -523,11 +524,37 @@ export const Products: CollectionConfig = {
               defaultValue: 18,
               min: 0,
               max: 28,
+              /*
+               * UNLOCKED, and honoured end to end.
+               *
+               * It used to carry `readOnly: true` and a description saying why:
+               * "checkout does not yet honour per-product rates, so this field
+               * is locked to avoid promising what billing doesn't deliver."
+               * That is no longer true — the storefront price, the cart, the
+               * amount sent to Razorpay and the figure frozen onto each order
+               * line all read this rate (frontend/lib/catalog gstRateFor).
+               *
+               * Still a NUMBER, deliberately. A select would have been tidier to
+               * read, but it stores strings — and 133 live products already hold
+               * a numeric 18, so switching the type would have been a data
+               * migration bought for cosmetics. `validate` gets the same
+               * guarantee without touching a single stored row.
+               *
+               * The slabs are enforced because a free number invites 8% or 1.8,
+               * which is not a rate anyone can charge, and a typo here bills
+               * every customer of that product wrongly until someone notices.
+               *
+               * THIS FIELD IS A PRICE. Catalogue prices are stored EXCLUDING
+               * tax, so changing the rate changes what the customer pays:
+               * ₹100 is ₹118 at 18% and ₹105 at 5%. lib/tax.ts:28-32 warns this
+               * is easy to do by accident while meaning only to correct a tax
+               * line, which is why the description says so plainly.
+               */
+              validate: gstSlabValidator,
               admin: {
                 width: "33%",
-                readOnly: true,
                 description:
-                  "GST %. Currently applied SITE-WIDE at 18% — checkout does not yet honour per-product rates, so this field is locked to avoid promising what billing doesn't deliver.",
+                  "GST slab for this product. Prices are entered WITHOUT GST, so this changes what the customer pays — ₹100 becomes ₹118 at 18%, or ₹105 at 5%. Orders freeze the rate that applied at purchase, so changing it never alters an invoice already issued.",
               },
             },
             { name: "hsnSac", type: "text", label: "HSN / SAC code", admin: { width: "33%" } },

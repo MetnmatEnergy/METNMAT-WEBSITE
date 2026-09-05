@@ -92,7 +92,7 @@ describe("the price block honours the rule", () => {
     // The MRP, badge and unit-line assertions below all passed while the price
     // was still printed, because each only pinned its own row.
     expect(src).toMatch(
-      /\{quoteOnly[\s\S]{0,120}?money\(inclGST\(product\.price\)/,
+      /\{quoteOnly[\s\S]{0,160}?money\(inclGSTForProduct\(product, product\.price\)/,
     );
   });
 

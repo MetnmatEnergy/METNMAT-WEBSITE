@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { ChevronRight, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useStore } from "@/frontend/components/commerce/store-provider";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
-import { inclGST, usdFor, lineUsdValue } from "@/frontend/lib/catalog";
+import { inclGSTForProduct, usdFor, lineUsdValue } from "@/frontend/lib/catalog";
 import { cn } from "@/frontend/lib/utils";
 import { ProductImage } from "@/frontend/components/commerce/product-image";
 
@@ -75,7 +75,7 @@ export function CartRail() {
     };
   }, [visible, collapsed, applyCollapsed]);
 
-  const subtotalIncl = cartLines.reduce((n, l) => n + inclGST(l.unitPrice) * l.qty, 0);
+  const subtotalIncl = cartLines.reduce((n, l) => n + inclGSTForProduct(l.product, l.unitPrice) * l.qty, 0);
   const usdSubtotal =
     currency === "USD"
       ? cartLines.reduce((n, l) => n + lineUsdValue(l.product, l.unitPrice, l.qty, usdRate), 0)
@@ -177,7 +177,7 @@ export function CartRail() {
               </Link>
               <p className="mt-1.5 text-xs font-semibold tabular-nums">
                 {line.product.price
-                  ? money(inclGST(line.unitPrice) * line.qty, usdFor(line.product, inclGST(line.unitPrice) * line.qty))
+                  ? money(inclGSTForProduct(line.product, line.unitPrice) * line.qty, usdFor(line.product, inclGSTForProduct(line.product, line.unitPrice) * line.qty))
                   : "On request"}
               </p>
               {line.size && <p className="truncate text-[10px] text-muted-foreground">{line.size}</p>}

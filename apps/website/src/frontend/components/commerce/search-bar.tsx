@@ -15,7 +15,7 @@ import {
   CornerDownLeft,
   X,
 } from "lucide-react";
-import { inclGST } from "@/frontend/lib/catalog";
+import { inclGSTForProduct } from "@/frontend/lib/catalog";
 import { useCurrency } from "@/frontend/components/commerce/currency-provider";
 import { cn } from "@/frontend/lib/utils";
 
@@ -27,6 +27,8 @@ type SlimProduct = {
   brand?: string;
   sku?: string;
   price?: number;
+  /** Needed to price the row at the product's own rate, not the site default. */
+  gstRate?: number;
   categorySlug?: string;
 };
 type SiteLinkType = "Service" | "Blog" | "Project" | "Category" | "Page";
@@ -377,7 +379,7 @@ export function SearchBar({
                       </span>
                     </span>
                     <span className="shrink-0 text-xs font-semibold">
-                      {p.price ? money(inclGST(p.price)) : "On request"}
+                      {p.price ? money(inclGSTForProduct(p, p.price)) : "On request"}
                     </span>
                   </a>
                 ))}

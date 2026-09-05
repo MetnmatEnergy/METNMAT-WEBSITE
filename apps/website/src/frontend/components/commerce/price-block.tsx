@@ -3,7 +3,7 @@
 import {
   basePriceRange,
   honouredPriceTiers,
-  inclGST,
+  inclGSTForProduct,
   isQuoteOnly,
   usdFor,
   type Product,
@@ -56,11 +56,11 @@ export function PriceBlock({
       >
         {quoteOnly
           ? money(0, undefined)
-          : money(inclGST(product.price), usdFor(product, inclGST(product.price)))}
+          : money(inclGSTForProduct(product, product.price), usdFor(product, inclGSTForProduct(product, product.price)))}
       </span>
       {!quoteOnly && product.mrp && product.price > 0 && (
         <span className="text-sm text-muted-foreground line-through">
-          {money(inclGST(product.mrp), usdFor(product, inclGST(product.mrp)))}
+          {money(inclGSTForProduct(product, product.mrp), usdFor(product, inclGSTForProduct(product, product.mrp)))}
         </span>
       )}
       {!quoteOnly && discount > 0 && (
@@ -105,7 +105,7 @@ export function PriceTiers({ product }: { product: Product }) {
               <td className="px-4 py-2 text-muted-foreground">
                 {baseRange.from}–{baseRange.to} {product.unit}
               </td>
-              <td className="px-4 py-2 text-right font-medium">{money(inclGST(product.price), usdFor(product, inclGST(product.price)))}</td>
+              <td className="px-4 py-2 text-right font-medium">{money(inclGSTForProduct(product, product.price), usdFor(product, inclGSTForProduct(product, product.price)))}</td>
             </tr>
           ) : null}
           {rows.map((t, i) => (
@@ -113,7 +113,7 @@ export function PriceTiers({ product }: { product: Product }) {
               <td className="px-4 py-2 text-muted-foreground">
                 {t.minQty}+ {product.unit}
               </td>
-              <td className="px-4 py-2 text-right font-medium">{money(inclGST(t.price), usdFor(product, inclGST(t.price)))}</td>
+              <td className="px-4 py-2 text-right font-medium">{money(inclGSTForProduct(product, t.price), usdFor(product, inclGSTForProduct(product, t.price)))}</td>
             </tr>
           ))}
         </tbody>

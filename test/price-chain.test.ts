@@ -145,11 +145,16 @@ describe("the two call sites still share one expression", () => {
   it("the buy box and the checkout both use inclGST(unitPriceForQty(...))", () => {
     // If one side ever computes the price differently, the page and the card
     // disagree — and a unit test of either alone would still pass.
+    // Rate-aware now, and still ONE expression. `inclGSTForProduct` derives the
+    // rate from the product itself, so the page and the card cannot pick
+    // different GST rates any more than they could pick different tier prices.
+    // This test caught the drift when the charge briefly used inclGSTAt with a
+    // separately-computed rate — equivalent arithmetic, but two sources.
     expect(read("frontend/components/commerce/product-buy-box.tsx")).toMatch(
-      /inclGST\(unitPriceForQty\(product, qty\)\)/,
+      /inclGSTForProduct\(product, unitPriceForQty\(product, qty\)\)/,
     );
     expect(read("app/api/checkout/create-order/route.ts")).toMatch(
-      /inclGST\(unitPriceForQty\(product, qty\)\)/,
+      /inclGSTForProduct\(product, unitPriceForQty\(product, qty\)\)/,
     );
   });
 });

@@ -3,7 +3,7 @@
  * params so listings are shareable and crawlable. Pure functions run server-side
  * on the (small) CMS product set; facets are derived from that same set.
  */
-import { inclGST, type Product } from "@/frontend/lib/catalog";
+import { inclGSTForProduct, type Product } from "@/frontend/lib/catalog";
 
 export const PAGE_SIZE = 12;
 
@@ -26,7 +26,7 @@ const numOrUndef = (s?: string): number | undefined => {
 };
 
 /** Headline GST-inclusive price used for price filtering + sorting (0 = quote-only). */
-const headline = (p: Product): number => (p.price > 0 ? inclGST(p.price) : 0);
+const headline = (p: Product): number => (p.price > 0 ? inclGSTForProduct(p, p.price) : 0);
 
 export function parseShopQuery(sp: SearchParams): ShopQuery {
   const brandsRaw = one(sp.brand);

@@ -11,7 +11,7 @@ import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd, productFaqs, faqJsonLd } from "@/frontend/components/seo/json-ld";
 import { productMetaDescription } from "@/frontend/lib/seo";
-import { inclGST, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
+import { inclGSTForProduct, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
 import {
@@ -193,7 +193,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         data={productJsonLd({
           product,
           categoryName: category?.name,
-          priceInclGst: product.price ? inclGST(product.price) : undefined,
+          priceInclGst: product.price ? inclGSTForProduct(product, product.price) : undefined,
           offerable: !isQuoteOnly(product),
           related: related.map((p) => ({ slug: p.slug, name: p.name })),
         })}

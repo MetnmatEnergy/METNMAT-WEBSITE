@@ -13,7 +13,7 @@
  * never the source of a payable amount — `create-order` recomputes every line
  * from the CMS regardless of what arrives with the request.
  */
-import { formatINR, inclGST, isQuoteOnly, pricingMode, unitPriceForQty, usdFor, type Product } from "./catalog";
+import { formatINR, inclGSTForProduct, isQuoteOnly, pricingMode, unitPriceForQty, usdFor, type Product } from "./catalog";
 
 export type Region = "IN" | "INTL";
 export type Currency = "INR" | "USD";
@@ -142,7 +142,7 @@ export function resolveProductPricing(
   if (isQuoteOnly(product)) return null;
 
   const unitInr = unitPriceForQty(product, qty);
-  const baseAmount = inclGST(unitInr) * qty;
+  const baseAmount = inclGSTForProduct(product, unitInr) * qty;
   const mode = pricingMode(product);
   const currency = currencyForRegion(region);
 

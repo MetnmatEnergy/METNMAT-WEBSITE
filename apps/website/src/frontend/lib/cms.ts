@@ -229,6 +229,7 @@ type CmsProduct = {
   hsnSac?: string;
   countryOfOrigin?: string;
   productType?: string;
+  gstRate?: number;
   documents?: (CmsDocument | string)[];
   seoTitle?: string;
   metaDescription?: string;
@@ -328,6 +329,9 @@ export function mapProduct(d: CmsProduct): Product {
     hsnSac: d.hsnSac?.trim() || undefined,
     countryOfOrigin: d.countryOfOrigin?.trim() || undefined,
     productType: d.productType?.trim() || undefined,
+    // Absent stays absent: gstRateFor falls back to the site rate, so an older
+    // cached payload without the field bills exactly as it did before.
+    gstRate: typeof d.gstRate === "number" ? d.gstRate : undefined,
     // Optional SEO overrides from the CMS. Empty strings collapse to undefined
     // so the page's existing fallbacks (name / shortDesc / first image) apply
     // unchanged when staff leave a field blank.

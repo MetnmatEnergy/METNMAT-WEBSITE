@@ -21,6 +21,18 @@ export type OrderItemInput = {
   /** HSN/SAC code snapshotted at purchase — rendered on the GST invoice. */
   hsnSac?: string;
   countryOfOrigin?: string;
+  /**
+   * The GST percent this line was CHARGED at, frozen at purchase.
+   *
+   * Per line rather than per order because a cart may mix rates — a 5%
+   * consumable beside an 18% instrument — and the invoice has to show which
+   * applied to what. Snapshotted for the same reason `unitPrice` is: the rate
+   * on the product may be edited later, and the invoice must keep asserting
+   * what was actually billed.
+   */
+  taxRatePercent?: number;
+  /** The GST contained in `lineTotal` at that rate, in ₹. */
+  taxAmount?: number;
 };
 
 export type OrderInput = {
