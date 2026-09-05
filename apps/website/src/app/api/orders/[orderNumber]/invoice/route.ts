@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentCustomer, getCustomerOrder, type FullOrder } from "@/backend/lib/customer";
 import { site } from "@/frontend/lib/site";
-import { splitIndianGst } from "@/frontend/lib/tax";
+import { invoiceTaxRows, taxGroupsForInvoice } from "@/frontend/lib/tax";
 
 /**
  * GET /api/orders/[orderNumber]/invoice
@@ -68,24 +68,41 @@ function invoiceHtml(order: FullOrder): string {
   // Orders placed before the treatment was recorded were all taxed at 18% as
   // taxable supplies, so that is what the fallback asserts — it is the historical
   // fact, not a default.
+  // The 18% fallback for an order that recorded no rate now lives inside
+  // taxGroupsForInvoice, so there is one place that decides it rather than two
+  // that could drift.
   const treatment = order.taxTreatment === "ZERO_RATED_EXPORT" ? "ZERO_RATED_EXPORT" : "TAXABLE";
-  const ratePercent =
-    typeof order.taxRatePercent === "number" && order.taxRatePercent >= 0 ? order.taxRatePercent : 18;
   const isIndia = /^india$/i.test((order.country || "India").trim());
   const buyerState = (order.billingState || order.state || "").trim().toLowerCase();
   const intraState = isIndia && !!buyerState && buyerState === SELLER_STATE;
-  const { cgst, sgst } = splitIndianGst(gst, intraState);
-  const halfRate = Math.round((ratePercent / 2) * 100) / 100;
+  /*
+   * RATE-WISE, because an order can now mix rates.
+   *
+   * One row per rate present. A single-rate order yields exactly one group and
+   * reads as it always did; an order placed before per-line tax existed falls
+   * back to the order-level figures, so a document already sent to a customer
+   * keeps matching the one they hold. See taxGroupsForInvoice.
+   *
+   * Each group splits on its own. Halving the ORDER total once and labelling it
+   * with a single rate is precisely what could not state a mixed supply — a 5%
+   * consumable beside an 18% instrument printed one rate against a total
+   * computed from two.
+   */
+  const groups = taxGroupsForInvoice({
+    total,
+    gstAmount: gst,
+    taxRatePercent: order.taxRatePercent,
+    items: order.items ?? [],
+  });
 
-  const taxRows =
-    treatment === "ZERO_RATED_EXPORT"
-      ? `<tr><td class="muted">Zero-rated export (LUT)</td><td style="text-align:right">${inr(0)}</td></tr>`
-      : !isIndia
-        ? `<tr><td class="muted">GST (${ratePercent}%)</td><td style="text-align:right">${inr(gst)}</td></tr>`
-        : intraState
-          ? `<tr><td class="muted">CGST (${halfRate}%)</td><td style="text-align:right">${inr(cgst)}</td></tr>
-             <tr><td class="muted">SGST (${halfRate}%)</td><td style="text-align:right">${inr(sgst)}</td></tr>`
-          : `<tr><td class="muted">IGST (${ratePercent}%)</td><td style="text-align:right">${inr(gst)}</td></tr>`;
+  // What the invoice SAYS is decided in lib/tax (and tested there); this file
+  // only turns it into markup.
+  const taxRows = invoiceTaxRows(groups, { treatment, isIndia, intraState })
+    .map(
+      ({ label, amount }) =>
+        `<tr><td class="muted">${esc(label)}</td><td style="text-align:right">${inr(amount)}</td></tr>`,
+    )
+    .join("");
 
   const anyHsn = (order.items ?? []).some((it) => it.hsnSac);
   const rows = (order.items ?? [])

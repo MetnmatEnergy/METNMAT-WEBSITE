@@ -153,3 +153,105 @@ export function splitIndianGst(
   const cgst = Math.round((amount / 2) * 100) / 100;
   return { cgst, sgst: Math.round((amount - cgst) * 100) / 100, igst: 0 };
 }
+
+// ── Rate-wise tax summary for the invoice ────────────────────────────────────
+
+/** One rate present on an invoice, with the value taxed at it. */
+export type InvoiceTaxGroup = { ratePercent: number; taxable: number; tax: number };
+
+export type InvoiceTaxInput = {
+  total?: number;
+  gstAmount?: number;
+  taxRatePercent?: number;
+  items: ReadonlyArray<{ lineTotal?: number; taxRatePercent?: number; taxAmount?: number }>;
+};
+
+/**
+ * The rate-wise tax summary a GST invoice has to state.
+ *
+ * WHY GROUPED. The invoice printed ONE tax row at the order's single rate,
+ * which was true while GST was site-wide at 18%. Products now carry their own
+ * rates, so a cart can mix a 5% consumable with an 18% instrument — and one
+ * rate beside a total computed from two is a false statement on a statutory
+ * document. A GST invoice states, per rate: the taxable value and the tax on
+ * it. A single-rate order therefore produces exactly one group and reads
+ * exactly as it always did.
+ *
+ * THE FALLBACK IS THE POINT, not defensive padding. An invoice is a statement
+ * about a PAST transaction, and every order placed before per-line tax existed
+ * carries no per-line data. Those fall back to the order-level rate and amount,
+ * so a document already sent to a customer keeps rendering the figures they
+ * hold. An order only part-way migrated — some lines snapshotted, some not —
+ * also falls back, because half a tax summary is worse than the order-level one
+ * it replaced.
+ *
+ * Taxable value is derived by subtraction (`lineTotal - taxAmount`) rather than
+ * recomputed from the rate: the line total is what was actually charged, and
+ * re-deriving it could drift by a rupee from the amount the customer paid.
+ */
+export function taxGroupsForInvoice(order: InvoiceTaxInput): InvoiceTaxGroup[] {
+  const items = order.items ?? [];
+  const orderRate =
+    typeof order.taxRatePercent === "number" && order.taxRatePercent >= 0 ? order.taxRatePercent : 18;
+
+  const orderLevel = (): InvoiceTaxGroup[] => {
+    const tax = order.gstAmount ?? 0;
+    const total = order.total ?? items.reduce((n, it) => n + (it.lineTotal ?? 0), 0);
+    return [{ ratePercent: orderRate, taxable: Math.max(0, total - tax), tax }];
+  };
+
+  if (!items.length) return orderLevel();
+
+  // EVERY line must carry the snapshot, or the per-line view is incomplete.
+  const complete = items.every(
+    (it) => typeof it.taxRatePercent === "number" && typeof it.taxAmount === "number",
+  );
+  if (!complete) return orderLevel();
+
+  const byRate = new Map<number, InvoiceTaxGroup>();
+  for (const it of items) {
+    const rate = it.taxRatePercent as number;
+    const tax = it.taxAmount as number;
+    const line = it.lineTotal ?? 0;
+    const g = byRate.get(rate) ?? { ratePercent: rate, taxable: 0, tax: 0 };
+    g.taxable += line - tax;
+    g.tax += tax;
+    byRate.set(rate, g);
+  }
+
+  return [...byRate.values()].sort((a, b) => a.ratePercent - b.ratePercent);
+}
+
+/**
+ * The tax rows of an invoice, one entry per rate present.
+ *
+ * Extracted from the invoice route so it can be TESTED rather than
+ * source-asserted. Mutations that split the order total once instead of per
+ * rate, or that render only the first group, are invisible to a test that only
+ * exercises the grouping — and both would misstate a statutory document.
+ *
+ * Returns label/amount pairs rather than HTML: the caller owns the markup, and
+ * a test should assert what the invoice SAYS, not how it is styled.
+ */
+export function invoiceTaxRows(
+  groups: readonly InvoiceTaxGroup[],
+  opts: { treatment: "TAXABLE" | "ZERO_RATED_EXPORT"; isIndia: boolean; intraState: boolean },
+): Array<{ label: string; amount: number }> {
+  if (opts.treatment === "ZERO_RATED_EXPORT") {
+    return [{ label: "Zero-rated export (LUT)", amount: 0 }];
+  }
+
+  return groups.flatMap((g) => {
+    if (!opts.isIndia) return [{ label: `GST (${g.ratePercent}%)`, amount: g.tax }];
+    if (!opts.intraState) return [{ label: `IGST (${g.ratePercent}%)`, amount: g.tax }];
+
+    // Each rate splits on its own. Halving the ORDER total once and labelling
+    // it with a single rate is exactly what could not state a mixed supply.
+    const half = Math.round((g.ratePercent / 2) * 100) / 100;
+    const { cgst, sgst } = splitIndianGst(g.tax, true);
+    return [
+      { label: `CGST (${half}%)`, amount: cgst },
+      { label: `SGST (${half}%)`, amount: sgst },
+    ];
+  });
+}
