@@ -35,10 +35,16 @@ ok "caddy $(caddy version | cut -d' ' -f1)"
 
 if ! command -v bun >/dev/null 2>&1; then
   tmp=$(mktemp -d)
-  curl -fsSL -o "$tmp/bun.zip" https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64.zip
-  curl -fsSL -o "$tmp/SHASUMS256.txt" https://github.com/oven-sh/bun/releases/latest/download/SHASUMS256.txt
-  (cd "$tmp" && grep ' bun-linux-x64.zip$' SHASUMS256.txt | sha256sum -c --quiet) || { echo "bun checksum mismatch"; exit 1; }
-  unzip -q -o "$tmp/bun.zip" -d "$tmp" && install -m 0755 "$tmp/bun-linux-x64/bun" /usr/local/bin/bun && rm -rf "$tmp"
+  # -O keeps the remote filename (bun-linux-x64.zip) so the name matches the
+  # entry inside SHASUMS256.txt that `sha256sum -c` reads.
+  ( cd "$tmp"
+    curl -fsSL -O https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64.zip
+    curl -fsSL -O https://github.com/oven-sh/bun/releases/latest/download/SHASUMS256.txt
+    grep 'bun-linux-x64.zip' SHASUMS256.txt | sha256sum -c -
+    unzip -q -o bun-linux-x64.zip
+    install -m 0755 bun-linux-x64/bun /usr/local/bin/bun
+  ) || { echo "bun install/verify failed"; rm -rf "$tmp"; exit 1; }
+  rm -rf "$tmp"
 fi
 ok "bun $(bun --version)"
 
@@ -78,7 +84,10 @@ for a in web cms chat cc; do systemctl enable "metnmat-$a.service" >/dev/null 2>
 ok "metnmat-{web,cms,chat,cc}.service installed and enabled (start on first release)"
 
 sec "Caddy"
-install -d -o caddy -g caddy -m 0750 /var/log/caddy
+# 0755 (not 0750): the copr caddy.service failed to open its log files under a
+# 0750 dir; the individual .log files are still 0600, so nothing sensitive leaks.
+install -d -o caddy -g caddy -m 0755 /var/log/caddy
+chown -R caddy:caddy /var/log/caddy 2>/dev/null || true
 install -m 0644 "$SRC/caddy/Caddyfile" /etc/caddy/Caddyfile
 rm -rf /etc/caddy/conf.d
 caddy validate --config /etc/caddy/Caddyfile >/dev/null
