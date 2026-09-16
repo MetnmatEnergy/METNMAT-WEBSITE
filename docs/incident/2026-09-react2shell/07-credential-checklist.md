@@ -9,20 +9,21 @@ Updated: 2026-09-16 07:40 UTC. I update this file each time a credential lands.
 **New host:** `i-0b446863ec28109b0`, EIP `52.66.54.7` (t3.large, AL2023, encrypted, IMDSv2, no SSH).
 **Website:** LIVE PUBLICLY — Cloudflare A records for `metnmat.com` and `www` now → `52.66.54.7` (DNS only); Let's Encrypt certs for both; verified from outside: apex 308→www, www 200, /shop 200, 404 correct. `admin`/`chat`/`command-center` records still → old IP until those apps are released.
 **CMS:** LIVE PUBLICLY — `admin` A record → `52.66.54.7`, Let's Encrypt cert, `https://admin.metnmat.com/admin/login` 200 from outside; website product grids populated again (verified publicly).
-**Chatbot / Command Center:** artifacts STAGED in S3 (sha256-verified on release); each releases the moment its boot credentials exist.
+**Command Center:** LIVE PUBLICLY — `command-center` A record → `52.66.54.7`, cert issued, `/login` 200 verified from an independent host (Mongo pool connected).
+**Chatbot:** artifact STAGED in S3 (sha256-verified on release); each releases the moment its boot credentials exist.
 
 | App | Release command (root over SSM on the new host) |
 |---|---|
 | CMS | **LIVE** `metnmat-release cms f70abf31403b37494b8ee9351a6c13ce7bd3b1b7` (webpack build; the Turbopack artifact 6075200 500s in the pnpm-deploy bundle — do not release it) |
 | Chatbot | `metnmat-release chat 625eede942c035c9df2833d51f01f6e98ea13c96` |
-| Command Center | `metnmat-release cc 7ece63d792d2146b3947086b3d721de4a7ea7c0a` |
+| Command Center | **LIVE** `metnmat-release cc 7ece63d792d2146b3947086b3d721de4a7ea7c0a` |
 | Website (live) | `metnmat-release web 60752009cf6a69f0d7aac28a5106b98f9c822b77` |
 
 | Service | Credential (secret → key) | Status | Needed by | Blocks |
 |---|---|---|---|---|
 | MongoDB Atlas | `metnmat/cms/env → MONGODB_URI` (db `metnmat_cms`) | **Verified** — `cms-prod-2026`, CMS live, 133 products readable | CMS | — |
-| MongoDB Atlas | `metnmat/chat/env → MONGODB_URI` (db `metnmat`) | **Pending** | Chatbot | chatbot boot |
-| MongoDB Atlas | `metnmat/cc/env → DATABASE_URL` (db **`metnmat`** — shared with the chatbot; code default in `lib/mongo/resolve-mongo-uri.js`) | **Pending** | Command Center | CC boot |
+| MongoDB Atlas | `metnmat/chat/env → MONGODB_URI` (db `metnmat`) | **User created** `chat-prod-2026`; URI pending | Chatbot | chatbot boot |
+| MongoDB Atlas | `metnmat/cc/env → DATABASE_URL` (db **`metnmat`**) | **Verified** — `cc-prod-2026`, CC live | Command Center | — |
 | OpenAI | `metnmat/chat/env → OPENAI_API_KEY` | **Pending** | Chatbot | chatbot boot |
 | Pinecone | `metnmat/chat/env → PINECONE_API_KEY / _INDEX_NAME / _NAMESPACE` | **Pending** | Chatbot | chatbot boot |
 | Supabase | `metnmat/cc/env → SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SUPABASE_URL` | **Pending** | Command Center | media features |
@@ -59,10 +60,17 @@ Updated: 2026-09-16 07:40 UTC. I update this file each time a credential lands.
 | Website | `INTERNAL_API_KEY` | **satisfied → DEPLOYED, health 200** |
 | CMS | `MONGODB_URI`, `PAYLOAD_SECRET`, `PAYLOAD_PIN_PEPPER`, `S3_*` | **satisfied → DEPLOYED, health 200, 133 products** (director PIN login needs `DIRECTOR_PIN`/`DIRECTOR_EMAIL`) |
 | Chatbot | `MONGODB_URI`, `OPENAI_API_KEY`, `PINECONE_API_KEY`, `AGENT_API_KEY`, `JWT_SECRET` | waiting on **Atlas, OpenAI, Pinecone** |
-| Command Center | `DATABASE_URL`, `NEXTAUTH_SECRET` | waiting on **MongoDB Atlas** only |
+| Command Center | `DATABASE_URL`, `NEXTAUTH_SECRET` | **satisfied → DEPLOYED, /login 200 public** |
 
-## Next 3 credentials to provide (in this order)
+## Next credentials to provide
 
-1. **MongoDB Atlas** — three users/URIs → unblocks CMS + Command Center boot, and one third of the chatbot.
-2. **OpenAI API key** → chatbot.
-3. **Pinecone API key** (+ index/namespace) → chatbot.
+All three sites (website, CMS, Command Center) are LIVE. Remaining, in order:
+1. **`metnmat/chat/env`** — `MONGODB_URI` (user `chat-prod-2026`, db `metnmat`), `OPENAI_API_KEY`, `PINECONE_API_KEY`/`_INDEX_NAME`/`_NAMESPACE` → then release chatbot + move `chat` DNS. Last app.
+2. **Supabase** → Command Center media.
+3. **Gmail / Zoho / WhatsApp / Amazon** → Command Center integrations.
+4. **Resend + Razorpay + Upstash + Google OAuth** → website email/checkout.
+5. **`metnmat/cms/env → DIRECTOR_PIN` + `DIRECTOR_EMAIL`** → CMS director login (staff re-enrol PINs once).
+
+## Atlas housekeeping (after recovery)
+- Free tier M0 at **84% of 512 MB**; writes stop at the cap. Drop `sample_mflix` (101 MB demo data, safe) and confirm whether `metnmat_ris` (113 MB) is still used.
+- M0 has **no backups** — consider Flex (~$8-30/mo) or M10 (~$58/mo, point-in-time restore). Same hostname, no secret changes.
