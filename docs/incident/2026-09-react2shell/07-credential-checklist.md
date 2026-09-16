@@ -8,7 +8,7 @@ Updated: 2026-09-16 07:40 UTC. I update this file each time a credential lands.
 
 **New host:** `i-0b446863ec28109b0`, EIP `52.66.54.7` (t3.large, AL2023, encrypted, IMDSv2, no SSH).
 **Website:** LIVE PUBLICLY — Cloudflare A records for `metnmat.com` and `www` now → `52.66.54.7` (DNS only); Let's Encrypt certs for both; verified from outside: apex 308→www, www 200, /shop 200, 404 correct. `admin`/`chat`/`command-center` records still → old IP until those apps are released.
-**CMS:** LIVE on the new host (admin login 200, API 200, S3 storage OK) — `admin` DNS pending.
+**CMS:** LIVE PUBLICLY — `admin` A record → `52.66.54.7`, Let's Encrypt cert, `https://admin.metnmat.com/admin/login` 200 from outside; website product grids populated again (verified publicly).
 **Chatbot / Command Center:** artifacts STAGED in S3 (sha256-verified on release); each releases the moment its boot credentials exist.
 
 | App | Release command (root over SSM on the new host) |
