@@ -969,6 +969,8 @@ export async function Insights({ payload, range }: Ctx) {
   // day, drop it (and the aligned last comparison day) so a partial "today"
   // never manufactures a false "decline" — the single biggest source of bogus
   // insights. Point-in-time (non-comparison) rules still use the full range.
+  // Server component: reading the wall clock while rendering is the intent.
+  // eslint-disable-next-line react-hooks/purity
   const todayIST = istDayOf(Date.now());
   const partial = range.days.length > 0 && range.days[range.days.length - 1] === todayIST;
   const curDays = partial && range.days.length > 1 ? range.days.slice(0, -1) : range.days;
@@ -1118,6 +1120,8 @@ export async function Insights({ payload, range }: Ctx) {
 // ── Benchmarks (internal historical) ─────────────────────────────────────────
 
 export async function Benchmarks({ payload }: Ctx) {
+  // Server component: reading the wall clock while rendering is the intent.
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const DAY = 86_400_000;
   const firstDay = await firstEventDay(payload);

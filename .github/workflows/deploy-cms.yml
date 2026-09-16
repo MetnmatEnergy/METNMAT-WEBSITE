@@ -1,0 +1,132 @@
+name: Deploy CMS (v2 host)
+
+# Manual only (a CMS deploy re-runs the seed and is a staff-facing change).
+# Build → verify → `pnpm deploy --legacy` bundle → upload + sha256 → release over
+# SSM as root on the v2 host. OIDC only; see deploy-web.yml for why.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to deploy (blank = HEAD)"
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-cms
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+  APP: cms
+  ARTIFACT_NAME: cms-build.tgz
+  ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'metnmat-deploy-artifacts-976134557584' }}
+  PROD_INSTANCE_ID: ${{ vars.PROD_INSTANCE_ID }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Guard configuration
+        run: |
+          [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ] || { echo "::error::AWS_DEPLOY_ROLE_ARN secret not set (OIDC only)"; exit 1; }
+          [ -n "${{ env.PROD_INSTANCE_ID }}" ]         || { echo "::error::PROD_INSTANCE_ID repository variable not set"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+      - name: Resolve deploy SHA
+        id: resolve
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Refuse known-vulnerable framework versions
+        run: |
+          v="$(node -p "require('./apps/dashboard/node_modules/next/package.json').version")"
+          echo "next $v"
+          node -e "const [a,b]='$v'.split('.').map(Number); if(a<16) process.exit(1)" || { echo "::error::CMS must run Next ≥ 16 (Payload 3.89 peer range; React2Shell floor)"; exit 1; }
+      - name: importMap must carry both storage adapters
+        run: |
+          n=$(grep -c ClientUploadHandler "apps/dashboard/src/app/(payload)/admin/importMap.js")
+          [ "$n" -eq 4 ] || { echo "::error::importMap.js has $n ClientUploadHandler entries, expected 4 — a running next dev stripped it (CLAUDE.md gotcha 2)"; exit 1; }
+      - run: pnpm --filter dashboard typecheck
+      - run: pnpm --filter dashboard lint
+      - run: pnpm test
+      - name: Build
+        env:
+          STORAGE_PROVIDER: s3
+          S3_BUCKET: metnmat-media-prod
+          S3_REGION: ap-south-1
+          CMS_URL: https://admin.metnmat.com
+          NODE_ENV: production
+        run: pnpm --filter dashboard build
+      - name: Assemble release (pnpm deploy --legacy)
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/cms-release"; rm -rf "$OUT"
+          pnpm deploy --filter dashboard --prod --legacy "$OUT"
+          mkdir -p "$OUT/.next"
+          for d in server static types; do [ -d "apps/dashboard/.next/$d" ] && cp -r "apps/dashboard/.next/$d" "$OUT/.next/$d"; done
+          find apps/dashboard/.next -maxdepth 1 -type f -exec cp {} "$OUT/.next/" \;
+          [ -d apps/dashboard/public ] && cp -r apps/dashboard/public "$OUT/public"
+          [ -f "$OUT/.next/BUILD_ID" ]          || { echo "::error::BUILD_ID missing"; exit 1; }
+          [ -e "$OUT/node_modules/next/dist/bin/next" ] || { echo "::error::next CLI missing"; exit 1; }
+          [ -d "$OUT/node_modules/payload" ]    || { echo "::error::payload missing"; exit 1; }
+          [ -d "$OUT/node_modules/sharp" ]      || { echo "::error::sharp missing"; exit 1; }
+          tar -czf "$ARTIFACT_NAME" -C "$OUT" .
+          sha256sum "$ARTIFACT_NAME" > "$ARTIFACT_NAME.sha256"
+          echo "artifact: $(du -h "$ARTIFACT_NAME" | cut -f1)"
+      - name: Assume deploy role (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-cms-build-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Upload artifact + checksum
+        run: |
+          set -euo pipefail
+          DEST="s3://${ARTIFACT_BUCKET}/${APP}/${{ steps.resolve.outputs.sha }}"
+          aws s3 cp "$ARTIFACT_NAME"        "$DEST/$ARTIFACT_NAME"        --only-show-errors
+          aws s3 cp "$ARTIFACT_NAME.sha256" "$DEST/$ARTIFACT_NAME.sha256" --only-show-errors
+          echo "uploaded to $DEST"
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assume deploy role (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-cms-release-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Release over SSM (root, metnmat-release)
+        env:
+          SHA: ${{ needs.build.outputs.sha }}
+        run: |
+          set -euo pipefail
+          I="$PROD_INSTANCE_ID"
+          CMD=$(aws ssm send-command --instance-ids "$I" --document-name AWS-RunShellScript \
+            --comment "release ${APP} ${SHA}" --timeout-seconds 1200 \
+            --parameters commands="[\"export ARTIFACT_BUCKET='${ARTIFACT_BUCKET}' HEALTH_TIMEOUT=240\",\"/usr/local/sbin/metnmat-release ${APP} ${SHA}\"]" \
+            --query 'Command.CommandId' --output text)
+          echo "SSM command $CMD"
+          STATUS=Pending
+          for i in $(seq 1 120); do
+            STATUS="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" --query Status --output text 2>/dev/null || echo Pending)"
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break;; esac
+            sleep 10
+          done
+          aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" --query StandardOutputContent --output text || true
+          echo "--- stderr ---"; aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" --query StandardErrorContent --output text || true
+          { echo "### CMS release — \`$STATUS\`"; echo; echo "commit \`$SHA\` → instance \`$I\`"; } >> "$GITHUB_STEP_SUMMARY"
+          [ "$STATUS" = "Success" ] || { echo "::error::release failed ($STATUS); metnmat-release rolled back — see output"; exit 1; }

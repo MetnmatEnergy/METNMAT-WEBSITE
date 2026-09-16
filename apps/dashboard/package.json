@@ -7,7 +7,7 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
@@ -17,18 +17,18 @@
     "catalogue:import": "tsx scripts/import-catalogue.ts"
   },
   "dependencies": {
-    "@payloadcms/db-mongodb": "3.85.1",
-    "@payloadcms/next": "3.85.1",
-    "@payloadcms/richtext-lexical": "3.85.1",
-    "@payloadcms/storage-gcs": "3.85.1",
-    "@payloadcms/storage-s3": "3.85.1",
-    "@payloadcms/ui": "3.85.1",
+    "@payloadcms/db-mongodb": "3.89.0",
+    "@payloadcms/next": "3.89.0",
+    "@payloadcms/richtext-lexical": "3.89.0",
+    "@payloadcms/storage-gcs": "3.89.0",
+    "@payloadcms/storage-s3": "3.89.0",
+    "@payloadcms/ui": "3.89.0",
     "cross-env": "^7.0.3",
     "graphql": "^16.9.0",
-    "next": "15.1.6",
-    "payload": "3.85.1",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
+    "next": "16.3.5",
+    "payload": "3.89.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "sharp": "0.33.5"
   },
   "devDependencies": {
@@ -36,7 +36,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9.39.4",
-    "eslint-config-next": "15.1.6",
+    "eslint-config-next": "16.3.5",
     "tsx": "4.22.4",
     "typescript": "^5"
   }

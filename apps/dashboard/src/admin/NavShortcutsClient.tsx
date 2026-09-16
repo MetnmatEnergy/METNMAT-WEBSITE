@@ -79,11 +79,17 @@ export function NavShortcutsClient({ siteUrl }: { siteUrl: string }) {
 
   const [open, setOpen] = React.useState(false);
   React.useEffect(() => {
+    // Hydrate the persisted "expanded" preference once, after mount. Reading
+    // localStorage during render would desynchronise server and client HTML,
+    // so this one post-mount setState is deliberate.
+    let initial = inAnalytics;
     try {
-      setOpen(inAnalytics || localStorage.getItem(K_EXPANDED) === "1");
+      initial = inAnalytics || localStorage.getItem(K_EXPANDED) === "1";
     } catch {
-      setOpen(inAnalytics);
+      /* storage unavailable — fall back to the route */
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOpen(initial);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const toggle = () => {

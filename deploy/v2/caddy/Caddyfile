@@ -1,0 +1,74 @@
+# /etc/caddy/Caddyfile — the whole reverse-proxy config for the v2 host.
+# Every public hostname terminates here and is proxied to a loopback port owned
+# by a separate systemd unit and Linux user. Nothing else listens publicly.
+
+{
+	email dev@metnmat.com
+	# The admin API on :2019 is not needed in production; one less local socket.
+	admin off
+	servers {
+		# Trust nothing about client headers except what we set below.
+		trusted_proxies static private_ranges
+	}
+}
+
+(proxy_headers) {
+	header_up X-Forwarded-Proto {scheme}
+	header_up X-Forwarded-Host {host}
+	header_up Host {host}
+}
+
+(site_log) {
+	log {
+		output file /var/log/caddy/{args[0]}.log {
+			roll_size 20mb
+			roll_keep 10
+			roll_keep_for 720h
+		}
+	}
+}
+
+# ── Public website ─────────────────────────────────────────────────────────
+# The apex→www 308 lives in the Next.js middleware (cookie-domain reasons); Caddy
+# passes both names through untouched.
+metnmat.com, www.metnmat.com {
+	reverse_proxy 127.0.0.1:3100 {
+		import proxy_headers
+	}
+	encode zstd gzip
+	import site_log website
+}
+
+# ── Payload CMS ────────────────────────────────────────────────────────────
+admin.metnmat.com {
+	reverse_proxy 127.0.0.1:3200 {
+		import proxy_headers
+	}
+	# Datasheets and RFQ attachments stream through the CMS (private S3 bucket).
+	request_body {
+		max_size 50MB
+	}
+	encode zstd gzip
+	import site_log cms
+}
+
+# ── Chatbot ────────────────────────────────────────────────────────────────
+chat.metnmat.com {
+	reverse_proxy 127.0.0.1:3002 {
+		import proxy_headers
+	}
+	encode zstd gzip
+	import site_log chat
+}
+
+# ── MTrace Command Center (internal staff tool) ────────────────────────────
+command-center.metnmat.com {
+	reverse_proxy 127.0.0.1:3000 {
+		import proxy_headers
+	}
+	request_body {
+		max_size 100MB
+	}
+	encode zstd gzip
+	import site_log command-center
+}

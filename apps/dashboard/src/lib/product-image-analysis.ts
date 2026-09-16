@@ -726,8 +726,8 @@ export async function analyzeSubject(input: Buffer): Promise<SubjectAnalysis> {
     };
     // Alternate axes: each settled span sharpens the other's profile by keeping
     // scenery out of the average. Converges in two or three rounds.
-    let rows = new Array<number>(h);
-    let cols = new Array<number>(w);
+    const rows = new Array<number>(h);
+    const cols = new Array<number>(w);
     for (let pass = 0; pass < 3; pass++) {
       for (let y = 0; y < h; y++) rows[y] = lineMaterial("row", y, box.x0, box.x1);
       [box.y0, box.y1] = settle(rows, h);
