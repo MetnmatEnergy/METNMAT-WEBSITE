@@ -14,6 +14,9 @@ rebuild onto an isolated-per-app host, not a clean-up of the old one.
 | `03-containment-plan.md` | The destructive/isolating steps, each with impact — **needs approval**. |
 | `04-secret-architecture.md` | The new per-app isolation design and how it is validated. |
 | `05-recovery-runbook.md` | Phase-by-phase path from compromised host to clean production. |
+| `06-credential-rotation-guide.md` | One card per credential: where, what to click, where the value goes. |
+| `07-credential-checklist.md` | Live status of every credential and app. |
+| `08-security-cost-audit.md` | Post-recovery audit: inventory, sizing decision (t3.medium: runtime yes, builds no), cost, risks, blast radius. |
 | `IOCs.md` | Indicators of compromise and a sweep script for any other host. |
 
 The implementation lives in `deploy/v2/` (this repo). The app upgrades are on branch

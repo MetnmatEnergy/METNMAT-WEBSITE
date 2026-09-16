@@ -10,7 +10,7 @@ Updated: 2026-09-16 07:40 UTC. I update this file each time a credential lands.
 **Website:** LIVE PUBLICLY — Cloudflare A records for `metnmat.com` and `www` now → `52.66.54.7` (DNS only); Let's Encrypt certs for both; verified from outside: apex 308→www, www 200, /shop 200, 404 correct. `admin`/`chat`/`command-center` records still → old IP until those apps are released.
 **CMS:** LIVE PUBLICLY — `admin` A record → `52.66.54.7`, Let's Encrypt cert, `https://admin.metnmat.com/admin/login` 200 from outside; website product grids populated again (verified publicly).
 **Command Center:** LIVE PUBLICLY — `command-center` A record → `52.66.54.7`, cert issued, `/login` 200 verified from an independent host (Mongo pool connected).
-**Chatbot:** artifact STAGED in S3 (sha256-verified on release); each releases the moment its boot credentials exist.
+**Chatbot:** `chat` DNS moved, cert issued; artifact STAGED in S3 (sha256-verified on release); each releases the moment its boot credentials exist.
 
 | App | Release command (root over SSM on the new host) |
 |---|---|
@@ -22,7 +22,7 @@ Updated: 2026-09-16 07:40 UTC. I update this file each time a credential lands.
 | Service | Credential (secret → key) | Status | Needed by | Blocks |
 |---|---|---|---|---|
 | MongoDB Atlas | `metnmat/cms/env → MONGODB_URI` (db `metnmat_cms`) | **Verified** — `cms-prod-2026`, CMS live, 133 products readable | CMS | — |
-| MongoDB Atlas | `metnmat/chat/env → MONGODB_URI` (db `metnmat`) | **User created** `chat-prod-2026`; URI pending | Chatbot | chatbot boot |
+| MongoDB Atlas | `metnmat/chat/env → MONGODB_URI` (db `metnmat`) | **Provided** (`chat-prod-2026`) — verified on release | Chatbot | — |
 | MongoDB Atlas | `metnmat/cc/env → DATABASE_URL` (db **`metnmat`**) | **Verified** — `cc-prod-2026`, CC live | Command Center | — |
 | OpenAI | `metnmat/chat/env → OPENAI_API_KEY` | **Pending** | Chatbot | chatbot boot |
 | Pinecone | `metnmat/chat/env → PINECONE_API_KEY / _INDEX_NAME / _NAMESPACE` | **Pending** | Chatbot | chatbot boot |
