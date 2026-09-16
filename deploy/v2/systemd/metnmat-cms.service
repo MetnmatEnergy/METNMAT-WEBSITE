@@ -15,7 +15,7 @@ WorkingDirectory=/srv/metnmat/cms/current
 # S3 access key (IAM user metnmat-cms-media, media bucket only) because the
 # metadata service is blocked for this uid — the CMS cannot use the host role.
 ExecStartPre=+/usr/local/sbin/metnmat-fetch-secrets cms
-EnvironmentFile=/run/metnmat/cms.env
+EnvironmentFile=-/run/metnmat/cms.env
 ExecStart=/usr/bin/node node_modules/next/dist/bin/next start --port 3200 --hostname 127.0.0.1
 
 Restart=always

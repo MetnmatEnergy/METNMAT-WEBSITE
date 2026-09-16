@@ -14,7 +14,7 @@ WorkingDirectory=/srv/metnmat/web/current
 # Root fetches ONLY metnmat/web/env, writes /run/metnmat/web.env (root 0600);
 # PID 1 loads it below. The app itself never has AWS credentials.
 ExecStartPre=+/usr/local/sbin/metnmat-fetch-secrets web
-EnvironmentFile=/run/metnmat/web.env
+EnvironmentFile=-/run/metnmat/web.env
 ExecStart=/usr/bin/node apps/website/server.js
 
 Restart=always

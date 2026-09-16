@@ -15,7 +15,7 @@ WorkingDirectory=/srv/metnmat/cc/current
 # the plaintext .env on disk. Nothing of the Command Center's configuration
 # lives on the filesystem any more.
 ExecStartPre=+/usr/local/sbin/metnmat-fetch-secrets cc
-EnvironmentFile=/run/metnmat/cc.env
+EnvironmentFile=-/run/metnmat/cc.env
 ExecStart=/usr/bin/node node_modules/next/dist/bin/next start --port 3000 --hostname 127.0.0.1
 
 Restart=always

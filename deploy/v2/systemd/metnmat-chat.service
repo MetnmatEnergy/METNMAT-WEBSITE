@@ -12,7 +12,7 @@ Group=mm-chat
 WorkingDirectory=/srv/metnmat/chat/current
 
 ExecStartPre=+/usr/local/sbin/metnmat-fetch-secrets chat
-EnvironmentFile=/run/metnmat/chat.env
+EnvironmentFile=-/run/metnmat/chat.env
 ExecStart=/usr/local/bin/bun run index.ts
 
 Restart=always
