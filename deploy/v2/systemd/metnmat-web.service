@@ -26,8 +26,8 @@ StandardError=journal
 SyslogIdentifier=metnmat-web
 
 # Resource caps (t3.large, 8 GB): heap 768 MB, unit killed before it starves neighbours.
-MemoryHigh=1000M
-MemoryMax=1300M
+MemoryHigh=550M
+MemoryMax=768M
 TasksMax=512
 
 # Hardening — the process can read its code, write .next/cache, and nothing else.

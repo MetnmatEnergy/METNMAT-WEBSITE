@@ -28,8 +28,8 @@ SyslogIdentifier=metnmat-cms
 
 # sharp allocates outside the V8 heap, so the cgroup cap (not the heap flag) is
 # what bounds an upload spike. Heap 1536 MB, unit 2.6 GB.
-MemoryHigh=2200M
-MemoryMax=2600M
+MemoryHigh=900M
+MemoryMax=1200M
 TasksMax=1024
 
 NoNewPrivileges=yes

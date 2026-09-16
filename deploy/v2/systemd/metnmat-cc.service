@@ -27,8 +27,8 @@ StandardError=journal
 SyslogIdentifier=metnmat-cc
 
 # The old box OOM-killed this process at 2.1 GB RSS while a miner ran beside it.
-MemoryHigh=1800M
-MemoryMax=2200M
+MemoryHigh=800M
+MemoryMax=1024M
 TasksMax=1024
 
 NoNewPrivileges=yes

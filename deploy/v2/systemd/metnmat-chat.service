@@ -23,8 +23,8 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=metnmat-chat
 
-MemoryHigh=800M
-MemoryMax=1000M
+MemoryHigh=400M
+MemoryMax=512M
 TasksMax=512
 
 NoNewPrivileges=yes
