@@ -23,7 +23,9 @@ Live status table: `07-credential-checklist.md`.
   1. Database Access → **Add New Database User** → Password auth → name e.g. `cms-prod-2026`,
      autogenerate password → Built-in role **readWrite** restricted to database `metnmat_cms` →
      *Restrict Access to Specific Clusters* → Add User. Repeat for `chat-prod-2026` (db `metnmat`)
-     and `cc-prod-2026` (the Command Center's own database).
+     and `cc-prod-2026` — **also** on database `metnmat`: the Command Center shares the chatbot's
+     database (its code defaults to `/metnmat`). Two users on one database still means one
+     credential can be revoked without touching the other app.
   2. Network Access → **Add IP Address** → `52.66.54.7/32` (the new host) → Confirm.
      **Delete** the entry for `15.206.25.71`.
   3. Database Access → **Delete** the three old users.

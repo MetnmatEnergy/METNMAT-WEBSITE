@@ -19,9 +19,9 @@ Updated: 2026-09-16 07:40 UTC. I update this file each time a credential lands.
 
 | Service | Credential (secret → key) | Status | Needed by | Blocks |
 |---|---|---|---|---|
-| MongoDB Atlas | `metnmat/cms/env → MONGODB_URI` (db `metnmat_cms`) | **Pending** | CMS | CMS boot |
+| MongoDB Atlas | `metnmat/cms/env → MONGODB_URI` (db `metnmat_cms`) | **User created** `cms-prod-2026` (readWrite@metnmat_cms); URI pending in Secrets Manager | CMS | CMS boot |
 | MongoDB Atlas | `metnmat/chat/env → MONGODB_URI` (db `metnmat`) | **Pending** | Chatbot | chatbot boot |
-| MongoDB Atlas | `metnmat/cc/env → DATABASE_URL` | **Pending** | Command Center | CC boot |
+| MongoDB Atlas | `metnmat/cc/env → DATABASE_URL` (db **`metnmat`** — shared with the chatbot; code default in `lib/mongo/resolve-mongo-uri.js`) | **Pending** | Command Center | CC boot |
 | OpenAI | `metnmat/chat/env → OPENAI_API_KEY` | **Pending** | Chatbot | chatbot boot |
 | Pinecone | `metnmat/chat/env → PINECONE_API_KEY / _INDEX_NAME / _NAMESPACE` | **Pending** | Chatbot | chatbot boot |
 | Supabase | `metnmat/cc/env → SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SUPABASE_URL` | **Pending** | Command Center | media features |
