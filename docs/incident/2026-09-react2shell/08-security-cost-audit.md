@@ -144,3 +144,17 @@ Vulnerable Next/React **closed** (15.5.25 / 16.3.5 / React 19.2.8 + CI floor che
 role · SSH **closed** · weak isolation **closed** · public MongoDB **closed** (IP allow-list, old IP
 absent, old users gone) · CI static keys **closed** (OIDC) · exposed origin **open** (DNS-only) ·
 exposed third-party credentials **open until rotated**.
+
+## 9. UPDATE 2026-09-16 — t3.large → t3.medium DONE (owner-approved, telemetry wait waived)
+- Resized `i-0b446863ec28109b0` to **t3.medium**; EIP **52.66.54.7** retained; ~3 min outage.
+- Post-resize (all 4 apps' units present): RAM used 0.6-0.8 GB of 3.8 GB (~22%), swap 0, load 0.2,
+  CPU idle ~97%, **0 OOM, 0 failed units, 0 restart loops** on web/cms/cc. Public 200 on www/admin/
+  command-center from an independent host.
+- Unit memory caps re-tuned (repo + host): MemoryMax web 768 / cms 1200 / cc 1024 / chat 512 = 3.5 GB.
+- Hardening re-verified after reboot: IMDS blocked for app users (root 200), nft table loaded,
+  cross-app read denied, auditd active. sshd came back running after the stop/start (never reachable
+  — SG has no port 22) so it was **stopped and masked**.
+- Chatbot **stopped** (was crash-looping on missing OPENAI_API_KEY/PINECONE_API_KEY) — starts on
+  `metnmat-release chat` once those keys are in metnmat/chat/env.
+- Projected steady-state cost now ~$88/mo gross (t3.medium 32.70 + worker 16.35 + EBS 6.94 + 3 EIP
+  10.95 + Secrets 14 + monitoring ~7). After deleting old instance/EIP/secrets on day 7: ~$55/mo.
