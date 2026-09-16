@@ -19,7 +19,9 @@ rebuild onto an isolated-per-app host, not a clean-up of the old one.
 The implementation lives in `deploy/v2/` (this repo). The app upgrades are on branch
 `incident/react2shell-recovery` here and in `Metnmat_Dashboard` and `METNMAT-chatbot`.
 
-## Status (2026-09-16)
+## Status (2026-09-16, 07:40 UTC)
+
+**Containment executed.** Old instance stopped in quarantine SG. **New host live:** `i-0b446863ec28109b0` / `52.66.54.7`, bootstrapped and hardening-verified (IMDS blocked for app users, per-app isolation proven on the running process). **Website deployed and healthy on the new host.** CMS, chatbot, Command Center: artifacts staged, waiting on credentials (see `07`). DNS unchanged.
 
 Done: evidence preserved (snapshot `snap-0d28d630743a401d3`, forensic bucket); both apps upgraded
 past the vulnerable versions and validated (website Next 15.5.25, CMS Next 16.3.5 + Payload 3.89.0,

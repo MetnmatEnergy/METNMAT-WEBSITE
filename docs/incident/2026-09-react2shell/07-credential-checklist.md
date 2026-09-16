@@ -4,7 +4,11 @@ Status values: **Pending** (old value burned, new one not yet provided) · **Pro
 Manager, not yet verified) · **Verified** (unit restarted, safe check passed) · **Generated** (created
 fresh by the platform, nothing to do) · **n/a**.
 
-Updated: 2026-09-16 (initial). I update this file each time a credential lands.
+Updated: 2026-09-16 07:40 UTC. I update this file each time a credential lands.
+
+**New host:** `i-0b446863ec28109b0`, EIP `52.66.54.7` (t3.large, AL2023, encrypted, IMDSv2, no SSH).
+**Website:** LIVE on the new host (loopback health 200; DNS not yet moved).
+**CMS / Chatbot / Command Center:** artifacts being staged in S3; each releases the moment its boot credentials exist.
 
 | Service | Credential (secret → key) | Status | Needed by | Blocks |
 |---|---|---|---|---|
@@ -44,7 +48,7 @@ Updated: 2026-09-16 (initial). I update this file each time a credential lands.
 
 | App | Boot requirement | Status |
 |---|---|---|
-| Website | `INTERNAL_API_KEY` | **satisfied (generated)** → deployable now |
+| Website | `INTERNAL_API_KEY` | **satisfied → DEPLOYED, health 200** |
 | CMS | `MONGODB_URI`, `PAYLOAD_SECRET`, `PAYLOAD_PIN_PEPPER`, `S3_*` | waiting on **MongoDB Atlas** only |
 | Chatbot | `MONGODB_URI`, `OPENAI_API_KEY`, `PINECONE_API_KEY`, `AGENT_API_KEY`, `JWT_SECRET` | waiting on **Atlas, OpenAI, Pinecone** |
 | Command Center | `DATABASE_URL`, `NEXTAUTH_SECRET` | waiting on **MongoDB Atlas** only |
