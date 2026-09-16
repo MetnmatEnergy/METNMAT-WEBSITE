@@ -8,7 +8,14 @@ Updated: 2026-09-16 07:40 UTC. I update this file each time a credential lands.
 
 **New host:** `i-0b446863ec28109b0`, EIP `52.66.54.7` (t3.large, AL2023, encrypted, IMDSv2, no SSH).
 **Website:** LIVE on the new host (loopback health 200; DNS not yet moved).
-**CMS / Chatbot / Command Center:** artifacts being staged in S3; each releases the moment its boot credentials exist.
+**CMS / Chatbot / Command Center:** artifacts STAGED in S3 (sha256-verified on release); each releases the moment its boot credentials exist.
+
+| App | Release command (root over SSM on the new host) |
+|---|---|
+| CMS | `metnmat-release cms 60752009cf6a69f0d7aac28a5106b98f9c822b77` |
+| Chatbot | `metnmat-release chat 625eede942c035c9df2833d51f01f6e98ea13c96` |
+| Command Center | `metnmat-release cc 7ece63d792d2146b3947086b3d721de4a7ea7c0a` |
+| Website (live) | `metnmat-release web 60752009cf6a69f0d7aac28a5106b98f9c822b77` |
 
 | Service | Credential (secret → key) | Status | Needed by | Blocks |
 |---|---|---|---|---|
