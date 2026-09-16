@@ -158,3 +158,11 @@ exposed third-party credentials **open until rotated**.
   `metnmat-release chat` once those keys are in metnmat/chat/env.
 - Projected steady-state cost now ~$88/mo gross (t3.medium 32.70 + worker 16.35 + EBS 6.94 + 3 EIP
   10.95 + Secrets 14 + monitoring ~7). After deleting old instance/EIP/secrets on day 7: ~$55/mo.
+
+## 10. UPDATE 2026-09-16 12:50 UTC — Command Center config + media key
+- IAM user **`metnmat-cc-media`** added (bucket-only inline policy, one access key, stored only in `metnmat/cc/env`).
+  Account IAM users are now: `metnmat-cms-media`, `metnmat-cc-media` (both single-bucket), `metnmat-migration` (operator).
+- `metnmat/cc/env` filled with 61 non-secret config keys from the owner's dev `.env` + S3 storage settings;
+  no credential reused. Upload security mode set to `enforce`.
+- Laptop hygiene: `Metnmat_Dashboard/.env`, `.env.bak-*`, `.env.cloudrun` hold burned credentials in plain text — delete the
+  backups and the Cloud Run file; replace values in `.env` only after each provider rotation.

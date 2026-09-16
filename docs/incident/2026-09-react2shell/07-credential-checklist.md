@@ -79,3 +79,22 @@ All three sites (website, CMS, Command Center) are LIVE. Remaining, in order:
 - From the old website/CMS env (file mislabeled `old-cc.env.txt`): imported QUOTE_FROM_EMAIL, QUOTE_NOTIFY_EMAIL, UPSTASH_REDIS_REST_URL → `metnmat/web/env`; DIRECTOR_EMAIL, EMAIL_FROM → `metnmat/cms/env`. Units restarted; web/cms 200. Every credential in that file was SKIPPED (rotate at provider).
 - `env` / `env.bak.*` in Downloads are MetAI/RIS — a separate app not on this host — not imported.
 - The REAL Command Center env (Supabase/Zoho/Gmail/Amazon/WhatsApp) and the chatbot's OpenAI/Pinecone were not among the provided files — still pending.
+
+## Command Center config imported from the laptop `.env` (2026-09-16 12:49 UTC, non-secret only)
+- Source: `Metnmat_Dashboard/.env` (untracked, dev copy). Imported **61 config keys** (ids, URLs, toggles, model names,
+  template names, sender emails, UPI payee, Zoho org ids, WhatsApp ids, public OAuth client ids) → `metnmat/cc/env`.
+- Set for the v2 host as the code requires (`lib/storage/s3.ts`): `STORAGE_PROVIDER=s3`, `S3_MEDIA_BUCKET`,
+  `S3_MEDIA_REGION`, `AWS_EC2_METADATA_DISABLED=true`, `UPLOAD_SECURITY_MODE=enforce`.
+- **New IAM user `metnmat-cc-media`** (inline policy `deploy/v2/aws/cc-media-user-policy.json`: Get/Put/Delete/List on
+  `metnmat-media-976134557584` only). Its access key was generated and placed straight into the secret, never displayed.
+  Verified from the host: put+delete on its bucket OK; `metnmat-media-prod` → AccessDenied; Secrets Manager → AccessDenied.
+- Deliberately NOT imported: every credential (Supabase keys, Gmail/Zoho/Amazon secrets + refresh tokens, WhatsApp
+  token/app secret, Gemini/DeepSeek/Maps keys — all burned); `MEDIA_STORAGE=drive`, `STORAGE_PROVIDER=gcs`,
+  `CDN_BASE_URL` (Google storage — no Google credentials exist on this host by design); `GMAIL_REDIRECT_URI`
+  (laptop value is localhost; the code derives `https://command-center.metnmat.com/oauth2callback` from NEXTAUTH_URL).
+- Restarted `metnmat-cc`: fetcher wrote 74 vars, Mongo pool ready, 487 indexes present, 0 errors, `/login` 200 public.
+- ⚠ **Login OTP is sent through the operations Gmail mailbox** (`TWO_FACTOR_AUTH_ENABLED` defaults on). Until
+  `GMAIL_CLIENT_SECRET` + `GMAIL_REFRESH_TOKEN` are rotated, nobody can complete a Command Center login. Rotating Gmail
+  is therefore the first Command Center credential. (Setting `TWO_FACTOR_AUTH_ENABLED=false` would bypass this — not done;
+  owner's call.)
+- Remaining placeholders in `metnmat/cc/env` (26): AMAZON_SP_API_CLIENT_SECRET AMAZON_SP_API_REFRESH_TOKEN BACKUP_ALERT_EMAIL BACKUP_DRIVE_FOLDER_ID BACKUP_DRIVE_TEST_FOLDER_ID BACKUP_ENABLED BACKUP_MIN_DOC_RATIO BACKUP_OIDC_AUDIENCE BACKUP_OIDC_SERVICE_ACCOUNT DEEPSEEK_API_KEY ENQUIRY_GMAIL_REFRESH_TOKEN GCS_MEDIA_BUCKET GEMINI_API_KEY GMAIL_CLIENT_SECRET GMAIL_REDIRECT_URI GMAIL_REFRESH_TOKEN GOOGLE_MAPS_GEOCODING_API_KEY MEDIA_STORAGE NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY UPLOAD_SECURITY_ENFORCE_SOURCES WHATSAPP_APP_SECRET WHATSAPP_TOKEN WHATSAPP_WEB_API_KEY ZOHO_CLIENT_SECRET ZOHO_REFRESH_TOKEN
