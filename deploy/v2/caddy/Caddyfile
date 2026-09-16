@@ -4,8 +4,8 @@
 
 {
 	email dev@metnmat.com
-	# The admin API on :2019 is not needed in production; one less local socket.
-	admin off
+	# Admin API stays on its default loopback-only socket so `systemctl reload caddy`
+	# (zero-downtime config apply) works; nothing else can reach 127.0.0.1:2019.
 	servers {
 		# Trust nothing about client headers except what we set below.
 		trusted_proxies static private_ranges
