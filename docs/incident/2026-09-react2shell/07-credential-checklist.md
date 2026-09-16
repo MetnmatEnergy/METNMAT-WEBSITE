@@ -74,3 +74,8 @@ All three sites (website, CMS, Command Center) are LIVE. Remaining, in order:
 ## Atlas housekeeping (after recovery)
 - Free tier M0 at **84% of 512 MB**; writes stop at the cap. Drop `sample_mflix` (101 MB demo data, safe) and confirm whether `metnmat_ris` (113 MB) is still used.
 - M0 has **no backups** — consider Flex (~$8-30/mo) or M10 (~$58/mo, point-in-time restore). Same hostname, no secret changes.
+
+## Config imported from old env (2026-09-16, non-secret only)
+- From the old website/CMS env (file mislabeled `old-cc.env.txt`): imported QUOTE_FROM_EMAIL, QUOTE_NOTIFY_EMAIL, UPSTASH_REDIS_REST_URL → `metnmat/web/env`; DIRECTOR_EMAIL, EMAIL_FROM → `metnmat/cms/env`. Units restarted; web/cms 200. Every credential in that file was SKIPPED (rotate at provider).
+- `env` / `env.bak.*` in Downloads are MetAI/RIS — a separate app not on this host — not imported.
+- The REAL Command Center env (Supabase/Zoho/Gmail/Amazon/WhatsApp) and the chatbot's OpenAI/Pinecone were not among the provided files — still pending.
