@@ -22,3 +22,22 @@ would otherwise lose its own session while we still want it — irrelevant once 
 
 Who else to inform after step 2: your hosting/abuse contact (the EIP is on the Spamhaus XBL),
 and optionally quickex.io, whose site this host was flooding.
+
+---
+
+## Execution record — 2026-09-16 (owner-approved: "Execute full containment now")
+
+| Step | Action | Result |
+|---|---|---|
+| 0 | Snapshot `snap-0d28d630743a401d3` | complete (100%), `retain=true` |
+| 2 | Instance → `sg-0890559606eea14f8` (quarantine, 0/0) | done — C2/scan/DDoS/mining cut off |
+| 3 | `stop-instances i-0b7f49ca3e9852d4b` | **stopped**; SSM PingStatus now `None` |
+| 4 | `RevokeOlderSessions` inline Deny (aws:TokenIssueTime < 2026-09-16T06:50:20Z) on `metnmat-dashboard-role` | attached |
+| 5 | Delete GitHub deploy key id 159774699 (`Metnmat_Dashboard`) | deleted; worker key 159647945 kept |
+| 6 | Broaden `metnmat-github-deploy` trust to all 3 repos; set `AWS_DEPLOY_ROLE_ARN` on all 3; delete `AWS_ACCESS_KEY_ID`/`_SECRET` from WEBSITE + chatbot; deactivate key `AKIA…UJ63` | done (session key `…2EVH` kept Active) |
+| 8 | NACL `acl-014c521d84af0da21` deny 193.32.162.134/32 and 45.86.86.23/32 (in+out, rules 90-93) | done |
+
+Public sites now return connection-timeout (origin stopped); DNS still on Cloudflare → old EIP.
+Recovery continues at `05-recovery-runbook.md` Phase 2 (rotation) and Phase 3 (new host).
+Still Active and intentionally kept: `metnmat-migration` key `AKIA…2EVH` (operator/this session) —
+rotate in Phase 8. Old instance NOT to be started again.
