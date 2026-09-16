@@ -8,18 +8,19 @@ Updated: 2026-09-16 07:40 UTC. I update this file each time a credential lands.
 
 **New host:** `i-0b446863ec28109b0`, EIP `52.66.54.7` (t3.large, AL2023, encrypted, IMDSv2, no SSH).
 **Website:** LIVE PUBLICLY — Cloudflare A records for `metnmat.com` and `www` now → `52.66.54.7` (DNS only); Let's Encrypt certs for both; verified from outside: apex 308→www, www 200, /shop 200, 404 correct. `admin`/`chat`/`command-center` records still → old IP until those apps are released.
-**CMS / Chatbot / Command Center:** artifacts STAGED in S3 (sha256-verified on release); each releases the moment its boot credentials exist.
+**CMS:** LIVE on the new host (admin login 200, API 200, S3 storage OK) — `admin` DNS pending.
+**Chatbot / Command Center:** artifacts STAGED in S3 (sha256-verified on release); each releases the moment its boot credentials exist.
 
 | App | Release command (root over SSM on the new host) |
 |---|---|
-| CMS | `metnmat-release cms 60752009cf6a69f0d7aac28a5106b98f9c822b77` |
+| CMS | **LIVE** `metnmat-release cms f70abf31403b37494b8ee9351a6c13ce7bd3b1b7` (webpack build; the Turbopack artifact 6075200 500s in the pnpm-deploy bundle — do not release it) |
 | Chatbot | `metnmat-release chat 625eede942c035c9df2833d51f01f6e98ea13c96` |
 | Command Center | `metnmat-release cc 7ece63d792d2146b3947086b3d721de4a7ea7c0a` |
 | Website (live) | `metnmat-release web 60752009cf6a69f0d7aac28a5106b98f9c822b77` |
 
 | Service | Credential (secret → key) | Status | Needed by | Blocks |
 |---|---|---|---|---|
-| MongoDB Atlas | `metnmat/cms/env → MONGODB_URI` (db `metnmat_cms`) | **User created** `cms-prod-2026` (readWrite@metnmat_cms); URI pending in Secrets Manager | CMS | CMS boot |
+| MongoDB Atlas | `metnmat/cms/env → MONGODB_URI` (db `metnmat_cms`) | **Verified** — `cms-prod-2026`, CMS live, 133 products readable | CMS | — |
 | MongoDB Atlas | `metnmat/chat/env → MONGODB_URI` (db `metnmat`) | **Pending** | Chatbot | chatbot boot |
 | MongoDB Atlas | `metnmat/cc/env → DATABASE_URL` (db **`metnmat`** — shared with the chatbot; code default in `lib/mongo/resolve-mongo-uri.js`) | **Pending** | Command Center | CC boot |
 | OpenAI | `metnmat/chat/env → OPENAI_API_KEY` | **Pending** | Chatbot | chatbot boot |
@@ -56,7 +57,7 @@ Updated: 2026-09-16 07:40 UTC. I update this file each time a credential lands.
 | App | Boot requirement | Status |
 |---|---|---|
 | Website | `INTERNAL_API_KEY` | **satisfied → DEPLOYED, health 200** |
-| CMS | `MONGODB_URI`, `PAYLOAD_SECRET`, `PAYLOAD_PIN_PEPPER`, `S3_*` | waiting on **MongoDB Atlas** only |
+| CMS | `MONGODB_URI`, `PAYLOAD_SECRET`, `PAYLOAD_PIN_PEPPER`, `S3_*` | **satisfied → DEPLOYED, health 200, 133 products** (director PIN login needs `DIRECTOR_PIN`/`DIRECTOR_EMAIL`) |
 | Chatbot | `MONGODB_URI`, `OPENAI_API_KEY`, `PINECONE_API_KEY`, `AGENT_API_KEY`, `JWT_SECRET` | waiting on **Atlas, OpenAI, Pinecone** |
 | Command Center | `DATABASE_URL`, `NEXTAUTH_SECRET` | waiting on **MongoDB Atlas** only |
 
