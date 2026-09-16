@@ -25,16 +25,16 @@ HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 case "$APP" in
   web)  ARTIFACT=web-build.tgz;     ENTRY=apps/website/server.js;           BUILD_ID=apps/website/.next/BUILD_ID
         PORT=3100; HOST_HDR=www.metnmat.com;            HEALTH_PATH=/;            OK="200";
-        WRITABLE="apps/website/.next/cache" ;;
+        WRITABLE="apps/website/.next/cache apps/website/.next/server/app apps/website/.next/server/pages" ;;
   cms)  ARTIFACT=cms-build.tgz;     ENTRY=node_modules/next/dist/bin/next;  BUILD_ID=.next/BUILD_ID
         PORT=3200; HOST_HDR=admin.metnmat.com;          HEALTH_PATH=/admin/login; OK="200";
-        WRITABLE=".next/cache" ;;
+        WRITABLE=".next/cache .next/server/app .next/server/pages" ;;
   chat) ARTIFACT=chatbot-build.tgz; ENTRY=index.ts;                         BUILD_ID=""
         PORT=3002; HOST_HDR=chat.metnmat.com;           HEALTH_PATH=/health;      OK="200 404";
         WRITABLE="" ;;
   cc)   ARTIFACT=cc-build.tgz;      ENTRY=node_modules/next/dist/bin/next;  BUILD_ID=.next/BUILD_ID
         PORT=3000; HOST_HDR=command-center.metnmat.com; HEALTH_PATH=/login;       OK="200";
-        WRITABLE=".next/cache" ;;
+        WRITABLE=".next/cache .next/server/app .next/server/pages" ;;
   *) echo "unknown app $APP"; exit 64 ;;
 esac
 UNIT="metnmat-${APP}.service"; USER_="mm-${APP}"
@@ -63,7 +63,13 @@ tar -xzf "$TMP/$ARTIFACT" -C "$TARGET" || fail "artifact did not unpack"
 # Ownership: root owns the code, the app's group may read/execute, nobody else.
 chown -R root:"$USER_" "$TARGET"
 chmod -R u+rwX,g+rX,g-w,o-rwx "$TARGET"
-for w in $WRITABLE; do install -d -o "$USER_" -g "$USER_" -m 0750 "$TARGET/$w"; done
+# ISR/prerender output (.next/server/app|pages) and the image/fetch cache are the
+# app's DATA, not its code: Next rewrites revalidated .html/.rsc/.meta there at
+# runtime and fails with EACCES if root owns them. JS chunks stay root-owned.
+for w in $WRITABLE; do
+  install -d -o "$USER_" -g "$USER_" -m 0750 "$TARGET/$w"
+  chown -R "$USER_":"$USER_" "$TARGET/$w"; chmod -R u+rwX,g+rX,o-rwx "$TARGET/$w"
+done
 chown root:"$USER_" "$RELEASES" "$ROOT"; chmod 0750 "$RELEASES" "$ROOT"
 log "release files locked down (root:${USER_}, code read-only for the app)"
 
