@@ -172,3 +172,18 @@ process environment and readable through the instance role). Classification: att
 The key (`metnmat website`, created 2026-08-17) is revoked; the replacement is a service-account key held only in
 `metnmat/chat/env`. Owner actions: lower the OpenAI monthly budget (Limits) and enable spend alerts; optionally report
 the compromised-key usage to OpenAI support for a refund.
+
+## 2026-09-17 ~14:00 IST — WEBSITE and CMS credential-complete
+
+- **Resend**: old keys deleted at resend.com (the burned `Onboarding` key had been used ~9 h earlier by an unknown party;
+  the Emails log showed only the site's own RFQ mails from 3–7 Sep, so no attacker sends were found). New sending-only,
+  domain-restricted key in `metnmat/web/env` + `metnmat/cms/env`; accepted by the Resend API from the host.
+- **Razorpay**: the leaked pair was a **test-mode** key — the live key was never on the hacked server. Owner put the live
+  pair + a new webhook secret in `metnmat/web/env` (webhook `https://www.metnmat.com/api/checkout/webhook`, events
+  order.paid / payment.captured / payment.failed / refund.processed). Read-only auth check from the host: HTTP 200.
+  metnmat.in (Wix) keeps using the same account key, untouched.
+- **Google sign-in**: new client secret + client id in `metnmat/web/env`; `/api/account/google/start` 307s to Google with
+  callback `https://www.metnmat.com/api/account/google/callback` (must be an authorised redirect URI on the client).
+- Website placeholders left: `ANALYTICS_GEO_TOKEN`, `COMPANY_CIN`, `GOOGLE_SITE_VERIFICATION` — all optional. CMS: none.
+- Follow-up (not security-critical): the RFQ form emails a "Thank you" to any typed address — add bot protection and a
+  per-address limit now that the Upstash rate-limit store is back.
