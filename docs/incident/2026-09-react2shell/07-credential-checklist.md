@@ -145,3 +145,17 @@ Not fillable by me: `COMPANY_CIN` (not stored anywhere readable — MCA record),
 
 **Owner rotates (exploitable):** Razorpay ×3, Resend, Google OAuth secret (+ client id), OpenAI, Pinecone, Gmail, Supabase,
 Zoho, Amazon SP-API, WhatsApp/Meta tokens + app secret, Gemini, DeepSeek, Google Maps. Cards in guide 06.
+
+## 2026-09-17 13:05 IST — CHATBOT LIVE
+
+`OPENAI_API_KEY` set by the owner (service-account key, project AURA). Two corrections made the release succeed:
+- **Pinecone is not used by the chatbot code** — `PINECONE_*` are read into config and never referenced; products are
+  served from MongoDB; the app's own `assertConfig` requires only `OPENAI_API_KEY`. Removed `PINECONE_API_KEY` from
+  `chat.required` (host + repo). The three `PINECONE_*` placeholders can stay empty.
+- The winston logger writes `logs/combined.log` + `logs/error.log` under the release dir → `logs` is now a WRITABLE
+  (app-owned) path for `chat` in `release.sh`, like the website's ISR cache.
+Released `a5ef326` (CI artifact): unit active, MongoDB connected, 133 products, public `/health`, `/widget.js`, `/demo` 200.
+**Answers will fail until OpenAI billing has credit** — the key is valid (models list 200) but a test completion returned
+`billing_not_active`. Owner: platform.openai.com → Billing → add credits.
+Remaining chat keys are optional channels only: `Meta_WA_accessToken`, `META_APP_SECRET`, `Meta_WA_SenderPhoneNumberId`,
+`Meta_WA_wabaId` (WhatsApp via chatbot), `FACEBOOK_PAGE_ACCESS_TOKEN`, `Meta_IG_AccessToken` (Messenger/Instagram).
