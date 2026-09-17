@@ -130,9 +130,15 @@ export function QuoteModal() {
         error?: string;
         reference?: string;
         emailedCustomer?: boolean;
+        fields?: Record<string, string>;
       };
       if (!res.ok || data.ok === false) {
-        setErrorText(data.error ?? "Something went wrong. Please try again.");
+        const fieldReason = data.fields?._rejected
+          ? "We could not accept this submission. Please reload the page and try again, or email us directly."
+          : data.fields
+            ? Object.values(data.fields).join(" ")
+            : undefined;
+        setErrorText(data.error ?? fieldReason ?? "Something went wrong. Please try again.");
         setStatus("error");
         return;
       }

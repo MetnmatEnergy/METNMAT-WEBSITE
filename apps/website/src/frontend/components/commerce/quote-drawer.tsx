@@ -149,7 +149,7 @@ export function QuoteDrawer() {
           requestId: requestIdRef.current,
           // Same hidden field every other public form on this site carries. Its
           // absence here made this the one form a bot could submit unimpeded.
-          hp_company_url: get("hp_company_url"),
+          mm_trap: get("mm_trap"),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -158,12 +158,20 @@ export function QuoteDrawer() {
         reference?: string;
         emailedCustomer?: boolean;
         pending?: boolean;
+        fields?: Record<string, string>;
       };
       if (!res.ok || data.ok === false) {
+        // A 400 carries per-field reasons, not `error`; surface them instead of
+        // a flat "Something went wrong".
+        const fieldReason = data.fields?._rejected
+          ? "We could not accept this submission. Please reload the page and try again, or email us directly."
+          : data.fields
+            ? Object.values(data.fields).join(" ")
+            : undefined;
         // Show what the server actually said. Replacing a 429 or a "we couldn't
         // file your request" with a flat "Something went wrong" told the
         // customer nothing and invited an immediate retry that would fail too.
-        setErrorText(data.error ?? "Something went wrong. Please try again.");
+        setErrorText(data.error ?? fieldReason ?? "Something went wrong. Please try again.");
         setStatus("error");
         return;
       }
@@ -426,14 +434,9 @@ export function QuoteDrawer() {
 
             {/* Honeypot — never shown, never announced, never autofilled. A bot
                 fills every input it finds; a person cannot reach this one. */}
-            <input
-              type="text"
-              name="hp_company_url"
-              tabIndex={-1}
-              autoComplete="off"
-              aria-hidden="true"
-              className="absolute left-[-9999px] h-px w-px opacity-0"
-            />
+            <div hidden aria-hidden="true">
+              <input type="text" name="mm_trap" tabIndex={-1} autoComplete="off" defaultValue="" />
+            </div>
 
             {status === "error" && (
               <p className="text-sm text-brand" role="alert">

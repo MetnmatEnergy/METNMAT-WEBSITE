@@ -58,7 +58,7 @@ export function ContactForm() {
       phone: String(fd.get("phone") ?? "").trim(),
       company: String(fd.get("company") ?? "").trim(),
       message: String(fd.get("message") ?? "").trim(),
-      hp_company_url: String(fd.get("hp_company_url") ?? ""), // honeypot (see below)
+      mm_trap: String(fd.get("mm_trap") ?? ""), // honeypot (see below)
     };
 
     // Validate client-side first — instant feedback, and avoids a round-trip.
@@ -88,6 +88,7 @@ export function ContactForm() {
       const data = await res.json().catch(() => null);
       if (res.status === 400 && data?.fields) {
         setFieldErrors(data.fields);
+        if (data.fields._rejected) setTopError("We could not accept this submission. Please reload the page and try again, or email us directly.");
         setStatus("error");
         focusFirstError(data.fields);
         return;
@@ -142,14 +143,9 @@ export function ContactForm() {
   return (
     <form ref={formRef} onSubmit={onSubmit} className="grid gap-4" noValidate data-analytics-form="contact">
       {/* Honeypot: hidden from humans + assistive tech; bots fill it and are rejected server-side. */}
-      <input
-        type="text"
-        name="hp_company_url"
-        tabIndex={-1}
-        autoComplete="off"
-        aria-hidden="true"
-        className="absolute left-[-9999px] h-0 w-0 opacity-0"
-      />
+      <div hidden aria-hidden="true">
+        <input type="text" name="mm_trap" tabIndex={-1} autoComplete="off" defaultValue="" />
+      </div>
       {topError && (
         <div
           role="alert"

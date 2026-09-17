@@ -14,6 +14,18 @@ export type ValidationResult<T> =
   | { success: true; data: T }
   | { success: false; fields: Record<string, string> };
 
+/**
+ * Honeypot. `mm_trap` is the current field (a name no browser autofill
+ * heuristic maps to an address/identity type, rendered inside a display:none
+ * wrapper that autofill never touches); `hp_company_url` is the old name, still
+ * checked so bots replaying the previous markup are rejected too. The old field
+ * sat off-screen with "company" in its name, and Chrome's address autofill —
+ * which ignores autocomplete="off" — could fill it for a real visitor, whose
+ * submission was then silently rejected.
+ */
+const honeypotTripped = (body: Record<string, unknown>): boolean =>
+  String(body.mm_trap ?? "").trim() !== "" || String(body.hp_company_url ?? "").trim() !== "";
+
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 /** Validate an incoming contact/quote enquiry payload. */
@@ -27,7 +39,7 @@ export function validateEnquiry(
   // Honeypot: a hidden field real visitors never see or fill. Bots fill every
   // input, so any value here is spam — reject before validation. The field name
   // is deliberately non-standard so browser autofill won't populate it.
-  if (String(body.hp_company_url ?? "").trim() !== "") {
+  if (honeypotTripped(body)) {
     return { success: false, fields: { _rejected: "invalid submission" } };
   }
 
@@ -98,7 +110,7 @@ export function validateDataRequest(
   const fields: Record<string, string> = {};
   const body = (input ?? {}) as Record<string, unknown>;
 
-  if (String(body.hp_company_url ?? "").trim() !== "") {
+  if (honeypotTripped(body)) {
     return { success: false, fields: { _rejected: "invalid submission" } };
   }
 

@@ -49,7 +49,7 @@ export function DataRequestForm() {
       email: String(fd.get("email") ?? "").trim(),
       phone: String(fd.get("phone") ?? "").trim(),
       details: String(fd.get("details") ?? "").trim(),
-      hp_company_url: String(fd.get("hp_company_url") ?? ""),
+      mm_trap: String(fd.get("mm_trap") ?? ""),
     };
 
     try {
@@ -160,8 +160,8 @@ export function DataRequestForm() {
 
       {/* Honeypot — hidden from people, filled by bots. */}
       <div aria-hidden className="hidden">
-        <label htmlFor="hp_company_url">Company URL</label>
-        <input id="hp_company_url" name="hp_company_url" type="text" tabIndex={-1} autoComplete="off" />
+        <label htmlFor="mm_trap">Leave this empty</label>
+        <input id="mm_trap" name="mm_trap" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
       </div>
 
       {topError ? (
