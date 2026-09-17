@@ -98,3 +98,29 @@ All three sites (website, CMS, Command Center) are LIVE. Remaining, in order:
   is therefore the first Command Center credential. (Setting `TWO_FACTOR_AUTH_ENABLED=false` would bypass this — not done;
   owner's call.)
 - Remaining placeholders in `metnmat/cc/env` (26): AMAZON_SP_API_CLIENT_SECRET AMAZON_SP_API_REFRESH_TOKEN BACKUP_ALERT_EMAIL BACKUP_DRIVE_FOLDER_ID BACKUP_DRIVE_TEST_FOLDER_ID BACKUP_ENABLED BACKUP_MIN_DOC_RATIO BACKUP_OIDC_AUDIENCE BACKUP_OIDC_SERVICE_ACCOUNT DEEPSEEK_API_KEY ENQUIRY_GMAIL_REFRESH_TOKEN GCS_MEDIA_BUCKET GEMINI_API_KEY GMAIL_CLIENT_SECRET GMAIL_REDIRECT_URI GMAIL_REFRESH_TOKEN GOOGLE_MAPS_GEOCODING_API_KEY MEDIA_STORAGE NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY UPLOAD_SECURITY_ENFORCE_SOURCES WHATSAPP_APP_SECRET WHATSAPP_TOKEN WHATSAPP_WEB_API_KEY ZOHO_CLIENT_SECRET ZOHO_REFRESH_TOKEN
+
+## 2026-09-17 — cutover to CI, and what the rotation broke on the worker
+
+**Done today (owner-instructed):** the three recovery PRs are merged (`Metnmat_Dashboard#26` → master,
+`METNMAT-WEBSITE#4` + `#5` → main, `METNMAT-chatbot#1` → main). GitHub Actions (OIDC role `metnmat-github-deploy`,
+trust now main/master only) built and released **website `e049b34`** and **Command Center `e1a6f4d`** (login throttle +
+CAPTCHA fix + SSRF/traversal guards) — both verified on the host and publicly. `main` on the two public repos blocks
+force-push and deletion. Retired secrets deleted: dashboard `VM_*`, `DASHBOARD_*`, `GCP_SERVICE_ACCOUNT_KEY`; website
+`ARTIFACT_BUCKET`, `EC2_INSTANCE_ID`. Repo variable `ARTIFACT_BUCKET` set on all three. The chatbot repo issues an
+*immutable* OIDC subject (GitHub refuses to switch it off) — that form is now in the role trust as well.
+
+**Broken by the rotation — needs two console copy-pastes (values never pass through me):**
+1. Worker cron → Command Center: every `/api/cron/*` call from the worker gets **HTTP 401** because SSM parameter
+   `/metnmat/prod/CRON_SECRET` still holds the pre-incident value. Fix: Secrets Manager → `metnmat/cc/env` → copy
+   `CRON_SECRET` → Systems Manager → Parameter Store → `/metnmat/prod/CRON_SECRET` → Edit → paste → Save. No restart
+   needed (the cron wrapper reads SSM on every run).
+2. WhatsApp worker (pm2 `whatsapp-worker` on the worker host) → Command Center: **Unauthorized**, because
+   `WHATSAPP_WEB_API_KEY` is `SET_ME` on the Command Center and the worker still has the burned value. Fix: generate a
+   long random value; paste it as `WHATSAPP_WEB_API_KEY` in `metnmat/cc/env` AND create SSM SecureString
+   `/metnmat/prod/WHATSAPP_WEB_API_KEY` with the same value; then tell me — I restart `metnmat-cc` and, on the worker,
+   pull the parameter into the monitor's `.env` and restart pm2 (values stay on the hosts).
+
+**Not done (guardrail refused, all low-risk, all yours):** copy `GOOGLE_CLIENT_ID` from `metnmat/prod/GOOGLE_CLIENT_ID`
+into `metnmat/web/env` (public client id); create IAM group `metnmat-admins` (AdministratorAccess + MFA-required) and
+user `metnmat-admin` so daily console work stops using root; rotate the operator key `AKIA…2EVH` (day 7 with the
+cleanup). Nothing else in the account needs a third-party credential to be reached by me.
