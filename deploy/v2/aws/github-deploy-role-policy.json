@@ -9,7 +9,8 @@
         "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/web/*",
         "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/cms/*",
         "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/chat/*",
-        "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/cc/*"
+        "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/cc/*",
+        "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/bootstrap/*"
       ]
     },
     {
