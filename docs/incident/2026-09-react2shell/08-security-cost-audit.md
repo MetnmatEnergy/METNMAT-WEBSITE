@@ -166,3 +166,11 @@ exposed third-party credentials **open until rotated**.
   no credential reused. Upload security mode set to `enforce`.
 - Laptop hygiene: `Metnmat_Dashboard/.env`, `.env.bak-*`, `.env.cloudrun` hold burned credentials in plain text — delete the
   backups and the Cloud Run file; replace values in `.env` only after each provider rotation.
+
+## 11. UPDATE 2026-09-17 — CI cutover complete
+- Recovery branches merged; OIDC deploys verified end-to-end for website (`e049b34`) and Command Center (`e1a6f4d`).
+  Deploy role trust reduced to main/master (+ the chatbot's immutable-subject form). No on-host builds remain.
+- GitHub hygiene: force-push/deletion blocked on both public `main` branches; 9 retired repo secrets deleted; the
+  dashboard repo is private on the free plan, so branch protection is unavailable there (needs Pro or public).
+- Open: worker↔Command Center shared secrets (§ checklist 07, two console steps); Gmail rotation (unblocks CC login OTP);
+  root-console use (IAM admin identity to be created by the owner); operator key rotation on day 7.
