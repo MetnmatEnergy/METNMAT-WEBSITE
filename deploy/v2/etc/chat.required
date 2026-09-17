@@ -1,6 +1,5 @@
 # Mirrors assertConfig() in the chatbot's src/config/env.ts and the old REQUIRED_SECRETS.
 MONGODB_URI
 OPENAI_API_KEY
-PINECONE_API_KEY
 AGENT_API_KEY
 JWT_SECRET

@@ -31,7 +31,7 @@ case "$APP" in
         WRITABLE=".next/cache .next/server/app .next/server/pages" ;;
   chat) ARTIFACT=chatbot-build.tgz; ENTRY=index.ts;                         BUILD_ID=""
         PORT=3002; HOST_HDR=chat.metnmat.com;           HEALTH_PATH=/health;      OK="200 404";
-        WRITABLE="" ;;
+        WRITABLE="logs" ;;
   cc)   ARTIFACT=cc-build.tgz;      ENTRY=node_modules/next/dist/bin/next;  BUILD_ID=.next/BUILD_ID
         PORT=3000; HOST_HDR=command-center.metnmat.com; HEALTH_PATH=/login;       OK="200";
         WRITABLE=".next/cache .next/server/app .next/server/pages" ;;
