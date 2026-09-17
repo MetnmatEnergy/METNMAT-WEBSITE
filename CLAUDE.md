@@ -9,11 +9,13 @@ pnpm + turbo monorepo powering **https://www.metnmat.com** (storefront + marketi
 from a separate codebase.
 
 ```
-apps/website     Next.js 15.1.6 · App Router · React 19 · Tailwind
-apps/dashboard   Payload CMS 3.85.1 · MongoDB · Payload admin at /admin
+apps/website     Next.js 15.5 · App Router · React 19 · Tailwind
+apps/dashboard   Payload CMS 3.89 on Next 16 (webpack build, see Deploy) · MongoDB · admin at /admin
 packages/types   shared TS types (transpiled by the website; no tsconfig of its own)
 test/            vitest suites, run from the repo root
+deploy/v2/       the production host: systemd units, secret fetcher, release script, Caddy, nftables
 docs/upgrade/    audit, backlog and release notes for the production upgrade
+docs/incident/   the 2026-09 React2Shell compromise: investigation, runbook, credential checklist
 ```
 
 ## Commands
@@ -21,7 +23,7 @@ docs/upgrade/    audit, backlog and release notes for the production upgrade
 ```bash
 pnpm build        # turbo: builds both apps
 pnpm typecheck    # tsc --noEmit in both apps
-pnpm lint         # next lint in both apps
+pnpm lint         # next lint (website) + flat-config eslint (CMS; Next 16 dropped `next lint`)
 pnpm test         # vitest (root)
 ```
 Per-app: `cd apps/website && npx next build|next lint|tsc --noEmit`.
@@ -31,50 +33,76 @@ Dashboard extras: `pnpm --filter dashboard generate:types|generate:importmap`.
 
 ## Deploy
 
-**AWS EC2 is the only live path.** Read `deploy/README.md` before touching any of it.
+**The v2 host on AWS EC2 is the only live path.** Read `deploy/v2/README.md` before touching any
+of it. The host was rebuilt from `deploy/v2` after the September 2026 React2Shell compromise
+(`docs/incident/2026-09-react2shell/`): four apps, four Linux users (`mm-web`, `mm-cms`, `mm-chat`,
+`mm-cc`), four hardened systemd units, one Secrets Manager entry per app, root-owned releases, no
+SSH (Session Manager only), **no PM2, no `.env` files on disk**.
 
 ⚠ **The two are not triggered the same way, and assuming they are wastes a debugging session.**
 
 | | Website | CMS |
 |---|---|---|
-| On push to `main` | **auto-deploys** when `apps/website/**`, `packages/**`, `deploy/**` or the lockfiles change | never |
-| Manual | yes | **the only way** |
+| On push to `main` | **auto-deploys** (`deploy-web.yml`) when `apps/website/**`, `packages/**`, `deploy/v2/**` or the lockfiles change | never |
+| Manual | `gh workflow run deploy-web.yml --ref main` | **the only way:** `gh workflow run deploy-cms.yml --ref main -f sha=<sha>` |
 
 So a push that changes CMS code ships nothing. A CMS change — including anything in `seed.ts`,
-which is what moves categories and globals — reaches production **only** when someone runs
-*Deploy CMS to EC2* by hand. Symptom of forgetting: the website shows new behaviour against old
-data, which looks like a caching bug and is not one.
+which is what moves categories and globals — reaches production **only** when someone dispatches
+*Deploy CMS (v2 host)* by hand. A merge that touches both apps is **two deploys, website first**;
+run the CMS one straight after, or the website shows new behaviour against the old CMS, which
+looks like a caching bug and is not one. (The enquiries fix of 2026-09-17 was exactly this shape:
+the website rendered its new error state for the minutes until the CMS caught up.)
 
 Three services, three workflows, one shared instance:
 
-| Workflow | App | Repo |
+| Workflow | Unit · user · port | Repo |
 |---|---|---|
-| `deploy-website-ec2.yml` | `metnmat-website` :3100 | this one |
-| `deploy-cms-ec2.yml` | `metnmat-cms` :3200 | this one |
-| `deploy-chatbot-ec2.yml` | `metnmat-chatbot` :3002 | `MetnmatEnergy/METNMAT-chatbot` |
+| `deploy-web.yml` — *Deploy website (v2 host)* | `metnmat-web.service` · `mm-web` · :3100 | this one |
+| `deploy-cms.yml` — *Deploy CMS (v2 host)* | `metnmat-cms.service` · `mm-cms` · :3200 | this one |
+| `deploy-chatbot.yml` — *Deploy chatbot (v2 host)* | `metnmat-chat.service` · `mm-chat` · :3002 | `MetnmatEnergy/METNMAT-chatbot` |
 
-All three follow the same shape: build on a GitHub runner → artifact to the private S3 bucket →
-release over SSM → `pm2 reload <app>` from the ecosystem **file** (never by bare name, which
-reuses the daemon's stale definition) → health check → auto-rollback, which restores the previous
-release's config as well as its code.
+The Command Center (`metnmat-cc.service` · `mm-cc` · :3000, `command-center.metnmat.com`) is a
+**different project** (`MetnmatEnergy/Metnmat_Dashboard`, private) on the same instance.
 
-Supporting workflows: `bootstrap-ec2.yml` (one-time server prep, Caddy config, instance role),
-`preflight-aws.yml` (~50 checks before you trust anything), `reload-app.yml` (restart one app so
-it re-reads Secrets Manager — secrets are fetched at **process start**, so a changed secret needs
-a reload, not a rebuild), `resize-ec2.yml`, `diagnose-aws.yml`.
+All three follow the same shape: build on a GitHub runner (OIDC role `metnmat-github-deploy`,
+deliberately no static keys) → `<app>-build.tgz` + `.sha256` to
+`s3://metnmat-deploy-artifacts-976134557584/<app>/<sha>/` → `ssm send-command` runs
+`/usr/local/sbin/metnmat-release <app> <sha>` as root → checksum → symlink swap →
+`systemctl restart` → health check → auto-rollback to the previous release. The workflows guard on
+repo variables `PROD_INSTANCE_ID` and `ARTIFACT_BUCKET` and secret `AWS_DEPLOY_ROLE_ARN`; `deploy-cms.yml`
+takes an optional `sha` input (blank = HEAD of the ref).
 
-**Never `pm2 restart all`** — the internal command-center dashboard on :3000 belongs to a
-different project and shares this instance.
+**The CMS build must be webpack** (`next build --webpack`, which the dashboard's `build` script
+already is). A Turbopack bundle passes `/api/health` and then 500s every page inside the
+`pnpm deploy --legacy` release, because Next 16 Turbopack emits hashed externals that do not
+resolve there. `deploy-cms.yml` also refuses Next < 16 and an `importMap.js` without its 4
+upload-handler entries (gotcha 2).
 
-⚠ **After cutover, `public_tls: true` is required on every bootstrap run that installs the Caddy
-config.** Left false it stages `tls internal` over blocks currently serving real certificates. The
-script now refuses to downgrade (it checks the installed block *and* Caddy's issued certificates),
-but do not rely on that.
+Secrets are fetched at **process start**: `metnmat-fetch-secrets <app>` (root, `ExecStartPre`)
+reads the one JSON secret `metnmat/<app>/env` into tmpfs `/run/metnmat/<app>.env`, and the app
+never holds AWS credentials. A changed secret needs `systemctl restart metnmat-<app>` over SSM, not
+a rebuild. `deploy/v2/etc/<app>.required` lists the keys the fetcher must find, or it refuses to
+start the unit. Logs: `journalctl -u metnmat-<app>`. There is no "restart all" — every command
+names its unit.
 
-**Dead paths, kept only as records:** GCP Cloud Build/Cloud Run (project billing-disabled),
-`deploy-aws.yml` (ECS/Fargate) and `infra/aws/*` — that infrastructure was deleted and **must not
-be recreated**. `terraform-aws.yml` refuses `apply` for this reason; `plan`/`output` remain
-available for auditing orphaned resources.
+Supporting workflows: `bootstrap-host.yml` (idempotent host prep over SSM: units, Caddyfile,
+nftables, secret fetcher; never touches release directories; creating the instance itself is
+`deploy/v2/aws/launch-instance.sh`), `preflight-aws.yml` and `diagnose-aws.yml` (read-only checks
+that run in CI so no laptop needs AWS keys), `resize-ec2.yml` (a 2-4 minute outage for every app;
+its PM2 precondition predates v2, so re-read it before relying on it), `terraform-aws.yml`
+(`plan`/`output` only).
+
+**Never touch the old host.** `i-0b7f49ca3e9852d4b` (EIP `15.206.25.71`) is the compromised
+instance, stopped in quarantine SG `sg-0890559606eea14f8`. Do not start it, and do not reuse any
+value that ever lived on it (`docs/incident/2026-09-react2shell/07-credential-checklist.md` is
+the register of what was burned and what replaced it).
+
+**Dead paths, kept only as records:** `deploy/README.md` and `deploy/bin/*` (the pre-incident
+PM2 + `with-secrets.sh` layout; `with-secrets.sh` is deleted, `preflight.sh` is still run by
+`preflight-aws.yml`), GCP Cloud Build/Cloud Run (project billing-disabled), `deploy-aws.yml`
+(ECS/Fargate) and `infra/aws/*` — that infrastructure was deleted and **must not be recreated**.
+`terraform-aws.yml` refuses `apply` for this reason; `plan`/`output` remain available for
+auditing orphaned resources.
 
 ## Data
 
@@ -82,7 +110,7 @@ available for auditing orphaned resources.
 |---|---|
 | CMS DB | MongoDB Atlas **`metnmat_cms`** — 53 collections, 9+ matching `src/collections/*.ts` (`audit-logs`, `blog-authors`, `analytics-events`…). Dev copy: `metnmat_cms_dev` (47). |
 | Chatbot DB | **`metnmat`** — *different database, do not point the CMS at it*. 236 collections: `agent_usage`, `ai_reply_drafts`, `amazon_financial_events`, `amazon_settlement_*`. Verified by inspection 2026-08-14. |
-| Media | Private S3 bucket `metnmat-media-prod` (ap-south-1) via `@payloadcms/storage-s3`, served through the CMS at `/api/media/file/<filename>`. Auth is the **EC2 instance role** — no access keys exist; setting `S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` would defeat that. Selected by `STORAGE_PROVIDER=s3`, which **defaults to `gcs` when unset** — the PM2 ecosystem file and the CMS deploy workflow both set it, at run time and build time respectively. |
+| Media | Private S3 bucket `metnmat-media-prod` (ap-south-1) via `@payloadcms/storage-s3`, served through the CMS at `/api/media/file/<filename>`. Auth is the dedicated IAM user **`metnmat-cms-media`** (bucket-only policy, `deploy/v2/aws/cms-media-user-policy.json`) whose `S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` live inside `metnmat/cms/env` and nowhere else; the instance role deliberately has **no** media access, so a compromised app cannot reach the bucket through the metadata service (v2 isolation layer 5). Selected by `STORAGE_PROVIDER=s3`, which **defaults to `gcs` when unset** — `deploy/v2/etc/cms.conf` and the CMS deploy workflow both set it, at run time and build time respectively. |
 | Website → CMS | REST over `NEXT_PUBLIC_CMS_URL`; GraphQL is disabled |
 
 ## Gotchas (each of these has bitten before)
@@ -115,8 +143,8 @@ available for auditing orphaned resources.
    which removes products with an empty or missing slug; products auto-generate slugs specifically
    to survive it.
 5. **`DIRECTOR_RESET=true` deletes every staff account except the director on every boot** — not
-   just on deploy, so a PM2 memory-restart triggers it too. Never leave it in server config; run it
-   as a deliberate one-off. `deploy/bin/with-secrets.sh` refuses to inherit it.
+   just on deploy, so a systemd restart (a `MemoryMax` kill, a reboot, a secret reload) triggers it
+   too. Never leave it in `metnmat/cms/env`; set it, restart the unit once, remove it, restart again.
 6. **Globals seed only when unset**, so admin edits persist: `company`/`contact`/`social`/`seo` via
    `seedGlobalIfUnset`, and `homepage`/`navigation`/`commerce` behind their own emptiness checks.
    The corollary is what actually bites — to change a value already set on prod you need a one-shot
@@ -159,18 +187,22 @@ available for auditing orphaned resources.
 
 ## Current state
 
-🟢 **Live on AWS since 2026-08-20.** All three services serve publicly from the shared EC2
-instance `i-0b7f49ca3e9852d4b` (t3.medium, ap-south-1, EIP `15.206.25.71`) behind Caddy with
-real certificates:
+🟢 **Live on the rebuilt v2 host since 2026-09-16/17.** The original AWS host (live from
+2026-08-20) was compromised through React2Shell — exploited from 2026-08-13, found 2026-09-14 —
+and every secret it held was treated as burned (`docs/incident/2026-09-react2shell/`). All four
+services now serve publicly from the replacement instance `i-0b446863ec28109b0` (t3.medium,
+ap-south-1, EIP `52.66.54.7`, AL2023, IMDSv2, no SSH) behind Caddy with real certificates:
 
 | | | |
 |---|---|---|
-| `www.metnmat.com` | :3100 | website — apex 308s to www |
-| `admin.metnmat.com` | :3200 | Payload CMS |
-| `chat.metnmat.com` | :3002 | chatbot (deployed from `MetnmatEnergy/METNMAT-chatbot`) |
+| `www.metnmat.com` | :3100 | website — apex 308s to www (`deploy-web.yml`, CI deploys verified 2026-09-17) |
+| `admin.metnmat.com` | :3200 | Payload CMS (`deploy-cms.yml`; first CI deploy landed 2026-09-17) |
+| `chat.metnmat.com` | :3002 | chatbot (`MetnmatEnergy/METNMAT-chatbot`; live, but answers need OpenAI credit) |
+| `command-center.metnmat.com` | :3000 | Command Center — **a different project** (`MetnmatEnergy/Metnmat_Dashboard`) |
 
-Port 3000 on the same instance is the internal command-center dashboard — **a different project**.
-Never `pm2 restart all`; every command here names its app or uses `--only`.
+Website and CMS are credential-complete (Resend, Razorpay live, Google sign-in, internal keys).
+Still open per `docs/incident/2026-09-react2shell/07-credential-checklist.md`: the Command
+Center's third-party keys (Gmail first) and billing for the chatbot's LLM.
 
 GCP is fully superseded. Cloud Run, Cloud Build and `deploy-aws.yml`/`infra/aws` (ECS/Fargate)
 are all dead paths — see the SUPERSEDED banner in `infra/aws/README.md`.
@@ -184,9 +216,10 @@ exists but is not part of the plan. Two consequences worth knowing before a bulk
   every asset, so settle it *before* the catalogue goes in.
 - Full procedure, including the naming convention and the database guards:
   `docs/CATALOGUE.md`.
-- **`sharp` allocates outside the V8 heap**, so the PM2 memory caps do not bound an upload spike.
-  `sharp.concurrency(1)` and a 2G swapfile exist specifically to keep a bulk upload from
-  triggering the kernel OOM killer, which chooses its victim by RSS rather than by fault.
+- **`sharp` allocates outside the V8 heap**, so the CMS unit's `MemoryMax` (1200M) is what bounds
+  an upload spike, and hitting it restarts the unit (which re-runs the seed, gotcha 4).
+  `sharp.concurrency(1)` exists specifically to keep a bulk upload from that; the old host also
+  carried a 2G swapfile for it — check the v2 host has one before a bulk upload.
 
 See `docs/upgrade/AUDIT.md` for the full Phase 0 audit, findings register and Lighthouse
 baselines, and `deploy/README.md` for the runbook. **AUDIT.md is a dated snapshot

@@ -44,7 +44,7 @@ Consolidated reference for all three services. **Never commit real secrets.** Pe
 | `CHATBOT_DB_NAME` | ✅ (sync) | Mongo DB the chatbot product sync writes to (`metnmat`). |
 | `STORAGE_PROVIDER` | ✅ (prod storage) | `s3`. **Defaults to `gcs` when unset** — set at both run time (PM2 ecosystem) and build time (deploy workflow). |
 | `S3_BUCKET` / `S3_REGION` | ✅ (prod storage) | `metnmat-media-prod` / `ap-south-1`. Bucket is private; media is served through the CMS, never directly. |
-| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | ❌ **leave unset** | Omitting them makes the AWS SDK use the **EC2 instance role**, which is the whole design. Setting them reintroduces a long-lived credential that does not otherwise exist. |
+| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | ✅ (prod, v2 host) | Keys of the dedicated IAM user `metnmat-cms-media`, whose only permission is the media bucket (`deploy/v2/aws/cms-media-user-policy.json`). They live inside `metnmat/cms/env` and nowhere else. On the v2 host the instance role deliberately has **no** media access and the metadata service is blocked for app users, so the CMS cannot fall back to the role — the pre-incident "leave unset, use the instance role" design no longer applies. |
 | `OPEN_EXCHANGE_RATES_APP_ID` | — | ₹/$ rate for staff. |
 | `RESEND_API_KEY` / `EMAIL_FROM` | — | Outbound CMS email (ticket replies, etc.). |
 
