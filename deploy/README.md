@@ -99,9 +99,16 @@ app. Until then, treat any "works in CI, fails on the server" report as this spl
 proven otherwise. It matters more when the CMS moves: `sharp` *is* native and its ABI is
 tied to the Node major.
 
-⚠️ **Bucket versioning is on.** The blueprint assumes a 14-day artifact expiry. With
-versioning enabled, a lifecycle rule must expire **noncurrent** versions too, or deleted
-artifacts are retained and billed indefinitely.
+**Bucket versioning is OFF** on `metnmat-deploy-artifacts-976134557584`. Verified 2026-09-17:
+`get-bucket-versioning` returns no status, and `list-object-versions` shows zero noncurrent
+versions and zero delete markers, so nothing is retained beyond what the lifecycle rule keeps.
+That rule, `expire-deploy-artifacts`, deletes every object 14 days after creation across the
+whole bucket (including `bootstrap/*`) and aborts incomplete multipart uploads after 1 day,
+which bounds storage (about 8 GB and $0.21/month at the time of the check). Two consequences:
+a build older than 14 days cannot be re-released from S3 (on-host rollback to the previous
+release is unaffected, it uses the copy already on the server), and versioning must **not** be
+enabled without also adding a noncurrent-version expiry, or deleted artifacts would be retained
+and billed indefinitely.
 
 ⚠️ **Confirm the public IP is Elastic.** If it is a default public IP it changes on
 stop/start, which would break DNS after any instance restart — including the resize in
