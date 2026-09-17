@@ -36,6 +36,11 @@ const CHATBOT_ORIGIN = process.env.NEXT_PUBLIC_CHATBOT_URL || "http://localhost:
 // API/telemetry endpoints (connect). Required for online payments.
 const RAZORPAY_SCRIPT = "https://checkout.razorpay.com";
 const RAZORPAY_CONNECT = "https://api.razorpay.com https://lumberjack.razorpay.com https://checkout.razorpay.com";
+// Cloudflare Turnstile on the quote forms: api.js (script) and the challenge
+// (iframe). The widget's own requests happen inside that frame, so connect-src
+// does not need it. Listed unconditionally — the build only renders the widget
+// when NEXT_PUBLIC_TURNSTILE_SITE_KEY is set, and an unused allowance is inert.
+const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
 
 // Next's DEV server compiles with eval() (HMR / React Refresh). Without
 // 'unsafe-eval' the chunks download but never execute, so the page renders from
@@ -49,12 +54,12 @@ const DEV_EVAL = DEV ? " 'unsafe-eval'" : "";
 // script and Next's inline runtime; harden to nonce-based CSP later.
 const ContentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${DEV_EVAL} ${CHATBOT_ORIGIN} ${RAZORPAY_SCRIPT}`,
+  `script-src 'self' 'unsafe-inline'${DEV_EVAL} ${CHATBOT_ORIGIN} ${RAZORPAY_SCRIPT} ${TURNSTILE_ORIGIN}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${CMS_ORIGIN} ${CHATBOT_ORIGIN}`,
   "font-src 'self' data:",
   `connect-src 'self' ${CMS_ORIGIN} ${CHATBOT_ORIGIN} ${RAZORPAY_CONNECT}`,
-  `frame-src 'self' ${CHATBOT_ORIGIN} https://www.google.com https://maps.google.com https://api.razorpay.com ${RAZORPAY_SCRIPT}`,
+  `frame-src 'self' ${CHATBOT_ORIGIN} https://www.google.com https://maps.google.com https://api.razorpay.com ${RAZORPAY_SCRIPT} ${TURNSTILE_ORIGIN}`,
   "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",

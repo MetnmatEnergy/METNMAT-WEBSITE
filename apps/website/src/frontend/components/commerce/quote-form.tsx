@@ -2,6 +2,7 @@
 
 import { getTracker } from "@/frontend/lib/analytics/collector";
 import { newRequestId } from "@/frontend/lib/request-id";
+import { useBotCheck } from "@/frontend/components/commerce/bot-check";
 import * as React from "react";
 import { Loader2, CheckCircle2, AlertCircle, Send } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
@@ -23,6 +24,8 @@ export function QuoteForm() {
   /** One key per filled-in form — see lib/request-id. */
   const requestIdRef = React.useRef<string>("");
   if (!requestIdRef.current) requestIdRef.current = newRequestId();
+  // Timing token + Turnstile (when configured) — see components/commerce/bot-check.
+  const bot = useBotCheck(status !== "success");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -48,12 +51,18 @@ export function QuoteForm() {
     };
 
     try {
+      // Gathered at submit so a form that loaded before the token arrived still
+      // carries one. May wait briefly for the Turnstile widget.
+      const botFields = await bot.collect();
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, ...botFields }),
       });
       const data = await res.json().catch(() => null);
+      // Every attempt consumes the Turnstile token. A refused timing token is
+      // re-minted, unless the server only asked us to wait a moment.
+      bot.reset({ formToken: data?.code === "bot-check" && data?.reason !== "form-token-too_fast" });
       if (res.ok && data?.ok !== false) {
         setReference(data?.reference ?? null);
         setStatus("success");
@@ -73,6 +82,7 @@ export function QuoteForm() {
       setTopError(data?.error || "Something went wrong. Please try again or email us directly.");
       setStatus("error");
     } catch {
+      bot.reset();
       setTopError("Network error. Please check your connection and try again.");
       setStatus("error");
     }
@@ -160,6 +170,8 @@ export function QuoteForm() {
         />
         {fieldErrors.message && <p className={errCls}>{fieldErrors.message}</p>}
       </div>
+
+      {bot.widget}
 
       <Button type="submit" size="lg" disabled={sending} className="justify-self-start">
         {sending ? (

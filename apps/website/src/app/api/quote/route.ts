@@ -8,6 +8,7 @@ import {
 } from "@/backend/services/enquiries.service";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 import { sendQuoteEmails, type EmailAttachment } from "@/backend/lib/email";
+import { screenSubmission, checkEmailSanity, autoReplyBudget } from "@/backend/lib/form-guard";
 import { isAllowedUploadSignature, safeFilename } from "@/backend/lib/file-signature";
 import { collectGrantedIds } from "@/backend/lib/attachment-grant";
 import { recordIntegrationLog } from "@/backend/services/orders.service";
@@ -78,7 +79,8 @@ async function parseBody(request: Request): Promise<{
 
 // POST /api/quote — submit a quote request (with optional file attachments).
 export async function POST(request: Request) {
-  const rl = await limitRate(`quote:${clientIp(request)}`);
+  const ip = clientIp(request);
+  const rl = await limitRate(`quote:${ip}`);
   if (!rl.ok) {
     return NextResponse.json(
       { ok: false, error: "Too many requests. Please try again shortly." },
@@ -120,6 +122,55 @@ export async function POST(request: Request) {
         { status: 202 }
       );
     }
+  }
+
+  /*
+   * BOT CHECK, then ADDRESS SANITY, then the AUTO-REPLY BUDGET.
+   *
+   * Each submission used to send a "Thank you" email to whatever address was
+   * typed in. On 2026-09-03/04 the Resend log filled with submissions under
+   * names like "fbdfbdf" to addresses like "FS@JFOWI.COM": every one bounced,
+   * every bounce cost sending reputation, and anyone could use the form to
+   * have an email delivered to an address of their choosing.
+   *
+   * The honeypot in validateEnquiry already ran. This is the rest, in order of
+   * how sure it makes us: a failed challenge is refused outright; a doubtful
+   * address or an unverifiable challenge is FILED and NOTIFIED but gets no
+   * auto-reply and the notification is tagged; and a submission that passes
+   * everything still spends one unit of a per-address and per-IP budget before
+   * the reply goes out. The enquiry itself is never dropped for anything short
+   * of "this is a bot" — a lost lead is the failure being designed against.
+   *
+   * Runs after the idempotency claim on purpose: Turnstile tokens are
+   * single-use, so a double click must be answered by the claim, not by a
+   * second verification that would fail.
+   */
+  const screen = await screenSubmission(b, ip);
+  if (screen.verdict === "reject") {
+    console.warn(`[quote] rejected submission: ${screen.reason}`);
+    // Release the key so a person whose challenge failed can retry with a
+    // fresh token instead of being told their request is already in flight.
+    if (idemKey) await abandonIdempotent(idemKey);
+    return NextResponse.json(
+      { ok: false, error: screen.error, code: "bot-check", reason: screen.reason },
+      { status: 400 }
+    );
+  }
+
+  const sanity = await checkEmailSanity(result.data.email);
+  const suspectReasons = [
+    ...(screen.verdict === "suspect" ? screen.reasons : []),
+    ...sanity.reasons,
+  ];
+  let sendCustomerCopy = false;
+  if (suspectReasons.length === 0) {
+    // Only a clean submission spends budget, so spam can never exhaust a real
+    // customer's allowance on their behalf.
+    const budget = await autoReplyBudget(result.data.email, ip);
+    sendCustomerCopy = budget.ok;
+    if (!budget.ok) console.warn(`[quote] auto-reply withheld: ${budget.exceeded} budget exhausted`);
+  } else {
+    console.warn(`[quote] auto-reply withheld, notification tagged: ${suspectReasons.join(", ")}`);
   }
 
   // product may arrive as an object (JSON) or already-parsed (multipart).
@@ -237,7 +288,10 @@ export async function POST(request: Request) {
    */
   const saved = await createEnquiry(enquiry);
   const withReference = { ...enquiry, referenceId: saved.referenceId };
-  const emailed = await sendQuoteEmails(withReference, emailAttachments);
+  const emailed = await sendQuoteEmails(withReference, emailAttachments, {
+    sendCustomerCopy,
+    suspectReasons,
+  });
 
   /*
    * A failed email is now OBSERVABLE.
@@ -251,14 +305,17 @@ export async function POST(request: Request) {
    * Best-effort and never awaited into the response: a logging failure must not
    * turn a filed enquiry into an error the customer sees.
    */
-  if (saved.ok && (!emailed.customer || !emailed.team)) {
+  // A copy that was deliberately withheld is not a failure, and logging it as
+  // one would bury the real ones under every spam submission.
+  const customerFailed = !emailed.customer && !emailed.customerSkipped;
+  if (saved.ok && (customerFailed || !emailed.team)) {
     void recordIntegrationLog({
       integration: "quote-email",
       status: "error",
       summary: `RFQ ${saved.referenceId ?? "(no reference)"} filed, but ${
-        !emailed.customer && !emailed.team
+        customerFailed && !emailed.team
           ? "NEITHER email sent"
-          : !emailed.customer
+          : customerFailed
             ? "the customer confirmation did not send"
             : "the internal notification did not send"
       }`,
@@ -266,6 +323,7 @@ export async function POST(request: Request) {
         reference: saved.referenceId,
         emailedCustomer: emailed.customer,
         emailedTeam: emailed.team,
+        customerSkipped: emailed.customerSkipped,
         // The address is operational data staff need to follow up; nothing
         // else from the enquiry is duplicated here.
         email: enquiry.email,

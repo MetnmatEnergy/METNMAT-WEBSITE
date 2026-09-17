@@ -93,6 +93,11 @@ jobs:
           NEXT_PUBLIC_CMS_URL: ${{ env.CMS_URL }}
           NEXT_PUBLIC_SITE_URL: ${{ env.SITE_URL }}
           NEXT_PUBLIC_CHATBOT_URL: ${{ env.CHATBOT_URL }}
+          # Public site key for Cloudflare Turnstile on the quote forms (a repo
+          # VARIABLE, not a secret — it ships in the client bundle). Blank = the
+          # forms fall back to the signed timing token. Its server-side pair,
+          # TURNSTILE_SECRET_KEY, lives in metnmat/web/env; set both or neither.
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
           NODE_ENV: production
         run: pnpm --filter website build
       - name: Assemble release

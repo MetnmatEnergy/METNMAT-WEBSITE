@@ -6,6 +6,8 @@
  * To deliver to any customer, metnmat.com must be verified at resend.com/domains
  * and QUOTE_FROM_EMAIL must use that domain (e.g. noreply@metnmat.com).
  */
+import { emailSyntaxOk } from "@/backend/lib/email-address";
+
 type QuoteEmailInput = {
   name: string;
   email: string;
@@ -24,7 +26,30 @@ type QuoteEmailInput = {
 };
 
 /** Which sides of the exchange actually received mail. */
-export type QuoteEmailResult = { customer: boolean; team: boolean };
+export type QuoteEmailResult = {
+  customer: boolean;
+  team: boolean;
+  /**
+   * Why the customer copy was not ATTEMPTED, when it was not. Absent when it
+   * was sent, or when it was attempted and failed — the two states a caller
+   * must keep apart, because only the second one is an incident.
+   */
+  customerSkipped?: "syntax" | "suppressed";
+};
+
+export type QuoteEmailOptions = {
+  /**
+   * Send the "Thank you" copy to the visitor's address. Defaults to true. The
+   * mailer refuses it regardless for an address that fails the syntax check.
+   */
+  sendCustomerCopy?: boolean;
+  /**
+   * Signals the route collected — a domain with no mail server, a challenge
+   * that could not be verified. When non-empty the team notification is tagged
+   * "[possible spam]" and says why.
+   */
+  suspectReasons?: string[];
+};
 
 /** A file to attach to the email. `content` is base64-encoded. */
 export type EmailAttachment = {
@@ -114,10 +139,37 @@ function shell(opts: { heading: string; intro: string; body: string }): string {
 
 export async function sendQuoteEmails(
   input: QuoteEmailInput,
-  attachments: EmailAttachment[] = []
+  attachments: EmailAttachment[] = [],
+  options: QuoteEmailOptions = {}
 ): Promise<QuoteEmailResult> {
   const key = process.env.RESEND_API_KEY;
   if (!key) return { customer: false, team: false };
+
+  /*
+   * The "Thank you" copy goes to whatever address was typed into a public form.
+   *
+   * On 2026-09-03/04 that made the form a mail relay: submissions under names
+   * like "fbdfbdf" to addresses like "FS@JFOWI.COM" each produced an outbound
+   * email that bounced, and every bounce counted against the metnmat.com
+   * sending reputation.
+   *
+   * Two gates, both HERE rather than only in the route, so every caller
+   * inherits them. An address that fails the syntax check is never written to,
+   * whatever the caller asked for. And the caller may withhold the copy for its
+   * own reasons — a challenge it could not verify, a domain with no mail
+   * server, the per-address or per-IP budget. The team notification is sent
+   * either way: the lead still reaches sales, tagged when there is something to
+   * say about it.
+   */
+  const syntaxOk = emailSyntaxOk(input.email);
+  const customerCopy = options.sendCustomerCopy !== false && syntaxOk;
+  const customerSkipped: QuoteEmailResult["customerSkipped"] = !syntaxOk
+    ? "syntax"
+    : options.sendCustomerCopy === false
+      ? "suppressed"
+      : undefined;
+  const suspect = options.suspectReasons ?? [];
+  const tagged = suspect.length > 0;
 
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
   const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
@@ -141,8 +193,12 @@ export async function sendQuoteEmails(
   });
 
   const notifyHtml = shell({
-    heading: "New customization request",
-    intro: "A customer submitted a customization request from the website.",
+    heading: tagged ? "New customization request (possible spam)" : "New customization request",
+    intro: tagged
+      ? `A customer submitted a customization request from the website. It was flagged as <strong>possible spam</strong> (${esc(
+          suspect.join(", ")
+        )}), so no automatic reply was sent to the visitor. Treat the contact details with care before replying.`
+      : "A customer submitted a customization request from the website.",
     body: table,
   });
 
@@ -150,7 +206,7 @@ export async function sendQuoteEmails(
     to: string,
     subject: string,
     html: string,
-    replyTo: string
+    replyTo?: string
   ): Promise<boolean> {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -160,7 +216,7 @@ export async function sendQuoteEmails(
         to,
         subject,
         html,
-        reply_to: replyTo,
+        ...(replyTo ? { reply_to: replyTo } : {}),
         ...(resendAttachments.length ? { attachments: resendAttachments } : {}),
       }),
     });
@@ -171,10 +227,13 @@ export async function sendQuoteEmails(
     return res.ok;
   }
 
-  const subject = input.referenceId
-    ? `New customization request from ${input.name} (${input.referenceId})`
-    : `New customization request from ${input.name}`;
+  const subject =
+    (tagged ? "[possible spam] " : "") +
+    (input.referenceId
+      ? `New customization request from ${input.name} (${input.referenceId})`
+      : `New customization request from ${input.name}`);
 
+  const skipped = customerSkipped ? { customerSkipped } : {};
   try {
     /*
      * Both sides are reported separately.
@@ -188,18 +247,23 @@ export async function sendQuoteEmails(
      * The caller still treats "team reached" as the lead not being lost; it just
      * no longer claims something it does not know.
      */
-    const customer = await send(
-      input.email,
-      input.referenceId
-        ? `Thank you for your request (${input.referenceId}) — METNMAT`
-        : "Thank you for your request — METNMAT",
-      customerHtml,
-      notify
-    );
-    const team = await send(notify, subject, notifyHtml, input.email);
-    return { customer, team };
+    const customer = customerCopy
+      ? await send(
+          input.email,
+          input.referenceId
+            ? `Thank you for your request (${input.referenceId}) — METNMAT`
+            : "Thank you for your request — METNMAT",
+          customerHtml,
+          notify
+        )
+      : false;
+    // Reply-To is the visitor's address so staff answer with one click. An
+    // address that failed the syntax check is left off entirely: Resend
+    // validates the header and would refuse the whole message over it.
+    const team = await send(notify, subject, notifyHtml, syntaxOk ? input.email : undefined);
+    return { customer, team, ...skipped };
   } catch {
-    return { customer: false, team: false };
+    return { customer: false, team: false, ...skipped };
   }
 }
 

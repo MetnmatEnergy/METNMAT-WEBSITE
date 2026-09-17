@@ -73,4 +73,25 @@ export async function register(): Promise<void> {
         `this app. Secrets are read at process start, so a rebuild is neither needed nor sufficient.`,
     );
   }
+
+  /*
+   * Turnstile is two halves that live in different places: the site key is
+   * inlined into the bundle at BUILD time (a repository variable in
+   * deploy-web.yml), the secret is read at PROCESS START (Secrets Manager).
+   * Only one of them set is the failure worth shouting about — a secret with no
+   * widget means /api/quote refuses every submission, and a widget with no
+   * secret is a challenge nothing verifies.
+   */
+  const turnstileSiteKey = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+  const turnstileSecret = !isUnusableSecret(process.env.TURNSTILE_SECRET_KEY);
+  if (turnstileSiteKey !== turnstileSecret) {
+    console.error(
+      `[website] Turnstile is half-configured: NEXT_PUBLIC_TURNSTILE_SITE_KEY ${
+        turnstileSiteKey ? "is baked into this build" : "was NOT in the build"
+      } but TURNSTILE_SECRET_KEY is ${turnstileSecret ? "set" : "unset"}. ` +
+        (turnstileSecret
+          ? "Every quote submission will be refused until the site key is added to the build (or the secret removed)."
+          : "The widget renders but nothing verifies it; the form falls back to the timing token."),
+    );
+  }
 }

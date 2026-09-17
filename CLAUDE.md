@@ -128,6 +128,16 @@ available for auditing orphaned resources.
 9. **`_` -prefixed folders under `app/` are private** and produce no route — don't use them for
    throwaway test routes.
 10. **Never `cat` a `.env`.** `grep '^KEY=' file` the one line you need.
+11. **The quote form's Turnstile is two halves in two places.** `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+    is a GitHub repository *variable* inlined at **build** time by `deploy-web.yml`;
+    `TURNSTILE_SECRET_KEY` is runtime, in `metnmat/web/env`. With the secret set, `/api/quote`
+    refuses every submission that has no valid token — so setting the secret without rebuilding
+    with the site key locks every visitor out of the form. Set both or neither; `instrumentation.ts`
+    logs the mismatch at boot. Without either, the form falls back to a signed timing token from
+    `/api/quote/token` (`backend/lib/form-guard.ts`). The "Thank you" auto-reply is separately
+    budgeted (2 per address per day, 5 per IP per hour) and withheld for addresses that fail
+    syntax or have no mail server — the enquiry is still filed and sales still notified, tagged
+    `[possible spam]`.
 
 ## Conventions
 
