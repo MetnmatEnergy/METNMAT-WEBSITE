@@ -114,6 +114,13 @@ vi.mock("@/backend/lib/rate-limit", () => ({
   limitRate: vi.fn(async () => ({ ok: true })),
   clientIp: vi.fn(() => "203.0.113.9"),
 }));
+// The spam guard has its own suite (quote-spam-guard.test.ts). Here it passes
+// everything so these tests never depend on DNS, a signing secret or Turnstile.
+vi.mock("@/backend/lib/form-guard", () => ({
+  screenSubmission: vi.fn(async () => ({ verdict: "pass" })),
+  checkEmailSanity: vi.fn(async () => ({ syntax: true, domain: "accepts", reasons: [] })),
+  autoReplyBudget: vi.fn(async () => ({ ok: true })),
+}));
 
 let POST: (req: Request) => Promise<Response>;
 

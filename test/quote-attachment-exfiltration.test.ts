@@ -42,6 +42,14 @@ vi.mock("@/backend/lib/rate-limit", () => ({
   limitRate: vi.fn(async () => ({ ok: true })),
   clientIp: vi.fn(() => "203.0.113.7"),
 }));
+// The signing secret set below also switches on the form's timing-token check,
+// which is not what this suite is about; the guard has its own suite
+// (quote-spam-guard.test.ts). Pass everything so only ownership is under test.
+vi.mock("@/backend/lib/form-guard", () => ({
+  screenSubmission: vi.fn(async () => ({ verdict: "pass" })),
+  checkEmailSanity: vi.fn(async () => ({ syntax: true, domain: "accepts", reasons: [] })),
+  autoReplyBudget: vi.fn(async () => ({ ok: true })),
+}));
 
 let POST: (req: Request) => Promise<Response>;
 let mintAttachmentGrant: (id: string, now?: number) => string | null;

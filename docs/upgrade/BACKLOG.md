@@ -9,7 +9,7 @@ Out-of-scope items found during a phase. Logged, not fixed (operating rule 5).
 | Phase 0 | P3 | `apps/dashboard/scripts/` excluded from typecheck | |
 | Phase 0 | P3 | Legacy `.eslintrc.json` + `next lint` | Breaks on Next 16 / ESLint 10 |
 | Phase 0 | P3 | 8 purpose-scoped internal keys all fall back to `INTERNAL_API_KEY` | |
-| Phase 0 | P3 | Turnstile env vars documented, zero consumers | |
+| ~~Phase 0~~ | ~~P3~~ | ~~Turnstile env vars documented, zero consumers~~ | **RESOLVED 2026-09-17** — `/api/quote` verifies `TURNSTILE_SECRET_KEY` when set and the three quote forms render the widget from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; without them the form falls back to a signed timing token (`backend/lib/form-guard.ts`) |
 | Phase 0 | P3 | `.env.example` omits ~15 vars the code reads | |
 | Phase 0 | P3 | HEAD on `/api/media/file/*` returns 404 while GET returns 200 | Breaks link checkers |
 | Phase 0 | P3 | `return-requests.rmaNumber` not unique/required/generated | |

@@ -11,6 +11,7 @@ import {
   type UploadItem,
 } from "@/frontend/components/commerce/attachment-uploader";
 import { cn } from "@/frontend/lib/utils";
+import { useBotCheck } from "@/frontend/components/commerce/bot-check";
 
 const field =
   "w-full rounded-xl border border-input bg-surface px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-2 focus:ring-ring/30";
@@ -38,6 +39,9 @@ export function QuoteDrawer() {
   const [attachments, setAttachments] = React.useState<UploadItem[]>([]);
   const formRef = React.useRef<HTMLFormElement>(null);
   const asideRef = React.useRef<HTMLDivElement>(null);
+  // Timing token + Turnstile (when configured). Keyed on `open` so the token
+  // fetch and the Cloudflare script wait until the drawer is actually shown.
+  const bot = useBotCheck(open);
 
   const uploading = attachments.some((a) => a.status === "uploading");
 
@@ -130,6 +134,9 @@ export function QuoteDrawer() {
     setStatus("sending");
     setErrorText(null);
     try {
+      // Gathered at submit so a drawer opened before the token arrived still
+      // carries one. May wait briefly for the Turnstile widget.
+      const botFields = await bot.collect();
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -150,6 +157,7 @@ export function QuoteDrawer() {
           // Same hidden field every other public form on this site carries. Its
           // absence here made this the one form a bot could submit unimpeded.
           hp_company_url: get("hp_company_url"),
+          ...botFields,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -158,7 +166,12 @@ export function QuoteDrawer() {
         reference?: string;
         emailedCustomer?: boolean;
         pending?: boolean;
+        code?: string;
+        reason?: string;
       };
+      // Every attempt consumes the Turnstile token. A refused timing token is
+      // re-minted, unless the server only asked us to wait a moment.
+      bot.reset({ formToken: data.code === "bot-check" && data.reason !== "form-token-too_fast" });
       if (!res.ok || data.ok === false) {
         // Show what the server actually said. Replacing a 429 or a "we couldn't
         // file your request" with a flat "Something went wrong" told the
@@ -176,6 +189,7 @@ export function QuoteDrawer() {
       requestIdRef.current = newRequestId();
       getTracker().track("form_submit", { meta: { form: "quote" } });
     } catch {
+      bot.reset();
       setErrorText("We couldn't reach the server. Please check your connection and try again.");
       setStatus("error");
     }
@@ -440,6 +454,8 @@ export function QuoteDrawer() {
                 {errorText ?? "Something went wrong. Please try again."}
               </p>
             )}
+
+            {bot.widget}
 
             <button
               type="submit"

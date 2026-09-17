@@ -10,6 +10,7 @@ import {
   AttachmentUploader,
   type UploadItem,
 } from "@/frontend/components/commerce/attachment-uploader";
+import { useBotCheck } from "@/frontend/components/commerce/bot-check";
 
 const field =
   "w-full rounded-xl border border-input bg-surface px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-2 focus:ring-ring/30";
@@ -33,6 +34,9 @@ export function QuoteModal() {
   const [attachments, setAttachments] = React.useState<UploadItem[]>([]);
   const formRef = React.useRef<HTMLFormElement>(null);
   const dialogRef = React.useRef<HTMLDivElement>(null);
+  // Timing token + Turnstile (when configured). Keyed on `modalOpen` so the
+  // token fetch and the Cloudflare script wait until the modal is shown.
+  const bot = useBotCheck(modalOpen);
 
   const uploading = attachments.some((a) => a.status === "uploading");
 
@@ -107,6 +111,9 @@ export function QuoteModal() {
 
     setStatus("sending");
     try {
+      // Gathered at submit so a modal opened before the token arrived still
+      // carries one. May wait briefly for the Turnstile widget.
+      const botFields = await bot.collect();
       const res = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -123,6 +130,10 @@ export function QuoteModal() {
           attachmentGrants,
           attachmentNames,
           requestId: requestIdRef.current,
+          // The hidden field every other public form carries. This modal was
+          // the one form without it, so a bot could submit it unimpeded.
+          hp_company_url: get("hp_company_url"),
+          ...botFields,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -130,7 +141,12 @@ export function QuoteModal() {
         error?: string;
         reference?: string;
         emailedCustomer?: boolean;
+        code?: string;
+        reason?: string;
       };
+      // Every attempt consumes the Turnstile token. A refused timing token is
+      // re-minted, unless the server only asked us to wait a moment.
+      bot.reset({ formToken: data.code === "bot-check" && data.reason !== "form-token-too_fast" });
       if (!res.ok || data.ok === false) {
         setErrorText(data.error ?? "Something went wrong. Please try again.");
         setStatus("error");
@@ -144,6 +160,7 @@ export function QuoteModal() {
       requestIdRef.current = newRequestId();
       getTracker().track("form_submit", { meta: { form: "quote" } });
     } catch {
+      bot.reset();
       setErrorText("We couldn't reach the server. Please check your connection and try again.");
       setStatus("error");
     }
@@ -371,6 +388,19 @@ export function QuoteModal() {
                     </div>
                   )}
                 </div>
+
+                {/* Honeypot — never shown, never announced, never autofilled. A bot
+                    fills every input it finds; a person cannot reach this one. */}
+                <input
+                  type="text"
+                  name="hp_company_url"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  className="absolute left-[-9999px] h-px w-px opacity-0"
+                />
+
+                {bot.widget}
 
                 <button
                   type="submit"
