@@ -76,7 +76,17 @@ export async function POST(req: Request) {
 
   const now = new Date();
   const ymd = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-  const ticketNumber = `TKT-${ymd}-${crypto.randomUUID().slice(0, 4).toUpperCase()}`;
+  // Ten characters from an alphabet without look-alikes (~49 bits). The number
+  // plus an email is the whole credential for reading and replying to a ticket;
+  // the previous four hex characters (65,536 per day) could be walked from a
+  // few addresses (2026-09-17 audit). Same alphabet and length as the CMS's
+  // lib/ticket-number.ts, whose pattern is what validates this on create.
+  const TICKET_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const suffixBytes = new Uint8Array(10);
+  crypto.getRandomValues(suffixBytes);
+  let suffix = "";
+  for (const b of suffixBytes) suffix += TICKET_ALPHABET[b % TICKET_ALPHABET.length];
+  const ticketNumber = `TKT-${ymd}-${suffix}`;
 
   const doc = await createTicket({
     ticketNumber,

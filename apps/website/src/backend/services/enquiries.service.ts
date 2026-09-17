@@ -48,7 +48,19 @@ export async function uploadEnquiryFiles(
       const blob = new Blob([new Uint8Array(f.buffer)], { type: f.contentType });
       form.append("file", blob, f.filename);
       form.append("_payload", JSON.stringify({ source }));
-      const res = await fetch(`${CMS}/api/enquiry-uploads`, { method: "POST", body: form });
+      // The CMS accepts this create ONLY from the website server (internal key):
+      // this route has already sniffed the bytes, capped the size and rate-limited
+      // the caller, none of which a direct POST to the CMS origin would get.
+      const key = process.env.INTERNAL_API_KEY || "";
+      if (!key) {
+        console.warn("[enquiry] INTERNAL_API_KEY not set; attachments cannot be filed");
+        continue;
+      }
+      const res = await fetch(`${CMS}/api/enquiry-uploads`, {
+        method: "POST",
+        headers: { "x-internal-key": key },
+        body: form,
+      });
       if (!res.ok) {
         console.warn(`[enquiry] upload failed (${res.status}) for ${f.filename}`);
         continue;

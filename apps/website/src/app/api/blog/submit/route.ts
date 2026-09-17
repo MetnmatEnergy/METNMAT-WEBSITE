@@ -233,9 +233,11 @@ export async function POST(req: NextRequest) {
   // Content-type / category names for the emails (ids → labels, best effort).
   const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
   const labelOf = async (collection: string, id: string): Promise<string | undefined> => {
-    if (!id) return undefined;
+    // A form value is interpolated into a CMS URL: only an ObjectId may pass,
+    // so a `../`, `?` or `#` in the field can never redirect the request.
+    if (!id || !/^[a-f0-9]{24}$/.test(id)) return undefined;
     try {
-      const res = await fetch(`${CMS}/api/${collection}/${id}?depth=0`, {
+      const res = await fetch(`${CMS}/api/${collection}/${encodeURIComponent(id)}?depth=0`, {
         next: { revalidate: 300 },
       });
       if (!res.ok) return undefined;

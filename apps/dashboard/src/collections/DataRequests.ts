@@ -120,14 +120,19 @@ export const DataRequests: CollectionConfig = {
         } catch {
           /* fall back to 30 — never block a request over a settings read */
         }
+        // Public create: a requester (or a spammer) must not be able to file a
+        // request that is already "completed", write the resolution that is
+        // the audit trail, or choose the reference. Staff creating one in the
+        // admin keep those fields.
+        const staff = (req.user as { collection?: string } | null | undefined)?.collection === "users";
+        const mintedReference = `DPR-${now.getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
         return {
           ...data,
           receivedAt: now.toISOString(),
           dueAt: new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString(),
-          status: data.status ?? "new",
-          reference:
-            data.reference ||
-            `DPR-${now.getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+          status: staff ? (data.status ?? "new") : "new",
+          resolution: staff ? data.resolution : undefined,
+          reference: staff && data.reference ? data.reference : mintedReference,
         };
       },
     ],

@@ -33,9 +33,9 @@ describe("normalizeEnquiryEmail (beforeChange)", () => {
     expect(hook(junk)).toBe(junk);
   });
 
-  it("runs first in the enquiries beforeChange chain, before the reference and the gates", () => {
-    expect(Enquiries.hooks?.beforeChange?.[0]).toBe(normalizeEnquiryEmail);
-    expect(Enquiries.hooks?.beforeChange).toHaveLength(3);
+  it("runs right after the public-create strip, before the reference and the gates", () => {
+    expect(Enquiries.hooks?.beforeChange?.[1]).toBe(normalizeEnquiryEmail);
+    expect(Enquiries.hooks?.beforeChange).toHaveLength(4);
   });
 });
 

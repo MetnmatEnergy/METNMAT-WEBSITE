@@ -4,6 +4,7 @@ import { isAdmin } from "../access";
 import { safeKeyEqual } from "../lib/internal-key";
 import { oauthLinkPolicy } from "../lib/oauth-link";
 import { assignUserCode } from "../hooks/customer-code";
+import { resetVerificationOnEmailChange } from "../hooks/customer-email-change";
 
 /**
  * Bump `sessionsValidFrom` whenever the password changes, so any JWT minted
@@ -50,6 +51,9 @@ export const Customers: CollectionConfig = {
     // existing account keeps that user's password intact — while existing
     // email/password logins keep working unchanged.
     useSessions: false,
+    // Payload's own login cookie (the website never uses it, but the endpoint
+    // exists): Secure outside local dev, Lax so the admin UI's own navigation works.
+    cookies: { secure: process.env.NODE_ENV === "production", sameSite: "Lax" },
     tokenExpiration: 60 * 60 * 24 * 7, // 7 days
     maxLoginAttempts: 8,
     lockTime: 10 * 60 * 1000,
@@ -252,7 +256,7 @@ export const Customers: CollectionConfig = {
   hooks: {
     // Mint the immutable MNM-U-YY code on create (both email + Google signup flow
     // through here); keep it unchangeable on every update. See customer-code.ts.
-    beforeChange: [assignUserCode, stampSessionsOnPasswordChange],
+    beforeChange: [assignUserCode, stampSessionsOnPasswordChange, resetVerificationOnEmailChange],
     afterOperation: [
       /**
        * Completing a password reset proves the person can READ the account's

@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageSales, internalOrCanManageCatalog, isAdmin } from "../access";
+import { canManageSales, internalOnly, internalOrCanManageCatalog, isAdmin } from "../access";
 
 /**
  * Customer-uploaded files (PDF / image / camera photo) attached to a quote or
@@ -17,7 +17,10 @@ export const EnquiryUploads: CollectionConfig = {
     defaultColumns: ["filename", "source", "createdAt"],
   },
   access: {
-    create: () => true, // public website form uploads here
+    // The website's upload route only (it sniffs the bytes, caps sizes and
+    // rate-limits before forwarding with the internal key). A public create
+    // here let anyone bypass all of that by POSTing to the CMS origin directly.
+    create: internalOnly,
     read: internalOrCanManageCatalog, // staff, or website server via x-internal-key
     update: canManageSales,
     delete: isAdmin,

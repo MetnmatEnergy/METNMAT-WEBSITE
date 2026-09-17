@@ -28,8 +28,19 @@
  * kind of ticket number for staff to tell apart.
  */
 
-/** `TKT-YYYYMMDD-XXXX`, the form printed on every confirmation email. */
-export const TICKET_NUMBER_PATTERN = /^TKT-\d{8}-[0-9A-F]{4}$/;
+/**
+ * `TKT-YYYYMMDD-XXXXXXXXXX`, the form printed on every confirmation email.
+ *
+ * TEN characters from an alphabet without look-alikes (no 0/O, 1/I/L): about
+ * 49 bits of randomness. The previous four hex characters gave 65,536 numbers
+ * per day, and the number plus an email address is the whole credential for
+ * reading and replying to a ticket, so a day's tickets could be walked from a
+ * few addresses (2026-09-17 audit). Numbers issued before that day keep the
+ * short shape; the pattern accepts both, and update never re-validates.
+ */
+export const TICKET_SUFFIX_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const TICKET_SUFFIX_LENGTH = 10;
+export const TICKET_NUMBER_PATTERN = /^TKT-\d{8}-(?:[0-9A-F]{4}|[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10})$/;
 
 /**
  * Build a ticket number for a moment in time and a random suffix.
@@ -42,12 +53,21 @@ export function formatTicketNumber(now: Date, suffix: string): string {
     `${now.getFullYear()}` +
     `${String(now.getMonth() + 1).padStart(2, "0")}` +
     `${String(now.getDate()).padStart(2, "0")}`;
-  return `TKT-${ymd}-${suffix.slice(0, 4).toUpperCase()}`;
+  return `TKT-${ymd}-${suffix.slice(0, TICKET_SUFFIX_LENGTH).toUpperCase()}`;
 }
 
-/** A fresh candidate number. Four hex characters — 65536 per day. */
+/** A fresh random suffix from the unambiguous alphabet (CSPRNG). */
+export function newTicketSuffix(): string {
+  const bytes = new Uint8Array(TICKET_SUFFIX_LENGTH);
+  crypto.getRandomValues(bytes);
+  let out = "";
+  for (const b of bytes) out += TICKET_SUFFIX_ALPHABET[b % TICKET_SUFFIX_ALPHABET.length];
+  return out;
+}
+
+/** A fresh candidate number. */
 export function newTicketNumber(now: Date = new Date()): string {
-  return formatTicketNumber(now, crypto.randomUUID().slice(0, 4));
+  return formatTicketNumber(now, newTicketSuffix());
 }
 
 /**

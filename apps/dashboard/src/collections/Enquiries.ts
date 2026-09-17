@@ -4,6 +4,7 @@ import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { enquiryBeforeChange } from "../hooks/workflow-gates";
 import { assignEnquiryReference } from "../hooks/enquiry-reference";
 import { normalizeEnquiryEmail } from "../hooks/enquiry-email";
+import { stripInternalOnPublicCreate } from "../hooks/enquiry-public-create";
 
 /**
  * Customization / quote requests (RFQ) submitted from the website's
@@ -176,8 +177,9 @@ export const Enquiries: CollectionConfig = {
   hooks: {
     // Reference first: the create response carries it back to the website, which
     // emails it to the customer and shows it on the success screen.
-    // Email case first, so the reference and the workflow gates see the stored form.
-    beforeChange: [normalizeEnquiryEmail, assignEnquiryReference, enquiryBeforeChange],
+    // Strip staff-only fields from public creates first, then email case, so
+    // the reference and the workflow gates see the stored form.
+    beforeChange: [stripInternalOnPublicCreate, normalizeEnquiryEmail, assignEnquiryReference, enquiryBeforeChange],
     afterChange: [auditAfterChange],
     afterDelete: [auditAfterDelete],
   },
