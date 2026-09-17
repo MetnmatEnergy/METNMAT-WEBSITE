@@ -59,7 +59,8 @@ not invalidate the credential. Unconfirmed; treat as live until verified.
 |---|:--:|---|
 | `MONGODB_URI` | ✅ | Chatbot DB (`metnmat`). |
 | `MONGODB_DNS_SERVERS` | — | Custom DNS for the Mongo SRV lookup (some networks need it). |
-| `GROQ_API_KEY` | ✅ | LLM inference. |
+| `DEEPSEEK_API_KEY` | ✅ | Every chat model (swapped from OpenAI on 2026-09-17, METNMAT-chatbot PR #2). Same DeepSeek account as the Command Center; lives in `metnmat/chat/env` and is listed in `deploy/v2/etc/chat.required`. `OPENAI_API_KEY` and `GROQ_API_KEY` are no longer read. |
+| `DEEPSEEK_MODEL` / `DEEPSEEK_FAST_MODEL` / `DEEPSEEK_THINKING` | — | Optional. Model ids default to `deepseek-flash` (V4.1-Flash); the Command Center's `deepseek-v4-flash-vision-exp` also works for text. Thinking is off by default so short answers are not returned empty; `on` is for diagnosis only. |
 | `PORT` / `PUBLIC_URL` | ✅ | Server bind + public base. |
 | `JWT_SECRET` | ✅ | Signs widget session JWTs. **Must be long & random and set in prod** — remove the `metnmat-change-me-in-production` fallback + fail fast (SEC-03/BOT-04). Generate: `openssl rand -hex 32`. |
 | `ALLOWED_ORIGINS` | ✅ (prod) | **Exact** comma-separated origins (no `*`, BOT-05). e.g. `https://www.metnmat.com,https://metnmat.com` |

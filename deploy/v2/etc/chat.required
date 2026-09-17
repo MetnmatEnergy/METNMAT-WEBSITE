@@ -1,5 +1,9 @@
 # Mirrors assertConfig() in the chatbot's src/config/env.ts and the old REQUIRED_SECRETS.
+# DEEPSEEK_API_KEY replaced OPENAI_API_KEY on 2026-09-17 (METNMAT-chatbot PR #2): the
+# bot's chat models run on DeepSeek, the same account the Command Center uses.
+# Re-apply with bootstrap-host.yml only AFTER the key is in metnmat/chat/env, or the
+# fetcher will refuse to start the unit.
 MONGODB_URI
-OPENAI_API_KEY
+DEEPSEEK_API_KEY
 AGENT_API_KEY
 JWT_SECRET

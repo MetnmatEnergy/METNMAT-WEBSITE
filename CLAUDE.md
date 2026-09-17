@@ -197,7 +197,7 @@ ap-south-1, EIP `52.66.54.7`, AL2023, IMDSv2, no SSH) behind Caddy with real cer
 |---|---|---|
 | `www.metnmat.com` | :3100 | website — apex 308s to www (`deploy-web.yml`, CI deploys verified 2026-09-17) |
 | `admin.metnmat.com` | :3200 | Payload CMS (`deploy-cms.yml`; first CI deploy landed 2026-09-17) |
-| `chat.metnmat.com` | :3002 | chatbot (`MetnmatEnergy/METNMAT-chatbot`; live, but answers need OpenAI credit) |
+| `chat.metnmat.com` | :3002 | chatbot (`MetnmatEnergy/METNMAT-chatbot`; chat models on DeepSeek since PR #2, same account as the Command Center; `DEEPSEEK_API_KEY` in `metnmat/chat/env`) |
 | `command-center.metnmat.com` | :3000 | Command Center — **a different project** (`MetnmatEnergy/Metnmat_Dashboard`) |
 
 Website and CMS are credential-complete (Resend, Razorpay live, Google sign-in, internal keys).
