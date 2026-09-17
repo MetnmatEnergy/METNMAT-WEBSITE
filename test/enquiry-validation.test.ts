@@ -33,6 +33,13 @@ describe("validateEnquiry", () => {
     if (!r.success) expect(r.fields._rejected).toBeTruthy();
   });
 
+  it("rejects the current honeypot field name too (mm_trap)", () => {
+    const r = validateEnquiry({ ...good, mm_trap: "Acme Pvt Ltd" }, "quote");
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.fields._rejected).toBeTruthy();
+    expect(validateEnquiry({ ...good, mm_trap: "" }, "quote").success).toBe(true);
+  });
+
   it("ignores an absent or empty honeypot (real users never fill it)", () => {
     expect(validateEnquiry({ ...good, hp_company_url: "" }, "quote").success).toBe(true);
     expect(validateEnquiry(good, "quote").success).toBe(true);

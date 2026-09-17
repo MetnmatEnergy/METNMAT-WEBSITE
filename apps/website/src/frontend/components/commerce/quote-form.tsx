@@ -44,7 +44,7 @@ export function QuoteForm() {
       company: String(fd.get("company") ?? "").trim(),
       // The API validates on `message`; fold the category in so staff see it.
       message: category ? `Quote for: ${category}\n\n${details}` : details,
-      hp_company_url: String(fd.get("hp_company_url") ?? ""), // honeypot (see hidden field)
+      mm_trap: String(fd.get("mm_trap") ?? ""), // honeypot (see hidden field)
       // Recognises a repeat submission server-side rather than filing a second
       // RFQ and re-sending both emails.
       requestId: requestIdRef.current,
@@ -73,6 +73,9 @@ export function QuoteForm() {
       }
       if (res.status === 400 && data?.fields) {
         setFieldErrors(data.fields);
+        // `_rejected` belongs to no input, so without this line the form
+        // showed nothing at all — the visitor saw a button that "did nothing".
+        if (data.fields._rejected) setTopError("We could not accept this submission. Please reload the page and try again, or email us directly.");
         setStatus("error");
         return;
       }
@@ -115,14 +118,9 @@ export function QuoteForm() {
   return (
     <form onSubmit={onSubmit} className="grid gap-4" noValidate data-analytics-form="quote">
       {/* Honeypot: hidden from humans + assistive tech; bots fill it and are rejected server-side. */}
-      <input
-        type="text"
-        name="hp_company_url"
-        tabIndex={-1}
-        autoComplete="off"
-        aria-hidden="true"
-        className="absolute left-[-9999px] h-0 w-0 opacity-0"
-      />
+      <div hidden aria-hidden="true">
+        <input type="text" name="mm_trap" tabIndex={-1} autoComplete="off" defaultValue="" />
+      </div>
       {topError && (
         <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2.5 text-sm text-red-600">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />

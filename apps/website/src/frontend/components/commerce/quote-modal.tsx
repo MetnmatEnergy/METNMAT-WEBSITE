@@ -132,7 +132,7 @@ export function QuoteModal() {
           requestId: requestIdRef.current,
           // The hidden field every other public form carries. This modal was
           // the one form without it, so a bot could submit it unimpeded.
-          hp_company_url: get("hp_company_url"),
+          mm_trap: get("mm_trap"),
           ...botFields,
         }),
       });
@@ -141,6 +141,7 @@ export function QuoteModal() {
         error?: string;
         reference?: string;
         emailedCustomer?: boolean;
+        fields?: Record<string, string>;
         code?: string;
         reason?: string;
       };
@@ -148,7 +149,12 @@ export function QuoteModal() {
       // re-minted, unless the server only asked us to wait a moment.
       bot.reset({ formToken: data.code === "bot-check" && data.reason !== "form-token-too_fast" });
       if (!res.ok || data.ok === false) {
-        setErrorText(data.error ?? "Something went wrong. Please try again.");
+        const fieldReason = data.fields?._rejected
+          ? "We could not accept this submission. Please reload the page and try again, or email us directly."
+          : data.fields
+            ? Object.values(data.fields).join(" ")
+            : undefined;
+        setErrorText(data.error ?? fieldReason ?? "Something went wrong. Please try again.");
         setStatus("error");
         return;
       }
@@ -389,16 +395,12 @@ export function QuoteModal() {
                   )}
                 </div>
 
-                {/* Honeypot — never shown, never announced, never autofilled. A bot
-                    fills every input it finds; a person cannot reach this one. */}
-                <input
-                  type="text"
-                  name="hp_company_url"
-                  tabIndex={-1}
-                  autoComplete="off"
-                  aria-hidden="true"
-                  className="absolute left-[-9999px] h-px w-px opacity-0"
-                />
+                {/* Honeypot — same shape as the drawer and /quote: a name no autofill
+                    heuristic maps to an address field, inside a display:none wrapper
+                    autofill never touches. Bots fill every input they find. */}
+                <div hidden aria-hidden="true">
+                  <input type="text" name="mm_trap" tabIndex={-1} autoComplete="off" defaultValue="" />
+                </div>
 
                 {bot.widget}
 
