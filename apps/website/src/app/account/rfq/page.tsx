@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
 import { getCurrentCustomer, getCustomerEnquiries } from "@/backend/lib/customer";
 
@@ -13,7 +13,21 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default async function RfqPage() {
   const customer = await getCurrentCustomer();
-  const rfqs = await getCustomerEnquiries(customer);
+  const result = await getCustomerEnquiries(customer);
+
+  // A CMS refusal or outage must not masquerade as "no quote requests yet".
+  if (!result.ok) {
+    return (
+      <div className="rounded-2xl border border-border bg-surface p-12 text-center">
+        <RefreshCw className="mx-auto h-8 w-8 text-muted-foreground" />
+        <h2 className="mt-4 font-display text-lg font-semibold">We couldn&apos;t load your quote requests</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Something went wrong on our side. Your requests are safe. Please refresh in a moment.
+        </p>
+      </div>
+    );
+  }
+  const rfqs = result.enquiries;
 
   if (rfqs.length === 0) {
     return (

@@ -40,7 +40,7 @@ Consolidated reference for all three services. **Never commit real secrets.** Pe
 | `CMS_URL` | ✅ (prod) | The dashboard's **own** public origin — required for the admin auth cookie (CSRF/CORS). Prod: `https://admin.metnmat.com` |
 | `NEXT_PUBLIC_SERVER_URL` | ✅ (prod) | Fallback for the self origin if `CMS_URL` unset. |
 | `WEBSITE_URL` | ✅ | Public website origin (allowed to read the CMS cross-origin). |
-| `INTERNAL_API_KEY` | ✅ (prod) | Must match the website's value. |
+| `INTERNAL_API_KEY` | ✅ (prod) | Must match the website's value. On `enquiries` the key never grants a listing: it is honoured only for `?where[email][equals]=<one address>` and yields a constraint on that address (`internalOwnEmailOrManageSales`). |
 | `CHATBOT_DB_NAME` | ✅ (sync) | Mongo DB the chatbot product sync writes to (`metnmat`). |
 | `STORAGE_PROVIDER` | ✅ (prod storage) | `s3`. **Defaults to `gcs` when unset** — set at both run time (PM2 ecosystem) and build time (deploy workflow). |
 | `S3_BUCKET` / `S3_REGION` | ✅ (prod storage) | `metnmat-media-prod` / `ap-south-1`. Bucket is private; media is served through the CMS, never directly. |

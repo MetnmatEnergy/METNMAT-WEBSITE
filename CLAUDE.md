@@ -151,6 +151,11 @@ available for auditing orphaned resources.
   `pointerdown` listener that never calls `preventDefault`** — never a click-catching overlay,
   which swallows the click.
 - No fabricated content. Structured data and copy must trace to a real CMS field or a real page.
+- Internal-key reads of customer-keyed data return a `where` constraint, never `true`. The
+  website server reads `enquiries` only through `?where[email][equals]=<one address>`
+  (`internalOwnEmailOrManageSales`, shape check in `lib/own-email-scope.ts`), so a leaked key
+  cannot list the collection. The website helper treats a non-2xx as an error result, not an
+  empty list, because a 403 on every request once hid for months as "no quote requests yet".
 
 ## Current state
 

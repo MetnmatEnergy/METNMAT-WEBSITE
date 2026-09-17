@@ -1,5 +1,5 @@
 import type { CollectionConfig } from "payload";
-import { canManageSales, isAdmin } from "../access";
+import { canManageSales, internalOwnEmailOrManageSales, isAdmin } from "../access";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { enquiryBeforeChange } from "../hooks/workflow-gates";
 import { assignEnquiryReference } from "../hooks/enquiry-reference";
@@ -7,7 +7,11 @@ import { assignEnquiryReference } from "../hooks/enquiry-reference";
 /**
  * Customization / quote requests (RFQ) submitted from the website's
  * "Request for Customization" drawer. Anyone can CREATE (public form);
- * only staff can read/manage. Sales + Marketing + Admin can work them.
+ * staff read/manage them (Sales + Marketing + Admin). The website server may
+ * also read them on a signed-in customer's behalf, but only one address at a
+ * time: the internal key is honoured solely for `?where[email][equals]=<one
+ * address>` and yields a constraint on that address, never a full listing
+ * (see internalOwnEmailOrManageSales).
  */
 export const Enquiries: CollectionConfig = {
   slug: "enquiries",
@@ -20,7 +24,7 @@ export const Enquiries: CollectionConfig = {
   },
   access: {
     create: () => true, // public website form submits here
-    read: canManageSales, // super-admin / admin / marketing / sales
+    read: internalOwnEmailOrManageSales, // sales family, or the website server scoped to ONE email
     update: canManageSales,
     delete: isAdmin,
   },

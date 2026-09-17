@@ -1,5 +1,6 @@
 import type { Access, FieldAccess } from "payload";
 import { safeKeyEqual, inboundKeyMatches } from "../lib/internal-key";
+import { ownEmailConstraint, singleEmailFromQuery } from "../lib/own-email-scope";
 
 const xKey = (args: { req?: { headers?: unknown } }) =>
   (args.req?.headers as Headers | undefined)?.get?.("x-internal-key");
@@ -263,6 +264,32 @@ export const publicRead: Access = () => true;
 export const internalOrCanManageCatalog: Access = (args) => {
   if (safeKeyEqual(xKey(args), process.env.INTERNAL_API_KEY)) return true;
   return canManageSales(args);
+};
+
+/**
+ * A customer's OWN rows in a collection keyed by `email` (enquiries): the sales
+ * family reads everything, exactly as before; the website server, presenting the
+ * shared internal key, reads only the one address it names.
+ *
+ * THE BUG. The account page fetched `/api/enquiries?where[email][equals]=...`
+ * with `x-internal-key`, but `read` was `canManageSales`, which looks at the
+ * logged-in staff user and never at the header. Every request was a 403, the
+ * website swallowed it as "no enquiries", and customers saw an empty history.
+ *
+ * THE RULE. The key path never returns `true`. It returns a `where` constraint
+ * on the single address the query names (Payload ANDs that with the caller's
+ * own `where`), and returns `false` for any other query shape. So the key can
+ * read a customer's enquiries once the website has verified the customer owns
+ * that address, and a leaked key still cannot list the collection, fetch by id,
+ * or widen the match with `like`. The shape check lives in
+ * lib/own-email-scope.ts; the key compare is the same constant-time one every
+ * other internal gate uses.
+ */
+export const internalOwnEmailOrManageSales: Access = (args) => {
+  if (canManageSales(args) === true) return true;
+  if (!safeKeyEqual(xKey(args), process.env.INTERNAL_API_KEY)) return false;
+  const email = singleEmailFromQuery(args.req?.query);
+  return email ? ownEmailConstraint(email) : false;
 };
 
 /** Orders + payment events: website server (CMS_ORDER_WRITE_KEY, else shared) or staff. */

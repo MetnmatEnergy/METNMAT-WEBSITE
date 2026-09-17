@@ -44,7 +44,11 @@ export function validateEnquiry(
   }
 
   const name = String(body.name ?? "").trim();
-  const email = String(body.email ?? "").trim();
+  // Lower-cased on the way in: the account page matches a customer's RFQ
+  // history by EXACT email equality (the CMS read gate only permits that one
+  // operator), and it queries the lower-cased account address. An address
+  // stored as typed ("Jane@Lab.Example") would never match its own account.
+  const email = String(body.email ?? "").trim().toLowerCase();
   const message = String(body.message ?? "").trim();
 
   if (name.length < 2) fields.name = "Please enter your name.";
