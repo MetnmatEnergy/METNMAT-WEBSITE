@@ -1884,6 +1884,61 @@ async function backfillCustomerCodes(payload: Payload): Promise<void> {
 }
 
 /**
+ * Lower-case every enquiry email that still carries upper-case letters.
+ *
+ * The account page finds a customer's RFQ history by EXACT email equality: the
+ * website's internal-key read of `enquiries` is permitted only for
+ * `where[email][equals]=<address>`, and it sends the lower-cased account address.
+ * Since 2026-09-17 the website lower-cases on the way in and the collection's
+ * beforeChange hook does the same for staff edits, but rows filed before that
+ * were stored as typed ("Jane@Lab.Example") and would never match their own
+ * account. Direct collection write, no hooks: nothing else about the row
+ * changes, so the workflow gates and the audit log have nothing to add.
+ * Idempotent, the query finds nothing once every row is lower-case.
+ */
+export async function lowercaseEnquiryEmails(payload: Payload): Promise<void> {
+  type Row = { _id: unknown; email?: string };
+  type EnquiriesModel = {
+    find: (
+      filter: Record<string, unknown>,
+      projection: Record<string, unknown>,
+    ) => { lean: () => Promise<Row[]> };
+    updateOne: (
+      filter: Record<string, unknown>,
+      update: Record<string, unknown>,
+    ) => Promise<{ modifiedCount?: number }>;
+  };
+  const collections = (payload.db as unknown as { collections: Record<string, unknown> }).collections;
+  const Enquiries = collections?.["enquiries"] as EnquiriesModel | undefined;
+  if (!Enquiries) return;
+
+  let rows: Row[] = [];
+  try {
+    rows = await Enquiries.find({ email: { $regex: "[A-Z]" } }, { _id: 1, email: 1 }).lean();
+  } catch (e) {
+    payload.logger.warn(`[seed] enquiry email case fix skipped (query failed): ${(e as Error).message}`);
+    return;
+  }
+  if (!rows.length) return;
+
+  let fixed = 0;
+  for (const row of rows) {
+    const email = typeof row.email === "string" ? row.email : "";
+    const lower = email.trim().toLowerCase();
+    if (!lower || lower === email) continue;
+    try {
+      // Conditional on the value just read, so a concurrent staff edit is never
+      // overwritten (modifiedCount 0 and the next boot picks the row up again).
+      const res = await Enquiries.updateOne({ _id: row._id, email }, { $set: { email: lower } });
+      if (res?.modifiedCount === 1) fixed++;
+    } catch (e) {
+      payload.logger.warn(`[seed] enquiry email case fix: one row failed — ${(e as Error).message}`);
+    }
+  }
+  payload.logger.info(`[seed] Lower-cased ${fixed}/${rows.length} enquiry email(s).`);
+}
+
+/**
  * DB-level uniqueness backstop for userCode. A PARTIAL unique index (only over
  * docs where userCode is a string) so legacy null/unset rows never block the
  * build, while any duplicate real code fails loudly with an 11000 instead of
@@ -2042,6 +2097,7 @@ export async function seedContentAndCatalogue(payload: Payload): Promise<void> {
   //     then establish the partial-unique index backstop.
   await step(payload, "backfillCustomerCodes", () => backfillCustomerCodes(payload));
   await step(payload, "ensureUserCodeIndex", () => ensureUserCodeIndex(payload));
+  await step(payload, "lowercaseEnquiryEmails", () => lowercaseEnquiryEmails(payload));
 
   payload.logger.info(`[seed] Done. ${prodSlugs.size} catalog products, ${catSlugs.size} categories.`);
 }
