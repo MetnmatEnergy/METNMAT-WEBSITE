@@ -117,7 +117,10 @@ describe("the Payload behaviour this depends on", () => {
     // checking it, this test says so and the reasoning above can be revisited.
     const { execSync } = require("node:child_process") as typeof import("node:child_process");
     const hits = execSync(
-      'grep -rl "truncated" apps/dashboard/node_modules/payload/dist --include=*.js || true',
+      // Only a real read of the flag counts: `file.truncated`, `.truncated`, or
+      // a `truncated` key. Payload 3.89 ships comments and spec fixtures that
+      // merely use the English word, which is not a reader.
+      'grep -rlE "[.]truncated([^A-Za-z0-9_]|$)" apps/dashboard/node_modules/payload/dist --include=*.js --exclude=*.spec.js || true',
       { cwd: ROOT, encoding: "utf8" },
     )
       .split("\n")
