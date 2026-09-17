@@ -4,15 +4,20 @@
     {
       "Sid": "GitHubActionsOIDC",
       "Effect": "Allow",
-      "Principal": { "Federated": "arn:aws:iam::976134557584:oidc-provider/token.actions.githubusercontent.com" },
+      "Principal": {
+        "Federated": "arn:aws:iam::976134557584:oidc-provider/token.actions.githubusercontent.com"
+      },
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
-        "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
         "StringLike": {
           "token.actions.githubusercontent.com:sub": [
             "repo:MetnmatEnergy/METNMAT-WEBSITE:ref:refs/heads/main",
             "repo:MetnmatEnergy/METNMAT-chatbot:ref:refs/heads/main",
-            "repo:MetnmatEnergy/Metnmat_Dashboard:ref:refs/heads/master"
+            "repo:MetnmatEnergy/Metnmat_Dashboard:ref:refs/heads/master",
+            "repo:MetnmatEnergy@289908882/METNMAT-chatbot@1336835438:ref:refs/heads/main"
           ]
         }
       }
