@@ -124,3 +124,24 @@ force-push and deletion. Retired secrets deleted: dashboard `VM_*`, `DASHBOARD_*
 into `metnmat/web/env` (public client id); create IAM group `metnmat-admins` (AdministratorAccess + MFA-required) and
 user `metnmat-admin` so daily console work stops using root; rotate the operator key `AKIA…2EVH` (day 7 with the
 cleanup). Nothing else in the account needs a third-party credential to be reached by me.
+
+## 2026-09-17 — low-risk values filled on the owner's instruction ("you add the low-risk ones, I rotate the exploitable ones")
+
+Fingerprint check first: every provider key in the env file the owner supplied is byte-identical to the value the hacked
+server held (Razorpay ×3, Resend, Upstash token, Open Exchange Rates). Only the director PIN differed.
+
+| Set now | Where | Source / risk |
+|---|---|---|
+| `DIRECTOR_PIN` | cms | owner's env file; differs from the server copy → not burned. Director super-admin ensured on restart. |
+| `COMPANY_GSTIN`, `COMPANY_GST_STATE` | web | public registration of the default invoicing branch (Howrah, West Bengal), read from the Command Center's `company_branches`. |
+| `BLOG_NOTIFY_EMAIL` | web | same mailbox as `QUOTE_NOTIFY_EMAIL`. |
+| `CMS_OAUTH_KEY` | web | copied from the CMS (generated during recovery; must match on both). |
+| `UPSTASH_REDIS_REST_TOKEN` | web | **reused burned value** at the owner's request — rate-limit store only; rotate at console.upstash.com when convenient. |
+| `OPEN_EXCHANGE_RATES_APP_ID` | web + cms | **reused burned value** at the owner's request — currency-rate quota only; rotate when convenient. |
+| `Meta_WA_VerfyToken`, `FACEBOOK_VERIFY_TOKEN`, `Meta_IG_VerifyToken`, `WHATSAPP_WEBHOOK_URL` | chat | generated fresh / `https://chat.metnmat.com/api/webhook/meta`; enter the verify tokens in Meta's webhook config (copy from the AWS console). |
+
+Not fillable by me: `COMPANY_CIN` (not stored anywhere readable — MCA record), `GOOGLE_SITE_VERIFICATION` (Search Console),
+`ANALYTICS_GEO_TOKEN` (was a placeholder on the old server too), `PINECONE_INDEX_NAME`/`PINECONE_NAMESPACE` (Pinecone console).
+
+**Owner rotates (exploitable):** Razorpay ×3, Resend, Google OAuth secret (+ client id), OpenAI, Pinecone, Gmail, Supabase,
+Zoho, Amazon SP-API, WhatsApp/Meta tokens + app secret, Gemini, DeepSeek, Google Maps. Cards in guide 06.
