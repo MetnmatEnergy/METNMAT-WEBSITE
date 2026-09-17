@@ -1,0 +1,155 @@
+name: Deploy website (v2 host)
+
+# Build → verify → upload artifact + sha256 → release over SSM as root on the
+# isolated v2 host (deploy/v2). Replaces deploy-website-ec2.yml after the
+# 2026-09 incident.
+#
+# Authentication is OIDC ONLY. There is deliberately no static-key fallback:
+# the previous fallback was an AdministratorAccess key stored in this public
+# repository's secrets. Configure secret AWS_DEPLOY_ROLE_ARN
+# (arn:aws:iam::976134557584:role/metnmat-github-deploy) and variable
+# PROD_INSTANCE_ID (the v2 instance id).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/website/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - "turbo.json"
+      - "deploy/v2/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to deploy (blank = HEAD). Use to roll forward/back."
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+  APP: web
+  ARTIFACT_NAME: web-build.tgz
+  ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'metnmat-deploy-artifacts-976134557584' }}
+  PROD_INSTANCE_ID: ${{ vars.PROD_INSTANCE_ID }}
+  CMS_URL: https://admin.metnmat.com
+  SITE_URL: https://www.metnmat.com
+  CHATBOT_URL: https://chat.metnmat.com
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Guard configuration
+        run: |
+          [ -n "${{ secrets.AWS_DEPLOY_ROLE_ARN }}" ] || { echo "::error::AWS_DEPLOY_ROLE_ARN secret not set (OIDC only — no static keys)"; exit 1; }
+          [ -n "${{ env.PROD_INSTANCE_ID }}" ]         || { echo "::error::PROD_INSTANCE_ID repository variable not set"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha || github.sha }}
+      - name: Resolve deploy SHA
+        id: resolve
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: apps/website/.next/cache
+          key: next-web-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/website/src/**') }}
+          restore-keys: next-web-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+      - name: Refuse known-vulnerable framework versions
+        run: |
+          set -euo pipefail
+          v="$(node -p "require('./apps/website/node_modules/next/package.json').version")"
+          r="$(node -p "require('./apps/website/node_modules/react/package.json').version")"
+          echo "next $v · react $r"
+          node -e "const s=require('semver');process.exit(s.satisfies('$v','>=15.5.0') && s.satisfies('$r','>=19.2.1')?0:1)" 2>/dev/null \
+            || node -e "const [a,b]='$v'.split('.').map(Number); if(a<15||(a===15&&b<5)) process.exit(1)" \
+            || { echo "::error::Next.js $v is below the React2Shell-safe floor"; exit 1; }
+      - run: pnpm --filter website typecheck
+      - run: pnpm --filter website lint
+      - run: pnpm test
+      - name: Build (standalone)
+        env:
+          NEXT_OUTPUT: standalone
+          NEXT_PUBLIC_CMS_URL: ${{ env.CMS_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ env.SITE_URL }}
+          NEXT_PUBLIC_CHATBOT_URL: ${{ env.CHATBOT_URL }}
+          NODE_ENV: production
+        run: pnpm --filter website build
+      - name: Assemble release
+        run: |
+          set -euo pipefail
+          cd apps/website
+          cp -r .next/standalone release
+          mkdir -p release/apps/website/.next
+          cp -r .next/static release/apps/website/.next/static
+          [ -d public ] && cp -r public release/apps/website/public
+          [ -f release/apps/website/server.js ]     || { echo "::error::server.js missing"; find release -maxdepth 3 -name server.js; exit 1; }
+          [ -f release/apps/website/.next/BUILD_ID ] || { echo "::error::BUILD_ID missing"; exit 1; }
+          tar -czf "$ARTIFACT_NAME" -C release .
+          sha256sum "$ARTIFACT_NAME" > "$ARTIFACT_NAME.sha256"
+          echo "artifact: $(du -h "$ARTIFACT_NAME" | cut -f1)  $(cut -c1-16 "$ARTIFACT_NAME.sha256")…"
+      - name: Assume deploy role (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-web-build-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Upload artifact + checksum
+        run: |
+          set -euo pipefail
+          DEST="s3://${ARTIFACT_BUCKET}/${APP}/${{ steps.resolve.outputs.sha }}"
+          aws s3 cp "apps/website/$ARTIFACT_NAME"        "$DEST/$ARTIFACT_NAME"        --only-show-errors
+          aws s3 cp "apps/website/$ARTIFACT_NAME.sha256" "$DEST/$ARTIFACT_NAME.sha256" --only-show-errors
+          echo "uploaded to $DEST"
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assume deploy role (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-web-release-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Release over SSM (root, metnmat-release)
+        env:
+          SHA: ${{ needs.build.outputs.sha }}
+        run: |
+          set -euo pipefail
+          I="$PROD_INSTANCE_ID"
+          CMD=$(aws ssm send-command --instance-ids "$I" --document-name AWS-RunShellScript \
+            --comment "release ${APP} ${SHA}" --timeout-seconds 900 \
+            --parameters commands="[\"export ARTIFACT_BUCKET='${ARTIFACT_BUCKET}' HEALTH_TIMEOUT=180\",\"/usr/local/sbin/metnmat-release ${APP} ${SHA}\"]" \
+            --query 'Command.CommandId' --output text)
+          echo "SSM command $CMD"
+          STATUS=Pending
+          for i in $(seq 1 90); do
+            STATUS="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" --query Status --output text 2>/dev/null || echo Pending)"
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break;; esac
+            sleep 10
+          done
+          aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" --query StandardOutputContent --output text || true
+          echo "--- stderr ---"; aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" --query StandardErrorContent --output text || true
+          { echo "### Website release — \`$STATUS\`"; echo; echo "commit \`$SHA\` → instance \`$I\`"; } >> "$GITHUB_STEP_SUMMARY"
+          [ "$STATUS" = "Success" ] || { echo "::error::release failed ($STATUS); metnmat-release rolled back — see output"; exit 1; }

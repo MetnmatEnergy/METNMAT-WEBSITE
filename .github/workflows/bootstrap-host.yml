@@ -1,0 +1,71 @@
+name: Bootstrap v2 host (one-time / re-apply config)
+
+# Ships deploy/v2 to the artifact bucket and runs bootstrap-host.sh as root on
+# the target instance over SSM. Idempotent — re-run to apply changes to units,
+# Caddyfile, nftables or the secret fetcher. Never touches release directories.
+# Creating the instance itself is deploy/v2/aws/launch-instance.sh (operator).
+
+on:
+  workflow_dispatch:
+    inputs:
+      instance_id:
+        description: "Target instance id (defaults to the PROD_INSTANCE_ID variable)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ap-south-1
+  ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET || 'metnmat-deploy-artifacts-976134557584' }}
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assume deploy role (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-bootstrap-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Upload deploy/v2
+        id: up
+        run: |
+          set -euo pipefail
+          tar -czf v2.tgz -C deploy v2
+          sha256sum v2.tgz > v2.tgz.sha256
+          DEST="s3://${ARTIFACT_BUCKET}/bootstrap/${GITHUB_SHA}"
+          aws s3 cp v2.tgz "$DEST/v2.tgz" --only-show-errors
+          aws s3 cp v2.tgz.sha256 "$DEST/v2.tgz.sha256" --only-show-errors
+          echo "dest=$DEST" >> "$GITHUB_OUTPUT"
+      - name: Run bootstrap-host.sh over SSM
+        run: |
+          set -euo pipefail
+          I="${{ inputs.instance_id || vars.PROD_INSTANCE_ID }}"
+          [ -n "$I" ] || { echo "::error::no instance id"; exit 1; }
+          cat > remote.sh <<EOF
+          set -euo pipefail
+          T=\$(mktemp -d); cd \$T
+          aws s3 cp "${{ steps.up.outputs.dest }}/v2.tgz" v2.tgz --only-show-errors --region ${AWS_REGION}
+          aws s3 cp "${{ steps.up.outputs.dest }}/v2.tgz.sha256" v2.tgz.sha256 --only-show-errors --region ${AWS_REGION}
+          sha256sum -c --quiet v2.tgz.sha256
+          tar -xzf v2.tgz
+          bash v2/bin/bootstrap-host.sh "\$T/v2"
+          rm -rf "\$T"
+          EOF
+          B64=$(base64 -w0 < remote.sh)
+          CMD=$(aws ssm send-command --instance-ids "$I" --document-name AWS-RunShellScript \
+            --comment "bootstrap v2 ${GITHUB_SHA}" --timeout-seconds 1800 \
+            --parameters commands="[\"echo $B64 | base64 -d | bash\"]" --query 'Command.CommandId' --output text)
+          STATUS=Pending
+          for i in $(seq 1 180); do
+            STATUS="$(aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" --query Status --output text 2>/dev/null || echo Pending)"
+            case "$STATUS" in Success|Failed|Cancelled|TimedOut) break;; esac; sleep 10
+          done
+          aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" --query StandardOutputContent --output text || true
+          echo "--- stderr ---"; aws ssm get-command-invocation --command-id "$CMD" --instance-id "$I" --query StandardErrorContent --output text || true
+          [ "$STATUS" = "Success" ] || { echo "::error::bootstrap $STATUS"; exit 1; }

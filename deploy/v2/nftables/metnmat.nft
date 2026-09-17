@@ -1,0 +1,35 @@
+#!/usr/sbin/nft -f
+# /etc/nftables/metnmat.nft — loaded by nftables.service via /etc/sysconfig/nftables.conf
+#
+# Two jobs:
+#  1. The EC2 instance metadata service (169.254.169.254) answers ONLY to root.
+#     The secret fetcher, the SSM agent and the release script are root. Every
+#     application runs as an mm-* user and is dropped here, so an RCE inside an
+#     app cannot obtain the instance role's credentials — which is exactly how
+#     the 2026-09 attacker read every other app's secrets.
+#  2. Traffic to the known command-and-control hosts is dropped and logged, so a
+#     re-infection shows up in `journalctl -k | grep c2-blocked` instead of in
+#     the electricity bill.
+#
+# Inbound filtering is the security group's job (80/443 only, no SSH).
+
+table inet metnmat {
+  set c2_v4 {
+    type ipv4_addr
+    flags interval
+    elements = { 193.32.162.134, 45.86.86.23 }
+  }
+
+  chain output {
+    type filter hook output priority filter; policy accept;
+
+    # IMDS: root only.
+    ip  daddr 169.254.169.254 meta skuid 0 accept
+    ip  daddr 169.254.169.254 counter log prefix "imds-blocked " level warn drop
+    ip6 daddr fd00:ec2::254   meta skuid 0 accept
+    ip6 daddr fd00:ec2::254   counter drop
+
+    # Known C2 of the tiktouk botnet and the 2026-08-25 installer host.
+    ip daddr @c2_v4 counter log prefix "c2-blocked " level warn drop
+  }
+}

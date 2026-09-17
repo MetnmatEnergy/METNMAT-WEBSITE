@@ -1,0 +1,3 @@
+# metnmat-fetch-secrets refuses to start the website unless these are present
+# and non-placeholder in metnmat/web/env. Mirrors apps/website/src/instrumentation.ts.
+INTERNAL_API_KEY

@@ -1,0 +1,35 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadDeployArtifacts",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": [
+        "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/web/*",
+        "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/cms/*",
+        "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/chat/*",
+        "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/cc/*",
+        "arn:aws:s3:::metnmat-deploy-artifacts-976134557584/bootstrap/*"
+      ]
+    },
+    {
+      "Sid": "ReadExactlyTheFourAppSecrets",
+      "Effect": "Allow",
+      "Action": ["secretsmanager:GetSecretValue"],
+      "Resource": [
+        "arn:aws:secretsmanager:ap-south-1:976134557584:secret:metnmat/web/env-*",
+        "arn:aws:secretsmanager:ap-south-1:976134557584:secret:metnmat/cms/env-*",
+        "arn:aws:secretsmanager:ap-south-1:976134557584:secret:metnmat/chat/env-*",
+        "arn:aws:secretsmanager:ap-south-1:976134557584:secret:metnmat/cc/env-*"
+      ]
+    },
+    {
+      "Sid": "CloudWatchAgentMetricsOnly",
+      "Effect": "Allow",
+      "Action": ["cloudwatch:PutMetricData"],
+      "Resource": "*",
+      "Condition": { "StringEquals": { "cloudwatch:namespace": "METNMAT/Host" } }
+    }
+  ]
+}

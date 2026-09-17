@@ -16,8 +16,14 @@ export default function ThemeToggle() {
   const isDark = theme !== "light";
   // Theme resolves client-side; render a stable shell until mounted so the
   // server and first client render agree (no hydration mismatch).
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  // useSyncExternalStore with a constant client snapshot and a `false` server
+  // snapshot is React's own recipe for "am I mounted?" without a
+  // setState-in-effect cascade.
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   const next = isDark ? "light" : "dark";
   return (

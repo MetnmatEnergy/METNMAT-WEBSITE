@@ -166,6 +166,8 @@ export default async function BeforeDashboard({ payload }: Props) {
     }
   }
 
+  // Server component: reading the wall clock while rendering is the intent.
+  // eslint-disable-next-line react-hooks/purity
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   let newEnquiries = 0;
   for (const e of enquiries) {

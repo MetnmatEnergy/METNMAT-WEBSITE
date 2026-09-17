@@ -1,0 +1,3 @@
+# The Command Center cannot serve a login page without these.
+DATABASE_URL
+NEXTAUTH_SECRET

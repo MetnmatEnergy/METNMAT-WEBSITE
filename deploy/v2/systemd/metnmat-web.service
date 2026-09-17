@@ -1,0 +1,63 @@
+[Unit]
+Description=METNMAT website (Next.js standalone) on 127.0.0.1:3100
+Documentation=file:///srv/metnmat/README-v2.md
+After=network-online.target nftables.service
+Wants=network-online.target
+Requires=nftables.service
+
+[Service]
+Type=simple
+User=mm-web
+Group=mm-web
+WorkingDirectory=/srv/metnmat/web/current
+
+# Root fetches ONLY metnmat/web/env, writes /run/metnmat/web.env (root 0600);
+# PID 1 loads it below. The app itself never has AWS credentials.
+ExecStartPre=+/usr/local/sbin/metnmat-fetch-secrets web
+EnvironmentFile=-/run/metnmat/web.env
+ExecStart=/usr/bin/node apps/website/server.js
+
+Restart=always
+RestartSec=4
+TimeoutStopSec=30
+KillSignal=SIGTERM
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=metnmat-web
+
+# Resource caps (t3.large, 8 GB): heap 768 MB, unit killed before it starves neighbours.
+MemoryHigh=550M
+MemoryMax=768M
+TasksMax=512
+
+# Hardening — the process can read its code, write .next/cache, and nothing else.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/srv/metnmat/web/releases
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+# Known command-and-control hosts from the 2026-09 incident. nftables blocks these
+# too; this makes the unit self-protecting even if the firewall is misconfigured.
+IPAddressDeny=193.32.162.134/32 45.86.86.23/32
+
+[Install]
+WantedBy=multi-user.target
