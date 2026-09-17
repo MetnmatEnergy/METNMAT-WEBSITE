@@ -159,3 +159,16 @@ Released `a5ef326` (CI artifact): unit active, MongoDB connected, 133 products, 
 `billing_not_active`. Owner: platform.openai.com → Billing → add credits.
 Remaining chat keys are optional channels only: `Meta_WA_accessToken`, `META_APP_SECRET`, `Meta_WA_SenderPhoneNumberId`,
 `Meta_WA_wabaId` (WhatsApp via chatbot), `FACEBOOK_PAGE_ACCESS_TOKEN`, `Meta_IG_AccessToken` (Messenger/Instagram).
+
+## Evidence added 2026-09-17: the leaked OpenAI key was abused on 2026-08-31
+
+OpenAI organisation usage (owner's console, last 30 days): **$25.00 total, of which $24.98 on 2026-08-31 UTC** —
+1,169 chat-completion requests, 11.74 M input tokens (≈10 k tokens per request), user `energy_metnmat`, then nothing.
+The prepaid balance went to zero, which is why the account reports `billing_not_active` today.
+Chatbot-side records for the same day (MongoDB `metnmat`): 5 widget conversations, 0 widget messages, and the
+chatbot's own `agent_usage` log holds one call that week (2026-08-29, 969 tokens). **The burst did not come from the
+chatbot.** 2026-08-31 is inside the compromise window (shell on the host from 2026-08-13; the key was in the chatbot's
+process environment and readable through the instance role). Classification: attacker use of the stolen key, ≈ $25.
+The key (`metnmat website`, created 2026-08-17) is revoked; the replacement is a service-account key held only in
+`metnmat/chat/env`. Owner actions: lower the OpenAI monthly budget (Limits) and enable spend alerts; optionally report
+the compromised-key usage to OpenAI support for a refund.
