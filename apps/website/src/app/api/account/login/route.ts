@@ -24,6 +24,17 @@ export async function POST(req: Request): Promise<Response> {
   if (!email || !password) {
     return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
   }
+  // Per-address budget under the CMS's own lock (8 failures locks the account
+  // for 10 minutes): without it, anyone who knows a customer's email can keep
+  // that account locked from a few IPs. Five a minute per address is well above
+  // what a person typing their own password needs and below the CMS threshold.
+  const rlEmail = await limitRate(`login-email:${email}`, 5, 60_000);
+  if (!rlEmail.ok) {
+    return NextResponse.json(
+      { error: "Too many sign-in attempts for this email. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(rlEmail.retryAfter ?? 60) } }
+    );
+  }
   try {
     const r = await fetch(`${CMS}/api/customers/login`, {
       method: "POST",

@@ -134,6 +134,14 @@ export const internalOrIsStaff: Access = (args) => {
   return isStaff(args);
 };
 
+/**
+ * The website server ONLY, by the shared internal key; never a browser, never a
+ * staff session. For writes the website performs on the customer's behalf
+ * after doing its own validation (byte sniffing, size caps, rate limits) that a
+ * direct POST to the CMS origin would skip.
+ */
+export const internalOnly: Access = (args) => safeKeyEqual(xKey(args), process.env.INTERNAL_API_KEY);
+
 export const isSuperAdmin: Access = ({ req: { user } }) =>
   hasRole(user as UserLike, "super-admin");
 

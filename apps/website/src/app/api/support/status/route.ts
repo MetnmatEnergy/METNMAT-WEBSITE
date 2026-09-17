@@ -26,6 +26,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Ticket number and email are required." }, { status: 400 });
   }
 
+  // Per-address budget on top of the per-IP one: the number is the secret, the
+  // email is public, so guessing is always "many numbers for one email". Ten
+  // tries a minute is plenty for a customer re-typing their own number.
+  const rlEmail = await limitRate(`support-status-email:${email.toLowerCase()}`, 10, 60_000);
+  if (!rlEmail.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many attempts for this email. Please wait a moment." },
+      { status: 429, headers: { "Retry-After": String(rlEmail.retryAfter ?? 60) } }
+    );
+  }
+
   const doc = await findTicketByNumberAndEmail(ticket, email);
   if (!doc) {
     // Same message whether the number is wrong or the email mismatches.

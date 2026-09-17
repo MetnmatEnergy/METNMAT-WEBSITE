@@ -4,6 +4,8 @@ import { join } from "node:path";
 import {
   TICKET_NUMBER_PATTERN,
   formatTicketNumber,
+  newTicketNumber,
+  newTicketSuffix,
   ticketNumberValidator,
 } from "../apps/dashboard/src/lib/ticket-number";
 import { ticketNumberBeforeValidate } from "../apps/dashboard/src/hooks/ticket-number";
@@ -42,7 +44,11 @@ import { ticketNumberBeforeValidate } from "../apps/dashboard/src/hooks/ticket-n
  * after the fact.
  */
 
-const RE_FROM_WEBSITE = /TKT-\$\{ymd\}-\$\{crypto\.randomUUID\(\)\.slice\(0, 4\)\.toUpperCase\(\)\}/;
+// The website builds `TKT-${ymd}-${suffix}` from the same alphabet and length
+// the CMS declares; both are pinned here so the two cannot drift apart.
+const RE_FROM_WEBSITE = /const ticketNumber = `TKT-\$\{ymd\}-\$\{suffix\}`;/;
+const RE_WEBSITE_ALPHABET = /const TICKET_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";/;
+const RE_WEBSITE_LENGTH = /new Uint8Array\(10\)/;
 
 describe("the generated number matches the one customers already receive", () => {
   it("has the canonical shape", () => {
@@ -53,12 +59,26 @@ describe("the generated number matches the one customers already receive", () =>
     expect(formatTicketNumber(new Date(2026, 0, 7), "00ff")).toBe("TKT-20260107-00FF");
   });
 
-  it("uppercases and truncates the random suffix to four characters", () => {
-    expect(formatTicketNumber(new Date(2026, 8, 5), "abcdef12")).toBe("TKT-20260905-ABCD");
+  it("uppercases and truncates the random suffix to ten characters", () => {
+    expect(formatTicketNumber(new Date(2026, 8, 5), "abcdefghjk23")).toBe("TKT-20260905-ABCDEFGHJK");
   });
 
-  it("the pattern accepts what the formatter produces", () => {
+  it("the pattern accepts what the formatter produces, in both the legacy and the current shape", () => {
     expect(TICKET_NUMBER_PATTERN.test(formatTicketNumber(new Date(2026, 8, 5), "a1b2"))).toBe(true);
+    expect(TICKET_NUMBER_PATTERN.test(formatTicketNumber(new Date(2026, 8, 5), "ABCDEFGHJK"))).toBe(true);
+    for (let i = 0; i < 50; i++) expect(TICKET_NUMBER_PATTERN.test(newTicketNumber())).toBe(true);
+  });
+
+  it("the random suffix is ten characters from the unambiguous alphabet, never 0/O/1/I/L", () => {
+    for (let i = 0; i < 50; i++) {
+      const s = newTicketSuffix();
+      expect(s).toHaveLength(10);
+      expect(s).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10}$/);
+    }
+    // Four hex characters were 65,536 per day; a number plus an email is the
+    // whole credential to read a ticket, so a day's tickets could be walked.
+    expect(TICKET_NUMBER_PATTERN.test("TKT-20260905-ABCDE")).toBe(false); // neither 4 nor 10
+    expect(TICKET_NUMBER_PATTERN.test("TKT-20260905-ABCDEFGH0O")).toBe(false); // ambiguous glyphs
   });
 
   it("the website still builds the number this pattern describes", () => {
@@ -70,6 +90,8 @@ describe("the generated number matches the one customers already receive", () =>
       "utf8",
     );
     expect(src).toMatch(RE_FROM_WEBSITE);
+    expect(src).toMatch(RE_WEBSITE_ALPHABET);
+    expect(src).toMatch(RE_WEBSITE_LENGTH);
     expect(src).toMatch(/const ymd = `\$\{now\.getFullYear\(\)\}/);
   });
 });
@@ -85,8 +107,9 @@ describe("the form can be submitted, and cannot be submitted with rubbish", () =
     expect(validate("   ", { operation: "create" })).toBe(true);
   });
 
-  it("a number supplied by the website is accepted verbatim", () => {
+  it("a number supplied by the website is accepted verbatim, old shape and new", () => {
     expect(validate("TKT-20260905-A1B2", { operation: "create" })).toBe(true);
+    expect(validate("TKT-20260917-ABCDEFGHJK", { operation: "create" })).toBe(true);
   });
 
   it("a malformed number is refused, and the message says what is wanted", () => {

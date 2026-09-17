@@ -252,7 +252,11 @@ export async function POST(req: Request) {
     orderNumber,
     customer: signedInCustomer?.id,
     name,
-    email,
+    // A signed-in customer's order belongs to their account address, not to
+    // whatever the form field says: the confirmation (with the payment ref) goes
+    // to order.email, and a verified account with that address would otherwise
+    // see this order in its own history (2026-09-17 audit).
+    email: signedInCustomer?.email?.trim().toLowerCase() || email,
     phone: body.customer?.phone,
     company: body.customer?.company,
     addressLine1: body.address?.line1,

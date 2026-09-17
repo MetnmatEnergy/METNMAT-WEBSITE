@@ -39,6 +39,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Message is too long." }, { status: 400 });
   }
 
+  // Per-address budget on top of the per-IP one (see status/route.ts).
+  const rlEmail = await limitRate(`support-reply-email:${email.toLowerCase()}`, 10, 60_000);
+  if (!rlEmail.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many attempts for this email. Please wait a moment." },
+      { status: 429, headers: { "Retry-After": String(rlEmail.retryAfter ?? 60) } }
+    );
+  }
+
   const doc = await findTicketByNumberAndEmail(ticket, email);
   if (!doc) {
     return NextResponse.json({ ok: false, error: "No ticket found for that number and email." }, { status: 404 });

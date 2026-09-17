@@ -8,11 +8,18 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { draftMode } from "next/headers";
+import { isUnusableSecret } from "@/backend/lib/placeholder-secret";
 
 export const dynamic = "force-dynamic";
 
-function expectedSig(slug: string, exp: string): string {
-  const secret = process.env.CMS_BLOG_KEY || process.env.INTERNAL_API_KEY || "";
+/**
+ * Null when no usable secret is configured: an HMAC over an empty or
+ * placeholder key is one anyone can compute, so the link must fail closed
+ * (the shop preview already does this through previewTokenValid()).
+ */
+function expectedSig(slug: string, exp: string): string | null {
+  const secret = [process.env.CMS_BLOG_KEY, process.env.INTERNAL_API_KEY].find((s) => !isUnusableSecret(s));
+  if (!secret) return null;
   return createHmac("sha256", secret).update(`${slug}.${exp}`).digest("hex");
 }
 
@@ -25,7 +32,11 @@ export async function GET(req: NextRequest) {
   if (!slug || !/^[a-z0-9-]+$/.test(slug) || !Number.isFinite(expMs) || Date.now() > expMs) {
     return NextResponse.json({ error: "Preview link is invalid or has expired." }, { status: 401 });
   }
-  const want = Buffer.from(expectedSig(slug, exp));
+  const expected = expectedSig(slug, exp);
+  if (!expected) {
+    return NextResponse.json({ error: "Preview is not configured." }, { status: 503 });
+  }
+  const want = Buffer.from(expected);
   const got = Buffer.from(sig);
   if (want.length !== got.length || !timingSafeEqual(want, got)) {
     return NextResponse.json({ error: "Preview link is invalid or has expired." }, { status: 401 });

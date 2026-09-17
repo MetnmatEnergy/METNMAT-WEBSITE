@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import type { CollectionConfig } from "payload";
+import { protectPrivilegedStaff } from "../hooks/staff-account-guard";
 import {
   isAdmin,
   isSuperAdmin,
@@ -21,7 +22,11 @@ export const Users: CollectionConfig = {
   // on every request, which is what lets ALL access checks and workflow gates
   // honour custom roles synchronously. Email + password remain under the hood
   // (break-glass recovery).
-  auth: { depth: 1 },
+  auth: {
+    depth: 1,
+    // Admin session cookie: Secure outside local dev, Lax so the admin UI works.
+    cookies: { secure: process.env.NODE_ENV === "production", sameSite: "Lax" },
+  },
   admin: {
     useAsTitle: "name",
     group: "Administration",
@@ -178,6 +183,7 @@ export const Users: CollectionConfig = {
       },
     ],
     beforeChange: [
+      protectPrivilegedStaff,
       async ({ req, operation, data }) => {
         /*
          * Record the lookup that sign-in matches on, and drop the PIN.
