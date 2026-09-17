@@ -385,7 +385,7 @@ export async function getOrderShipments(orderId?: string): Promise<ShipmentDoc[]
   }
 }
 
-type EnquiryDoc = {
+export type EnquiryDoc = {
   id?: string;
   productName?: string;
   status?: string;
@@ -393,24 +393,41 @@ type EnquiryDoc = {
   createdAt?: string;
 };
 
+/** Result of an owner-scoped enquiry fetch. Like OrdersResult: a CMS refusal
+ *  or outage must render as an error, never as "no quote requests yet". That
+ *  empty-on-error shape is how a 403 on every request went unnoticed. */
+export type EnquiriesResult = { ok: true; enquiries: EnquiryDoc[] } | { ok: false };
+
 /** RFQ / customization enquiries for this customer. Enquiries are keyed only by
  *  the email captured at RFQ time, so matching by email is only safe once the
  *  account has PROVEN it owns that email (`emailVerified`) — registration has no
  *  email verification, so without this gate anyone could register a victim's
  *  email and read their RFQ history (specs, quantities, contact details). Mirrors
- *  ownerClause() for orders. */
-export async function getCustomerEnquiries(customer?: Customer | null): Promise<EnquiryDoc[]> {
+ *  ownerClause() for orders.
+ *
+ *  The query shape is a contract with the CMS. Its `enquiries` read gate honours
+ *  the internal key ONLY for a top-level `where[email][equals]=<one address>`
+ *  and answers with a constraint on that address; any other shape (no where, a
+ *  `like`, an `or`, an array) is a 403. Keep the address as the single
+ *  `where[email][equals]` parameter when touching this URL. */
+export async function getCustomerEnquiries(customer?: Customer | null): Promise<EnquiriesResult> {
   const emailLc = (customer?.email ?? "").toLowerCase();
-  if (!customer?.emailVerified || !emailLc) return [];
+  if (!customer?.emailVerified || !emailLc) return { ok: true, enquiries: [] };
   try {
     const res = await fetch(
       `${CMS}/api/enquiries?where[email][equals]=${encodeURIComponent(emailLc)}&sort=-createdAt&limit=50&depth=0`,
       { headers: { "x-internal-key": INTERNAL }, cache: "no-store" }
     );
-    if (!res.ok) return [];
+    if (!res.ok) {
+      // Status only: no address, no token. A 403 here means the CMS gate and
+      // this query disagree (or the key differs between the two apps).
+      console.error(`[account] enquiries read refused: CMS answered ${res.status}`);
+      return { ok: false };
+    }
     const data = (await res.json()) as { docs?: EnquiryDoc[] };
-    return data?.docs ?? [];
+    return { ok: true, enquiries: data?.docs ?? [] };
   } catch {
-    return [];
+    console.error("[account] enquiries read failed: CMS unreachable");
+    return { ok: false };
   }
 }

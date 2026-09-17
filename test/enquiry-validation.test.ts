@@ -17,6 +17,15 @@ describe("validateEnquiry", () => {
     }
   });
 
+  it("lower-cases the address so the account page's exact-match read finds it", () => {
+    // The CMS enquiry read gate permits only `email equals <address>`, and the
+    // account page queries the lower-cased account address. An RFQ filed as
+    // typed in mixed case would never match its own account.
+    const r = validateEnquiry({ ...good, email: "  Jane@Lab.Example " }, "quote");
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.email).toBe("jane@lab.example");
+  });
+
   it("rejects missing/invalid core fields", () => {
     const r = validateEnquiry({ name: "x", email: "not-an-email", message: "" }, "contact");
     expect(r.success).toBe(false);
