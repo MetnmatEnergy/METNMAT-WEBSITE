@@ -10,8 +10,11 @@
 >
 > - **The director** is re-derived from `DIRECTOR_PIN` whenever the stored
 >   credential no longer accepts it — including after a rotation, when no PIN can
->   produce the stored lookup at all. No flag needed; `DIRECTOR_PIN_FORCE` remains
->   for the case where the director *forgot* a PIN they set in the UI.
+>   produce the stored lookup at all — and whenever `DIRECTOR_PIN` itself was
+>   changed in Secrets Manager since the bootstrap last applied it (recorded as a
+>   lookup in `cms_bootstrap_state`). A PIN the director set in the UI, with the
+>   environment unchanged, is still preserved. `DIRECTOR_PIN_FORCE` remains for
+>   the case where the director *forgot* a PIN they set in the UI.
 > - **Every other account** whose lookup still resolves under the current pepper
 >   has its hash checked against that PIN and re-derived if stale (the PIN itself
 >   is unchanged).

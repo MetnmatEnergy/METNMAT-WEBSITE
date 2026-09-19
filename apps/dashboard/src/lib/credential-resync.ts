@@ -51,12 +51,16 @@ export type CredentialResyncAction =
   | { id: string | number; label: string; kind: "unreachable" }
   | { id: string | number; label: string; kind: "resync"; pin: string };
 
-/** Something to call the account in a log line that is not a credential. */
+/**
+ * Something to call the account in a log line that is not a credential.
+ * Name AND email: production has two accounts both named "Administrator", and
+ * a line naming only one of them says nothing about which.
+ */
 export function accountLabel(row: StaffCredentialRow): string {
   const name = typeof row.name === "string" ? row.name.trim() : "";
-  if (name) return name;
   const email = typeof row.email === "string" ? row.email.trim() : "";
-  return email || String(row.id);
+  if (name && email) return `${name} <${email}>`;
+  return name || email || String(row.id);
 }
 
 export function planCredentialResync(rows: StaffCredentialRow[]): CredentialResyncAction[] {

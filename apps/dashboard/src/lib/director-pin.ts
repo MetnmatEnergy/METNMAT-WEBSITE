@@ -58,7 +58,7 @@ export function directorPinForced(env: Record<string, string | undefined>): bool
 
 export type DirectorCredentialDecision = {
   write: boolean;
-  reason: DirectorPinDecision["reason"] | "credential-stale" | "pepper-changed";
+  reason: DirectorPinDecision["reason"] | "credential-stale" | "pepper-changed" | "env-changed";
 };
 
 /**
@@ -80,15 +80,26 @@ export type DirectorCredentialDecision = {
  *   1. Does its lookup match ANY PIN under the current pepper? If not, it was
  *      derived under a previous one and no PIN can reach the account. The only
  *      PIN this process knows is DIRECTOR_PIN, so write it ("pepper-changed").
- *   2. Is that PIN the director's env PIN? If they chose a different one in the
- *      UI, that choice stands (the general resync pass repairs its hash if
- *      needed, without changing the PIN). If it IS the env PIN, check the hash
- *      really accepts it — and re-derive when it does not ("credential-stale").
+ *   2. Is that PIN the director's env PIN? If it is, check the hash really
+ *      accepts it — and re-derive when it does not ("credential-stale").
+ *   3. If it is NOT, someone changed something — but who? `appliedLookup` is
+ *      the lookup of the DIRECTOR_PIN this bootstrap last wrote
+ *      (lib/bootstrap-state.ts). If the environment's PIN differs from that,
+ *      the OWNER changed the secret, and the secret wins ("env-changed").
+ *      Otherwise the environment is as it was and the director chose a new PIN
+ *      in the UI; that choice stands (the general resync pass repairs its hash
+ *      if needed, without changing the PIN).
  *
- * Both writes are safe by construction: they happen only when the PIN the
- * account is meant to accept cannot currently sign in, so there is nothing
- * working to break — which is also why the 2026-09-04 rule is honoured
- * unchanged whenever the credential verifies.
+ *      Seen 2026-09-19: the owner saved a new DIRECTOR_PIN while the CMS still
+ *      ran with the old one. Without the record, the next boot could not tell
+ *      that apart from a UI change and preserved the old PIN — so the value in
+ *      Secrets Manager, the one being typed, still did not sign in. With no
+ *      record at all (first boot after this shipped) the environment is
+ *      treated as changed: the secret is authoritative once, which is what a
+ *      DIRECTOR_PIN is for.
+ *
+ * Every write is safe by construction: it happens only when the PIN the
+ * environment says the account should accept cannot currently sign in.
  */
 export function decideDirectorCredential(input: {
   base: DirectorPinDecision;
@@ -96,13 +107,17 @@ export function decideDirectorCredential(input: {
   salt: unknown;
   hash: unknown;
   pin: string;
+  /** Lookup of the DIRECTOR_PIN last applied by the bootstrap; undefined if never recorded. */
+  appliedLookup: unknown;
 }): DirectorCredentialDecision {
   if (input.base.write) return input.base;
-  const intended = input.lookup === derivePinLookup(input.pin) ? input.pin : recoverPinFromLookup(input.lookup);
-  if (intended === null) return { write: true, reason: "pepper-changed" };
-  if (intended !== input.pin) return { write: false, reason: "preserved" };
-  if (verifyDerivedCredential(derivePassword(input.pin), input.salt, input.hash)) {
-    return { write: false, reason: "preserved" };
+  const envLookup = derivePinLookup(input.pin);
+  if (input.lookup === envLookup) {
+    return verifyDerivedCredential(derivePassword(input.pin), input.salt, input.hash)
+      ? { write: false, reason: "preserved" }
+      : { write: true, reason: "credential-stale" };
   }
-  return { write: true, reason: "credential-stale" };
+  if (recoverPinFromLookup(input.lookup) === null) return { write: true, reason: "pepper-changed" };
+  if (input.appliedLookup !== envLookup) return { write: true, reason: "env-changed" };
+  return { write: false, reason: "preserved" };
 }
