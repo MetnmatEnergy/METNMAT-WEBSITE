@@ -17,6 +17,7 @@ import { ReactionButtons } from "@/frontend/components/blog/reaction-buttons";
 import { ShareActions } from "@/frontend/components/blog/share-actions";
 import { ViewTracker } from "@/frontend/components/blog/view-tracker";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
+import { PreviewBanner } from "@/frontend/components/preview-banner";
 import { extractToc } from "@/frontend/lib/blog-toc";
 import { site } from "@/frontend/lib/site";
 import {
@@ -30,13 +31,18 @@ import { getDraftArticleRaw } from "@/backend/services/blog.service";
 
 type Params = { slug: string };
 
-async function loadArticle(slug: string): Promise<{ article: BlogArticleFull | null; preview: boolean }> {
+async function loadArticle(
+  slug: string,
+): Promise<{ article: BlogArticleFull | null; preview: boolean; published: boolean }> {
   const { isEnabled } = await draftMode();
   if (isEnabled) {
     const raw = await getDraftArticleRaw(slug);
-    if (raw) return { article: mapCmsArticleFull(raw), preview: true };
+    // `published` = customers can read this right now: the public read returns
+    // only published articles, so its presence is the answer (see the banner).
+    if (raw) return { article: mapCmsArticleFull(raw), preview: true, published: Boolean(await getBlogArticle(slug)) };
   }
-  return { article: await getBlogArticle(slug), preview: false };
+  const article = await getBlogArticle(slug);
+  return { article, preview: false, published: Boolean(article) };
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -84,7 +90,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function BlogArticlePage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const { article, preview } = await loadArticle(slug);
+  const { article, preview, published } = await loadArticle(slug);
 
   if (!article) {
     // Renamed article? 301 old indexed URLs to the current slug.
@@ -114,11 +120,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
       {!preview && <ViewTracker articleId={article.id} />}
       {!preview && <AnalyticsEntity type="blog" slug={article.slug} />}
 
-      {preview && (
-        <div className="bg-brand px-4 py-2 text-center text-sm font-semibold text-brand-foreground">
-          Draft preview — this version is not public. Close this tab and use the CMS to publish.
-        </div>
-      )}
+      {preview && <PreviewBanner published={published} path={`/blog/${article.slug}`} />}
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="border-b border-border bg-surface/50">

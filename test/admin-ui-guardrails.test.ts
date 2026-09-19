@@ -99,7 +99,19 @@ describe("the sidebar is ordered and dressed as the owner asked (2026-09-19)", (
     expect(logo).toMatch(/className="mn-brand"/);
     expect(logo).toMatch(/metnmat-mark\.png/);
     expect(logo).not.toMatch(/metnmat-logo\.png/);
-    expect(css).toMatch(/\.mn-brand \{[^}]*height: 52px/);
+    expect(css).toMatch(/\.mn-brand \{[^}]*height: var\(--app-header-height, 56px\)/);
+  });
+
+  it("the rail starts at the top, hides its scrollbar, and its close button sits mid-edge", () => {
+    expect(css).toMatch(/\.nav__scroll \{[^}]*--nav-padding-block-start: 0;/);
+    expect(css).toMatch(/\.nav__scroll \{[^}]*scrollbar-width: none;/);
+    expect(css).toMatch(/\.nav__mobile-close \{[^}]*position: absolute;[^}]*right: 8px;[^}]*top: 50%;/);
+    expect(css).toMatch(/\.nav__header \{ width: 100%; height: 100%; pointer-events: none; \}/);
+    // Desktop: Payload's template toggle sits on the rail edge while open. Its
+    // wrapper is a SIBLING of the template root, so the open state must be
+    // read from the button's own class — an ancestor selector never matches.
+    expect(css).toMatch(/\.template-default__nav-toggler\.nav-toggler--is-open \{[^}]*position: fixed;[^}]*left: calc\(var\(--nav-width\) - 15px\);[^}]*top: 50%;/);
+    expect(css).not.toMatch(/\.template-default--nav-open \.template-default__nav-toggler/);
   });
 
   it("every sidebar entry has an icon, keyed by the id DefaultNav assigns", () => {

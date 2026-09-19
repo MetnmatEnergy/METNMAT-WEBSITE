@@ -20,6 +20,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { draftMode } from "next/headers";
 import { previewTokenValid } from "@/backend/lib/preview-token";
+import { publicOrigin } from "@/frontend/lib/public-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -34,5 +35,7 @@ export async function GET(req: NextRequest) {
   }
 
   (await draftMode()).enable();
-  return NextResponse.redirect(new URL(`/shop/p/${slug}`, req.nextUrl.origin));
+  // Not the request's own origin: behind Caddy that is the server's
+  // 127.0.0.1:3100 and the browser was sent to localhost (frontend/lib/public-origin).
+  return NextResponse.redirect(new URL(`/shop/p/${slug}`, publicOrigin(req.headers)));
 }

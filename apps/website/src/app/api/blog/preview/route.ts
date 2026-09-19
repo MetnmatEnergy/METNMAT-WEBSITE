@@ -7,6 +7,7 @@
  */
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { publicOrigin } from "@/frontend/lib/public-origin";
 import { draftMode } from "next/headers";
 import { isUnusableSecret } from "@/backend/lib/placeholder-secret";
 
@@ -43,5 +44,7 @@ export async function GET(req: NextRequest) {
   }
 
   (await draftMode()).enable();
-  return NextResponse.redirect(new URL(`/blog/${slug}`, req.nextUrl.origin));
+  // Not the request's own origin: behind Caddy that is the server's
+  // 127.0.0.1:3100 and the browser was sent to localhost (frontend/lib/public-origin).
+  return NextResponse.redirect(new URL(`/blog/${slug}`, publicOrigin(req.headers)));
 }
