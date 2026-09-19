@@ -34,6 +34,8 @@
  * something an operator chooses, not something a restart does to them.
  */
 
+import { derivePassword, derivePinLookup, recoverPinFromLookup, verifyDerivedCredential } from "./pin";
+
 export type DirectorPinDecision = {
   write: boolean;
   reason: "no-existing-pin" | "forced" | "preserved";
@@ -52,4 +54,55 @@ export function decideDirectorPinWrite(
 /** Read the break-glass flag. Explicit string compare — never truthiness. */
 export function directorPinForced(env: Record<string, string | undefined>): boolean {
   return env.DIRECTOR_PIN_FORCE === "true";
+}
+
+export type DirectorCredentialDecision = {
+  write: boolean;
+  reason: DirectorPinDecision["reason"] | "credential-stale" | "pepper-changed";
+};
+
+/**
+ * The PIN-preserving rule above, extended to notice when preserving would keep
+ * a credential that does not work.
+ *
+ * WHAT THE RULE ALONE MISSED (production, 2026-09-19). The director's account
+ * had a lookup, so the rule said "preserved" on every boot — correctly, by its
+ * own lights. But the account's password hash had been minted under the pepper
+ * the September incident burned, and nothing had re-derived it since: PIN edits
+ * were a no-op on update until hooks/pin-credential.ts, and this bootstrap had
+ * stopped writing the PIN by design. Sign-in found the account by its (current)
+ * lookup, handed Payload a password derived under the new pepper, and Payload
+ * refused. Every restart preserved the lockout.
+ *
+ * So "already has a PIN" is not enough to leave the account alone. Two more
+ * questions, in order:
+ *
+ *   1. Does its lookup match ANY PIN under the current pepper? If not, it was
+ *      derived under a previous one and no PIN can reach the account. The only
+ *      PIN this process knows is DIRECTOR_PIN, so write it ("pepper-changed").
+ *   2. Is that PIN the director's env PIN? If they chose a different one in the
+ *      UI, that choice stands (the general resync pass repairs its hash if
+ *      needed, without changing the PIN). If it IS the env PIN, check the hash
+ *      really accepts it — and re-derive when it does not ("credential-stale").
+ *
+ * Both writes are safe by construction: they happen only when the PIN the
+ * account is meant to accept cannot currently sign in, so there is nothing
+ * working to break — which is also why the 2026-09-04 rule is honoured
+ * unchanged whenever the credential verifies.
+ */
+export function decideDirectorCredential(input: {
+  base: DirectorPinDecision;
+  lookup: unknown;
+  salt: unknown;
+  hash: unknown;
+  pin: string;
+}): DirectorCredentialDecision {
+  if (input.base.write) return input.base;
+  const intended = input.lookup === derivePinLookup(input.pin) ? input.pin : recoverPinFromLookup(input.lookup);
+  if (intended === null) return { write: true, reason: "pepper-changed" };
+  if (intended !== input.pin) return { write: false, reason: "preserved" };
+  if (verifyDerivedCredential(derivePassword(input.pin), input.salt, input.hash)) {
+    return { write: false, reason: "preserved" };
+  }
+  return { write: true, reason: "credential-stale" };
 }

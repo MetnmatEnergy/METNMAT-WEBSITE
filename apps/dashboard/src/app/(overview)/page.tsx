@@ -7,10 +7,11 @@ import config from "@payload-config";
 export const dynamic = "force-dynamic";
 
 const card: React.CSSProperties = {
-  background: "#161618",
-  border: "1px solid #262629",
+  background: "var(--theme-elevation-50)",
+  border: "1px solid var(--theme-elevation-100)",
   borderRadius: 16,
   padding: "20px 22px",
+  minWidth: 0,
 };
 
 async function getStats(payload: Payload, user: TypedUser) {
@@ -107,7 +108,7 @@ export default async function OverviewPage() {
     : [];
 
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 80px" }}>
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "clamp(20px, 4vw, 40px) clamp(16px, 3vw, 24px) 80px" }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span
@@ -121,8 +122,8 @@ export default async function OverviewPage() {
             <img src="/metnmat-mark.png" alt="METNMAT" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
           </span>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: 0.3 }}>METNMAT Operations Dashboard</div>
-            <div style={{ fontSize: 12, color: "#a1a1aa", textTransform: "uppercase", letterSpacing: 2 }}>
+            <div className="mn-display" style={{ fontSize: 18, fontWeight: 700 }}>METNMAT Operations Dashboard</div>
+            <div style={{ fontSize: 12, color: "var(--theme-elevation-600)", textTransform: "uppercase", letterSpacing: 2 }}>
               Control center
             </div>
           </div>
@@ -136,16 +137,16 @@ export default async function OverviewPage() {
       </header>
 
       {error && (
-        <div style={{ ...card, marginTop: 28, borderColor: "#7f1d1d", color: "#fca5a5" }}>
+        <div style={{ ...card, marginTop: 28, borderColor: "var(--mn-danger)", color: "var(--mn-danger)" }}>
           Couldn&apos;t load stats: {error} — check that MONGODB_URI is set and the cluster allows this IP.
         </div>
       )}
 
-      <section style={{ marginTop: 28, display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+      <section style={{ marginTop: 28, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
         {tiles.map((t) => (
-          <Link key={t.label} href={t.href} style={{ ...card, textDecoration: "none", color: "inherit", display: "block", borderColor: t.accent ? "#d81f26" : "#262629" }}>
-            <div style={{ fontSize: 34, fontWeight: 800 }}>{t.value}</div>
-            <div style={{ marginTop: 4, color: "#a1a1aa", fontSize: 14 }}>{t.label}</div>
+          <Link key={t.label} href={t.href} className="mn-card" style={{ ...card, textDecoration: "none", color: "inherit", display: "block", borderColor: t.accent ? "var(--metnmat-brand)" : "var(--theme-elevation-100)" }}>
+            <div className="mn-display mn-tabular" style={{ fontSize: 30, fontWeight: 700 }}>{t.value}</div>
+            <div style={{ marginTop: 4, color: "var(--theme-elevation-600)", fontSize: 13.5 }}>{t.label}</div>
           </Link>
         ))}
       </section>
@@ -159,17 +160,17 @@ export default async function OverviewPage() {
           {stats && stats.requests.length > 0 ? (
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
               {stats.requests.map((r, i) => (
-                <li key={i} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 14, borderBottom: "1px solid #232326", paddingBottom: 10 }}>
+                <li key={i} style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 14, borderBottom: "1px solid var(--theme-elevation-100)", paddingBottom: 10 }}>
                   <span>
-                    <span style={{ color: "#e4e4e7", fontWeight: 600 }}>{r.name || "—"}</span>
-                    <span style={{ color: "#71717a" }}> · {r.productName || "general"}</span>
+                    <span style={{ color: "var(--theme-elevation-900)", fontWeight: 600 }}>{r.name || "—"}</span>
+                    <span style={{ color: "var(--theme-elevation-500)" }}> · {r.productName || "general"}</span>
                   </span>
                   <span style={{ textTransform: "uppercase", fontSize: 11, color: "#d81f26", fontWeight: 700 }}>{r.status || "new"}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <div style={{ color: "#a1a1aa", fontSize: 14 }}>
+            <div style={{ color: "var(--theme-elevation-600)", fontSize: 14 }}>
               No requests yet — submissions from the website&apos;s &ldquo;Request for Customization&rdquo; form appear here.
             </div>
           )}
@@ -177,13 +178,13 @@ export default async function OverviewPage() {
 
         <div style={{ ...card }}>
           <div style={{ fontWeight: 700, marginBottom: 4 }}>Website traffic &amp; sales analytics</div>
-          <div style={{ color: "#a1a1aa", fontSize: 14 }}>
+          <div style={{ color: "var(--theme-elevation-600)", fontSize: 14 }}>
             Coming soon — connects to GA4 (visitors, top pages) and orders once payments are wired.
           </div>
         </div>
       </section>
 
-      <p style={{ marginTop: 28, color: "#71717a", fontSize: 13 }}>
+      <p style={{ marginTop: 28, color: "var(--theme-elevation-500)", fontSize: 13 }}>
         Content management lives in{" "}
         <Link href="/admin" style={{ color: "#d81f26" }}>/admin</Link>.
       </p>

@@ -29,6 +29,7 @@ import { default as default_fef24db671667b4c6d38cb1eb72034c9 } from '../../../ad
 import { default as default_e9bbfc64b681f35811f8025e010d8823 } from '../../../admin/BeforeDashboard'
 import { default as default_7c1a55be352b3f1b9b1733a61137e6fe } from '../../../admin/BeforeLogin'
 import { default as default_5bb2f6096a92e2f61cc9ec9ae0fca71e } from '../../../admin/PinLogin'
+import { default as default_77f09181290c192fbf1fabc5d7c2d1fc } from '../../../admin/UploadSizeHint'
 import { default as default_a5a338611b4a2fc3303c9dc046438703 } from '../../../admin/NavLogo'
 import { default as default_8111ae29cf52208bf19d3f279ff19eeb } from '../../../admin/NavShortcuts'
 import { default as default_cdbd8f4edb65b040e69c1cb1b024ac33 } from '../../../admin/SiteAnalyticsView'
@@ -89,6 +90,7 @@ export const importMap = {
   "/admin/BeforeDashboard#default": default_e9bbfc64b681f35811f8025e010d8823,
   "/admin/BeforeLogin#default": default_7c1a55be352b3f1b9b1733a61137e6fe,
   "/admin/PinLogin#default": default_5bb2f6096a92e2f61cc9ec9ae0fca71e,
+  "/admin/UploadSizeHint#default": default_77f09181290c192fbf1fabc5d7c2d1fc,
   "/admin/NavLogo#default": default_a5a338611b4a2fc3303c9dc046438703,
   "/admin/NavShortcuts#default": default_8111ae29cf52208bf19d3f279ff19eeb,
   "/admin/SiteAnalyticsView#default": default_cdbd8f4edb65b040e69c1cb1b024ac33,
