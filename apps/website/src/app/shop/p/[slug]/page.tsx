@@ -14,6 +14,7 @@ import { productMetaDescription } from "@/frontend/lib/seo";
 import { inclGSTForProduct, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
+import { PreviewBanner } from "@/frontend/components/preview-banner";
 import {
   getProductBySlug,
   getCategoryBySlug,
@@ -70,13 +71,19 @@ type Params = { slug: string };
  * next@15.1.6 base-server.js:1321 — `if (!isPreviewMode && isSSG …)` is what
  * assigns the cache key — and dist/server/request/draft-mode.js).
  */
-async function loadProduct(slug: string): Promise<{ product: Product | null; preview: boolean }> {
+async function loadProduct(
+  slug: string,
+): Promise<{ product: Product | null; preview: boolean; published: boolean }> {
   const { isEnabled } = await draftMode();
   if (isEnabled) {
     const raw = await getDraftProductRaw(slug);
-    if (raw) return { product: mapCmsProduct(raw), preview: true };
+    // `published` is whether customers can see this product right now — the
+    // public read returns only published documents, so its presence is the
+    // answer. The banner says which case this is (components/preview-banner).
+    if (raw) return { product: mapCmsProduct(raw), preview: true, published: Boolean(await getProductBySlug(slug)) };
   }
-  return { product: await getProductBySlug(slug), preview: false };
+  const product = await getProductBySlug(slug);
+  return { product, preview: false, published: Boolean(product) };
 }
 
 export async function generateMetadata({
@@ -159,7 +166,7 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const { product, preview } = await loadProduct(slug);
+  const { product, preview, published } = await loadProduct(slug);
   if (!product) {
     // Reached only when generateMetadata took the draft-mode escape hatch and
     // returned metadata instead of throwing. Mirrors blog/[slug]/page.tsx:89-93.
@@ -177,11 +184,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
   return (
     <Container className="py-8">
-      {preview && (
-        <div className="mb-6 rounded-md bg-brand px-4 py-2 text-center text-sm font-semibold text-brand-foreground">
-          Draft preview — this version is not public. Close this tab and use the CMS to publish.
-        </div>
-      )}
+      {preview && <PreviewBanner published={published} path={`/shop/p/${product.slug}`} />}
       {/* A staff preview is not customer traffic: never record it. */}
       {!preview && <AnalyticsEntity type="product" slug={product.slug} />}
       {/* The Offer below names its seller by reference ({@id: #organization}).

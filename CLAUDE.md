@@ -201,7 +201,15 @@ auditing orphaned resources.
   first, technical collections in a `System` group last). Every entry gets an icon via
   `#nav-<slug>` / `#nav-global-<slug>` → `--mn-icon`; `test/admin-ui-guardrails.test.ts` fails when
   a new collection has no icon. Responsive layout on the home is class-based (`.mn-split`,
-  `.mn-kpis`) because inline styles cannot carry media queries.
+  `.mn-kpis`) because inline styles cannot carry media queries. The collapse control is Payload's
+  template toggle (`.template-default__nav-toggler`) pinned to the rail's right edge while open —
+  its wrapper is a **sibling** of `.template-default`, so the open state is read from the button's
+  own `nav-toggler--is-open` class, never from an ancestor. The rail starts at the top
+  (`--nav-padding-block-start: 0`) and hides its scrollbar.
+- **Draft preview banner** (`apps/website/src/frontend/components/preview-banner.tsx`): the CMS
+  Preview button sets a browser-wide draft-mode cookie. The banner says whether the page is
+  published and live or a draft, and links to `/api/preview/exit`, which clears the cookie. A red
+  banner on a published page means the browser is still in preview mode, not that the page is unpublished.
 - Internal-key reads of customer-keyed data return a `where` constraint, never `true`. The
   website server reads `enquiries` only through `?where[email][equals]=<one address>`
   (`internalOwnEmailOrManageSales`, shape check in `lib/own-email-scope.ts`), so a leaked key
