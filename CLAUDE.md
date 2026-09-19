@@ -162,8 +162,11 @@ auditing orphaned resources.
     leaves the lookup current and the hash stale, and sign-in then fails identically to a wrong PIN.
     Boot now repairs this (`resyncStaffCredentials` + `decideDirectorCredential`, 2026-09-19): it
     verifies each hash against the PIN its lookup encodes and re-derives when they disagree; the
-    director is repaired from `DIRECTOR_PIN` even after a rotation. Accounts whose lookup predates the
-    pepper are logged as unreachable — a super-admin sets them a new PIN. There is **no
+    director is repaired from `DIRECTOR_PIN` even after a rotation. **Changing `DIRECTOR_PIN` in
+    Secrets Manager is honoured on the next CMS restart** (`cms_bootstrap_state` records which value
+    was last applied, so a secret change is told apart from a PIN the director set in the UI, which
+    is preserved). Accounts whose lookup predates the pepper are logged as unreachable — a
+    super-admin sets them a new PIN. There is **no
     `admin@metnmat.com`**: the director is the `DIRECTOR_EMAIL` in `metnmat/cms/env`, and the
     email/password form only works for accounts created without a PIN. Five misses from one IP pause
     PIN sign-in for 15 minutes (`pin_login_throttle`); the login screen shows the countdown.

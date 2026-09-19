@@ -3,6 +3,7 @@ import { existsSync } from "fs";
 import type { Payload } from "payload";
 import { decideDirectorCredential, decideDirectorPinWrite, directorPinForced } from "./lib/director-pin";
 import { planCredentialResync } from "./lib/credential-resync";
+import { readAppliedDirectorLookup, writeAppliedDirectorLookup } from "./lib/bootstrap-state";
 import { hasAttachedImage, decideCategorySeed } from "./lib/seed-ownership";
 import { classifyProbe, purgeMode, purgeSummary } from "./lib/media-purge";
 import { derivePinLookup } from "./lib/pin";
@@ -1011,6 +1012,10 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
         salt: docs[0].salt,
         hash: docs[0].hash,
         pin,
+        // Which DIRECTOR_PIN this bootstrap last applied — the only way to tell
+        // "the owner changed the secret" from "the director changed the PIN in
+        // the UI" (lib/bootstrap-state.ts).
+        appliedLookup: await readAppliedDirectorLookup(payload),
       });
       await payload.update({
         collection: "users",
@@ -1032,6 +1037,13 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
         // outlive the reason for it.
         await payload.unlock({ collection: "users", data: { email }, overrideAccess: true });
       }
+      // Record the environment PIN as applied whenever the account now carries
+      // it — written or already there — so a later change to the secret is
+      // recognised as one. A PIN the director chose in the UI leaves the record
+      // untouched, which is what keeps that choice safe across restarts.
+      if (decision.write || docs[0].pinLookup === derivePinLookup(pin)) {
+        await writeAppliedDirectorLookup(payload, derivePinLookup(pin));
+      }
       payload.logger.warn(
         `[seed] director super-admin ensured: ${email} (pin ${decision.reason})${docs.length > 1 ? ` (removed ${docs.length - 1} duplicate match(es))` : ""}`,
       );
@@ -1042,6 +1054,7 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
         overrideAccess: true,
       });
       directorId = created.id;
+      await writeAppliedDirectorLookup(payload, derivePinLookup(pin));
       payload.logger.warn(`[seed] director super-admin created: ${email}`);
     }
 
