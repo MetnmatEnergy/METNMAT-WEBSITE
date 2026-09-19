@@ -12,7 +12,7 @@ import { isAdmin } from "../access";
 export const Counters: CollectionConfig = {
   slug: "counters",
   admin: {
-    group: "Administration",
+    group: "System",
     useAsTitle: "key",
     defaultColumns: ["key", "seq", "updatedAt"],
     description: "Atomic sequence counters (system-managed — do not edit by hand).",

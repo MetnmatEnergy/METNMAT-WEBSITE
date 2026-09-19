@@ -13,7 +13,7 @@ export const AnalyticsSessions: CollectionConfig = {
   slug: "analytics-sessions",
   labels: { singular: "Analytics Session", plural: "Analytics Sessions" },
   admin: {
-    group: "Administration",
+    group: "System",
     description: "One row per website session (system-maintained). Read-only.",
     defaultColumns: ["day", "source", "channel", "country", "pageViews", "createdAt"],
     hidden: ({ user }) => !user,

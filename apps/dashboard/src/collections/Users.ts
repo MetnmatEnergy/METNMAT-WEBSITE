@@ -30,7 +30,9 @@ export const Users: CollectionConfig = {
   admin: {
     useAsTitle: "name",
     group: "Administration",
-    defaultColumns: ["name", "roles", "customRoles", "pin", "email"],
+    // No `pin` column: the field is write-only and virtual, so the column was
+    // always empty — a blank heading that read as "nobody has a PIN".
+    defaultColumns: ["name", "roles", "customRoles", "email", "updatedAt"],
     description:
       "Staff accounts. Give each employee a unique 4-digit PIN — that's how they sign in. Powers = fixed role + any assigned custom roles (designed under Staff Roles). Email & password are kept only for break-glass recovery.",
   },
