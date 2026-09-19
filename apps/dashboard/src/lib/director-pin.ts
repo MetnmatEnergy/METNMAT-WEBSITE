@@ -58,8 +58,23 @@ export function directorPinForced(env: Record<string, string | undefined>): bool
 
 export type DirectorCredentialDecision = {
   write: boolean;
-  reason: DirectorPinDecision["reason"] | "credential-stale" | "pepper-changed" | "env-changed";
+  reason: DirectorPinDecision["reason"] | "credential-stale" | "pepper-changed" | "env-authoritative";
 };
+
+/**
+ * Is this the account DIRECTOR_PIN governs? Matched on DIRECTOR_EMAIL, the
+ * same key the bootstrap reconciles on. False whenever the environment does
+ * not define a director, so a dev CMS without the variables behaves as before.
+ */
+export function isDirectorAccount(
+  doc: { email?: unknown } | undefined,
+  env: Record<string, string | undefined>,
+): boolean {
+  const email = (env.DIRECTOR_EMAIL || "").trim().toLowerCase();
+  const pin = (env.DIRECTOR_PIN || "").trim();
+  if (!email || !/^\d{4}$/.test(pin)) return false;
+  return typeof doc?.email === "string" && doc.email.trim().toLowerCase() === email;
+}
 
 /**
  * The PIN-preserving rule above, extended to notice when preserving would keep
@@ -82,21 +97,21 @@ export type DirectorCredentialDecision = {
  *      PIN this process knows is DIRECTOR_PIN, so write it ("pepper-changed").
  *   2. Is that PIN the director's env PIN? If it is, check the hash really
  *      accepts it — and re-derive when it does not ("credential-stale").
- *   3. If it is NOT, someone changed something — but who? `appliedLookup` is
- *      the lookup of the DIRECTOR_PIN this bootstrap last wrote
- *      (lib/bootstrap-state.ts). If the environment's PIN differs from that,
- *      the OWNER changed the secret, and the secret wins ("env-changed").
- *      Otherwise the environment is as it was and the director chose a new PIN
- *      in the UI; that choice stands (the general resync pass repairs its hash
- *      if needed, without changing the PIN).
+ *   3. If it is NOT, the environment wins ("env-authoritative").
  *
- *      Seen 2026-09-19: the owner saved a new DIRECTOR_PIN while the CMS still
- *      ran with the old one. Without the record, the next boot could not tell
- *      that apart from a UI change and preserved the old PIN — so the value in
- *      Secrets Manager, the one being typed, still did not sign in. With no
- *      record at all (first boot after this shipped) the environment is
- *      treated as changed: the secret is authoritative once, which is what a
- *      DIRECTOR_PIN is for.
+ * WHY THE ENVIRONMENT ALWAYS WINS FOR THIS ONE ACCOUNT (2026-09-19, evening).
+ * Two lockouts in one day came from the UI and Secrets Manager disagreeing
+ * about the director's PIN — first the secret was changed while the CMS ran
+ * the old value, then a stale cleartext column was back-filled into the
+ * bootstrap's own "preserve" save and moved the account to its June PIN. A
+ * rule that tries to guess which side moved cannot be made reliable, so the
+ * decision is structural instead: DIRECTOR_PIN is the director's PIN, full
+ * stop; the admin's PIN field is read-only on that account (Users.ts,
+ * isDirectorAccount) so nothing in the UI can diverge from it; and every boot
+ * brings the account back to the environment. The 2026-09-04 case — a PIN set
+ * in the UI reverted by a restart — cannot recur because the UI no longer
+ * accepts one for this account. Every other staff member's PIN is still set
+ * in the UI and is never touched here.
  *
  * Every write is safe by construction: it happens only when the PIN the
  * environment says the account should accept cannot currently sign in.
@@ -107,8 +122,6 @@ export function decideDirectorCredential(input: {
   salt: unknown;
   hash: unknown;
   pin: string;
-  /** Lookup of the DIRECTOR_PIN last applied by the bootstrap; undefined if never recorded. */
-  appliedLookup: unknown;
 }): DirectorCredentialDecision {
   if (input.base.write) return input.base;
   const envLookup = derivePinLookup(input.pin);
@@ -118,6 +131,5 @@ export function decideDirectorCredential(input: {
       : { write: true, reason: "credential-stale" };
   }
   if (recoverPinFromLookup(input.lookup) === null) return { write: true, reason: "pepper-changed" };
-  if (input.appliedLookup !== envLookup) return { write: true, reason: "env-changed" };
-  return { write: false, reason: "preserved" };
+  return { write: true, reason: "env-authoritative" };
 }

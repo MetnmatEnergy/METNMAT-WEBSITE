@@ -9,7 +9,7 @@ import {
   verifyDerivedCredential,
   PAYLOAD_PBKDF2,
 } from "../apps/dashboard/src/lib/pin";
-import { decideDirectorCredential, decideDirectorPinWrite } from "../apps/dashboard/src/lib/director-pin";
+import { decideDirectorCredential, decideDirectorPinWrite, isDirectorAccount } from "../apps/dashboard/src/lib/director-pin";
 import { planCredentialResync } from "../apps/dashboard/src/lib/credential-resync";
 
 /**
@@ -93,26 +93,19 @@ describe("recoverPinFromLookup", () => {
 describe("decideDirectorCredential", () => {
   const PIN = "5970";
   const preserved = decideDirectorPinWrite(derivePinLookup(PIN), false);
-  const applied = derivePinLookup(PIN); // the bootstrap last applied this same PIN
 
-  it("keeps the 2026-09-04 rule whenever the credential actually works", () => {
+  it("leaves the account alone whenever the credential actually works", () => {
     const { salt, hash } = payloadHash(derivePassword(PIN));
-    expect(
-      decideDirectorCredential({ base: preserved, lookup: derivePinLookup(PIN), salt, hash, pin: PIN, appliedLookup: applied }),
-    ).toEqual({ write: false, reason: "preserved" });
+    expect(decideDirectorCredential({ base: preserved, lookup: derivePinLookup(PIN), salt, hash, pin: PIN })).toEqual({
+      write: false,
+      reason: "preserved",
+    });
   });
 
-  it("re-derives when the lookup is current but the hash is not — the 2026-09-19 lockout", () => {
+  it("re-derives when the lookup is current but the hash is not — the 2026-09-19 morning lockout", () => {
     const stale = payloadHash(createHmac("sha256", "the-burned-pepper").update("metnmat:pin:5970").digest("hex"));
     expect(
-      decideDirectorCredential({
-        base: preserved,
-        lookup: derivePinLookup(PIN),
-        salt: stale.salt,
-        hash: stale.hash,
-        pin: PIN,
-        appliedLookup: applied,
-      }),
+      decideDirectorCredential({ base: preserved, lookup: derivePinLookup(PIN), salt: stale.salt, hash: stale.hash, pin: PIN }),
     ).toEqual({ write: true, reason: "credential-stale" });
   });
 
@@ -120,70 +113,55 @@ describe("decideDirectorCredential", () => {
     const foreignLookup = createHmac("sha256", "the-burned-pepper").update("metnmat:pinlookup:5970").digest("hex");
     const base = decideDirectorPinWrite(foreignLookup, false);
     expect(base.write).toBe(false); // the old rule alone would have left it locked out
-    expect(
-      decideDirectorCredential({ base, lookup: foreignLookup, salt: "s", hash: "h", pin: PIN, appliedLookup: foreignLookup }),
-    ).toEqual({ write: true, reason: "pepper-changed" });
+    expect(decideDirectorCredential({ base, lookup: foreignLookup, salt: "s", hash: "h", pin: PIN })).toEqual({
+      write: true,
+      reason: "pepper-changed",
+    });
   });
 
-  it("leaves a PIN the director chose in the UI alone when the environment is unchanged", () => {
-    // Their choice stands; resyncStaffCredentials repairs the hash without
-    // changing the PIN. Writing DIRECTOR_PIN here would be the 2026-09-04 bug.
-    const chosen = "2468";
-    const stale = payloadHash("anything-else");
+  it("brings an account carrying any other PIN back to DIRECTOR_PIN — the secret is the director's PIN", () => {
+    // Both 2026-09-19 lockouts were the account and the environment
+    // disagreeing (a changed secret; a stale cleartext column back-filled into
+    // the bootstrap's own save). The UI can no longer set this account's PIN
+    // (Users.ts, isDirectorAccount), so any divergence is a fault to repair.
+    const other = "1122";
+    const { salt, hash } = payloadHash(derivePassword(other));
     expect(
       decideDirectorCredential({
-        base: preserved,
-        lookup: derivePinLookup(chosen),
-        salt: stale.salt,
-        hash: stale.hash,
-        pin: PIN,
-        appliedLookup: applied, // env PIN is the one applied last time → the UI moved it
-      }),
-    ).toEqual({ write: false, reason: "preserved" });
-  });
-
-  it("applies a DIRECTOR_PIN the owner changed in Secrets Manager — the 2026-09-19 afternoon case", () => {
-    // The account still carries the old PIN (lookup resolves), the record says
-    // the bootstrap last applied that OLD value, and the env now holds a new
-    // one. The env is what the owner is typing; it must win.
-    const old = "1122";
-    const { salt, hash } = payloadHash(derivePassword(old));
-    expect(
-      decideDirectorCredential({
-        base: decideDirectorPinWrite(derivePinLookup(old), false),
-        lookup: derivePinLookup(old),
+        base: decideDirectorPinWrite(derivePinLookup(other), false),
+        lookup: derivePinLookup(other),
         salt,
         hash,
         pin: PIN,
-        appliedLookup: derivePinLookup(old),
       }),
-    ).toEqual({ write: true, reason: "env-changed" });
-  });
-
-  it("treats a missing record as an environment change — the secret is authoritative once", () => {
-    const old = "1122";
-    const { salt, hash } = payloadHash(derivePassword(old));
-    expect(
-      decideDirectorCredential({
-        base: decideDirectorPinWrite(derivePinLookup(old), false),
-        lookup: derivePinLookup(old),
-        salt,
-        hash,
-        pin: PIN,
-        appliedLookup: undefined,
-      }),
-    ).toEqual({ write: true, reason: "env-changed" });
+    ).toEqual({ write: true, reason: "env-authoritative" });
   });
 
   it("passes a write-through decision straight through (fresh install, forced)", () => {
     const fresh = decideDirectorPinWrite(undefined, false);
-    expect(
-      decideDirectorCredential({ base: fresh, lookup: undefined, salt: undefined, hash: undefined, pin: PIN, appliedLookup: undefined }),
-    ).toEqual(fresh);
+    expect(decideDirectorCredential({ base: fresh, lookup: undefined, salt: undefined, hash: undefined, pin: PIN })).toEqual(fresh);
     const forced = decideDirectorPinWrite(derivePinLookup(PIN), true);
-    expect(
-      decideDirectorCredential({ base: forced, lookup: derivePinLookup(PIN), salt: "s", hash: "h", pin: PIN, appliedLookup: applied }),
-    ).toEqual(forced);
+    expect(decideDirectorCredential({ base: forced, lookup: derivePinLookup(PIN), salt: "s", hash: "h", pin: PIN })).toEqual(forced);
+  });
+});
+
+describe("isDirectorAccount", () => {
+  const env = { DIRECTOR_EMAIL: "Director@Metnmat.com", DIRECTOR_PIN: "5970" };
+
+  it("matches the DIRECTOR_EMAIL account, case-insensitively", () => {
+    expect(isDirectorAccount({ email: "director@metnmat.com" }, env)).toBe(true);
+    expect(isDirectorAccount({ email: "someone@metnmat.com" }, env)).toBe(false);
+  });
+
+  it("is false when the environment defines no director, so a dev CMS is unaffected", () => {
+    expect(isDirectorAccount({ email: "director@metnmat.com" }, {})).toBe(false);
+    expect(isDirectorAccount({ email: "director@metnmat.com" }, { DIRECTOR_EMAIL: "director@metnmat.com", DIRECTOR_PIN: "abc" })).toBe(false);
+    expect(isDirectorAccount(undefined, env)).toBe(false);
+  });
+
+  it("makes the PIN field read-only on that account in Users", () => {
+    const users = readFileSync(join(ROOT, "apps", "dashboard", "src", "collections", "Users.ts"), "utf8");
+    expect(users).toMatch(/update: \(args\) => fieldSuperAdmin\(args\) && !isDirectorAccount\(args\.doc, process\.env\)/);
   });
 });
 
@@ -236,11 +214,14 @@ describe("seed wires the repair in", () => {
     expect(director).toMatch(/if \(decision\.write\) \{[\s\S]*?payload\.unlock\(\{ collection: "users"/);
   });
 
-  it("the decision sees which DIRECTOR_PIN was last applied, and the record follows every application", () => {
-    expect(director).toMatch(/appliedLookup: await readAppliedDirectorLookup\(payload\)/);
-    // After the update branch (written or already carried) and after create.
-    expect((director.match(/writeAppliedDirectorLookup\(payload, derivePinLookup\(pin\)\)/g) ?? []).length).toBe(2);
-    expect(director).toMatch(/if \(decision\.write \|\| docs\[0\]\.pinLookup === derivePinLookup\(pin\)\)/);
+  it("the stale cleartext PIN column is purged unconditionally once a lookup exists", () => {
+    // Flag-gated until 2026-09-19, when the column proved to be the reversion
+    // path itself (back-filled into every save that omitted `pin`).
+    const start = seed.indexOf("async function migratePinsOutOfCleartext");
+    const fn = seed.slice(start, seed.indexOf("\n}", start) + 2);
+    expect(fn).not.toMatch(/PIN_CLEARTEXT_PURGE/);
+    expect(fn).toMatch(/\$unset: \{ pin: "" \}/);
+    expect(fn).toMatch(/pinLookup: \{ \$exists: true, \$nin: \[null, ""\] \}/);
   });
 
   it("resyncStaffCredentials runs on the critical path, after the director", () => {

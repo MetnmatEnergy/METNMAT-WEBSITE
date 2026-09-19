@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { derivePassword, derivePinLookup } from "../apps/dashboard/src/lib/pin";
-import { pinPasswordInjection, syncPinPassword } from "../apps/dashboard/src/hooks/pin-credential";
+import { pinPasswordInjection, pinWasProvided, syncPinPassword } from "../apps/dashboard/src/hooks/pin-credential";
 
 /**
  * Changing a PIN must change the login credential.
@@ -120,6 +120,52 @@ describe("the hook returns args Payload will actually use", () => {
   });
 });
 
+describe("only a PIN the caller sent counts (the back-fill bug, 2026-09-19)", () => {
+  // Payload's field pass back-fills `pin` from the stored document — including
+  // the stale cleartext column on migrated accounts — into any update that
+  // omits it. The hook runs before that pass and records what the caller
+  // actually sent; Users' hooks act on `pin` only when this flag is true.
+  const run = (operation: string, data: unknown) => {
+    const req = { context: {} as Record<string, unknown> };
+    (syncPinPassword as unknown as (a: { args: unknown; context: unknown; operation: string; req: unknown }) => unknown)({
+      args: { data, collection: {}, req },
+      context: req.context,
+      operation,
+      req,
+    });
+    return req;
+  };
+
+  it("flags an update that carries a well-formed PIN", () => {
+    expect(pinWasProvided(run("update", { pin: "5970" }))).toBe(true);
+  });
+
+  it("flags a create that carries one, so create keeps deriving", () => {
+    expect(pinWasProvided(run("create", { pin: "5970", name: "New" }))).toBe(true);
+  });
+
+  it("does NOT flag an update without a PIN — the bootstrap's preserve save, a name edit", () => {
+    expect(pinWasProvided(run("update", { name: "Administrator", roles: ["super-admin"] }))).toBe(false);
+  });
+
+  it("does NOT flag a blank or malformed PIN", () => {
+    expect(pinWasProvided(run("update", { pin: "" }))).toBe(false);
+    expect(pinWasProvided(run("update", { pin: "12" }))).toBe(false);
+  });
+
+  it("reads false when there is no context at all", () => {
+    expect(pinWasProvided(undefined)).toBe(false);
+    expect(pinWasProvided({})).toBe(false);
+  });
+
+  it("Users acts on `pin` only when the flag is set, and never writes it", () => {
+    const users = stripComments(read("collections/Users.ts"));
+    expect(users).toMatch(/if \(data\.pin != null && !pinWasProvided\(req\)\) \{\s*delete data\.pin;/);
+    expect(users).toMatch(/if \(data\?\.pin != null && data\.pin !== "" && pinWasProvided\(req\)\) \{/);
+    expect(users).toMatch(/if \(data && "pin" in data\) delete data\.pin;/);
+  });
+});
+
 describe("the hook is wired where it has to be", () => {
   const users = stripComments(read("collections/Users.ts"));
 
@@ -128,7 +174,7 @@ describe("the hook is wired where it has to be", () => {
   });
 
   it("imports it from the module that documents why", () => {
-    expect(users).toMatch(/import \{ syncPinPassword \} from "\.\.\/hooks\/pin-credential"/);
+    expect(users).toMatch(/import \{ pinWasProvided, syncPinPassword \} from "\.\.\/hooks\/pin-credential"/);
   });
 
   it("beforeChange still derives the password, which is what makes CREATE work", () => {

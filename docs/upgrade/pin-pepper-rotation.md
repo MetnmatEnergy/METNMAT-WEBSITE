@@ -8,13 +8,13 @@
 > (`seed.ts` → `resyncStaffCredentials`, `lib/director-pin.ts` →
 > `decideDirectorCredential`):
 >
-> - **The director** is re-derived from `DIRECTOR_PIN` whenever the stored
->   credential no longer accepts it — including after a rotation, when no PIN can
->   produce the stored lookup at all — and whenever `DIRECTOR_PIN` itself was
->   changed in Secrets Manager since the bootstrap last applied it (recorded as a
->   lookup in `cms_bootstrap_state`). A PIN the director set in the UI, with the
->   environment unchanged, is still preserved. `DIRECTOR_PIN_FORCE` remains for
->   the case where the director *forgot* a PIN they set in the UI.
+> - **The director** is brought back to `DIRECTOR_PIN` on every boot whenever the
+>   account carries anything else — a stale hash, a rotated pepper, a changed
+>   secret. The secret is the director's PIN, full stop; the admin's PIN field is
+>   read-only on that account so the two cannot diverge. A stale cleartext `pin`
+>   column used to be back-filled into every save that omitted `pin` and silently
+>   reverted the lookup (2026-09-19); hooks now ignore a PIN the caller did not
+>   send and the column is purged at boot.
 > - **Every other account** whose lookup still resolves under the current pepper
 >   has its hash checked against that PIN and re-derived if stale (the PIN itself
 >   is unchanged).

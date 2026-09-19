@@ -161,12 +161,15 @@ auditing orphaned resources.
     two can disagree — a pepper rotation (Sept 2026) or a PIN edit made before `hooks/pin-credential.ts`
     leaves the lookup current and the hash stale, and sign-in then fails identically to a wrong PIN.
     Boot now repairs this (`resyncStaffCredentials` + `decideDirectorCredential`, 2026-09-19): it
-    verifies each hash against the PIN its lookup encodes and re-derives when they disagree; the
-    director is repaired from `DIRECTOR_PIN` even after a rotation. **Changing `DIRECTOR_PIN` in
-    Secrets Manager is honoured on the next CMS restart** (`cms_bootstrap_state` records which value
-    was last applied, so a secret change is told apart from a PIN the director set in the UI, which
-    is preserved). Accounts whose lookup predates the pepper are logged as unreachable — a
-    super-admin sets them a new PIN. There is **no
+    verifies each hash against the PIN its lookup encodes and re-derives when they disagree.
+    **`DIRECTOR_PIN` in Secrets Manager IS the director's PIN**: every boot brings that account
+    back to it, and the PIN field is read-only on it in the admin (`isDirectorAccount`). Changing
+    the secret takes effect on the next CMS restart (fetcher reads it at unit start). The
+    third lockout that day was Payload back-filling a stale cleartext `pin` column into every save
+    that omitted `pin` — the bootstrap's own "preserve" save included — which reverted the lookup
+    to the June PIN on each restart; hooks now act on `pin` only when the caller sent one
+    (`pinWasProvided`) and the column is purged at boot. Accounts whose lookup predates the pepper
+    are logged as unreachable — a super-admin sets them a new PIN. There is **no
     `admin@metnmat.com`**: the director is the `DIRECTOR_EMAIL` in `metnmat/cms/env`, and the
     email/password form only works for accounts created without a PIN. Five misses from one IP pause
     PIN sign-in for 15 minutes (`pin_login_throttle`); the login screen shows the countdown.
