@@ -122,18 +122,23 @@ describe("the migration is safe to run on live accounts", () => {
     expect(fn![0]).toMatch(/pinLookup: \{ \$exists: false \}/);
   });
 
-  it("PURGES only behind an explicit flag", () => {
-    // Clearing cleartext in the same pass would mean a failure halfway could
-    // destroy a PIN whose lookup was never written — and nothing can reproduce
-    // it, so that account would be unreachable forever.
-    expect(fn![0]).toMatch(/process\.env\.PIN_CLEARTEXT_PURGE === "true"/);
+  it("purges the cleartext column on every boot — it was the reversion path (2026-09-19)", () => {
+    // Flag-gated until Payload's field pass was found back-filling the stale
+    // column into every save that omitted `pin`, which rewrote the director's
+    // lookup to the June PIN on each restart. Keeping it is now the risk.
+    expect(fn![0]).not.toMatch(/PIN_CLEARTEXT_PURGE/);
+    expect(fn![0]).toMatch(/\$unset: \{ pin: "" \}/);
   });
 
   it("never purges a document that has no lookup yet", () => {
-    const purge = /PIN_CLEARTEXT_PURGE === "true"\)[\s\S]{0,500}/.exec(fn![0]);
-    expect(purge, "purge block not found").not.toBeNull();
-    expect(purge![0]).toMatch(/pinLookup: \{ \$exists: true/);
-    expect(purge![0]).toMatch(/\$unset: \{ pin: "" \}/);
+    // Phase 1 (write lookups) and phase 2 (drop cleartext) stay separate
+    // statements: a failure halfway can never clear a PIN whose lookup was not
+    // written — nothing can reproduce it, so that account would be gone.
+    const purge = /updateMany\(\s*\{ pin: \{ \$exists: true \}, pinLookup: \{ \$exists: true, \$nin: \[null, ""\] \} \},\s*\{ \$unset: \{ pin: "" \} \}/.exec(fn![0]);
+    expect(purge, "purge block not found or not scoped to documents with a lookup").not.toBeNull();
+    const phase1 = fn![0].indexOf("pinLookup: { $exists: false }");
+    expect(phase1).toBeGreaterThan(-1);
+    expect(fn![0].indexOf("$unset")).toBeGreaterThan(phase1);
   });
 
   it("does not fail boot if it errors", () => {

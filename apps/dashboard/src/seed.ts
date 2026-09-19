@@ -3,7 +3,6 @@ import { existsSync } from "fs";
 import type { Payload } from "payload";
 import { decideDirectorCredential, decideDirectorPinWrite, directorPinForced } from "./lib/director-pin";
 import { planCredentialResync } from "./lib/credential-resync";
-import { readAppliedDirectorLookup, writeAppliedDirectorLookup } from "./lib/bootstrap-state";
 import { hasAttachedImage, decideCategorySeed } from "./lib/seed-ownership";
 import { classifyProbe, purgeMode, purgeSummary } from "./lib/media-purge";
 import { derivePinLookup } from "./lib/pin";
@@ -889,13 +888,13 @@ async function scrubPinBearingEmails(payload: Payload): Promise<void> {
  * limited who could read it through Payload's API and did nothing about anyone
  * able to read the collection itself.
  *
- * TWO PHASES, ON PURPOSE. This writes the derived lookup and leaves the
- * cleartext alone. Clearing it is a separate, flag-gated pass. Doing both at
- * once would mean that a failure halfway — a dropped connection, a bad document
- * — could clear a PIN whose lookup had not been written, and since the PIN is
- * the credential and nothing else can reproduce it, that account would be
- * unreachable forever. Writing first is additive and reversible; only purge once
- * sign-in has been seen to work.
+ * TWO PHASES, ON PURPOSE. Phase 1 writes the derived lookup for accounts that
+ * lack one; phase 2 removes the cleartext from accounts that HAVE one. Kept as
+ * two separate statements so a failure halfway — a dropped connection, a bad
+ * document — can never clear a PIN whose lookup had not been written; since the
+ * PIN is the credential and nothing else can reproduce it, that account would
+ * be unreachable forever. Phase 2 was flag-gated until 2026-09-19; see the
+ * note beside it for why it now runs on every boot.
  *
  * Uses the native driver deliberately: `pin` is now a virtual field, so Payload
  * will not read the legacy stored value at all.
@@ -929,16 +928,23 @@ async function migratePinsOutOfCleartext(payload: Payload): Promise<void> {
     }
     if (written) payload.logger.warn(`[seed] pin lookup written for ${written} staff account(s)`);
 
-    // Phase 2 — destructive, and only when explicitly asked for. Every document
-    // touched here already has a lookup, so sign-in continues to work; what goes
-    // is the ability to READ the PIN back, which is the point.
-    if (process.env.PIN_CLEARTEXT_PURGE === "true") {
-      const res = await col.updateMany(
-        { pin: { $exists: true }, pinLookup: { $exists: true, $nin: [null, ""] } },
-        { $unset: { pin: "" } },
-      );
+    // Phase 2 — remove the cleartext column from every account that has its
+    // lookup. This was flag-gated ("only once sign-in has been seen to work");
+    // it has been, and on 2026-09-19 the column turned out to be actively
+    // harmful rather than merely sensitive: Payload's field pass back-filled
+    // it into every update that omitted `pin` — the director bootstrap's own
+    // "preserve" save on each boot included — and Users.beforeChange rewrote
+    // the lookup to the stale value, reverting the director's PIN on every
+    // restart. The hooks now ignore a PIN the caller did not send
+    // (hooks/pin-credential.ts); dropping the column removes the trap itself.
+    // Every document touched already has a lookup, so sign-in is unaffected.
+    const res = await col.updateMany(
+      { pin: { $exists: true }, pinLookup: { $exists: true, $nin: [null, ""] } },
+      { $unset: { pin: "" } },
+    );
+    if (res?.modifiedCount) {
       payload.logger.warn(
-        `[seed] cleartext PIN purged from ${res?.modifiedCount ?? 0} staff account(s) — PINs can no longer be read back, only reset`,
+        `[seed] stale cleartext PIN column removed from ${res.modifiedCount} staff account(s) — PINs can no longer be read back, only reset`,
       );
     }
   } catch (e) {
@@ -1012,10 +1018,6 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
         salt: docs[0].salt,
         hash: docs[0].hash,
         pin,
-        // Which DIRECTOR_PIN this bootstrap last applied — the only way to tell
-        // "the owner changed the secret" from "the director changed the PIN in
-        // the UI" (lib/bootstrap-state.ts).
-        appliedLookup: await readAppliedDirectorLookup(payload),
       });
       await payload.update({
         collection: "users",
@@ -1037,13 +1039,6 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
         // outlive the reason for it.
         await payload.unlock({ collection: "users", data: { email }, overrideAccess: true });
       }
-      // Record the environment PIN as applied whenever the account now carries
-      // it — written or already there — so a later change to the secret is
-      // recognised as one. A PIN the director chose in the UI leaves the record
-      // untouched, which is what keeps that choice safe across restarts.
-      if (decision.write || docs[0].pinLookup === derivePinLookup(pin)) {
-        await writeAppliedDirectorLookup(payload, derivePinLookup(pin));
-      }
       payload.logger.warn(
         `[seed] director super-admin ensured: ${email} (pin ${decision.reason})${docs.length > 1 ? ` (removed ${docs.length - 1} duplicate match(es))` : ""}`,
       );
@@ -1054,7 +1049,6 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
         overrideAccess: true,
       });
       directorId = created.id;
-      await writeAppliedDirectorLookup(payload, derivePinLookup(pin));
       payload.logger.warn(`[seed] director super-admin created: ${email}`);
     }
 

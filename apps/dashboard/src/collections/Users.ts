@@ -13,7 +13,8 @@ import {
   ROLE_OPTIONS,
 } from "../access";
 import { derivePassword, derivePinLookup, PIN_REGEX } from "../lib/pin";
-import { syncPinPassword } from "../hooks/pin-credential";
+import { pinWasProvided, syncPinPassword } from "../hooks/pin-credential";
+import { isDirectorAccount } from "../lib/director-pin";
 import { staffError } from "../lib/staff-error";
 
 export const Users: CollectionConfig = {
@@ -83,9 +84,16 @@ export const Users: CollectionConfig = {
       admin: {
         placeholder: "Enter 4 digits to set a new PIN",
         description:
-          "Write-only. Enter a 4-digit key to SET or CHANGE this person's PIN. Existing PINs are not stored and cannot be shown — if one is forgotten, set a new one. Leave blank to keep the current PIN, or clear it via Remove PIN.",
+          "Write-only. Enter a 4-digit key to SET or CHANGE this person's PIN. Existing PINs are not stored and cannot be shown — if one is forgotten, set a new one. Leave blank to keep the current PIN, or clear it via Remove PIN. The director's own PIN is not set here: it is DIRECTOR_PIN in AWS Secrets Manager (metnmat/cms/env) and takes effect on the next CMS restart.",
       },
-      access: { read: () => false, create: fieldSuperAdmin, update: fieldSuperAdmin },
+      // The director's PIN has one source of truth, the environment, so the
+      // field is read-only on that account (lib/director-pin.ts). Two lockouts
+      // came from the UI and the secret disagreeing about it.
+      access: {
+        read: () => false,
+        create: fieldSuperAdmin,
+        update: (args) => fieldSuperAdmin(args) && !isDirectorAccount(args.doc, process.env),
+      },
     },
     {
       /*
@@ -145,6 +153,12 @@ export const Users: CollectionConfig = {
         if (data.pin === "" || data.pin === null) {
           data.pin = undefined;
         }
+        // A `pin` the caller never sent is Payload's field pass back-filling
+        // the stale cleartext column (hooks/pin-credential.ts, second bug).
+        // Acting on it rewrote the lookup to the old PIN on every save.
+        if (data.pin != null && !pinWasProvided(req)) {
+          delete data.pin;
+        }
 
         if (data.pin != null) {
           const pin = String(data.pin);
@@ -200,12 +214,14 @@ export const Users: CollectionConfig = {
          * exists. Both derive the same deterministic value, so the two paths
          * cannot disagree.
          */
-        if (data?.pin != null && data.pin !== "") {
+        if (data?.pin != null && data.pin !== "" && pinWasProvided(req)) {
           const pin = String(data.pin);
           data.password = derivePassword(pin);
           data.pinLookup = derivePinLookup(pin);
-          delete data.pin;
         }
+        // Whatever reached here — a real PIN, now derived, or a back-filled
+        // stale value — must not be written or acted on.
+        if (data && "pin" in data) delete data.pin;
         // The very first user to register becomes the Super Admin — but ONLY when
         // bootstrap is allowed (dev, or ALLOW_FIRST_USER_BOOTSTRAP=true in prod).
         // Otherwise an empty users collection must not mint a super-admin to an
