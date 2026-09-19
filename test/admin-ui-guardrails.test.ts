@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { IMAGE_GUIDANCE, checkImageFile, formatBytes } from "../apps/dashboard/src/lib/image-guidance";
 import { PRODUCT_IMAGE_SPEC } from "../apps/dashboard/src/hooks/product-image-spec";
@@ -62,6 +62,66 @@ describe("the dashboard home is responsive through classes, not inline grids", (
 
   it("small pill buttons keep their size on phones — the 44px floor collided with titles", () => {
     expect(css).toMatch(/\.btn:not\(\.btn--size-small\) \{ min-height: 44px; \}/);
+  });
+});
+
+describe("the sidebar is ordered and dressed as the owner asked (2026-09-19)", () => {
+  const config = stripComments(read("payload.config.ts"));
+  const css = read("app/(payload)/custom-admin.css");
+  const logo = stripComments(read("admin/NavLogo.tsx"));
+
+  it("Catalog is the first group: Products lead the collections array", () => {
+    const arr = /collections: \[([\s\S]*?)\],/.exec(config)![1];
+    const names = arr.split(",").map((s) => s.trim()).filter(Boolean);
+    expect(names.slice(0, 5)).toEqual(["Products", "Categories", "StockLedger", "ProductSlugRedirects", "CategorySlugRedirects"]);
+    expect(names.indexOf("Orders")).toBeGreaterThan(names.indexOf("CategorySlugRedirects"));
+  });
+
+  it("the technical collections sit in a System group at the end, not among staff administration", () => {
+    for (const f of ["Counters", "AnalyticsEvents", "AnalyticsSessions", "AnalyticsDaily", "IntegrationLogs"]) {
+      expect(read(`collections/${f}.ts`), f).toMatch(/group: "System"/);
+    }
+    for (const f of ["Users", "StaffRoles", "AuditLogs", "DataRequests"]) {
+      expect(read(`collections/${f}.ts`), f).toMatch(/group: "Administration"/);
+    }
+    const arr = /collections: \[([\s\S]*?)\],/.exec(config)![1];
+    const names = arr.split(",").map((s) => s.trim()).filter(Boolean);
+    expect(names.slice(-5).sort()).toEqual(["AnalyticsDaily", "AnalyticsEvents", "AnalyticsSessions", "Counters", "IntegrationLogs"].sort());
+  });
+
+  it("the staff list no longer shows the always-empty PIN column", () => {
+    const users = stripComments(read("collections/Users.ts"));
+    const cols = /defaultColumns: \[([^\]]+)\]/.exec(users)![1];
+    expect(cols).not.toContain('"pin"');
+  });
+
+  it("the brand row is a compact lockup, not a full-width logo card", () => {
+    expect(logo).toMatch(/className="mn-brand"/);
+    expect(logo).toMatch(/metnmat-mark\.png/);
+    expect(logo).not.toMatch(/metnmat-logo\.png/);
+    expect(css).toMatch(/\.mn-brand \{[^}]*height: 52px/);
+  });
+
+  it("every sidebar entry has an icon, keyed by the id DefaultNav assigns", () => {
+    const collections = readdirSync(join(CMS, "collections"))
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => /slug: "([^"]+)"/.exec(read(`collections/${f}`))?.[1])
+      .filter((s): s is string => Boolean(s));
+    expect(collections.length).toBeGreaterThan(30);
+    for (const slug of collections) expect(css, slug).toContain(`#nav-${slug}`);
+    for (const g of ["branding", "company", "contact", "social", "seo", "commerce", "homepage", "maintenance", "navigation", "privacy"]) {
+      expect(css, g).toContain(`#nav-global-${g}`);
+    }
+    expect(css).toMatch(/\.nav__link::before \{[\s\S]*?mask: var\(--mn-icon, var\(--mn-icon-dot\)\)/);
+  });
+
+  it("both palettes define the sidebar tokens", () => {
+    const dark = css.slice(css.indexOf('html[data-theme="dark"]'), css.indexOf('html[data-theme="light"]'));
+    const light = css.slice(css.indexOf('html[data-theme="light"]'), css.indexOf("/* ── Base typography"));
+    for (const t of ["--mn-nav-bg", "--mn-nav-border", "--mn-nav-muted", "--mn-nav-link", "--mn-nav-hover", "--mn-nav-active", "--mn-nav-active-text"]) {
+      expect(dark, `dark ${t}`).toContain(`${t}:`);
+      expect(light, `light ${t}`).toContain(`${t}:`);
+    }
   });
 });
 

@@ -193,6 +193,12 @@ auditing orphaned resources.
   `pointerdown` listener that never calls `preventDefault`** — never a click-catching overlay,
   which swallows the click.
 - No fabricated content. Structured data and copy must trace to a real CMS field or a real page.
+- **Admin sidebar** (`apps/dashboard/src/app/(payload)/custom-admin.css`): Payload's DefaultNav is
+  kept and dressed. Group order = first appearance in `payload.config.ts` `collections` (Catalog
+  first, technical collections in a `System` group last). Every entry gets an icon via
+  `#nav-<slug>` / `#nav-global-<slug>` → `--mn-icon`; `test/admin-ui-guardrails.test.ts` fails when
+  a new collection has no icon. Responsive layout on the home is class-based (`.mn-split`,
+  `.mn-kpis`) because inline styles cannot carry media queries.
 - Internal-key reads of customer-keyed data return a `where` constraint, never `true`. The
   website server reads `enquiries` only through `?where[email][equals]=<one address>`
   (`internalOwnEmailOrManageSales`, shape check in `lib/own-email-scope.ts`), so a leaked key

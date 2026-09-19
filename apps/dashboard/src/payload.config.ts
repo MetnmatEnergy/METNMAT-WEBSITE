@@ -244,10 +244,18 @@ export default buildConfig({
     },
   },
   // Sidebar group order follows first appearance in this array (Wix-style):
-  // Sales → Catalog → Site & Mobile App → Inbox → Customers & Leads → Blog →
-  // Operations → Administration. (Marketing holds only globals, so Payload
-  // appends it after the collection groups.)
+  // Catalog → Sales → Site & Mobile App → Inbox → Customers & Leads → Blog →
+  // Operations → Administration → System. (Marketing holds only globals, so
+  // Payload appends it after the collection groups.)
   collections: [
+    // Catalog — first: the products are what staff open most (owner request,
+    // 2026-09-19), so the group sits at the top of the sidebar.
+    Products,
+    Categories,
+    StockLedger,
+    // Renamed-URL 301s, written by the slug-change hooks on the two above.
+    ProductSlugRedirects,
+    CategorySlugRedirects,
     // Sales
     Orders,
     Invoices,
@@ -257,13 +265,6 @@ export default buildConfig({
     Enquiries,
     EnquiryUploads,
     ReturnRequests,
-    // Catalog
-    Products,
-    Categories,
-    StockLedger,
-    // Renamed-URL 301s, written by the slug-change hooks on the two above.
-    ProductSlugRedirects,
-    CategorySlugRedirects,
     // Site & Mobile App (website content + assets)
     Services,
     Projects,

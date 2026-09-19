@@ -17,7 +17,7 @@ export const AnalyticsDaily: CollectionConfig = {
   slug: "analytics-daily",
   labels: { singular: "Analytics Day", plural: "Analytics Daily Rollups" },
   admin: {
-    group: "Administration",
+    group: "System",
     description: "Per-day rollups powering the analytics dashboards. System-maintained.",
     defaultColumns: ["day", "sessions", "pageViews", "formSubmits", "purchases"],
     hidden: ({ user }) => !user,

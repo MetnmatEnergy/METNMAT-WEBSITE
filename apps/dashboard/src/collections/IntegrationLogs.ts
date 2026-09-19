@@ -10,7 +10,7 @@ export const IntegrationLogs: CollectionConfig = {
   slug: "integration-logs",
   labels: { singular: "Integration Log", plural: "Integration Logs" },
   admin: {
-    group: "Administration",
+    group: "System",
     useAsTitle: "integration",
     defaultColumns: ["integration", "status", "summary", "createdAt"],
     description: "Append-only log of outbound integration attempts.",

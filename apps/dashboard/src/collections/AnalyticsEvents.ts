@@ -23,7 +23,7 @@ export const AnalyticsEvents: CollectionConfig = {
   slug: "analytics-events",
   labels: { singular: "Analytics Event", plural: "Analytics Events" },
   admin: {
-    group: "Administration",
+    group: "System",
     description: "Raw first-party website events (auto-expire per retention policy). Read-only.",
     defaultColumns: ["type", "path", "day", "createdAt"],
     hidden: ({ user }) => !user,
