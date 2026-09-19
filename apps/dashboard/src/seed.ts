@@ -1,7 +1,8 @@
 import path from "path";
 import { existsSync } from "fs";
 import type { Payload } from "payload";
-import { decideDirectorPinWrite, directorPinForced } from "./lib/director-pin";
+import { decideDirectorCredential, decideDirectorPinWrite, directorPinForced } from "./lib/director-pin";
+import { planCredentialResync } from "./lib/credential-resync";
 import { hasAttachedImage, decideCategorySeed } from "./lib/seed-ownership";
 import { classifyProbe, purgeMode, purgeSummary } from "./lib/media-purge";
 import { derivePinLookup } from "./lib/pin";
@@ -985,8 +986,12 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
       limit: 50,
       depth: 0,
       overrideAccess: true,
+      // `salt` and `hash` are hidden auth fields. They are read here for one
+      // purpose: to check that the credential the account holds actually
+      // accepts the PIN it is meant to — see decideDirectorCredential.
+      showHiddenFields: true,
     });
-    const docs = matches.docs as Array<{ id: string | number }>;
+    const docs = matches.docs as Array<{ id: string | number; pinLookup?: unknown; salt?: unknown; hash?: unknown }>;
 
     let directorId: string | number;
     if (docs.length > 0) {
@@ -995,23 +1000,38 @@ async function ensureDirectorAccount(payload: Payload): Promise<void> {
       for (const dup of docs.slice(1)) {
         await payload.delete({ collection: "users", id: dup.id, overrideAccess: true });
       }
-      const decision = decideDirectorPinWrite(
-        // The stored lookup stands in for "this account already has a PIN": the
-        // PIN itself is not readable any more, which is the whole point.
-        (docs[0] as { pinLookup?: unknown }).pinLookup,
-        directorPinForced(process.env),
-      );
+      const decision = decideDirectorCredential({
+        base: decideDirectorPinWrite(
+          // The stored lookup stands in for "this account already has a PIN": the
+          // PIN itself is not readable any more, which is the whole point.
+          docs[0].pinLookup,
+          directorPinForced(process.env),
+        ),
+        lookup: docs[0].pinLookup,
+        salt: docs[0].salt,
+        hash: docs[0].hash,
+        pin,
+      });
       await payload.update({
         collection: "users",
         id: directorId,
         // The PIN is deliberately absent unless it needs writing: including it
         // makes Users.beforeOperation re-derive the password (hooks/pin-credential.ts),
         // so an unconditional write here would reset the director's credential on
-        // every boot. Set DIRECTOR_PIN_FORCE=true for the deliberate break-glass
-        // reset; see lib/director-pin.ts.
+        // every boot. It IS written when the stored credential no longer accepts
+        // the PIN — a stale hash or a rotated pepper — because preserving a
+        // credential that cannot sign in preserves a lockout (2026-09-19).
+        // DIRECTOR_PIN_FORCE=true remains the deliberate break-glass reset; see
+        // lib/director-pin.ts.
         data: { name, email, roles: ["super-admin"], ...(decision.write ? { pin } : {}) },
         overrideAccess: true,
       });
+      if (decision.write) {
+        // Payload counts the failures a stale credential caused and locks the
+        // account after five. The credential is correct now; the lock must not
+        // outlive the reason for it.
+        await payload.unlock({ collection: "users", data: { email }, overrideAccess: true });
+      }
       payload.logger.warn(
         `[seed] director super-admin ensured: ${email} (pin ${decision.reason})${docs.length > 1 ? ` (removed ${docs.length - 1} duplicate match(es))` : ""}`,
       );
@@ -1974,8 +1994,67 @@ export async function seedCritical(payload: Payload): Promise<void> {
   // by email alone, and one holding neither would look like a fresh install.
   await migratePinsOutOfCleartext(payload);
   await ensureDirectorAccount(payload);
+  // After the director, whose PIN the environment knows and who is therefore
+  // repaired even when a pepper change made every lookup inert.
+  await resyncStaffCredentials(payload);
   await scrubPinBearingEmails(payload);
   await cleanupMalformed(payload);
+}
+
+/**
+ * Bring every staff account's login credential back in step with its PIN.
+ *
+ * The rule and the two ways it breaks are in lib/credential-resync.ts. This is
+ * the side-effecting half: read the hidden `salt`/`hash` beside each lookup,
+ * and re-save any account whose hash no longer accepts its own PIN. The save
+ * goes through the ordinary update path — Users.beforeOperation injects the
+ * derived password, Payload hashes it — so it is exactly what an admin editing
+ * the PIN field would do, minus the edit. The PIN is unchanged; it is the
+ * credential that moves.
+ *
+ * Accounts whose lookup no PIN can produce are reported by name, not fixed:
+ * their PIN was minted under a previous pepper and is unrecoverable by design.
+ * A super-admin sets them a new one.
+ *
+ * Runs on every boot and is a no-op once everything verifies. Never logs a PIN.
+ */
+async function resyncStaffCredentials(payload: Payload): Promise<void> {
+  try {
+    const users = await payload.find({
+      collection: "users",
+      limit: 500,
+      depth: 0,
+      overrideAccess: true,
+      showHiddenFields: true,
+    });
+    const plan = planCredentialResync(
+      users.docs as Array<{ id: string | number; name?: unknown; email?: unknown; pinLookup?: unknown; salt?: unknown; hash?: unknown }>,
+    );
+
+    for (const action of plan) {
+      if (action.kind === "resync") {
+        await payload.update({
+          collection: "users",
+          id: action.id,
+          data: { pin: action.pin },
+          overrideAccess: true,
+        });
+        const doc = users.docs.find((u) => String(u.id) === String(action.id)) as { email?: string } | undefined;
+        if (doc?.email) {
+          await payload.unlock({ collection: "users", data: { email: doc.email }, overrideAccess: true });
+        }
+        payload.logger.warn(
+          `[seed] login credential re-derived for '${action.label}' — the stored password no longer matched the account's PIN (the PIN itself is unchanged).`,
+        );
+      } else if (action.kind === "unreachable") {
+        payload.logger.warn(
+          `[seed] '${action.label}' cannot sign in by PIN: its PIN was set under a previous PAYLOAD_PIN_PEPPER and cannot be recovered. A super-admin must set a new PIN under Administration → Staff.`,
+        );
+      }
+    }
+  } catch (e) {
+    payload.logger.error(`[seed] credential resync failed (continuing boot): ${(e as Error).message}`);
+  }
 }
 
 /**

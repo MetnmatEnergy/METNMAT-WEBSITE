@@ -237,7 +237,18 @@ export const Products: CollectionConfig = {
                 description:
                   "The FIRST image is the thumbnail used everywhere (shop grid, homepage showcase, search, cart). Add more for the product-page gallery. Use a clean, well-lit shot on a plain background; square or 4:3 crops render best.",
               },
-              fields: [{ name: "image", type: "upload", relationTo: "media", required: true }],
+              fields: [
+                {
+                  name: "image",
+                  type: "upload",
+                  relationTo: "media",
+                  required: true,
+                  admin: {
+                    description:
+                      "Product photo: shortest side at least 900px (best 2400 × 1800, 4:3), JPG/PNG/WebP/AVIF up to 25 MB. Pick the Product Image category when uploading.",
+                  },
+                },
+              ],
             },
             {
               name: "videoUrl",

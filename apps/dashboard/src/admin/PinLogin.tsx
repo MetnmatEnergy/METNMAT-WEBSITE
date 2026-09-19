@@ -2,23 +2,53 @@
 
 import React from "react";
 
-const BRAND = "#d81f26";
-
 /**
  * Primary sign-in for staff: a 4-digit PIN pad rendered above Payload's login
  * form (which global CSS hides). Submits to /pin-login, which sets the session
  * cookie and redirects to /admin. A discreet link reveals the email/password
  * form for break-glass admin recovery.
+ *
+ * WHAT THE COPY IS FOR. Staff have no password — the key IS the account — and
+ * the recovery form only works for accounts created without a PIN. Both facts
+ * were invisible on the old screen, so the director tried an email address and
+ * a stored secret in the recovery form and got nowhere (2026-09-19). The screen
+ * now says which door is which.
+ *
+ * THE COUNTDOWN. /pin-login answers 429 with Retry-After after five misses
+ * from one address. Showing "try again in 15 minutes" with no clock reads as
+ * "broken"; a ticking timer reads as "wait", and disabling the pad until it
+ * expires stops the wait being extended by reflexive retries.
  */
 export default function PinLogin() {
   const [digits, setDigits] = React.useState<string[]>(["", "", "", ""]);
   const [error, setError] = React.useState<string>("");
+  const [misses, setMisses] = React.useState(0);
   const [loading, setLoading] = React.useState(false);
+  const [retryAt, setRetryAt] = React.useState<number | null>(null);
+  const [now, setNow] = React.useState(() => Date.now());
+  const [recovery, setRecovery] = React.useState(false);
   const refs = React.useRef<Array<HTMLInputElement | null>>([]);
 
   React.useEffect(() => {
     refs.current[0]?.focus();
   }, []);
+
+  // Tick once a second only while a lockout is showing.
+  React.useEffect(() => {
+    if (!retryAt) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [retryAt]);
+
+  const locked = retryAt !== null && retryAt > now;
+  React.useEffect(() => {
+    if (retryAt !== null && !locked) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the lock has expired; clear it and hand focus back
+      setRetryAt(null);
+      setError("");
+      refs.current[0]?.focus();
+    }
+  }, [locked, retryAt]);
 
   const submit = React.useCallback(async (pin: string) => {
     setLoading(true);
@@ -34,7 +64,15 @@ export default function PinLogin() {
         window.location.href = data.redirect || "/admin";
         return;
       }
-      setError(data.error || "Sign-in failed. Try again.");
+      if (res.status === 429) {
+        const secs = Number(res.headers.get("Retry-After")) || 15 * 60;
+        setRetryAt(Date.now() + secs * 1000);
+        setNow(Date.now());
+        setError("Too many attempts from this connection.");
+      } else {
+        setMisses((m) => m + 1);
+        setError(data.error || "Sign-in failed. Try again.");
+      }
       setDigits(["", "", "", ""]);
       setLoading(false);
       refs.current[0]?.focus();
@@ -71,6 +109,7 @@ export default function PinLogin() {
   };
 
   const showRecovery = () => {
+    setRecovery(true);
     if (typeof document !== "undefined") {
       document.documentElement.setAttribute("data-recovery", "true");
       setTimeout(() => {
@@ -79,14 +118,20 @@ export default function PinLogin() {
     }
   };
 
+  const remaining = locked ? Math.max(0, Math.ceil((retryAt! - now) / 1000)) : 0;
+  const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
+  const ss = String(remaining % 60).padStart(2, "0");
+  const disabled = loading || locked;
+
   return (
-    <div data-pin-login style={{ marginBottom: 22 }}>
-      <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Enter your 4-digit key</h2>
-      <p style={{ margin: "0 0 18px", fontSize: 13, opacity: 0.6 }}>
-        Sign in to the METNMAT Operations Dashboard.
+    <div data-pin-login className="mn-pin">
+      <h2 className="mn-pin__title">Sign in with your 4-digit key</h2>
+      <p className="mn-pin__lede">
+        Your key is the PIN the director issued to you. There is no email or password to type — the four
+        digits are your whole sign-in.
       </p>
 
-      <div style={{ display: "flex", gap: 12 }}>
+      <div className="mn-pin__pad" role="group" aria-label="4-digit key">
         {digits.map((d, i) => (
           <input
             key={i}
@@ -96,61 +141,52 @@ export default function PinLogin() {
             value={d}
             onChange={(e) => setAt(i, e.target.value)}
             onKeyDown={(e) => onKeyDown(i, e)}
-            disabled={loading}
+            disabled={disabled}
             inputMode="numeric"
             autoComplete="one-time-code"
             type="password"
             maxLength={1}
             aria-label={`PIN digit ${i + 1}`}
-            style={{
-              width: 56,
-              height: 64,
-              textAlign: "center",
-              fontSize: 26,
-              fontWeight: 700,
-              borderRadius: 12,
-              border: `1.5px solid ${error ? BRAND : "var(--theme-elevation-150, #2a2a2e)"}`,
-              background: "var(--theme-input-bg, #161618)",
-              color: "var(--theme-text, #fff)",
-              outlineColor: BRAND,
-              transition: "border-color .15s",
-            }}
+            className={`mn-pin__digit${error ? " is-error" : ""}`}
           />
         ))}
       </div>
 
-      <div style={{ minHeight: 20, marginTop: 12 }}>
-        {error && <span style={{ color: BRAND, fontSize: 13, fontWeight: 600 }}>{error}</span>}
-        {loading && !error && <span style={{ fontSize: 13, opacity: 0.6 }}>Signing in…</span>}
+      <div className="mn-pin__status" aria-live="polite">
+        {locked ? (
+          <span className="mn-pin__error">
+            {error} Try again in <strong style={{ fontVariantNumeric: "tabular-nums" }}>{mm}:{ss}</strong>.
+          </span>
+        ) : error ? (
+          <span className="mn-pin__error">{error}</span>
+        ) : loading ? (
+          <span className="mn-pin__muted">Signing in…</span>
+        ) : null}
+        {!locked && misses >= 2 && (
+          <span className="mn-pin__hint">
+            Keys are exactly four digits. If yours was reset recently, ask the director for the new one — five
+            misses from one connection pause sign-in for 15 minutes.
+          </span>
+        )}
       </div>
 
-      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 14 }}>
-        <button
-          type="button"
-          onClick={showRecovery}
-          style={{
-            background: "none",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            color: "var(--theme-text, #fff)",
-            opacity: 0.5,
-            fontSize: 12.5,
-            textDecoration: "underline",
-          }}
-        >
-          Admin recovery sign-in (email &amp; password)
-        </button>
+      <div className="mn-pin__foot">
+        {!recovery && (
+          <button type="button" onClick={showRecovery} className="mn-pin__link">
+            Recovery sign-in with email &amp; password
+          </button>
+        )}
       </div>
 
-      <div
-        aria-hidden
-        style={{
-          margin: "22px 0 4px",
-          height: 1,
-          background: "var(--theme-elevation-100, #232326)",
-        }}
-      />
+      {recovery && (
+        <p className="mn-pin__recovery-note">
+          <strong>Recovery accounts only.</strong> An account that signs in with a key has no separate
+          password, so this form will not accept it — use the key above. Email &amp; password work only for
+          accounts created without a PIN.
+        </p>
+      )}
+
+      <div aria-hidden className="mn-pin__rule" />
     </div>
   );
 }

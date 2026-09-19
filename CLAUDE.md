@@ -156,6 +156,17 @@ auditing orphaned resources.
 9. **`_` -prefixed folders under `app/` are private** and produce no route — don't use them for
    throwaway test routes.
 10. **Never `cat` a `.env`.** `grep '^KEY=' file` the one line you need.
+11. **"Invalid key" for the right PIN means the stored credential is out of step, not a typo.**
+    A staff password is `HMAC(PAYLOAD_PIN_PEPPER, pin)`; the account is found by `pinLookup`. The
+    two can disagree — a pepper rotation (Sept 2026) or a PIN edit made before `hooks/pin-credential.ts`
+    leaves the lookup current and the hash stale, and sign-in then fails identically to a wrong PIN.
+    Boot now repairs this (`resyncStaffCredentials` + `decideDirectorCredential`, 2026-09-19): it
+    verifies each hash against the PIN its lookup encodes and re-derives when they disagree; the
+    director is repaired from `DIRECTOR_PIN` even after a rotation. Accounts whose lookup predates the
+    pepper are logged as unreachable — a super-admin sets them a new PIN. There is **no
+    `admin@metnmat.com`**: the director is the `DIRECTOR_EMAIL` in `metnmat/cms/env`, and the
+    email/password form only works for accounts created without a PIN. Five misses from one IP pause
+    PIN sign-in for 15 minutes (`pin_login_throttle`); the login screen shows the countdown.
 11. **The quote form's Turnstile is two halves in two places.** `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
     is a GitHub repository *variable* inlined at **build** time by `deploy-web.yml`;
     `TURNSTILE_SECRET_KEY` is runtime, in `metnmat/web/env`. With the secret set, `/api/quote`

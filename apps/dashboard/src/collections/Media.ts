@@ -13,7 +13,16 @@ import { mediaReplaceGuard } from "../hooks/media-replace-guard";
  */
 export const Media: CollectionConfig = {
   slug: "media",
-  admin: { group: "Site & Mobile App", useAsTitle: "filename", description: "Images & banners." },
+  admin: {
+    group: "Site & Mobile App",
+    useAsTitle: "filename",
+    description:
+      "Images & banners. Product photos: shortest side at least 900px (best 2400 × 1800, 4:3). Any image: JPG, PNG, WebP or AVIF up to 25 MB.",
+    // Size is visible in the library, not only after opening a file: pixel
+    // dimensions and weight beside the name, so a too-small or too-heavy photo
+    // can be spotted from the list.
+    defaultColumns: ["filename", "category", "width", "height", "filesize", "alt", "updatedAt"],
+  },
   access: {
     read: publicRead,
     // Anyone who may author a product may add its imagery; changing or deleting
@@ -69,6 +78,14 @@ export const Media: CollectionConfig = {
     formatOptions: { format: "webp", options: { quality: 80 } },
   },
   fields: [
+    {
+      // Size guide + live readout of the picked file (pixels, weight, verdict).
+      // First, so it sits directly under the dropzone in every place this
+      // form renders: create view, document drawer, bulk-upload drawer.
+      name: "uploadSizeHint",
+      type: "ui",
+      admin: { components: { Field: "/admin/UploadSizeHint" } },
+    },
     {
       name: "alt",
       type: "text",

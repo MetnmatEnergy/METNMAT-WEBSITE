@@ -226,7 +226,7 @@ export default async function BeforeDashboard({ payload }: Props) {
           </h2>
           <span style={{ fontSize: 12.5, opacity: 0.55 }}>Live data · edits go live on the website within a minute</span>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div className="mn-actions">
           <ActionButton href={site} external primary label="View live site ↗" />
           <ActionButton href="/admin/globals/homepage" label="Edit homepage" />
           <ActionButton href="/admin/collections/products/create" label="+ Add product" />
@@ -275,13 +275,13 @@ export default async function BeforeDashboard({ payload }: Props) {
       )}
 
       {/* KPI cards */}
-      <div style={{ display: "grid", gap: 14, marginTop: 16, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+      <div className="mn-kpis">
         {kpis.map((k) => (
-          <div key={k.label} style={panel}>
+          <div key={k.label} className="mn-panel mn-kpi">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <div style={{ fontSize: 12.5, opacity: 0.6 }}>{k.label}</div>
-                <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{k.value}</div>
+                <div className="mn-kpi__value" style={{ fontSize: 28, fontWeight: 700, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{k.value}</div>
               </div>
               <ChangeBadge change={k.change} />
             </div>
@@ -294,7 +294,7 @@ export default async function BeforeDashboard({ payload }: Props) {
       </div>
 
       {/* Revenue + status */}
-      <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "minmax(0, 1.7fr) minmax(0, 1fr)" }}>
+      <div className="mn-split">
         <div style={panel}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <div>
@@ -334,7 +334,7 @@ export default async function BeforeDashboard({ payload }: Props) {
       </div>
 
       {/* Recent orders + top products */}
-      <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "minmax(0, 1.7fr) minmax(0, 1fr)" }}>
+      <div className="mn-split">
         <div style={panel}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontWeight: 700 }}>Recent orders</div>
@@ -410,7 +410,7 @@ export default async function BeforeDashboard({ payload }: Props) {
       </div>
 
       {/* Activity feed + management shortcuts */}
-      <div style={{ display: "grid", gap: 14, marginTop: 14, gridTemplateColumns: "minmax(0, 1.7fr) minmax(0, 1fr)" }}>
+      <div className="mn-split">
         <div style={panel}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <div style={{ fontWeight: 700 }}>Activity feed</div>

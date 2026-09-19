@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import { createHmac, pbkdf2Sync, timingSafeEqual } from "crypto";
 
 /**
  * 4-digit PIN login support.
@@ -42,6 +42,63 @@ export function derivePinLookup(pin: string): string {
 }
 
 export const PIN_REGEX = /^\d{4}$/;
+
+/**
+ * Payload's own local-strategy hashing parameters, mirrored so a stored
+ * credential can be checked in-process at boot. Verified against the installed
+ * package in test/pin-credential-resync.test.ts, so a Payload bump that changes
+ * them fails a test rather than silently marking every account stale.
+ *
+ *   auth/strategies/local/authenticate.js
+ *     crypto.pbkdf2(password, salt, 25000, 512, 'sha256', ...)
+ */
+export const PAYLOAD_PBKDF2 = { iterations: 25000, keyLength: 512, digest: "sha256" } as const;
+
+/**
+ * Does this stored salt/hash pair accept `password`?
+ *
+ * The only reader of an account's `salt` + `hash` outside Payload itself. It
+ * exists because the credential and the PIN can fall out of step, and when they
+ * do the symptom is indistinguishable from a wrong PIN: sign-in finds the
+ * account by its lookup, hands Payload the derived password, and Payload says
+ * no. Seen in production after the September 2026 pepper rotation — the
+ * director's lookup was current, the hash was still the one minted under the
+ * old pepper, and "Invalid key" was all anyone got. Checking here is what lets
+ * boot tell "stale" apart from "wrong" and repair the former.
+ */
+export function verifyDerivedCredential(password: string, salt: unknown, hash: unknown): boolean {
+  if (typeof salt !== "string" || typeof hash !== "string" || !salt || !hash) return false;
+  const computed = pbkdf2Sync(
+    password,
+    salt,
+    PAYLOAD_PBKDF2.iterations,
+    PAYLOAD_PBKDF2.keyLength,
+    PAYLOAD_PBKDF2.digest,
+  ).toString("hex");
+  if (computed.length !== hash.length) return false;
+  return timingSafeEqual(Buffer.from(computed), Buffer.from(hash));
+}
+
+/**
+ * The PIN a stored lookup was derived from under the CURRENT pepper, or null
+ * when no PIN produces it — which means it was derived under a different
+ * pepper and the account cannot be reached by PIN at all.
+ *
+ * Yes, this is the enumeration lib/pin.ts warns about: four digits is 10,000
+ * candidates, and whoever holds the database AND the pepper can walk them. At
+ * boot, that is this process. It uses the fact deliberately and only for
+ * repair — the recovered PIN is handed straight back to Payload to re-derive
+ * the credential and is never logged, stored or returned to a request. Cost
+ * is ~10k HMACs, a few milliseconds per account.
+ */
+export function recoverPinFromLookup(lookup: unknown): string | null {
+  if (typeof lookup !== "string" || !lookup) return null;
+  for (let i = 0; i < 10_000; i++) {
+    const pin = String(i).padStart(4, "0");
+    if (derivePinLookup(pin) === lookup) return pin;
+  }
+  return null;
+}
 
 // ── Brute-force protection lives in pin-throttle.ts ─────────────────────────
 // It used to be an in-memory Map here, CHECKED at the top of the route and only

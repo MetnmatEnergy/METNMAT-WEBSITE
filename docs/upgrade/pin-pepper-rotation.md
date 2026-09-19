@@ -1,5 +1,28 @@
 # Rotating `PAYLOAD_PIN_PEPPER`
 
+> ## ✅ What rotation costs now (2026-09-19)
+>
+> The September 2026 rotation happened and locked the director out: the account's
+> lookup had been rebuilt under the new pepper, but its password hash had not, so
+> the right PIN failed exactly like a wrong one. Boot now repairs that on its own
+> (`seed.ts` → `resyncStaffCredentials`, `lib/director-pin.ts` →
+> `decideDirectorCredential`):
+>
+> - **The director** is re-derived from `DIRECTOR_PIN` whenever the stored
+>   credential no longer accepts it — including after a rotation, when no PIN can
+>   produce the stored lookup at all. No flag needed; `DIRECTOR_PIN_FORCE` remains
+>   for the case where the director *forgot* a PIN they set in the UI.
+> - **Every other account** whose lookup still resolves under the current pepper
+>   has its hash checked against that PIN and re-derived if stale (the PIN itself
+>   is unchanged).
+> - **Accounts whose lookup predates the pepper** cannot be recovered — that is the
+>   design — and are named in the boot log as unreachable. A super-admin sets them
+>   a new PIN under Administration → Staff.
+>
+> So a rotation is: change the secret, restart the CMS, sign in as the director
+> with `DIRECTOR_PIN`, re-issue the other staff PINs. The banner below is kept as
+> the record of why the earlier procedure could not work.
+
 > ## ⛔ DO NOT FOLLOW THIS PROCEDURE YET — corrections pending (2026-09-04)
 >
 > Two things this document was written on top of turned out to be wrong. The
