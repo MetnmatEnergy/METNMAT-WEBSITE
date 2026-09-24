@@ -10,6 +10,7 @@ import {
 import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { cn } from "@/frontend/lib/utils";
+import { useBotCheck } from "@/frontend/components/commerce/bot-check";
 
 const field =
   "w-full rounded-lg border border-input bg-surface px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-2 focus:ring-ring/30";
@@ -128,6 +129,8 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
   const [done, setDone] = React.useState<string | null>(null);
   /** Whether the API actually managed to send the confirmation. */
   const [confirmationSent, setConfirmationSent] = React.useState(false);
+  // Timing token + Turnstile (when configured), shared with the quote form.
+  const bot = useBotCheck(!done);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setF((s) => ({ ...s, [k]: e.target.value }));
 
@@ -170,21 +173,31 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
     setUploading(false);
   }
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    const trap = String(new FormData(e.currentTarget).get("mm_trap") ?? "");
     if (!f.name.trim()) return setError("Please enter your name.");
     if (!/^\S+@\S+\.\S+$/.test(f.email)) return setError("Please enter a valid email.");
     if (f.subject.trim().length < 3) return setError("Please add a short subject.");
     if (f.description.trim().length < 10) return setError("Please describe your issue in a little more detail.");
     setSubmitting(true);
     try {
+      const botFields = await bot.collect();
       const res = await fetch("/api/support", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...f, attachmentGrants: files.map((x) => x.grant) }),
+        body: JSON.stringify({
+          ...f,
+          attachmentGrants: files.map((x) => x.grant),
+          mm_trap: trap,
+          ...botFields,
+        }),
       });
       const d = await res.json();
+      // Turnstile tokens are single-use; a refused timing token is re-minted
+      // unless the server only asked us to wait a moment.
+      bot.reset({ formToken: d?.code === "bot-check" && d?.reason !== "form-token-too_fast" });
       if (res.ok && d.ok) {
         setDone(d.ticketNumber);
         // The API has always returned this; the success screen ignored it and
@@ -234,6 +247,10 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
 
   return (
     <form onSubmit={submit} className="rounded-2xl border border-border bg-surface p-6 sm:p-7" data-analytics-form="support">
+      {/* Honeypot: hidden from humans + assistive tech; bots fill it and are rejected server-side. */}
+      <div hidden aria-hidden="true">
+        <input type="text" name="mm_trap" tabIndex={-1} autoComplete="off" defaultValue="" />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="s-name" required>Your name</Label>
@@ -288,6 +305,8 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
           </ul>
         )}
       </div>
+
+      {bot.widget && <div className="mt-4">{bot.widget}</div>}
 
       {error && <p className="mt-4 rounded-lg border border-brand/40 bg-brand/10 px-3 py-2 text-sm text-brand" role="alert">{error}</p>}
 

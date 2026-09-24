@@ -23,7 +23,7 @@ export type ValidationResult<T> =
  * which ignores autocomplete="off" — could fill it for a real visitor, whose
  * submission was then silently rejected.
  */
-const honeypotTripped = (body: Record<string, unknown>): boolean =>
+export const honeypotTripped = (body: Record<string, unknown>): boolean =>
   String(body.mm_trap ?? "").trim() !== "" || String(body.hp_company_url ?? "").trim() !== "";
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);

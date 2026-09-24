@@ -515,10 +515,23 @@ type TicketEmailInput = {
   statusUrl: string;
 };
 
-/** Ticket raised → confirmation to the customer + alert to the support inbox. */
-export async function sendTicketEmails(input: TicketEmailInput): Promise<boolean> {
+/**
+ * Ticket raised → confirmation to the customer + alert to the support inbox.
+ *
+ * Same gates as sendQuoteEmails: the confirmation echoes the submitted subject
+ * back to whatever address was typed in, so the route withholds it (and tags
+ * the alert) for anything short of a clean submission. Returns whether the
+ * customer copy was sent.
+ */
+export async function sendTicketEmails(
+  input: TicketEmailInput,
+  options: { sendCustomerCopy?: boolean; suspectReasons?: string[] } = {}
+): Promise<boolean> {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
+  const syntaxOk = emailSyntaxOk(input.email);
+  const customerCopy = options.sendCustomerCopy !== false && syntaxOk;
+  const suspect = options.suspectReasons ?? [];
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
   const notify = notifyRecipients(process.env.QUOTE_NOTIFY_EMAIL);
 
@@ -539,29 +552,43 @@ export async function sendTicketEmails(input: TicketEmailInput): Promise<boolean
       <div style="margin-top:18px"><a href="${esc(input.statusUrl)}" style="display:inline-block;background:#d81f26;color:#fff;text-decoration:none;padding:11px 22px;border-radius:999px;font-weight:600;font-size:14px">Track your ticket</a></div>`,
   });
   const notifyHtml = shell({
-    heading: `New support ticket ${esc(input.ticketNumber)}`,
-    intro: `${esc(input.name)} (${esc(input.email)}) raised a support ticket.`,
+    heading: suspect.length
+      ? `New support ticket ${esc(input.ticketNumber)} (possible spam)`
+      : `New support ticket ${esc(input.ticketNumber)}`,
+    intro: suspect.length
+      ? `${esc(input.name)} (${esc(input.email)}) raised a support ticket. It was flagged as <strong>possible spam</strong> (${esc(
+          suspect.join(", ")
+        )}), so no confirmation was sent to that address.`
+      : `${esc(input.name)} (${esc(input.email)}) raised a support ticket.`,
     body: detail,
   });
 
-  const send = async (to: string | string[], subject: string, html: string, replyTo: string | string[]) => {
+  const send = async (to: string | string[], subject: string, html: string, replyTo?: string | string[]) => {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, subject, html, reply_to: replyTo }),
+      body: JSON.stringify({ from, to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
     });
     if (!res.ok) console.warn(`[email] Resend ${res.status} sending ticket email to ${to}`);
     return res.ok;
   };
 
   try {
-    const toCustomer = await send(
-      input.email,
-      `Support ticket ${input.ticketNumber} received — METNMAT`,
-      customerHtml,
-      notify
+    const toCustomer = customerCopy
+      ? await send(
+          input.email,
+          `Support ticket ${input.ticketNumber} received — METNMAT`,
+          customerHtml,
+          notify
+        )
+      : false;
+    // Reply-To only when Resend will accept the address as a header.
+    await send(
+      notify,
+      `${suspect.length ? "[possible spam] " : ""}🎫 New ticket ${input.ticketNumber}: ${input.subject}`,
+      notifyHtml,
+      syntaxOk ? input.email : undefined
     );
-    await send(notify, `🎫 New ticket ${input.ticketNumber}: ${input.subject}`, notifyHtml, input.email);
     return toCustomer;
   } catch {
     return false;
