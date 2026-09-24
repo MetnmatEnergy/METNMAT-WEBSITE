@@ -8,6 +8,23 @@
  */
 import { emailSyntaxOk } from "@/backend/lib/email-address";
 
+/**
+ * The staff inbox(es) for notifications. QUOTE_NOTIFY_EMAIL / BLOG_NOTIFY_EMAIL
+ * may list several addresses separated by commas; each becomes its own entry in
+ * Resend's `to` / `reply_to` array, since a single comma-joined string is not a
+ * valid address there. The first variable that lists anything wins.
+ */
+export function notifyRecipients(...values: Array<string | undefined>): string[] {
+  for (const value of values) {
+    const list = (value ?? "")
+      .split(/[,;]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (list.length) return list;
+  }
+  return ["contact@metnmat.com"];
+}
+
 type QuoteEmailInput = {
   name: string;
   email: string;
@@ -172,7 +189,7 @@ export async function sendQuoteEmails(
   const tagged = suspect.length > 0;
 
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
-  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+  const notify = notifyRecipients(process.env.QUOTE_NOTIFY_EMAIL);
   const table = summaryTable(input);
   const resendAttachments = attachments.map((a) => ({
     filename: a.filename,
@@ -203,10 +220,10 @@ export async function sendQuoteEmails(
   });
 
   async function send(
-    to: string,
+    to: string | string[],
     subject: string,
     html: string,
-    replyTo?: string
+    replyTo?: string | string[]
   ): Promise<boolean> {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -329,7 +346,7 @@ export async function sendOrderEmails(input: OrderEmailInput): Promise<boolean> 
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
-  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+  const notify = notifyRecipients(process.env.QUOTE_NOTIFY_EMAIL);
   const table = orderTable(input);
   const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const supportUrl = `${site}/support?order=${encodeURIComponent(input.orderNumber)}`;
@@ -352,7 +369,7 @@ export async function sendOrderEmails(input: OrderEmailInput): Promise<boolean> 
     body: table,
   });
 
-  const send = async (to: string, subject: string, html: string, replyTo: string) => {
+  const send = async (to: string | string[], subject: string, html: string, replyTo: string | string[]) => {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -385,7 +402,7 @@ export async function sendOpsAlert(subject: string, lines: string[]): Promise<bo
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
-  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+  const notify = notifyRecipients(process.env.QUOTE_NOTIFY_EMAIL);
   const body = `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;border-radius:10px;overflow:hidden">${lines
     .map(
       (l, i) =>
@@ -426,7 +443,7 @@ export async function sendShipmentEmail(input: ShipmentEmailInput): Promise<bool
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
-  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+  const notify = notifyRecipients(process.env.QUOTE_NOTIFY_EMAIL);
   const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   const rows: string[] = [];
@@ -503,7 +520,7 @@ export async function sendTicketEmails(input: TicketEmailInput): Promise<boolean
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
-  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+  const notify = notifyRecipients(process.env.QUOTE_NOTIFY_EMAIL);
 
   const detail = `
     <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;border:1px solid #eee;border-radius:10px;overflow:hidden">
@@ -527,7 +544,7 @@ export async function sendTicketEmails(input: TicketEmailInput): Promise<boolean
     body: detail,
   });
 
-  const send = async (to: string, subject: string, html: string, replyTo: string) => {
+  const send = async (to: string | string[], subject: string, html: string, replyTo: string | string[]) => {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
@@ -564,7 +581,7 @@ export async function sendTicketReplyEmail(input: {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
-  const notify = process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+  const notify = notifyRecipients(process.env.QUOTE_NOTIFY_EMAIL);
 
   const html = shell({
     heading: `Reply to your ticket ${esc(input.ticketNumber)}`,
@@ -620,7 +637,7 @@ export async function sendBlogSubmissionEmails(input: BlogSubmissionEmailInput):
   const key = process.env.RESEND_API_KEY;
   if (!key) return true;
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
-  const notifyTo = process.env.BLOG_NOTIFY_EMAIL || process.env.QUOTE_NOTIFY_EMAIL || "contact@metnmat.com";
+  const notifyTo = notifyRecipients(process.env.BLOG_NOTIFY_EMAIL, process.env.QUOTE_NOTIFY_EMAIL);
 
   const rows: Array<[string, string | undefined]> = [
     ["Reference", input.referenceNumber],
@@ -679,7 +696,7 @@ export async function sendBlogSubmissionEmails(input: BlogSubmissionEmailInput):
   try {
     await send({
       from,
-      to: [notifyTo],
+      to: notifyTo,
       reply_to: input.email,
       subject: `New publication request ${input.referenceNumber}: ${input.proposedTitle.slice(0, 120)}`,
       html: shell({

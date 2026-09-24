@@ -10,7 +10,7 @@ import { sendQuoteEmails } from "../apps/website/src/backend/lib/email";
 const ENV = ["RESEND_API_KEY", "QUOTE_FROM_EMAIL", "QUOTE_NOTIFY_EMAIL"] as const;
 let saved: Record<string, string | undefined>;
 
-type Sent = { to: string; subject: string; html: string; reply_to?: string };
+type Sent = { to: string | string[]; subject: string; html: string; reply_to?: string };
 let sent: Sent[];
 
 beforeEach(() => {
@@ -48,7 +48,7 @@ describe("sendQuoteEmails", () => {
   it("sends the customer copy and the team notification by default", async () => {
     const r = await sendQuoteEmails(enquiry);
     expect(r).toEqual({ customer: true, team: true });
-    expect(sent.map((s) => s.to)).toEqual(["anita@lab.example", "sales@metnmat.example"]);
+    expect(sent.map((s) => s.to)).toEqual(["anita@lab.example", ["sales@metnmat.example"]]);
     expect(sent[0]!.subject).toMatch(/^Thank you for your request \(RFQ-20260917-ABC123\)/);
     expect(sent[1]!.subject).toBe(
       "New customization request from Dr Anita Rao (RFQ-20260917-ABC123)"
@@ -59,7 +59,7 @@ describe("sendQuoteEmails", () => {
   it("withholds the customer copy when asked, and says so without calling it a failure", async () => {
     const r = await sendQuoteEmails(enquiry, [], { sendCustomerCopy: false });
     expect(r).toEqual({ customer: false, team: true, customerSkipped: "suppressed" });
-    expect(sent.map((s) => s.to)).toEqual(["sales@metnmat.example"]);
+    expect(sent.map((s) => s.to)).toEqual([["sales@metnmat.example"]]);
     // Withheld for budget, not suspicion: the notification is not tagged.
     expect(sent[0]!.subject).not.toMatch(/spam/i);
   });
@@ -70,7 +70,7 @@ describe("sendQuoteEmails", () => {
     });
     expect(r).toEqual({ customer: false, team: true, customerSkipped: "syntax" });
     expect(sent).toHaveLength(1);
-    expect(sent[0]!.to).toBe("sales@metnmat.example");
+    expect(sent[0]!.to).toEqual(["sales@metnmat.example"]);
     // Resend validates Reply-To; a bad one would sink the whole notification.
     expect(sent[0]!.reply_to).toBeUndefined();
   });
