@@ -27,8 +27,12 @@ One METNMAT Insights article a week, written, checked and filed with no one in t
    peak currents), so a sentence that contradicts the article's own diagram gets caught.
 7. **Hard checks.** Fewer than 1,200 words, no interactive model, or a widget config that still fails:
    the article is filed as a **draft** instead, and the email says why.
-8. **Into the CMS.** Created (or updated, by slug) and, by default, **scheduled for the next Thursday
-   10:00 IST**. Staff get an email with the link, the pipeline's notes and the LinkedIn post text.
+8. **Cover.** A 1600×900 WebP thumbnail (`scripts/blog/cover.ts`): the title beside the article's own
+   diagrams (up to two), drawn by the website's widget code. It is the blog card image and, through
+   the cover fallback, the LinkedIn/WhatsApp preview. It is also kept in the workflow artifact.
+9. **Into the CMS.** Created (or updated, by slug) with its cover uploaded to the media library and,
+   by default, **scheduled for the next Thursday 10:00 IST**. Staff get an email with the link, the
+   pipeline's notes and the LinkedIn post text. A cover that fails never blocks the article.
 
 ## Publish mode
 

@@ -98,6 +98,41 @@ export function injectBlocks<T extends { root: { children: LexicalNode[] } }>(st
   return next;
 }
 
+export type CoverInput = { data?: unknown; mimeType?: unknown; filename?: unknown; alt?: unknown };
+export type Cover = { buffer: Buffer; mimeType: string; filename: string; alt: string };
+
+const COVER_TYPES: Record<string, { ext: string; magic: (b: Buffer) => boolean }> = {
+  "image/webp": { ext: "webp", magic: (b) => b.subarray(0, 4).toString("latin1") === "RIFF" && b.subarray(8, 12).toString("latin1") === "WEBP" },
+  "image/png": { ext: "png", magic: (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) },
+  "image/jpeg": { ext: "jpg", magic: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
+};
+export const MAX_COVER_BYTES = 2_000_000;
+
+/**
+ * The cover the pipeline drew from the article's own diagram, sent as base64.
+ * Raster only (the media library refuses SVG, which can carry script), checked
+ * by magic bytes rather than trusting the declared type, and given a safe name.
+ */
+export function decodeCover(c: CoverInput | undefined): { ok: true; cover: Cover | null } | { ok: false; error: string } {
+  if (!c) return { ok: true, cover: null };
+  const mimeType = typeof c.mimeType === "string" ? c.mimeType : "";
+  const type = COVER_TYPES[mimeType];
+  if (!type) return { ok: false, error: `cover type must be one of ${Object.keys(COVER_TYPES).join(", ")}` };
+  if (typeof c.data !== "string" || !c.data) return { ok: false, error: "cover.data must be base64" };
+  const buffer = Buffer.from(c.data, "base64");
+  if (!buffer.length || buffer.length > MAX_COVER_BYTES) return { ok: false, error: `cover must be 1 byte to ${MAX_COVER_BYTES / 1e6} MB` };
+  if (!type.magic(buffer)) return { ok: false, error: `cover.data is not a ${mimeType} file` };
+  const alt = typeof c.alt === "string" ? c.alt.trim().slice(0, 300) : "";
+  if (!alt) return { ok: false, error: "cover.alt is required" };
+  const stem = (typeof c.filename === "string" ? c.filename : "cover")
+    .toLowerCase()
+    .replace(/\.[a-z0-9]+$/, "")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100) || "cover";
+  return { ok: true, cover: { buffer, mimeType, filename: `${stem}.${type.ext}`, alt } };
+}
+
 export type PublishMode = "draft" | "immediate" | "scheduled";
 
 /** When the post becomes public, or null for a draft. A schedule must be in the future and within 30 days. */
