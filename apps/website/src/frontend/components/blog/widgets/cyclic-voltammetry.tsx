@@ -276,7 +276,7 @@ export function CyclicVoltammetryWidget({ config }: { config: CvConfig }) {
           {a.peakRatio !== null && (
             <>
               {" "}
-              ip,a/ip,c = {fmt(a.peakRatio, 2)}
+              ip,a/ip,c = {a.peakRatio.toFixed(2)}
               {config.mechanism === "EC" && a.peakRatio < 0.9 ? ": the follow-up reaction removes R before the return sweep can re-oxidise it." : "."}
             </>
           )}

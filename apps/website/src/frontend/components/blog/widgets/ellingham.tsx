@@ -114,7 +114,8 @@ export function EllinghamWidget({ config }: { config: EllinghamConfig }) {
 
   const [wrapRef, width] = useWidth<HTMLDivElement>();
   const clipId = useClipId();
-  const box = layout(width, { right: width < 480 ? 50 : 66, aspect: 0.74, minH: 300 });
+  // Taller on a phone: the lines need vertical room more than the axis needs width.
+  const box = layout(width, { right: width < 480 ? 50 : 66, aspect: width < 480 ? 1.15 : 0.74, minH: 300 });
   const TminK = tMinC + ZERO_C_IN_K;
   const TmaxK = tMaxC + ZERO_C_IN_K;
   const TK = T_C + ZERO_C_IN_K;
@@ -172,6 +173,15 @@ export function EllinghamWidget({ config }: { config: EllinghamConfig }) {
       const item = { y: y(dG(s.l, s.b)), text, color: st.stroke, strong: highlight.has(s.l.label) };
       if (s.b >= TmaxK - 1e-6) atEdge.push(item);
       else inside.push({ ...item, x: x(s.b - ZERO_C_IN_K) + 4 });
+    }
+    // Labels ending inside the plot: nudge down past any earlier one they would overlap.
+    inside.sort((p, q) => p.y - q.y);
+    for (let i = 1; i < inside.length; i++) {
+      for (let tries = 0; tries < 6; tries++) {
+        const clash = inside.slice(0, i).some((o) => Math.abs(o.x - inside[i]!.x) < 40 && Math.abs(o.y - inside[i]!.y) < 13);
+        if (!clash) break;
+        inside[i]!.y += 13;
+      }
     }
     return { atEdge: spread(atEdge, 13, box.y0 + 4, box.y1 - 2), inside };
   })();
@@ -247,6 +257,10 @@ export function EllinghamWidget({ config }: { config: EllinghamConfig }) {
     else if (v.reduces.length) verdicts.push(`${at}, every oxide shown decomposes to its metal.`);
   }
   const oxidesHere = lines.filter((l) => !reductantOf(l.label) && isValidAt(l, TK));
+  // Oxides with no piece valid at T: say so, rather than let them vanish from the verdicts.
+  const outOfRange = [
+    ...new Set(lines.filter((l) => !reductantOf(l.label)).map((l) => oxideName(l.label))),
+  ].filter((name) => !oxidesHere.some((l) => oxideName(l.label) === name));
 
   const cursorPx = x(T_C);
   const summary = `Ellingham diagram, ${tickLabel(tMinC)} to ${tickLabel(tMaxC)} °C, ${lines.length} lines. Cursor at ${tickLabel(T_C)} °C.`;
@@ -319,17 +333,24 @@ export function EllinghamWidget({ config }: { config: EllinghamConfig }) {
               : [],
           )}
 
-          {endLabels.atEdge.map((l) => (
-            <text key={l.text} x={box.x1 + 5} y={l.y} dy="0.32em" fontSize={12} fontWeight={l.strong ? 700 : 500} fill={l.color}>
+          {[...endLabels.atEdge.map((l) => ({ ...l, x: box.x1 + 5 })), ...endLabels.inside].map((l) => (
+            <text
+              key={l.text}
+              x={l.x}
+              y={l.y}
+              dy="0.32em"
+              fontSize={12}
+              fontWeight={l.strong ? 700 : 500}
+              fill={l.color}
+              stroke={BG}
+              strokeWidth={3}
+              paintOrder="stroke"
+            >
               {l.text}
             </text>
           ))}
-          {endLabels.inside.map((l) => (
-            <text key={l.text} x={l.x} y={l.y} dy="0.32em" fontSize={12} fontWeight={l.strong ? 700 : 500} fill={l.color}>
-              {l.text}
-            </text>
-          ))}
-          {rays.map((r) => {
+          {/* On a phone the legend names the rays; labels here would cover the lines. */}
+          {!box.narrow && rays.map((r) => {
             if (!(r.to > r.from)) return null;
             const e = rayEnd(r);
             const atRight = e.px >= box.x1 - 1;
@@ -423,6 +444,11 @@ export function EllinghamWidget({ config }: { config: EllinghamConfig }) {
         ) : (
           <p className="mt-1 text-muted-foreground">Add a carbon or hydrogen line, or a scale, to compare reductants here.</p>
         )}
+        {outOfRange.length > 0 && (
+          <p className="mt-1 text-muted-foreground">
+            Left out at this temperature, outside the range of their data: {listNames(outOfRange)}.
+          </p>
+        )}
       </Readout>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -436,6 +462,12 @@ export function EllinghamWidget({ config }: { config: EllinghamConfig }) {
               </li>
             );
           })}
+          {rays.map((r) => (
+            <li key={r.key} className="flex items-center gap-1.5">
+              <Swatch stroke={BRAND} dash={r.dash} width={1.75} />
+              <span>{r.label.replace(" ", " = ")}</span>
+            </li>
+          ))}
         </ul>
         <ResetButton onClick={reset} />
       </div>

@@ -18,7 +18,7 @@ export function InteractiveBlock({ fields, seq }: { fields: Record<string, unkno
   return (
     <figure
       aria-label={title || `Interactive model ${seq}`}
-      className="not-prose my-10 rounded-2xl border border-border bg-surface p-4 text-foreground sm:p-6"
+      className="not-prose my-10 rounded-2xl border border-border bg-surface p-3 text-foreground sm:p-6"
     >
       <div className="mb-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-brand">Interactive model {seq}</p>
