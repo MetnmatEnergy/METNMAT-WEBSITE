@@ -9,6 +9,7 @@ import { Button } from "@/frontend/components/ui/button";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
 import { JsonLd, breadcrumbJsonLd, articleJsonLd } from "@/frontend/components/seo/json-ld";
 import { RichText, hasRichText } from "@/frontend/components/blog/rich-text";
+import { BLOG_BLOCKS } from "@/frontend/components/blog/blog-blocks";
 import { ArticleCard, formatArticleDate } from "@/frontend/components/blog/article-card";
 import { AuthorsBlock } from "@/frontend/components/blog/authors-block";
 import { ReferencesSection } from "@/frontend/components/blog/references-section";
@@ -277,7 +278,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
 
             <div className="mt-8">
               {hasRichText(article.body) ? (
-                <RichText content={article.body} />
+                <RichText content={article.body} blocks={BLOG_BLOCKS} />
               ) : (
                 <p className="text-lg leading-relaxed text-muted-foreground">{article.excerpt}</p>
               )}

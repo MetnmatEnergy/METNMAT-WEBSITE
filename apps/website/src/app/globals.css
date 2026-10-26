@@ -46,6 +46,19 @@
     --brand-soft: 357 74% 45%;
 
     --radius: 0.9rem;
+
+    /* Series colours for the blog's interactive models (widgets/kit.tsx).
+       Okabe–Ito hues, colour-blind safe, darkened where needed for at least
+       3:1 against the light surface. Same hue order in both themes, so a
+       legend reads the same way after a theme switch. */
+    --viz-1: #0072b2;
+    --viz-2: #d55e00;
+    --viz-3: #008f68;
+    --viz-4: #b8558f;
+    --viz-5: #a86400;
+    --viz-6: #6a3d9a;
+    --viz-7: #7d6418;
+    --viz-8: #1f8a93;
   }
 
   .dark {
@@ -67,6 +80,15 @@
 
     /* Lighter on a dark surface, where the light-mode value would be too dim. */
     --brand-soft: 357 74% 60%;
+
+    --viz-1: #56b4e9;
+    --viz-2: #ff8a4c;
+    --viz-3: #2fd3a6;
+    --viz-4: #eba5cf;
+    --viz-5: #f2b33d;
+    --viz-6: #c3a6f2;
+    --viz-7: #dcc873;
+    --viz-8: #5fd3db;
   }
 
   * {

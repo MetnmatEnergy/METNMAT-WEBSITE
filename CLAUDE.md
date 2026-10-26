@@ -206,6 +206,16 @@ auditing orphaned resources.
   its wrapper is a **sibling** of `.template-default`, so the open state is read from the button's
   own `nav-toggler--is-open` class, never from an ancestor. The rail starts at the top
   (`--nav-padding-block-start: 0`) and hides its scrollbar.
+- **Blog equations and interactive models.** Posts `body` has three Lexical blocks
+  (`apps/dashboard/src/blocks/blog-blocks.ts`): `equation`, `inlineEquation` (LaTeX, typeset by KaTeX
+  on the website's server; the reader gets CSS and fonts, no KaTeX JS) and `interactive` (`widget` id +
+  JSON `config`). `rich-text.tsx` renders blocks only when handed a `blocks` map, because a client
+  component (`product-tabs.tsx`) imports it too; the article page passes the server-only
+  `blog-blocks.tsx`. Widget configs are model-written **data**: zod-validated on the server
+  (`lib/widgets/schemas.ts`), and a bad one renders "Interactive model unavailable" with the reasons.
+  Each widget is its own `next/dynamic` chunk. Adding one = component + schema + CMS select option +
+  a line in `docs/blog/MASTER-PROMPT.md`; `test/blog-widget-registry.test.ts` keeps the lists in step.
+  No model-written code ever ships.
 - **Draft preview banner** (`apps/website/src/frontend/components/preview-banner.tsx`): the CMS
   Preview button sets a browser-wide draft-mode cookie. The banner says whether the page is
   published and live or a draft, and links to `/api/preview/exit`, which clears the cookie. A red

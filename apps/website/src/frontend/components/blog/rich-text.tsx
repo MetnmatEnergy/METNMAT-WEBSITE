@@ -5,11 +5,26 @@
  * code/sub/superscript, tables, code blocks, uploaded images with captions,
  * and horizontal rules. Defensive: unknown nodes render their children so
  * content never hard-fails; no raw HTML from the CMS is ever injected.
+ *
+ * Lexical blocks (`block` / `inlineBlock` nodes: equations, interactive
+ * models) are rendered only when the caller passes a `blocks` map. This file
+ * is also imported by a CLIENT component (commerce/product-tabs.tsx), so it
+ * must not import KaTeX or the widget schemas itself — that would ship them
+ * to every product page. The blog article page passes the server-only map
+ * from ./blog-blocks.tsx; elsewhere blocks render nothing.
  */
 import React from "react";
 import Image from "next/image";
 import { headingId } from "@/frontend/lib/blog-toc";
 import { mediaUrl } from "@/frontend/lib/cms";
+
+/** Renders one Lexical block. `seq` is its 1-based position among blocks of the same type. */
+export type RichTextBlockRenderer = (props: {
+  fields: Record<string, unknown>;
+  inline: boolean;
+  seq: number;
+}) => React.ReactNode;
+export type RichTextBlocks = Readonly<Record<string, RichTextBlockRenderer>>;
 
 type LexicalNode = {
   type?: string;
@@ -19,7 +34,7 @@ type LexicalNode = {
   listType?: string;
   checked?: boolean;
   url?: string;
-  fields?: { url?: string; newTab?: boolean };
+  fields?: { url?: string; newTab?: boolean; blockType?: string; [key: string]: unknown };
   language?: string;
   value?: unknown; // upload node: populated media doc
   children?: LexicalNode[];
@@ -72,7 +87,13 @@ function safeHref(href: string | undefined): string | null {
   return null;
 }
 
-type Ctx = { headingIds: Set<string>; figureCount: { n: number }; tableCount: { n: number } };
+type Ctx = {
+  headingIds: Set<string>;
+  figureCount: { n: number };
+  tableCount: { n: number };
+  blocks?: RichTextBlocks;
+  blockSeq: Map<string, number>;
+};
 
 function renderNodes(nodes: LexicalNode[] | undefined, ctx: Ctx): React.ReactNode {
   if (!nodes?.length) return null;
@@ -215,16 +236,31 @@ function renderNodes(nodes: LexicalNode[] | undefined, ctx: Ctx): React.ReactNod
         return <br key={i} />;
       case "horizontalrule":
         return <hr key={i} className="my-8 border-border" />;
+      case "block":
+      case "inlineBlock": {
+        const blockType = typeof node.fields?.blockType === "string" ? node.fields.blockType : "";
+        const render = blockType && ctx.blocks && Object.prototype.hasOwnProperty.call(ctx.blocks, blockType)
+          ? ctx.blocks[blockType]
+          : undefined;
+        if (!render) return null;
+        const seq = (ctx.blockSeq.get(blockType) ?? 0) + 1;
+        ctx.blockSeq.set(blockType, seq);
+        return (
+          <React.Fragment key={i}>
+            {render({ fields: node.fields ?? {}, inline: node.type === "inlineBlock", seq })}
+          </React.Fragment>
+        );
+      }
       default:
         return <React.Fragment key={i}>{renderNodes(node.children, ctx)}</React.Fragment>;
     }
   });
 }
 
-export function RichText({ content }: { content: unknown }) {
+export function RichText({ content, blocks }: { content: unknown; blocks?: RichTextBlocks }) {
   const root = (content as { root?: LexicalNode } | null)?.root;
   if (!root?.children?.length) return null;
-  const ctx: Ctx = { headingIds: new Set(), figureCount: { n: 0 }, tableCount: { n: 0 } };
+  const ctx: Ctx = { headingIds: new Set(), figureCount: { n: 0 }, tableCount: { n: 0 }, blocks, blockSeq: new Map() };
   return (
     <div className="space-y-4 break-words text-base leading-relaxed text-muted-foreground [&_a]:break-words [&_code]:break-all [&_h2]:text-2xl [&_h3]:text-xl [&_h4]:text-lg">
       {renderNodes(root.children, ctx)}
@@ -240,6 +276,8 @@ export function hasRichText(content: unknown): boolean {
     Boolean(n.text && n.text.trim()) ||
     n.type === "upload" ||
     n.type === "horizontalrule" ||
+    n.type === "block" ||
+    n.type === "inlineBlock" ||
     (n.children ?? []).some(hasContent);
   return root.children.some(hasContent);
 }

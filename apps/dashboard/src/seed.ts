@@ -523,6 +523,32 @@ async function seedContent(payload: Payload): Promise<void> {
   await seedPlain("blog-categories", seedBlogCategories);
   await seedPlain("blog-content-types", seedBlogContentTypes);
 
+  // Additive top-up for categories added to seedBlogCategories after the first
+  // seed (seedPlain above never runs again once the collection has rows).
+  // Create-if-missing by slug, so a staff edit to the name, description or
+  // order is never overwritten. To retire one, untick "Active" rather than
+  // deleting it: a deleted slug on this list comes back on the next boot.
+  const ensureBlogCategorySlugs = ["metallurgy"];
+  try {
+    for (const slug of ensureBlogCategorySlugs) {
+      const row = seedBlogCategories.find((c) => c.slug === slug);
+      if (!row) continue;
+      const { totalDocs } = await payload.count({
+        collection: "blog-categories",
+        where: { slug: { equals: slug } },
+      });
+      if (totalDocs === 0) {
+        await payload.create({
+          collection: "blog-categories",
+          data: { ...row, displayOrder: seedBlogCategories.indexOf(row), isActive: true },
+        });
+        payload.logger.info(`[seed] blog-categories: + ${slug}`);
+      }
+    }
+  } catch (e) {
+    payload.logger.warn(`[seed] ensure blog categories failed: ${(e as Error).message}`);
+  }
+
   await ensureRealProjects(payload);
   await ensureRealBlogArticles(payload);
 
