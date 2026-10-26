@@ -1,11 +1,13 @@
 import type { PayloadRequest } from "payload";
 import { convertMarkdownToLexical, editorConfigFactory } from "@payloadcms/richtext-lexical";
 import {
+  decodeCover,
   ingestAuthorized,
   ingestEmailHtml,
   injectBlocks,
   prepareMarkdown,
   publishTime,
+  type CoverInput,
   type IngestWidget,
   type LexicalNode,
   type PublishMode,
@@ -23,7 +25,8 @@ import {
 
 const WEBSITE = () => (process.env.WEBSITE_URL || "https://www.metnmat.com").replace(/\/+$/, "");
 const CMS = () => (process.env.CMS_URL || process.env.NEXT_PUBLIC_SERVER_URL || "https://admin.metnmat.com").replace(/\/+$/, "");
-const MAX_BODY_BYTES = 600_000;
+// Article JSON is well under 200 KB; the rest is room for a base64 cover (≤ 2 MB raw).
+const MAX_BODY_BYTES = 3_000_000;
 
 const str = (v: unknown, max: number): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const json = (body: unknown, status = 200) => Response.json(body, { status });
@@ -74,7 +77,26 @@ type IngestBody = {
   publish?: { mode?: PublishMode; at?: string };
   notes?: string[];
   linkedin?: string;
+  cover?: CoverInput;
 };
+
+/**
+ * Puts the cover in the media library (S3 in production) and returns its id.
+ * A file of the same name is reused, so re-running the pipeline on an
+ * unchanged article does not pile up copies; the pipeline names covers by a
+ * hash of their content, so a changed cover gets a new file.
+ */
+async function uploadCover(req: PayloadRequest, cover: NonNullable<Extract<ReturnType<typeof decodeCover>, { ok: true }>["cover"]>): Promise<string> {
+  const existing = await req.payload.find({ collection: "media", where: { filename: { equals: cover.filename } }, limit: 1, depth: 0, overrideAccess: true });
+  if (existing.docs[0]) return String(existing.docs[0].id);
+  const media = await req.payload.create({
+    collection: "media",
+    data: { alt: cover.alt, category: "other" },
+    file: { data: cover.buffer, mimetype: cover.mimeType, name: cover.filename, size: cover.buffer.length },
+    overrideAccess: true,
+  });
+  return String(media.id);
+}
 
 /** POST /api/posts/ingest: creates the article, or updates the one with the same slug. */
 export async function ingestArticle(req: PayloadRequest): Promise<Response> {
@@ -168,6 +190,20 @@ export async function ingestArticle(req: PayloadRequest): Promise<Response> {
     ...(when.date ? { publishedDate: when.date.toISOString() } : {}),
   };
 
+  // The cover never blocks the article: a bad or failed one is reported, and the post goes out without it.
+  const warnings: string[] = [];
+  const cover = decodeCover(body.cover);
+  if (!cover.ok) warnings.push(`cover ignored: ${cover.error}`);
+  else if (cover.cover) {
+    try {
+      data.coverImage = await uploadCover(req, cover.cover);
+      data.coverImageAlt = cover.cover.alt;
+    } catch (e) {
+      warnings.push(`cover upload failed: ${(e as Error).message}`);
+      req.payload.logger.error(`[posts/ingest] cover upload failed for ${slug}: ${(e as Error).message}`);
+    }
+  }
+
   let doc: { id: string | number; slug?: string };
   let created = false;
   try {
@@ -198,7 +234,7 @@ export async function ingestArticle(req: PayloadRequest): Promise<Response> {
           when: whenText,
           liveUrl,
           adminUrl,
-          notes: (Array.isArray(body.notes) ? body.notes : []).slice(0, 20).map((n) => str(n, 400)),
+          notes: [...warnings, ...(Array.isArray(body.notes) ? body.notes : []).slice(0, 20).map((n) => str(n, 400))],
           linkedin: str(body.linkedin, 3000) || undefined,
         }),
       });
@@ -207,5 +243,8 @@ export async function ingestArticle(req: PayloadRequest): Promise<Response> {
     }
   }
   req.payload.logger.info(`[posts/ingest] ${created ? "created" : "updated"} ${slug} (${mode})`);
-  return json({ ok: true, id: doc.id, slug, created, mode, publishedDate: when.date?.toISOString() ?? null, liveUrl, adminUrl }, created ? 201 : 200);
+  return json(
+    { ok: true, id: doc.id, slug, created, mode, publishedDate: when.date?.toISOString() ?? null, liveUrl, adminUrl, cover: data.coverImage ?? null, warnings },
+    created ? 201 : 200,
+  );
 }

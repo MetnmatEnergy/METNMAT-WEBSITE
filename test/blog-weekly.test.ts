@@ -20,6 +20,8 @@ import {
   wordCount,
   type Article,
 } from "../scripts/blog/lib";
+import { createRequire } from "node:module";
+import { COVER_H, COVER_W, coverWebp, renderCoverSvg, wrap } from "../scripts/blog/cover";
 import { abstractFromIndex, checkReference, deepseekChat, firstSurname, parseModelJson, sourceMatches, titleOverlap } from "../scripts/blog/sources";
 
 /**
@@ -238,5 +240,41 @@ describe("DeepSeek client", () => {
 
   it("reads a fenced JSON answer", () => {
     expect(parseModelJson<{ b: number }>("```json\n{\"b\":2}\n```")).toEqual({ b: 2 });
+  });
+});
+
+describe("cover image", () => {
+  const widgets = JSON.parse(readFileSync(join(TODAY, "widgets.json"), "utf8"));
+
+  it("draws the article's own diagrams beside an escaped title", () => {
+    const svg = renderCoverSvg({ title: "Rust <script>alert(1)</script> & steel", kicker: "Metallurgy", widgets: Object.values(widgets) as { widget: string; config: unknown }[] });
+    expect(svg.startsWith("<svg")).toBe(true);
+    expect(svg).not.toContain("<script>");
+    expect(svg).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(svg).toContain("METNMAT INSIGHTS");
+    expect(svg).toContain("Ellingham diagram");
+    expect(svg).toContain("Pourbaix diagram, Fe");
+    expect(svg.match(/<polygon /g)?.length).toBe(6); // one field per iron species
+    expect(svg).toContain("Interactive models inside");
+  });
+
+  it("leaves out a model whose config does not validate instead of drawing nonsense", () => {
+    const svg = renderCoverSvg({ title: "T", widgets: [{ widget: "pourbaix", config: { element: "Fe" } }] });
+    expect(svg).not.toContain("Pourbaix diagram");
+    expect(svg).not.toContain("Interactive model");
+  });
+
+  it("wraps a long title and marks a cut with an ellipsis", () => {
+    expect(wrap("one two three four five six", 9, 2)).toEqual(["one two", "three…"]);
+    expect(wrap("short title", 20, 3)).toEqual(["short title"]);
+  });
+
+  it("rasterises to a 1600×900 WebP the media library accepts", async () => {
+    const webp = await coverWebp(renderCoverSvg({ title: "T", widgets: [{ widget: "ellingham", config: widgets.ellingham.config }] }));
+    expect(webp.subarray(0, 4).toString("latin1")).toBe("RIFF");
+    expect(webp.subarray(8, 12).toString("latin1")).toBe("WEBP");
+    const sharp = createRequire(join(ROOT, "apps/dashboard/package.json"))("sharp") as typeof import("sharp");
+    const meta = await sharp(webp).metadata();
+    expect([meta.width, meta.height]).toEqual([COVER_W, COVER_H]);
   });
 });

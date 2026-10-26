@@ -1,5 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import {
+  decodeCover,
+  MAX_COVER_BYTES,
   ingestAuthorized,
   ingestEmailHtml,
   injectBlocks,
@@ -128,5 +130,30 @@ describe("notification email", () => {
     expect(html).not.toMatch(/<script>|<b>n<\/b>|<img/);
     expect(html).toContain("&lt;script&gt;");
     expect(html).toContain("Publishes automatically at");
+  });
+});
+
+describe("cover upload input", () => {
+  const webp = Buffer.concat([Buffer.from("RIFF"), Buffer.from([0, 0, 0, 0]), Buffer.from("WEBPVP8 "), Buffer.alloc(16)]);
+
+  it("accepts a real WebP with alt text and gives it a safe name", () => {
+    const r = decodeCover({ data: webp.toString("base64"), mimeType: "image/webp", filename: "Blog/../Fire & Water.webp", alt: "Cover" });
+    expect(r.ok).toBe(true);
+    if (r.ok && r.cover) {
+      expect(r.cover.filename).toBe("blog-fire-water.webp");
+      expect(r.cover.buffer.equals(webp)).toBe(true);
+    }
+  });
+
+  it("has no cover when none is sent", () => {
+    expect(decodeCover(undefined)).toEqual({ ok: true, cover: null });
+  });
+
+  it("refuses SVG, a mislabelled file, a missing alt and an oversized image", () => {
+    expect(decodeCover({ data: "PHN2Zz4=", mimeType: "image/svg+xml", alt: "x" }).ok).toBe(false);
+    expect(decodeCover({ data: Buffer.from("<svg onload=alert(1)>").toString("base64"), mimeType: "image/webp", alt: "x" }).ok).toBe(false);
+    expect(decodeCover({ data: webp.toString("base64"), mimeType: "image/webp", alt: " " }).ok).toBe(false);
+    const big = Buffer.concat([webp, Buffer.alloc(MAX_COVER_BYTES)]);
+    expect(decodeCover({ data: big.toString("base64"), mimeType: "image/webp", alt: "x" }).ok).toBe(false);
   });
 });

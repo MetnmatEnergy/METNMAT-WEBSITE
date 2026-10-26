@@ -36,6 +36,8 @@ import {
   type Article,
 } from "./lib";
 import { checkReference, deepseekChat, findSources, parseModelJson } from "./sources";
+import { coverWebp, renderCoverSvg } from "./cover";
+import crypto from "node:crypto";
 
 /** The monorepo root: tsx runs this from apps/dashboard, and import.meta is not available in its CJS mode. */
 function findRoot(from = process.cwd()): string {
@@ -238,22 +240,51 @@ async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   const stem = path.join(OUT, `${new Date().toISOString().slice(0, 10)}-${article.slug}`);
   fs.writeFileSync(`${stem}.json`, JSON.stringify({ article, widgets, ref, notes, mode, at, usage }, null, 2));
+
+  // The thumbnail: the article's own diagrams beside its title.
+  let cover: { data: string; mimeType: string; filename: string; alt: string } | undefined;
+  try {
+    const catName = (slug?: unknown) => {
+      const s = String(slug ?? "");
+      return state?.categories.find((c) => c.slug === s)?.name ?? s.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+    };
+    const kicker = [article.primaryCategory, ...((article.secondaryCategories as string[] | undefined) ?? [])].filter(Boolean).map(catName).join(" · ");
+    const panels = Object.values(widgets).filter((w) => parseWidget(w.widget, w.config).ok);
+    const webp = await coverWebp(renderCoverSvg({ title: article.title, kicker, widgets: panels }));
+    fs.writeFileSync(`${stem}.webp`, webp);
+    const NAMES: Record<string, string> = { ellingham: "an Ellingham diagram", pourbaix: "a Pourbaix diagram", "cyclic-voltammetry": "a simulated cyclic voltammogram", "function-plot": "a plot" };
+    const shown = panels.slice(0, 2).map((w) => NAMES[w.widget] ?? "a diagram");
+    cover = {
+      data: webp.toString("base64"),
+      mimeType: "image/webp",
+      filename: `blog-${article.slug}-${crypto.createHash("sha1").update(webp).digest("hex").slice(0, 8)}`,
+      alt: `${article.title}, with ${shown.length ? shown.join(" and ") : "its title"} from the article's interactive models`,
+    };
+    log(`cover: ${(webp.length / 1024).toFixed(0)} KB, ${shown.length} diagram(s)`);
+  } catch (e) {
+    notes.push(`no cover image: ${(e as Error).message}`);
+  }
   log(`"${article.title}" (${wordCount(article.body_markdown)} words) → ${mode}${at ? ` at ${at}` : ""}`);
 
   let liveUrl = "";
   if (DRY) {
     log("dry run: nothing sent to the CMS");
   } else {
-    const { status, data } = await cms<{ ok?: boolean; liveUrl?: string; adminUrl?: string; error?: string; problems?: string[] }>("POST", "ingest", {
+    const { status, data } = await cms<{ ok?: boolean; liveUrl?: string; adminUrl?: string; error?: string; problems?: string[]; cover?: string | null; warnings?: string[] }>("POST", "ingest", {
       article: { ...article, referenceNumber: ref, author: article.author ?? "METNMAT Research Team" },
       widgets,
       publish: { mode, at },
       notes,
       linkedin: article.linkedin_post,
+      cover,
     });
     if (!data.ok) throw new Error(`CMS refused the article (${status}): ${data.error ?? ""} ${(data.problems ?? []).join("; ")}`);
     liveUrl = data.liveUrl ?? "";
-    log(`CMS accepted it: ${liveUrl}`);
+    log(`CMS accepted it: ${liveUrl}${data.cover ? " (with cover)" : " (no cover)"}`);
+    for (const w of data.warnings ?? []) {
+      log(`CMS warning: ${w}`);
+      notes.push(`CMS: ${w}`);
+    }
   }
 
   summary([
