@@ -1,0 +1,64 @@
+{
+  "title": "Fire and Water: The Two Maps That Decide Where a Metal Survives",
+  "subtitle": "Ellingham diagrams explain why charcoal smelts iron but not aluminium. Pourbaix diagrams explain why the same iron rusts in a puddle but not in concrete. Both are drawn from one quantity.",
+  "slug": "ellingham-and-pourbaix-diagrams-where-metals-survive",
+  "excerpt": "Charcoal can turn iron ore into iron but cannot touch alumina; the same iron rusts in a puddle but not inside concrete. Two diagrams, one quantity, and both are interactive here.",
+  "abstract": "Ellingham and Pourbaix diagrams are two projections of the Gibbs energy of metal oxidation. The Ellingham diagram plots ΔG° per mole of O₂ against temperature; slopes set by the change in gas moles explain why carbon reduces wüstite above about 750 °C but alumina only near 2,050 °C, and its gas-ratio scales give the compositions a furnace must hold. The Pourbaix diagram plots electrode potential against pH at 25 °C through ΔG = −nFE, dividing the plane into immunity, corrosion and passivation fields. At 25 °C the two are linked exactly: an Ellingham value converts to the oxide/metal potential at pH 0 as E° = (ΔG° + 474 kJ)/4F.",
+  "seoTitle": "Ellingham and Pourbaix Diagrams: Two Maps of Metal Stability",
+  "metaDescription": "Interactive Ellingham and Pourbaix diagrams: why carbon smelts iron but not aluminium, and why iron rusts in water but passivates in concrete.",
+  "primaryCategory": "metallurgy",
+  "secondaryCategories": [
+    "electrochemistry"
+  ],
+  "contentType": "technical-article",
+  "researchArea": "Extractive metallurgy and corrosion",
+  "keywords": "Ellingham diagram, Pourbaix diagram, potential-pH diagram, Gibbs energy, oxide reduction, blast furnace, hydrogen direct reduction, corrosion, passivation, immunity, cathodic protection, Nernst equation",
+  "tags": [
+    "Ellingham diagram",
+    "Pourbaix diagram",
+    "Corrosion",
+    "Extractive metallurgy",
+    "Thermodynamics",
+    "Electrochemistry"
+  ],
+  "author": "METNMAT Research Team",
+  "references": [
+    {
+      "authors": "H. J. T. Ellingham",
+      "title": "Reducibility of oxides and sulphides in metallurgical processes",
+      "source": "Journal of the Society of Chemical Industry",
+      "year": 1944,
+      "volume": "63",
+      "pages": "125–133"
+    },
+    {
+      "authors": "D. R. Gaskell, D. E. Laughlin",
+      "title": "Introduction to the Thermodynamics of Materials, 6th edition",
+      "source": "CRC Press",
+      "year": 2017
+    },
+    {
+      "authors": "M. W. Chase Jr.",
+      "title": "NIST-JANAF Thermochemical Tables, 4th edition",
+      "source": "Journal of Physical and Chemical Reference Data, Monograph 9",
+      "year": 1998,
+      "url": "https://janaf.nist.gov/"
+    },
+    {
+      "authors": "M. Pourbaix",
+      "title": "Atlas of Electrochemical Equilibria in Aqueous Solutions, 2nd English edition",
+      "source": "NACE, Houston",
+      "year": 1974
+    },
+    {
+      "authors": "K. A. Persson, B. Waldwick, P. Lazic, G. Ceder",
+      "title": "Prediction of solid-aqueous equilibria: Scheme to combine first-principles calculations of solids with experimental aqueous states",
+      "source": "Physical Review B",
+      "year": 2012,
+      "volume": "85",
+      "pages": "235438",
+      "doi": "10.1103/PhysRevB.85.235438"
+    }
+  ],
+  "referenceNumber": "MI-T01 MI-T06"
+}
