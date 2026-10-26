@@ -6,6 +6,7 @@ import { EquationBlock, InlineEquationBlock, InteractiveBlock } from "../blocks/
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { inboundKeyMatches } from "../lib/internal-key";
+import { ingestArticle, ingestState } from "../lib/blog-ingest-handler";
 import { readingTimeFromLexical, slugify, validateHttpUrl } from "../lib/blog";
 import { slugBeforeDuplicate } from "../lib/duplicate-slug";
 import { slugFromTitleValidator } from "../lib/slug-validate";
@@ -398,6 +399,13 @@ export const Posts: CollectionConfig = {
     afterDelete: [auditAfterDelete, revalidateWebsiteAfterDelete],
   },
   endpoints: [
+    /**
+     * POST /api/posts/ingest  (weekly article pipeline only — x-ingest-key)
+     * GET  /api/posts/ingest-state
+     * See lib/blog-ingest-handler.ts.
+     */
+    { path: "/ingest", method: "post", handler: ingestArticle },
+    { path: "/ingest-state", method: "get", handler: ingestState },
     /**
      * POST /api/posts/track-view  { id }  (website server only — x-internal-key)
      * Atomic $inc of the read counter — the website dedupes per visitor first.

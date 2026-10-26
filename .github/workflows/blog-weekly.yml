@@ -1,0 +1,91 @@
+name: Weekly blog article
+
+# Writes, checks and files one METNMAT Insights article (scripts/blog/weekly.ts).
+# Every Monday 07:00 IST it generates the next unused topic from the bank in
+# docs/blog/MASTER-PROMPT.md. With the default mode it is published at the next
+# Thursday 10:00 IST, which leaves three days to edit or unpublish it in the CMS.
+#
+# Needs secrets DEEPSEEK_API_KEY and CMS_BLOG_INGEST_KEY (scripts/blog/setup-secrets.sh
+# sets both). Optional repository variable BLOG_PUBLISH_MODE: scheduled (default),
+# immediate or draft.
+
+on:
+  schedule:
+    - cron: "30 1 * * 1" # Monday 01:30 UTC = 07:00 IST
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Topic number from the bank (blank = next unused)"
+        required: false
+      article:
+        description: "Publish a prepared article directory instead of generating one, e.g. docs/blog/articles/2026-10-26-ellingham-pourbaix"
+        required: false
+      mode:
+        description: "scheduled | immediate | draft (blank = BLOG_PUBLISH_MODE, default scheduled)"
+        required: false
+      dry_run:
+        description: "Generate and check, but send nothing to the CMS"
+        type: boolean
+        default: false
+
+concurrency:
+  group: blog-weekly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  article:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Check configuration
+        env:
+          HAS_DEEPSEEK: ${{ secrets.DEEPSEEK_API_KEY != '' }}
+          HAS_INGEST: ${{ secrets.CMS_BLOG_INGEST_KEY != '' }}
+          ARTICLE: ${{ inputs.article }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          if [ "$HAS_DEEPSEEK" != "true" ] && [ -z "$ARTICLE" ]; then
+            echo "::error::Secret DEEPSEEK_API_KEY is not set (scripts/blog/setup-secrets.sh)"; exit 1
+          fi
+          if [ "$HAS_INGEST" != "true" ] && [ "$DRY" != "true" ]; then
+            echo "::error::Secret CMS_BLOG_INGEST_KEY is not set (scripts/blog/setup-secrets.sh)"; exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Write, check and file the article
+        working-directory: apps/dashboard
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          CMS_BLOG_INGEST_KEY: ${{ secrets.CMS_BLOG_INGEST_KEY }}
+          CMS_URL: ${{ vars.CMS_URL || 'https://admin.metnmat.com' }}
+          BLOG_PUBLISH_MODE: ${{ inputs.mode || vars.BLOG_PUBLISH_MODE || 'scheduled' }}
+          BLOG_TOPIC: ${{ inputs.topic }}
+          BLOG_ARTICLE_DIR: ${{ inputs.article }}
+          BLOG_DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+          BLOG_OUT_DIR: out/blog
+        run: pnpm exec tsx ../../scripts/blog/weekly.ts
+
+      - name: Keep the generated article and checks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blog-article-${{ github.run_id }}
+          path: out/blog
+          if-no-files-found: ignore
+          retention-days: 90

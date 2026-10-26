@@ -1,0 +1,151 @@
+{
+  "ellingham": {
+    "widget": "ellingham",
+    "title": "Ellingham diagram: carbon, hydrogen, iron, copper and aluminium",
+    "caption": "Straight-line fits to standard data (Gaskell & Laughlin; NIST-JANAF). Move the temperature, or switch on a gas scale and change its ratio. Lower lines are more stable oxides.",
+    "config": {
+      "temperatureRangeC": [
+        25,
+        2200
+      ],
+      "lines": [
+        {
+          "label": "4Cu + O₂ → 2Cu₂O",
+          "A_kJ": -337.2,
+          "B_kJ_per_K": 0.1518,
+          "validFromK": 298,
+          "validToK": 1505,
+          "kinks": [
+            {
+              "T_K": 1358,
+              "label": "Cu melts"
+            }
+          ]
+        },
+        {
+          "label": "2Fe + O₂ → 2FeO",
+          "A_kJ": -544,
+          "B_kJ_per_K": 0.138,
+          "validFromK": 298,
+          "validToK": 1650
+        },
+        {
+          "label": "4/3Al + O₂ → 2/3Al₂O₃",
+          "A_kJ": -1120,
+          "B_kJ_per_K": 0.21,
+          "validFromK": 298,
+          "validToK": 2345,
+          "kinks": [
+            {
+              "T_K": 933,
+              "label": "Al melts"
+            }
+          ]
+        },
+        {
+          "label": "2C + O₂ → 2CO",
+          "A_kJ": -223.4,
+          "B_kJ_per_K": -0.1753,
+          "validFromK": 298,
+          "validToK": 2500
+        },
+        {
+          "label": "C + O₂ → CO₂",
+          "A_kJ": -394.1,
+          "B_kJ_per_K": -0.00084,
+          "validFromK": 298,
+          "validToK": 2500
+        },
+        {
+          "label": "2CO + O₂ → 2CO₂",
+          "A_kJ": -564.8,
+          "B_kJ_per_K": 0.1736,
+          "validFromK": 298,
+          "validToK": 2500
+        },
+        {
+          "label": "2H₂ + O₂ → 2H₂O",
+          "A_kJ": -492.9,
+          "B_kJ_per_K": 0.1096,
+          "validFromK": 298,
+          "validToK": 2500
+        }
+      ],
+      "showScales": {
+        "pO2": true,
+        "H2_H2O": true,
+        "CO_CO2": true
+      },
+      "highlight": [
+        "2Fe + O₂ → 2FeO",
+        "2C + O₂ → 2CO"
+      ]
+    }
+  },
+  "pourbaix": {
+    "widget": "pourbaix",
+    "title": "Pourbaix diagram for iron in water at 25 °C",
+    "caption": "Iron–water system with hematite and magnetite, from the thermodynamic data in Pourbaix’s Atlas. Tap anywhere, or use the sliders, to see what iron does at that pH and potential.",
+    "config": {
+      "element": "Fe",
+      "species": [
+        {
+          "formula": "Fe",
+          "charge": 0,
+          "label": "Fe",
+          "phase": "s",
+          "dGf_kJ_mol": 0
+        },
+        {
+          "formula": "Fe",
+          "charge": 2,
+          "label": "Fe²⁺",
+          "phase": "aq",
+          "dGf_kJ_mol": -84.94
+        },
+        {
+          "formula": "Fe",
+          "charge": 3,
+          "label": "Fe³⁺",
+          "phase": "aq",
+          "dGf_kJ_mol": -10.59
+        },
+        {
+          "formula": "Fe3O4",
+          "charge": 0,
+          "label": "Fe₃O₄",
+          "phase": "s",
+          "dGf_kJ_mol": -1014.2
+        },
+        {
+          "formula": "Fe2O3",
+          "charge": 0,
+          "label": "Fe₂O₃",
+          "phase": "s",
+          "dGf_kJ_mol": -740.99
+        },
+        {
+          "formula": "HFeO2",
+          "charge": -1,
+          "label": "HFeO₂⁻",
+          "phase": "aq",
+          "dGf_kJ_mol": -379.18
+        }
+      ],
+      "logActivity": {
+        "min": -8,
+        "max": 0,
+        "default": -6
+      },
+      "pHRange": [
+        -2,
+        16
+      ],
+      "ERange_V": [
+        -1.8,
+        2.2
+      ],
+      "showWaterLines": true
+    }
+  }
+}
