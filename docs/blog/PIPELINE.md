@@ -4,13 +4,13 @@ One METNMAT Insights article a week, written, checked and filed with no one in t
 
 | | |
 |---|---|
-| Runs | `.github/workflows/blog-weekly.yml`, every Monday 07:00 IST, or by hand from the Actions tab |
+| Runs | `.github/workflows/blog-weekly.yml`, every Monday 02:00 IST (Sunday 20:30 UTC, DeepSeek's off-peak rate), or by hand from the Actions tab |
 | Code | `scripts/blog/weekly.ts` (+ `lib.ts`, `sources.ts`), tests in `test/blog-weekly.test.ts` |
 | Into the CMS | `POST /api/posts/ingest` with header `x-ingest-key` (`apps/dashboard/src/lib/blog-ingest*.ts`) |
 | Prompt | `docs/blog/MASTER-PROMPT.md` (system prompt, brief, widget library, 52-topic bank) |
 | Cost | about $0.10–0.25 a week in DeepSeek tokens |
 
-## What happens each Monday
+## What happens each week
 
 1. **Topic.** The lowest-numbered row of the topic bank not yet used. Used topics are read from each
    post's *Reference number* (`MI-T01`, `MI-T01 MI-T06` for a combined article).

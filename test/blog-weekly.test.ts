@@ -20,7 +20,7 @@ import {
   wordCount,
   type Article,
 } from "../scripts/blog/lib";
-import { abstractFromIndex, checkReference, deepseekChat, parseModelJson, titleOverlap } from "../scripts/blog/sources";
+import { abstractFromIndex, checkReference, deepseekChat, firstSurname, parseModelJson, titleOverlap } from "../scripts/blog/sources";
 
 /**
  * The weekly article pipeline publishes without a person in the loop, so the
@@ -158,6 +158,24 @@ describe("sources and references", () => {
     const f = fakeFetch({ "query.bibliographic": { status: 200, body: { message: { items: [{ title: ["Reducibility of oxides and sulphides in metallurgical processes"], DOI: "10.9/x" }] } } } });
     expect(await checkReference({ title: "Reducibility of oxides and sulphides in metallurgical processes" }, f)).toEqual({ verdict: "doi-missing-found", doi: "10.9/x" });
     expect((await checkReference({ title: "A textbook nobody indexed" }, f)).verdict).toBe("unverified");
+  });
+
+  it("does not give a textbook the DOI of someone's review of it (the dry-run bug)", async () => {
+    const review = { title: ["Electrochemical Methods: Fundamentals and Applications"], DOI: "10.1023/a:1021637209564", author: [{ family: "Zoski" }], issued: { "date-parts": [[2002]] } };
+    const f = fakeFetch({
+      "query.bibliographic": { status: 200, body: { message: { items: [review] } } },
+      "works/10.1023": { status: 200, body: { message: review } },
+    });
+    const book = { title: "Electrochemical Methods: Fundamentals and Applications, 2nd ed.", authors: "Allen J. Bard, Larry R. Faulkner", year: 2001 };
+    expect((await checkReference(book, f)).verdict).toBe("unverified");
+    expect((await checkReference({ ...book, doi: "10.1023/a:1021637209564" }, f)).verdict).toBe("doi-wrong");
+  });
+
+  it("reads the first author's surname in the usual citation styles", () => {
+    expect(firstSurname("A. J. Bard, L. R. Faulkner")).toBe("bard");
+    expect(firstSurname("Allen J. Bard and Larry R. Faulkner")).toBe("bard");
+    expect(firstSurname("H. J. T. Ellingham")).toBe("ellingham");
+    expect(firstSurname("N. Elgrishi, K.J. Rountree")).toBe("elgrishi");
   });
 });
 

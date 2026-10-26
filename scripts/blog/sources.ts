@@ -56,12 +56,40 @@ export function titleOverlap(a: string, b: string): number {
 
 export type RefVerdict = "doi-ok" | "doi-wrong" | "doi-missing-found" | "unverified";
 
+/** "A. J. Bard, L. R. Faulkner" / "Allen J. Bard and Larry R. Faulkner" → "bard". */
+export function firstSurname(authors: unknown): string {
+  const first = String(authors ?? "").split(/,|;|\band\b|&/)[0] ?? "";
+  const words = first.trim().split(/\s+/).filter((w) => !/^[A-Z]\.?$|^[A-Z]\.[A-Z]\.?/.test(w));
+  return (words[words.length - 1] ?? "").toLowerCase().replace(/[^a-zÀ-ɏ-]/g, "");
+}
+
+type CrossrefWork = { title?: string[]; DOI?: string; author?: { family?: string }[]; issued?: { "date-parts"?: number[][] } };
+
+/**
+ * Same work, not merely the same title: a book's title is shared by its reviews
+ * (the pilot matched Bard & Faulkner to a review of it), so the first author and
+ * the year must agree too whenever Crossref and the reference both state them.
+ */
+function sameWork(ref: { title?: unknown; authors?: unknown; year?: unknown }, w: CrossrefWork, minOverlap: number): boolean {
+  if (titleOverlap(String(ref.title ?? ""), w.title?.[0] ?? "") < minOverlap) return false;
+  const surname = firstSurname(ref.authors);
+  const families = (w.author ?? []).map((a) => (a.family ?? "").toLowerCase());
+  if (surname && families.length && !families.some((f) => f.includes(surname) || surname.includes(f))) return false;
+  const year = typeof ref.year === "number" ? ref.year : Number(ref.year);
+  const wy = w.issued?.["date-parts"]?.[0]?.[0];
+  if (Number.isFinite(year) && year > 0 && wy && Math.abs(wy - year) > 1) return false;
+  return true;
+}
+
 /**
  * A DOI that resolves to a different work is the dangerous case (it looks
  * checked and is not), so the caller strips it. A reference with no DOI that
  * Crossref can match gains its DOI. Books often cannot be matched; they stay.
  */
-export async function checkReference(ref: { title?: unknown; doi?: unknown; authors?: unknown }, doFetch: Fetch = fetch): Promise<{ verdict: RefVerdict; doi?: string }> {
+export async function checkReference(
+  ref: { title?: unknown; doi?: unknown; authors?: unknown; year?: unknown },
+  doFetch: Fetch = fetch,
+): Promise<{ verdict: RefVerdict; doi?: string }> {
   const title = String(ref.title ?? "");
   const doi = String(ref.doi ?? "").replace(/^https?:\/\/(dx\.)?doi\.org\//, "").trim();
   try {
@@ -69,15 +97,15 @@ export async function checkReference(ref: { title?: unknown; doi?: unknown; auth
       const r = await doFetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, { headers: UA });
       if (r.status === 404) return { verdict: "doi-wrong" };
       if (!r.ok) return { verdict: "unverified", doi };
-      const m = ((await r.json()) as { message?: { title?: string[] } }).message;
-      return titleOverlap(title, m?.title?.[0] ?? "") >= 0.5 ? { verdict: "doi-ok", doi } : { verdict: "doi-wrong" };
+      const m = ((await r.json()) as { message?: CrossrefWork }).message ?? {};
+      return sameWork(ref, m, 0.5) ? { verdict: "doi-ok", doi } : { verdict: "doi-wrong" };
     }
     const q = encodeURIComponent(`${title} ${String(ref.authors ?? "")}`.slice(0, 250));
-    const r = await doFetch(`https://api.crossref.org/works?query.bibliographic=${q}&rows=3`, { headers: UA });
+    const r = await doFetch(`https://api.crossref.org/works?query.bibliographic=${q}&rows=5`, { headers: UA });
     if (!r.ok) return { verdict: "unverified" };
-    const items = ((await r.json()) as { message?: { items?: { title?: string[]; DOI?: string }[] } }).message?.items ?? [];
-    const best = items.map((it) => ({ ov: titleOverlap(title, it.title?.[0] ?? ""), doi: it.DOI })).sort((a, b) => b.ov - a.ov)[0];
-    return best && best.ov >= 0.8 && best.doi ? { verdict: "doi-missing-found", doi: best.doi } : { verdict: "unverified" };
+    const items = ((await r.json()) as { message?: { items?: CrossrefWork[] } }).message?.items ?? [];
+    const match = items.find((it) => it.DOI && sameWork(ref, it, 0.8));
+    return match?.DOI ? { verdict: "doi-missing-found", doi: match.DOI } : { verdict: "unverified" };
   } catch {
     return { verdict: "unverified", doi: doi || undefined };
   }

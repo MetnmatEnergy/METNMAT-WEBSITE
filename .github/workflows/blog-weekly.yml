@@ -1,7 +1,7 @@
 name: Weekly blog article
 
 # Writes, checks and files one METNMAT Insights article (scripts/blog/weekly.ts).
-# Every Monday 07:00 IST it generates the next unused topic from the bank in
+# Every Monday 02:00 IST it generates the next unused topic from the bank in
 # docs/blog/MASTER-PROMPT.md. With the default mode it is published at the next
 # Thursday 10:00 IST, which leaves three days to edit or unpublish it in the CMS.
 #
@@ -11,7 +11,7 @@ name: Weekly blog article
 
 on:
   schedule:
-    - cron: "30 1 * * 1" # Monday 01:30 UTC = 07:00 IST
+    - cron: "30 20 * * 0" # Sunday 20:30 UTC = Monday 02:00 IST, inside DeepSeek's half-price off-peak hours
   workflow_dispatch:
     inputs:
       topic:
