@@ -278,3 +278,22 @@ describe("cover image", () => {
     expect([meta.width, meta.height]).toEqual([COVER_W, COVER_H]);
   });
 });
+
+describe("cover title fits its column", () => {
+  it("never lets a title line run under the diagram panel, in the widest font the runner uses", () => {
+    for (const title of [
+      "Fire and Water: The Two Maps That Decide Where a Metal Survives",
+      "How to Read a Cyclic Voltammogram: Peaks, Scan Rate, and the 57 mV Gap",
+      "Hall–Petch: smaller grains, stronger metal, until it isn't",
+    ]) {
+      const svg = renderCoverSvg({ title, widgets: [] });
+      const lines = [...svg.matchAll(/<text x="80" y="\d+" font-size="(\d+)" font-weight="700" fill="#16181d">([^<]*)<\/text>/g)];
+      expect(lines.length).toBeGreaterThan(1);
+      for (const [, size, text] of lines) {
+        const chars = text!.replace(/&[a-z]+;/g, "x").length;
+        // DejaVu Sans Bold averages about 0.66 em per character; the panel starts at x = 760.
+        expect(80 + chars * 0.66 * Number(size)).toBeLessThan(760);
+      }
+    }
+  });
+});
