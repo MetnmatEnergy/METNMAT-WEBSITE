@@ -138,10 +138,16 @@ export const bannedIn = (text: string): string[] => BANNED.filter((p) => text.to
 
 export const wordCount = (md: string): number => md.replace(/\$\$[\s\S]*?\$\$/g, " ").split(/\s+/).filter(Boolean).length;
 
-/** Trims to `max` characters at a word boundary, without a dangling separator. */
+/**
+ * Trims to `max` characters, preferring the end of a sentence (a subtitle cut
+ * mid-sentence went live on 2026-10-26 ending "…in concrete. Both"), then a word
+ * boundary, without a dangling separator.
+ */
 export function clip(s: string, max: number): string {
   const t = (s ?? "").trim();
   if (t.length <= max) return t;
+  const sentence = /^[\s\S]*[.!?](?=\s)/.exec(t.slice(0, max + 1))?.[0];
+  if (sentence && sentence.length > max / 2) return sentence.trim();
   const atWord = t.slice(0, max + 1).replace(/\s+\S*$/, "");
   // No space to break at (one long word): cut hard.
   const cut = atWord.length <= max && atWord.length > max / 2 ? atWord : t.slice(0, max);

@@ -91,6 +91,17 @@ describe("article checks", () => {
     expect(a.seoTitle!.length).toBeLessThanOrEqual(60);
   });
 
+  it("cuts a long subtitle at a sentence end, not mid-sentence", () => {
+    const sub =
+      "Ellingham diagrams explain why charcoal smelts iron but not aluminium. Pourbaix diagrams explain why the same iron rusts in a puddle but not in concrete. Both are drawn from one quantity.";
+    const a = normaliseArticle({ ...base, subtitle: sub });
+    expect(a.subtitle).toBe(
+      "Ellingham diagrams explain why charcoal smelts iron but not aluminium. Pourbaix diagrams explain why the same iron rusts in a puddle but not in concrete.",
+    );
+    // no sentence end in reach: falls back to a word boundary
+    expect(normaliseArticle({ ...base, subtitle: "word ".repeat(60) }).subtitle!.length).toBeLessThanOrEqual(160);
+  });
+
   it("holds back a short article or one whose model will not draw", () => {
     const b = blockers(normaliseArticle(base));
     expect(b.join(" ")).toMatch(/words/);

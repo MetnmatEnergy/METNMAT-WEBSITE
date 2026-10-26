@@ -1,6 +1,6 @@
 {
   "title": "Fire and Water: The Two Maps That Decide Where a Metal Survives",
-  "subtitle": "Ellingham diagrams explain why charcoal smelts iron but not aluminium. Pourbaix diagrams explain why the same iron rusts in a puddle but not in concrete. Both are drawn from one quantity.",
+  "subtitle": "Ellingham diagrams explain why charcoal smelts iron but not aluminium. Pourbaix diagrams explain why iron rusts in a puddle but not in concrete.",
   "slug": "ellingham-and-pourbaix-diagrams-where-metals-survive",
   "excerpt": "Charcoal can turn iron ore into iron but cannot touch alumina; the same iron rusts in a puddle but not inside concrete. Two diagrams, one quantity, and both are interactive here.",
   "abstract": "Ellingham and Pourbaix diagrams are two projections of the Gibbs energy of metal oxidation. The Ellingham diagram plots ΔG° per mole of O₂ against temperature; slopes set by the change in gas moles explain why carbon reduces wüstite above about 750 °C but alumina only near 2,050 °C, and its gas-ratio scales give the compositions a furnace must hold. The Pourbaix diagram plots electrode potential against pH at 25 °C through ΔG = −nFE, dividing the plane into immunity, corrosion and passivation fields. At 25 °C the two are linked exactly: an Ellingham value converts to the oxide/metal potential at pH 0 as E° = (ΔG° + 474 kJ)/4F.",
