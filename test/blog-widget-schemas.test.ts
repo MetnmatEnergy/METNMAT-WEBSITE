@@ -43,7 +43,7 @@ describe("widget config schemas", () => {
   it("accepts the config as a JSON string, refuses broken JSON and unknown widgets", () => {
     expect(parseWidget("function-plot", JSON.stringify(FUNCTION_PLOT_EXAMPLE)).ok).toBe(true);
     expect(issues("function-plot", "{ not json")).toMatch(/not valid JSON/);
-    expect(issues("pourbaix", {})).toMatch(/unknown widget "pourbaix"/);
+    expect(issues("phase-diagram", {})).toMatch(/unknown widget "phase-diagram"/);
     expect(issues("ellingham", null)).not.toBe("");
   });
 

@@ -23,6 +23,7 @@ const CyclicVoltammetry = dynamic(() => import("./cyclic-voltammetry").then((m) 
   loading: Loading,
 });
 const FunctionPlot = dynamic(() => import("./function-plot").then((m) => m.FunctionPlotWidget), { loading: Loading });
+const Pourbaix = dynamic(() => import("./pourbaix").then((m) => m.PourbaixWidget), { loading: Loading });
 
 class WidgetBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -48,6 +49,9 @@ export function WidgetMount(props: ValidWidget) {
       break;
     case "function-plot":
       el = <FunctionPlot config={props.config} />;
+      break;
+    case "pourbaix":
+      el = <Pourbaix config={props.config} />;
       break;
   }
   return <WidgetBoundary>{el}</WidgetBoundary>;

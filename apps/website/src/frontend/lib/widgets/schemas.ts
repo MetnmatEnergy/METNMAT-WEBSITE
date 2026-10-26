@@ -19,8 +19,9 @@
 import { z } from "zod";
 import { reductantOf, coLine, ZERO_C_IN_K } from "./ellingham-math";
 import { compileExpr, RESERVED, SYMBOL_PATTERN } from "./expr";
+import { parseFormula } from "./pourbaix-math";
 
-export const WIDGET_IDS = ["ellingham", "cyclic-voltammetry", "function-plot"] as const;
+export const WIDGET_IDS = ["ellingham", "cyclic-voltammetry", "function-plot", "pourbaix"] as const;
 export type WidgetId = (typeof WIDGET_IDS)[number];
 
 const label = (max = 80) => z.string().trim().min(1).max(max);
@@ -225,12 +226,70 @@ export const functionPlotConfig = z
   });
 export type FunctionPlotConfig = z.output<typeof functionPlotConfig>;
 
+// ── pourbaix ─────────────────────────────────────────────────────────────────
+
+const range = (lo: number, hi: number) => z.tuple([z.number().min(lo).max(hi), z.number().min(lo).max(hi)]);
+
+export const pourbaixConfig = z
+  .strictObject({
+    element: z.string().regex(/^[A-Z][a-z]?$/, "an element symbol, e.g. Fe"),
+    species: z
+      .array(
+        z.strictObject({
+          formula: z.string().regex(/^[A-Za-z0-9()]{1,24}$/, "ASCII composition without the charge, e.g. Fe2O3 or HFeO2"),
+          charge: z.number().int().min(-4).max(6).default(0),
+          label: label(24),
+          phase: z.enum(["s", "aq"]),
+          dGf_kJ_mol: z.number().min(-20000).max(5000),
+        }),
+      )
+      .min(2)
+      .max(16),
+    logActivity: z
+      .strictObject({ min: z.number().min(-12).max(0), max: z.number().min(-12).max(0), default: z.number().min(-12).max(0) })
+      .default({ min: -8, max: 0, default: -6 }),
+    pHRange: range(-4, 18).default([-2, 16]),
+    ERange_V: range(-4, 4).default([-1.8, 2.2]),
+    showWaterLines: z.boolean().default(true),
+  })
+  .superRefine((c, ctx) => {
+    const { min, max, default: d } = c.logActivity;
+    if (max <= min) ctx.addIssue({ code: "custom", path: ["logActivity", "max"], message: "max must be greater than min" });
+    if (d < min || d > max) ctx.addIssue({ code: "custom", path: ["logActivity", "default"], message: "default must lie between min and max" });
+    if (c.pHRange[1] <= c.pHRange[0]) ctx.addIssue({ code: "custom", path: ["pHRange"], message: "the range must run from low to high" });
+    if (c.ERange_V[1] <= c.ERange_V[0]) ctx.addIssue({ code: "custom", path: ["ERange_V"], message: "the range must run from low to high" });
+    const labels = new Set<string>();
+    const keys = new Set<string>();
+    let metals = 0;
+    c.species.forEach((sp, i) => {
+      const comp = parseFormula(sp.formula, c.element);
+      if (typeof comp === "string") ctx.addIssue({ code: "custom", path: ["species", i, "formula"], message: comp });
+      if (sp.phase === "s" && sp.charge !== 0) {
+        ctx.addIssue({ code: "custom", path: ["species", i, "charge"], message: "a solid phase is neutral" });
+      }
+      if (labels.has(sp.label)) ctx.addIssue({ code: "custom", path: ["species", i, "label"], message: `duplicate label "${sp.label}"` });
+      labels.add(sp.label);
+      const key = `${sp.formula}|${sp.charge}|${sp.phase}`;
+      if (keys.has(key)) ctx.addIssue({ code: "custom", path: ["species", i, "formula"], message: `${sp.formula} (charge ${sp.charge}) is listed twice` });
+      keys.add(key);
+      if (sp.formula === c.element && sp.charge === 0 && sp.phase === "s") {
+        metals++;
+        if (sp.dGf_kJ_mol !== 0) ctx.addIssue({ code: "custom", path: ["species", i, "dGf_kJ_mol"], message: "the metal is the reference state: 0 kJ/mol" });
+      }
+    });
+    if (metals !== 1) {
+      ctx.addIssue({ code: "custom", path: ["species"], message: `list the metal itself once: { formula: "${c.element}", phase: "s", dGf_kJ_mol: 0 }` });
+    }
+  });
+export type PourbaixConfig = z.output<typeof pourbaixConfig>;
+
 // ── registry ─────────────────────────────────────────────────────────────────
 
 const SCHEMAS = {
   ellingham: ellinghamConfig,
   "cyclic-voltammetry": cvConfig,
   "function-plot": functionPlotConfig,
+  pourbaix: pourbaixConfig,
 } as const satisfies Record<WidgetId, z.ZodType>;
 
 export type WidgetConfigs = { [K in WidgetId]: z.output<(typeof SCHEMAS)[K]> };

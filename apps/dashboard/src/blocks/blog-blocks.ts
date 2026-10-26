@@ -22,6 +22,7 @@ export const BLOG_WIDGETS = [
   { value: "ellingham", label: "Ellingham diagram" },
   { value: "cyclic-voltammetry", label: "Cyclic voltammogram (simulated)" },
   { value: "function-plot", label: "Function plot (sliders + formula)" },
+  { value: "pourbaix", label: "Pourbaix (potential–pH) diagram" },
 ] as const;
 
 const LATEX_EXAMPLE = "e.g. \\Delta G^\\circ = \\Delta H^\\circ - T\\,\\Delta S^\\circ";
