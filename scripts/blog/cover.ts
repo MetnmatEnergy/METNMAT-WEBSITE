@@ -209,8 +209,16 @@ export function renderCoverSvg(a: { title: string; kicker?: string; widgets: { w
         ]
       : [right];
   const drawn = panels.map((w, i) => widgetPanel(boxes[i]!, w.widget, w.config)).filter(Boolean);
-  const titleLines = wrap(a.title, a.title.length > 60 ? 20 : 18, 5);
-  const size = titleLines.length > 4 ? 52 : 60;
+  // The text column ends at x≈730. GitHub's runner draws in DejaVu Sans Bold, about 0.66 em per
+  // character (wider than Arial), so the wrap width is chosen for that font, not the narrower
+  // ones on a laptop: the first live cover lost "Decide" under the diagram panel.
+  const TEXT_W = 650;
+  let size = 58;
+  let titleLines = wrap(a.title, Math.floor(TEXT_W / (0.66 * size)), 5);
+  if (titleLines.length > 4) {
+    size = 50;
+    titleLines = wrap(a.title, Math.floor(TEXT_W / (0.66 * size)), 5);
+  }
   const title = titleLines.map((l, i) => `<text x="80" y="${300 + i * (size + 14)}" font-size="${size}" font-weight="700" fill="${C.ink}">${esc(l)}</text>`).join("");
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${COVER_W}" height="${COVER_H}" viewBox="0 0 ${COVER_W} ${COVER_H}" font-family="${FONT}">`,
