@@ -63,15 +63,40 @@ export function firstSurname(authors: unknown): string {
   return (words[words.length - 1] ?? "").toLowerCase().replace(/[^a-zÀ-ɏ-]/g, "");
 }
 
-type CrossrefWork = { title?: string[]; DOI?: string; author?: { family?: string }[]; issued?: { "date-parts"?: number[][] } };
+type CrossrefWork = {
+  title?: string[];
+  DOI?: string;
+  author?: { family?: string }[];
+  issued?: { "date-parts"?: number[][] };
+  "container-title"?: string[];
+};
+
+const STOP = new Set(["of", "the", "and", "for", "in", "on", "a", "an", "journal"]);
+/**
+ * Does the cited source name the journal Crossref files the work under? Abbreviations
+ * count ("J. Chem. Educ." ↔ "Journal of Chemical Education"): every cited word must
+ * be a prefix of some journal word, or the other way round.
+ */
+export function sourceMatches(cited: string, container: string): boolean {
+  const words = (s: string) => norm(s).split(" ").filter((w) => w && !STOP.has(w));
+  const a = words(cited);
+  const b = words(container);
+  if (!a.length || !b.length) return true; // nothing to compare: do not judge
+  const hits = a.filter((t) => b.some((u) => u.startsWith(t) || t.startsWith(u))).length;
+  return hits / a.length >= 0.6;
+}
 
 /**
- * Same work, not merely the same title: a book's title is shared by its reviews
- * (the pilot matched Bard & Faulkner to a review of it), so the first author and
- * the year must agree too whenever Crossref and the reference both state them.
+ * Same work, not merely the same title: a book's title is shared by its reviews.
+ * The pilot matched Bard & Faulkner to a review of it, and so did the first GitHub
+ * dry run, through a 2002 review in the Russian Journal of Electrochemistry that
+ * Crossref lists with no authors. So the first author, the year and, for a work
+ * Crossref files in a journal, the journal must agree too, whenever both sides state them.
  */
-function sameWork(ref: { title?: unknown; authors?: unknown; year?: unknown }, w: CrossrefWork, minOverlap: number): boolean {
+function sameWork(ref: { title?: unknown; authors?: unknown; year?: unknown; source?: unknown }, w: CrossrefWork, minOverlap: number): boolean {
   if (titleOverlap(String(ref.title ?? ""), w.title?.[0] ?? "") < minOverlap) return false;
+  const container = w["container-title"]?.[0] ?? "";
+  if (container && ref.source && !sourceMatches(String(ref.source), container)) return false;
   const surname = firstSurname(ref.authors);
   const families = (w.author ?? []).map((a) => (a.family ?? "").toLowerCase());
   if (surname && families.length && !families.some((f) => f.includes(surname) || surname.includes(f))) return false;
@@ -87,7 +112,7 @@ function sameWork(ref: { title?: unknown; authors?: unknown; year?: unknown }, w
  * Crossref can match gains its DOI. Books often cannot be matched; they stay.
  */
 export async function checkReference(
-  ref: { title?: unknown; doi?: unknown; authors?: unknown; year?: unknown },
+  ref: { title?: unknown; doi?: unknown; authors?: unknown; year?: unknown; source?: unknown },
   doFetch: Fetch = fetch,
 ): Promise<{ verdict: RefVerdict; doi?: string }> {
   const title = String(ref.title ?? "");
