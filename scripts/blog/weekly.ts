@@ -59,7 +59,7 @@ const log = (...a: unknown[]) => console.log("[blog]", ...a);
 const usage: { step: string; model: string; seconds: number; usage: unknown }[] = [];
 
 type State = {
-  posts: { slug: string; title: string; excerpt?: string | null; referenceNumber?: string | null; status: string; publishedDate?: string | null }[];
+  posts: { slug: string; title: string; excerpt?: string | null; pipelineTopics?: string | null; referenceNumber?: string | null; status: string; publishedDate?: string | null }[];
   categories: { slug: string; name: string }[];
   contentTypes: { slug: string; name: string }[];
 };
@@ -210,12 +210,12 @@ async function generate(state: State | null, masterPrompt: string): Promise<{ ar
 
 function loadPrepared(dir: string): { article: Article; widgets: Widgets; ref: string; notes: string[] } {
   const abs = path.resolve(ROOT, dir);
-  const meta = JSON.parse(fs.readFileSync(path.join(abs, "meta.json"), "utf8")) as Article & { referenceNumber?: string };
+  const meta = JSON.parse(fs.readFileSync(path.join(abs, "meta.json"), "utf8")) as Article & { pipelineTopics?: string; referenceNumber?: string };
   const widgets = JSON.parse(fs.readFileSync(path.join(abs, "widgets.json"), "utf8")) as Widgets;
   const body = fs.readFileSync(path.join(abs, "article.md"), "utf8");
   const first = Object.values(widgets)[0];
   const article = normaliseArticle({ ...meta, body_markdown: body, widget: first ? { type: first.widget, config: first.config } : undefined });
-  return { article, widgets, ref: meta.referenceNumber ?? "", notes: ["prepared article, edited and checked by hand before upload"] };
+  return { article, widgets, ref: meta.pipelineTopics ?? meta.referenceNumber ?? "", notes: ["prepared article, edited and checked by hand before upload"] };
 }
 
 async function main() {
@@ -272,7 +272,7 @@ async function main() {
     log("dry run: nothing sent to the CMS");
   } else {
     const { status, data } = await cms<{ ok?: boolean; liveUrl?: string; adminUrl?: string; error?: string; problems?: string[]; cover?: string | null; warnings?: string[] }>("POST", "ingest", {
-      article: { ...article, referenceNumber: ref, author: article.author ?? "METNMAT Research Team" },
+      article: { ...article, referenceNumber: undefined, pipelineTopics: ref, author: article.author ?? "METNMAT Research Team" },
       widgets,
       publish: { mode, at },
       notes,

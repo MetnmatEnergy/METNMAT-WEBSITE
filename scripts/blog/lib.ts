@@ -62,10 +62,15 @@ export function parseTopicBank(md: string): Topic[] {
   return out;
 }
 
-/** Topic numbers already used, read from the posts' referenceNumber ("MI-T01", "MI-T01 MI-T06"). */
-export function usedTopics(posts: { referenceNumber?: string | null }[]): Set<number> {
+/**
+ * Topic numbers already used ("MI-T01", "MI-T01 MI-T06"), from the hidden pipelineTopics
+ * field, and from referenceNumber for articles filed before that field existed.
+ */
+export function usedTopics(posts: { pipelineTopics?: string | null; referenceNumber?: string | null }[]): Set<number> {
   const used = new Set<number>();
-  for (const p of posts) for (const m of (p.referenceNumber ?? "").matchAll(/MI-T(\d+)/g)) used.add(Number(m[1]));
+  for (const p of posts) {
+    for (const m of `${p.pipelineTopics ?? ""} ${p.referenceNumber ?? ""}`.matchAll(/MI-T(\d+)/g)) used.add(Number(m[1]));
+  }
   return used;
 }
 

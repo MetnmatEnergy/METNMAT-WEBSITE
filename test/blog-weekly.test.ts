@@ -53,7 +53,7 @@ describe("master prompt and topic bank", () => {
 
   it("skips topics already published, including combined articles", () => {
     const t = parseTopicBank(MP);
-    const used = usedTopics([{ referenceNumber: "MI-T01 MI-T06" }, { referenceNumber: null }, { referenceNumber: "MI-T02" }]);
+    const used = usedTopics([{ pipelineTopics: "MI-T01 MI-T06" }, { referenceNumber: null }, { referenceNumber: "MI-T02" }]); // new field, and the old one for earlier articles
     expect([...used].sort()).toEqual([1, 2, 6]);
     expect(nextTopic(t, used)?.n).toBe(3);
     expect(nextTopic(t, used, 6)?.n).toBe(6); // an explicit override wins
@@ -118,7 +118,8 @@ describe("article checks", () => {
     const a = normaliseArticle({ ...meta, body_markdown: body, widget: { type: "ellingham", config: widgets.ellingham.config } });
     expect(blockers(a)).toEqual([]);
     expect(wordCount(body)).toBeGreaterThan(2500);
-    expect(meta.referenceNumber).toBe("MI-T01 MI-T06");
+    expect(meta.pipelineTopics).toBe("MI-T01 MI-T06");
+    expect(meta.referenceNumber).toBeUndefined();
     for (const id of Object.keys(widgets)) expect(body).toContain(`{{widget:${id}}}`);
   });
 });

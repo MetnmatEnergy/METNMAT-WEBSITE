@@ -122,6 +122,20 @@ export const Posts: CollectionConfig = {
       relationTo: "blog-submissions",
       admin: { position: "sidebar", readOnly: true, description: "Publication request this draft was converted from." },
     },
+    {
+      // Which topic-bank rows the weekly pipeline has covered ("MI-T01 MI-T06"),
+      // so it never writes the same topic twice. Bookkeeping, not content: it
+      // used to live in referenceNumber, which the article page shows readers
+      // as "Reference". Staff-only, so it is absent from the public API too.
+      name: "pipelineTopics",
+      type: "text",
+      access: { read: ({ req }) => (req.user as { collection?: string } | null)?.collection === "users" },
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description: "Weekly article pipeline: topic numbers this article covers. Internal; never shown on the website.",
+      },
+    },
 
     // ── Main editor: tabbed ──────────────────────────────────────────────────
     {

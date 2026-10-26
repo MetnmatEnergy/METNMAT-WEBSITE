@@ -2,6 +2,7 @@ import type { PayloadRequest } from "payload";
 import { convertMarkdownToLexical, editorConfigFactory } from "@payloadcms/richtext-lexical";
 import {
   decodeCover,
+  isPipelineTag,
   ingestAuthorized,
   ingestEmailHtml,
   injectBlocks,
@@ -55,7 +56,7 @@ export async function ingestState(req: PayloadRequest): Promise<Response> {
       depth: 0,
       sort: "-createdAt",
       overrideAccess: true,
-      select: { title: true, slug: true, excerpt: true, referenceNumber: true, _status: true, publishedDate: true },
+      select: { title: true, slug: true, excerpt: true, referenceNumber: true, pipelineTopics: true, _status: true, publishedDate: true },
     }),
     req.payload.find({ collection: "blog-categories", limit: 100, depth: 0, overrideAccess: true }),
     req.payload.find({ collection: "blog-content-types", limit: 100, depth: 0, overrideAccess: true }),
@@ -64,7 +65,15 @@ export async function ingestState(req: PayloadRequest): Promise<Response> {
   return json({
     posts: posts.docs.map((d) => {
       const p = d as Record<string, unknown>;
-      return { slug: p.slug, title: p.title, excerpt: p.excerpt, referenceNumber: p.referenceNumber ?? null, status: p._status, publishedDate: p.publishedDate ?? null };
+      return {
+        slug: p.slug,
+        title: p.title,
+        excerpt: p.excerpt,
+        pipelineTopics: p.pipelineTopics ?? null,
+        referenceNumber: p.referenceNumber ?? null, // older pipeline articles kept their tag here
+        status: p._status,
+        publishedDate: p.publishedDate ?? null,
+      };
     }),
     categories: cats.docs.map((d) => pick(d as Record<string, unknown>)),
     contentTypes: types.docs.map((d) => pick(d as Record<string, unknown>)),
@@ -166,7 +175,10 @@ export async function ingestArticle(req: PayloadRequest): Promise<Response> {
     keywords: str(a.keywords, 600) || undefined,
     tags: (Array.isArray(a.tags) ? a.tags : []).slice(0, 10).map((t) => ({ tag: str(t, 60) })).filter((t) => t.tag),
     author: str(a.author, 120) || "METNMAT Research Team",
-    referenceNumber: str(a.referenceNumber, 60) || undefined,
+    // The topic tag is bookkeeping and goes in the hidden field; a tag sent the old way
+    // (as referenceNumber) is moved there too. A real report number stays visible.
+    pipelineTopics: str(a.pipelineTopics, 120) || (isPipelineTag(a.referenceNumber) ? str(a.referenceNumber, 120) : undefined),
+    referenceNumber: isPipelineTag(a.referenceNumber) ? undefined : str(a.referenceNumber, 60) || undefined,
     seoTitle: str(a.seoTitle, 70) || undefined,
     metaDescription: str(a.metaDescription, 170) || undefined,
     primaryCategory,
@@ -209,6 +221,10 @@ export async function ingestArticle(req: PayloadRequest): Promise<Response> {
   try {
     const existing = await req.payload.find({ collection: "posts", where: { slug: { equals: slug } }, draft: true, limit: 1, depth: 0, overrideAccess: true });
     if (existing.docs[0]) {
+      // An article filed before pipelineTopics existed shows its tag to readers as "Reference": clear it.
+      if (isPipelineTag((existing.docs[0] as { referenceNumber?: unknown }).referenceNumber) && data.referenceNumber === undefined) {
+        data.referenceNumber = null;
+      }
       doc = (await req.payload.update({ collection: "posts", id: existing.docs[0].id, data, draft: mode === "draft", overrideAccess: true, req })) as typeof doc;
     } else {
       doc = (await req.payload.create({ collection: "posts", data, draft: mode === "draft", overrideAccess: true, req })) as typeof doc;

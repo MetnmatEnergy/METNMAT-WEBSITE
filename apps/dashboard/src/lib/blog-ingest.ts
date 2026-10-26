@@ -133,6 +133,9 @@ export function decodeCover(c: CoverInput | undefined): { ok: true; cover: Cover
   return { ok: true, cover: { buffer, mimeType, filename: `${stem}.${type.ext}`, alt } };
 }
 
+/** A weekly-pipeline topic tag ("MI-T01", "MI-T01 MI-T06"), as opposed to a real report number. */
+export const isPipelineTag = (s: unknown): boolean => typeof s === "string" && /^\s*(MI-T\d+[\s,]*)+$/.test(s);
+
 export type PublishMode = "draft" | "immediate" | "scheduled";
 
 /** When the post becomes public, or null for a draft. A schedule must be in the future and within 30 days. */

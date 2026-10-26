@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import {
   decodeCover,
+  isPipelineTag,
   MAX_COVER_BYTES,
   ingestAuthorized,
   ingestEmailHtml,
@@ -155,5 +156,29 @@ describe("cover upload input", () => {
     expect(decodeCover({ data: webp.toString("base64"), mimeType: "image/webp", alt: " " }).ok).toBe(false);
     const big = Buffer.concat([webp, Buffer.alloc(MAX_COVER_BYTES)]);
     expect(decodeCover({ data: big.toString("base64"), mimeType: "image/webp", alt: "x" }).ok).toBe(false);
+  });
+});
+
+describe("pipeline topic tag stays out of sight", () => {
+  it("recognises a pipeline tag and leaves a real report number alone", () => {
+    expect(isPipelineTag("MI-T01")).toBe(true);
+    expect(isPipelineTag("MI-T01 MI-T06")).toBe(true);
+    expect(isPipelineTag("MI-T01, MI-T06")).toBe(true);
+    expect(isPipelineTag("MET-RN-2026-014")).toBe(false);
+    expect(isPipelineTag("")).toBe(false);
+    expect(isPipelineTag(null)).toBe(false);
+  });
+
+  it("keeps pipelineTopics in a staff-only field, so neither the page nor the public API shows it", () => {
+    const flatten = (fields: unknown[]): Record<string, unknown>[] =>
+      (fields as Record<string, unknown>[]).flatMap((f) =>
+        f.type === "tabs" ? (f.tabs as { fields: unknown[] }[]).flatMap((t) => flatten(t.fields)) : f.type === "row" ? flatten(f.fields as unknown[]) : [f],
+      );
+    const field = flatten(Posts.fields).find((f) => f.name === "pipelineTopics") as { access?: { read?: (a: unknown) => boolean } } | undefined;
+    expect(field).toBeDefined();
+    const read = field!.access!.read!;
+    expect(read({ req: { user: null } })).toBe(false);
+    expect(read({ req: { user: { collection: "customers" } } })).toBe(false);
+    expect(read({ req: { user: { collection: "users" } } })).toBe(true);
   });
 });
