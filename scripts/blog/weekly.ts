@@ -147,7 +147,8 @@ Do this:
 2. Make every statement about the interactive model agree with FACTS. Where text and FACTS disagree, FACTS win, unless the config itself is physically wrong; then fix the config and the text together.
 3. Delete anything you cannot stand behind. Do not add new claims you cannot verify.
 4. Fix every CHECKS problem.
-5. Keep the voice, structure and length (body 1,800–2,800 words). Change only what needs changing. Do not introduce any of these phrases: ${BANNED.join(", ")}.
+5. Enforce the register: formal scientific prose that a researcher from an adjacent field can follow; an introduction that states the problem, its significance and the article's aims within its first two paragraphs; numbered, descriptive section headings ("2. Thermodynamic basis", not slogans or questions); asides labelled **Further detail.**, **Industrial relevance.** or **Laboratory note.**; no anecdotal hooks, humour, rhetorical questions, conversational phrasing or em-dashes. Rewrite any passage that falls short.
+6. Keep the structure and the length (body 2,200–3,300 words). Change only what needs changing. Do not introduce any of these phrases: ${BANNED.join(", ")}.
 
 Return the complete corrected article as one JSON object with exactly the input article's keys, plus "review_notes": an array of one-line descriptions of each change you made.`;
 

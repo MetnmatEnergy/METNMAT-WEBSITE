@@ -111,7 +111,7 @@ export function brief(opts: {
     `TOPIC: ${topic.topic}`,
     `ARCHETYPE: ${topic.archetype}`,
     `PRIMARY READER: ${READER[topic.pillar] ?? "students, researchers and industry engineers"}`,
-    "HOOK IDEAS (optional): your choice; it must be true and checkable.",
+    "CONTEXT (optional): none supplied; frame the topic by its scientific and industrial significance.",
     "MUST COVER: what a specialist in this topic would be annoyed to see missing.",
     `WIDGET PREFERENCE: ${pref}`,
     "CATALOGUE (optional, at most one may be mentioned): none this week.",
