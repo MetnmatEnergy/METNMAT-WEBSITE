@@ -20,7 +20,7 @@ import {
   wordCount,
   type Article,
 } from "../scripts/blog/lib";
-import { abstractFromIndex, checkReference, deepseekChat, firstSurname, parseModelJson, titleOverlap } from "../scripts/blog/sources";
+import { abstractFromIndex, checkReference, deepseekChat, firstSurname, parseModelJson, sourceMatches, titleOverlap } from "../scripts/blog/sources";
 
 /**
  * The weekly article pipeline publishes without a person in the loop, so the
@@ -180,6 +180,28 @@ describe("sources and references", () => {
     const book = { title: "Electrochemical Methods: Fundamentals and Applications, 2nd ed.", authors: "Allen J. Bard, Larry R. Faulkner", year: 2001 };
     expect((await checkReference(book, f)).verdict).toBe("unverified");
     expect((await checkReference({ ...book, doi: "10.1023/a:1021637209564" }, f)).verdict).toBe("doi-wrong");
+  });
+
+  it("rejects the review even when Crossref lists it with no authors (the GitHub dry-run case)", async () => {
+    // The real record behind 10.1023/a:1021637209564: a 2-page review, no authors, filed in a journal.
+    const review = {
+      title: ["Allen J. Bard and Larry R. Faulkner, Electrochemical Methods: Fundamentals and Applications, New York: Wiley, 2001, 2nd ed."],
+      DOI: "10.1023/a:1021637209564",
+      author: [],
+      issued: { "date-parts": [[2002]] },
+      "container-title": ["Russian Journal of Electrochemistry"],
+    };
+    const f = fakeFetch({ "works/10.1023": { status: 200, body: { message: review } } });
+    const cited = { title: "Electrochemical Methods: Fundamentals and Applications", authors: "Bard, A. J.; Faulkner, L. R.", year: 2001, source: "Wiley", doi: "10.1023/a:1021637209564" };
+    expect((await checkReference(cited, f)).verdict).toBe("doi-wrong");
+  });
+
+  it("matches abbreviated journal names and refuses unrelated ones", () => {
+    expect(sourceMatches("J. Chem. Educ.", "Journal of Chemical Education")).toBe(true);
+    expect(sourceMatches("Phys. Rev. B", "Physical Review B")).toBe(true);
+    expect(sourceMatches("Analytical Chemistry", "Analytical Chemistry")).toBe(true);
+    expect(sourceMatches("Wiley", "Russian Journal of Electrochemistry")).toBe(false);
+    expect(sourceMatches("CRC Press", "Journal of Physical Chemistry")).toBe(false);
   });
 
   it("reads the first author's surname in the usual citation styles", () => {
