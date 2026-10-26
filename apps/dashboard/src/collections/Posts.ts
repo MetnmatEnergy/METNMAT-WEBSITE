@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import type { Access, CollectionConfig, Where } from "payload";
+import { BlocksFeature, lexicalEditor } from "@payloadcms/richtext-lexical";
 import { canManageContent, hasRoleOrArea, type Role } from "../access";
+import { EquationBlock, InlineEquationBlock, InteractiveBlock } from "../blocks/blog-blocks";
 import { auditAfterChange, auditAfterDelete } from "../hooks/audit";
 import { revalidateWebsiteAfterChange, revalidateWebsiteAfterDelete } from "../hooks/revalidate";
 import { inboundKeyMatches } from "../lib/internal-key";
@@ -72,7 +74,10 @@ export const Posts: CollectionConfig = {
     update: canManageContent,
     delete: canManageContent,
   },
-  versions: { drafts: true, maxPerDoc: 25 },
+  // 10, not 25: a weekly article with a model is ~45 KB a version, and Atlas
+  // M0 caps the whole cluster at 512 MB. Ten still covers the full
+  // draft → review → publish history of an article.
+  versions: { drafts: true, maxPerDoc: 10 },
   fields: [
     // ── Sidebar: editorial workflow, scheduling, flags, metrics ─────────────
     {
@@ -153,7 +158,19 @@ export const Posts: CollectionConfig = {
               type: "textarea",
               admin: { description: "Technical abstract shown at the top of the article (optional)." },
             },
-            { name: "body", type: "richText", admin: { description: "The article body." } },
+            {
+              name: "body",
+              type: "richText",
+              // The site-wide editor plus equations and interactive models
+              // (blocks/blog-blocks.ts). Insert them from the "+" / "/" menu.
+              editor: lexicalEditor({
+                features: ({ defaultFeatures }) => [
+                  ...defaultFeatures,
+                  BlocksFeature({ blocks: [EquationBlock, InteractiveBlock], inlineBlocks: [InlineEquationBlock] }),
+                ],
+              }),
+              admin: { description: "The article body. Equations and interactive models are in the + menu." },
+            },
             { name: "coverImage", type: "upload", relationTo: "media" },
             {
               type: "row",

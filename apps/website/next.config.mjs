@@ -52,6 +52,13 @@ const DEV_EVAL = DEV ? " 'unsafe-eval'" : "";
 
 // Content Security Policy. 'unsafe-inline' is required by the pre-paint theme
 // script and Next's inline runtime; harden to nonce-based CSP later.
+//
+// Blog equations need no new origin: the KaTeX stylesheet is imported by
+// frontend/components/blog/blog-blocks.tsx, so Next bundles it and its fonts
+// into /_next/static (style-src / font-src 'self'), and the formulas are typeset
+// on the server, so no script is loaded either. KaTeX's HTML does position
+// glyphs with inline style ATTRIBUTES, though: a nonce-based style-src must keep
+// them working (style-src-attr 'unsafe-inline'), or every equation collapses.
 const ContentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${DEV_EVAL} ${CHATBOT_ORIGIN} ${RAZORPAY_SCRIPT} ${TURNSTILE_ORIGIN}`,

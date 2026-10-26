@@ -420,6 +420,9 @@ export const seedBlogCategories = [
   { name: "Electrochemistry", slug: "electrochemistry", description: "Electrodes, cells, electrolyzers and fuel cells." },
   { name: "Hydrogen & Fuel Cells", slug: "hydrogen-fuel-cells", description: "Hydrogen production, storage and fuel-cell systems." },
   { name: "Lab Equipment", slug: "lab-equipment", description: "Instruments, setups and experimental methods." },
+  // Added 2026-10 for the weekly electrochemistry ↔ metallurgy articles. Reaches
+  // existing databases through ensureBlogCategorySlugs in seed.ts.
+  { name: "Metallurgy", slug: "metallurgy", description: "Extraction, refining, alloys, phase diagrams and heat treatment." },
 ];
 
 export const seedBlogContentTypes = [
