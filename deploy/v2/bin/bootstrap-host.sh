@@ -93,7 +93,7 @@ rm -rf /etc/caddy/conf.d
 caddy validate --config /etc/caddy/Caddyfile >/dev/null
 systemctl enable --now caddy
 systemctl reload caddy || systemctl restart caddy
-ok "Caddyfile installed (5 hostnames → loopback)"
+ok "Caddyfile installed (7 hostnames → loopback)"
 
 sec "journald persistent, swap, sysctl, auto-updates, no SSH"
 install -d /etc/systemd/journald.conf.d

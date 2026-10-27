@@ -10,12 +10,13 @@ remove the handicaps so the clock actually counts.
 
 ## 1. Prioritised backlog
 
-Status as of 2026-08-05.
+Status as of 2026-08-05, P0 rows updated 2026-10-26. The live plan is now
+[`MASTER-PROMPT.md`](./MASTER-PROMPT.md) Part E; this table is kept as the August record.
 
 | ID | Item | Owner | Effort | Impact | Status |
 |---|---|---|---|---|---|
-| **P0-1** | Maintenance banner recommends `metnmat.in` on every page | You (CMS) | minutes | **High** | Open |
-| **P0-2** | Consolidate `.in` → `.com` (Option B chosen) | You (Wix) | ~1h | **High** | Runbook ready |
+| **P0-1** | Maintenance banner recommends `metnmat.in` on every page | You (CMS) | minutes | **High** | ✅ Gone (homepage checked 2026-10-26) |
+| **P0-2** | Consolidate `.in` → `.com` | You (DNS) | ~1h | **High** | ⚙️ Built in the repo without Wix (2026-10-26); DNS cutover pending — DOMAIN-CONSOLIDATION §3 |
 | **P0-3** | Verify in GSC + Bing, submit sitemap | You | ~30m | **High** | Open |
 | P1-1 | Product titles double-brand | Me | — | Medium | ✅ Fixed |
 | P1-2 | ~~`/shop` vs `/shop/all` compete~~ | — | — | — | ⛔ Withdrawn, not a defect |
