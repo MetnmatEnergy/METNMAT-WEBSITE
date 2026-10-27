@@ -1,5 +1,6 @@
 import { FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
+import { formatDateIST } from "@/frontend/lib/ist-date";
 import { getCurrentCustomer, getCustomerEnquiries } from "@/backend/lib/customer";
 
 export const dynamic = "force-dynamic";
@@ -45,9 +46,7 @@ export default async function RfqPage() {
   return (
     <div className="space-y-3">
       {rfqs.map((r, i) => {
-        const date = r.createdAt
-          ? new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-          : "—";
+        const date = formatDateIST(r.createdAt) || "—";
         const status = (r.status || "new").toLowerCase();
         return (
           <div key={r.id || i} className="rounded-2xl border border-border bg-surface p-4 sm:p-5">
