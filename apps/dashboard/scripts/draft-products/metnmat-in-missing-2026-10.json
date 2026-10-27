@@ -1,0 +1,620 @@
+[
+  {
+    "name": "100 mL + 100 mL H-Type Electrochemical H-Cell – Dual-Chamber Reactor",
+    "slug": "h-type-electrochemical-cell-100-100-ml",
+    "categorySlug": "h-cell",
+    "shortDesc": "The 100 mL + 100 mL H-Type Electrochemical H-Cell is a dual-chamber electrochemical reactor designed for laboratory-scale research involving separated anodic and cathodic reaction environments. The cell consists of two glass electrolyte chambers, each with a nominal capacity of 100 mL, connected through a central membrane interface. This configuration allows researchers to maintain separate electrolyte compartments while supporting ionic transport through a suitable ion-exchange membrane or separator.",
+    "specs": [
+      {
+        "label": "Product Type",
+        "value": "H-Type Dual-Chamber Electrochemical Cell"
+      },
+      {
+        "label": "Product Configuration",
+        "value": "100 mL + 100 mL"
+      },
+      {
+        "label": "Cell Design",
+        "value": "Membrane-Separated H-Type Electrochemical Reactor"
+      },
+      {
+        "label": "Chamber Configuration",
+        "value": "Two Separate Electrolyte Chambers"
+      },
+      {
+        "label": "Chamber Capacity",
+        "value": "100 mL per chamber"
+      },
+      {
+        "label": "Total Nominal Chamber Capacity",
+        "value": "200 mL"
+      },
+      {
+        "label": "Chamber Material",
+        "value": "Transparent Glass"
+      },
+      {
+        "label": "Lid Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Electrode Ports",
+        "value": "Multiple Electrode Access Ports"
+      },
+      {
+        "label": "Gas Ports",
+        "value": "Gas Inlet and Outlet Arrangement"
+      },
+      {
+        "label": "Membrane Interface",
+        "value": "Central Membrane-Separated Configuration"
+      },
+      {
+        "label": "Sealing Configuration",
+        "value": "Sealed Chamber and Port Arrangement"
+      },
+      {
+        "label": "Clamping System",
+        "value": "Central Mechanical Clamping Assembly"
+      },
+      {
+        "label": "Electrochemical Configuration",
+        "value": "Suitable for Two- or Three-Electrode Research Setups, depending on the electrode arrangement"
+      },
+      {
+        "label": "Membrane Compatibility",
+        "value": "Application-Specific Ion-Exchange Membranes and Separators"
+      },
+      {
+        "label": "Electrolyte Compatibility",
+        "value": "Application-Specific Aqueous or Other Compatible Electrolytes"
+      },
+      {
+        "label": "Operating Environment",
+        "value": "Laboratory-Scale Electrochemical Research"
+      },
+      {
+        "label": "Pressure Operation",
+        "value": "Suitable for controlled laboratory gas handling; pressure rating must be established for the specific manufactured configuration"
+      },
+      {
+        "label": "Temperature Operation",
+        "value": "Dependent on the glass, PTFE, sealing components, membrane, and experimental conditions"
+      },
+      {
+        "label": "Applications",
+        "value": "Electrocatalysis Research, Water Splitting Research, Hydrogen Evolution Reaction (HER), Oxygen Evolution Reaction (OER), CO₂ Reduction Reaction (CO₂RR), Membrane Evaluation, Separated-Product Analysis, Electrochemical Reaction Studies, Electrolyte Research, Ion-Exchange Membrane Research, Electrochemical Energy Conversion, Catalyst Screening, Material Science Research, Renewable Energy Research, Fuel Cell Research"
+      },
+      {
+        "label": "Key Features",
+        "value": "Dual-Chamber H-Type Design; 100 mL + 100 mL Capacity; Transparent Glass Chambers; PTFE Lids; Membrane-Separated Configuration; Electrode Access Ports; Gas Connection Arrangement; Central Clamping Assembly; Separated Reaction Environments; Laboratory-Scale Electrolyte Volume; Flexible Electrochemical Configuration; Membrane Research Compatibility"
+      }
+    ],
+    "price": 17500,
+    "note": "Carried over from https://www.metnmat.in/product-page/100-ml-100-ml-h-type-electrochemical-h-cell-dual-chamber-reactor (owner's own copy), 2026-10-27"
+  },
+  {
+    "name": "30 mL + 30 mL H-Type Electrochemical H-Cell – Dual-Chamber Electrochemical Cell",
+    "slug": "h-type-electrochemical-cell-30-30-ml",
+    "categorySlug": "h-cell",
+    "shortDesc": "The 30 mL + 30 mL H-Type Electrochemical H-Cell is a dual-chamber electrochemical reactor designed for laboratory-scale electrochemical research, electrocatalysis, membrane evaluation, and separated-compartment reaction studies. The cell consists of two independent electrolyte chambers, each with a nominal capacity of 30 mL, separated by a central membrane interface. This configuration enables researchers to maintain separate anodic and cathodic reaction environments while supporting ionic transport through a suitable membrane or separator.",
+    "specs": [
+      {
+        "label": "Product Type",
+        "value": "H-Type Dual-Chamber Electrochemical Cell"
+      },
+      {
+        "label": "Product Configuration",
+        "value": "30 mL + 30 mL"
+      },
+      {
+        "label": "Cell Design",
+        "value": "Membrane-Separated H-Type Electrochemical Reactor"
+      },
+      {
+        "label": "Chamber Configuration",
+        "value": "Two Separate Electrolyte Chambers"
+      },
+      {
+        "label": "Chamber Capacity",
+        "value": "30 mL per chamber"
+      },
+      {
+        "label": "Total Nominal Chamber Capacity",
+        "value": "60 mL"
+      },
+      {
+        "label": "Chamber Material",
+        "value": "Borosilicate Glass 3.3"
+      },
+      {
+        "label": "Electrode Ports",
+        "value": "3 Electrode Ports"
+      },
+      {
+        "label": "Gas Ports",
+        "value": "4 Gas Ports"
+      },
+      {
+        "label": "Membrane Interface",
+        "value": "Central Membrane-Separated Configuration"
+      },
+      {
+        "label": "Lid Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Sealing Configuration",
+        "value": "O-Ring Sealing System"
+      },
+      {
+        "label": "Clamp Material",
+        "value": "Stainless Steel"
+      },
+      {
+        "label": "Gas Connection Arrangement",
+        "value": "4 Gas Inlet Tubes"
+      },
+      {
+        "label": "Electrochemical Configuration",
+        "value": "Suitable for Two- or Three-Electrode Research Setups, depending on the electrode arrangement"
+      },
+      {
+        "label": "Membrane Compatibility",
+        "value": "Application-Specific Ion-Exchange Membranes and Separators"
+      },
+      {
+        "label": "Operating Environment",
+        "value": "Laboratory-Scale Electrochemical Research"
+      },
+      {
+        "label": "Pressure Operation",
+        "value": "Suitable for controlled laboratory gas handling; not specified as a high-pressure-rated reactor"
+      },
+      {
+        "label": "Temperature Operation",
+        "value": "Dependent on the cell materials, sealing components, membrane, and experimental conditions"
+      },
+      {
+        "label": "Applications",
+        "value": "Electrocatalysis Research, Water Splitting Research, Hydrogen Evolution Reaction (HER), Oxygen Evolution Reaction (OER), Membrane Evaluation, CO₂ Reduction Reaction (CO₂RR), Electrochemical Reaction Studies, Separated-Product Analysis, Electrolyte Research, Ion-Exchange Membrane Research, Electrochemical Energy Conversion, Catalyst Screening, Material Science Research, Renewable Energy Research"
+      },
+      {
+        "label": "Key Features",
+        "value": "Dual-Chamber H-Type Design; 30 mL + 30 mL Capacity; Borosilicate Glass 3.3 Chambers; Membrane-Separated Configuration; PTFE Lids; Multiple Electrode Ports; Gas Connection Ports; O-Ring Sealing System; Stainless-Steel Clamp; Separated Reaction Environments; Laboratory-Scale Electrolyte Volume; Flexible Electrochemical Configuration; Membrane Research Compatibility"
+      }
+    ],
+    "price": 22000,
+    "note": "Carried over from https://www.metnmat.in/product-page/30-ml-30-ml-h-type-electrochemical-h-cell-dual-chamber-electrochemical-cell (owner's own copy), 2026-10-27"
+  },
+  {
+    "name": "100 mL Water-Jacketed Electrochemical Cell – Three-Electrode",
+    "slug": "water-jacketed-electrochemical-cell-100-ml",
+    "categorySlug": "reactor-cell",
+    "shortDesc": "The 100 mL Water-Jacketed Electrochemical Cell is a laboratory electrochemical vessel designed for research using a three-electrode arrangement. It supports experiments involving working, counter, and reference electrodes selected according to the measurement requirements. The cell features a transparent glass body with an integrated water jacket. The jacket allows circulation of a suitable heat-transfer fluid from an external temperature-control system to support experiments at controlled electrolyte temperatures.",
+    "specs": [
+      {
+        "label": "Product Type",
+        "value": "Water-Jacketed Electrochemical Cell"
+      },
+      {
+        "label": "Capacity Designation",
+        "value": "100 mL"
+      },
+      {
+        "label": "Cell Construction",
+        "value": "Glass Vessel with Integrated Water Jacket"
+      },
+      {
+        "label": "Electrode Configuration",
+        "value": "Three-Electrode Arrangement"
+      },
+      {
+        "label": "Working Electrode Position",
+        "value": "For an Application-Specific Working Electrode"
+      },
+      {
+        "label": "Counter Electrode Position",
+        "value": "For an Application-Specific Counter Electrode"
+      },
+      {
+        "label": "Reference Electrode Position",
+        "value": "For a Compatible Reference Electrode"
+      },
+      {
+        "label": "Top Cover",
+        "value": "Multi-Port Electrode Holder"
+      },
+      {
+        "label": "Temperature-Control Method",
+        "value": "Fluid Circulation Through the Water Jacket"
+      },
+      {
+        "label": "Temperature-Control Equipment",
+        "value": "Requires a Suitable External Circulation System"
+      },
+      {
+        "label": "Measurement Instrumentation",
+        "value": "Compatible Potentiostat or Galvanostat, Depending on the Experiment"
+      },
+      {
+        "label": "Operating Environment",
+        "value": "Laboratory-Scale Electrochemical Research"
+      },
+      {
+        "label": "Applications",
+        "value": "Electrode Characterization, Electrocatalysis Research, Temperature-Dependent Electrochemistry, Electrolyte Research, Redox Reaction Studies, Catalyst Screening"
+      },
+      {
+        "label": "Key Features",
+        "value": "Water-Jacketed Glass Construction; Three-Electrode Arrangement; Transparent Glass Body; Multi-Port Top Cover; External Temperature-Control Connection; Research Configuration Flexibility"
+      }
+    ],
+    "price": 42000,
+    "note": "Carried over from https://www.metnmat.in/product-page/100-ml-water-jacketed-electrochemical-cell-three-electrode (owner's own copy), 2026-10-27"
+  },
+  {
+    "name": "50 mL Single-Chamber Electrochemical Cell – Glass Reactor",
+    "slug": "single-chamber-electrochemical-cell-50-ml",
+    "categorySlug": "reactor-cell",
+    "shortDesc": "The 50 mL Single-Chamber Electrochemical Cell is a laboratory-scale glass reactor designed for electrochemical research, electrocatalysis, catalyst evaluation, and solution-based electrochemical measurements. The cell features a transparent glass chamber with a PTFE multi-port lid, providing access for electrodes, gas purging, and other experimental accessories. The transparent chamber allows visual observation of the electrolyte and electrode reactions during experiments.",
+    "specs": [
+      {
+        "label": "Product Type",
+        "value": "Single-Chamber Electrochemical Cell"
+      },
+      {
+        "label": "Product Capacity",
+        "value": "50 mL"
+      },
+      {
+        "label": "Cell Configuration",
+        "value": "Single-Chamber Laboratory Electrochemical Reactor"
+      },
+      {
+        "label": "Chamber Material",
+        "value": "Transparent Glass"
+      },
+      {
+        "label": "Lid Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Lid Configuration",
+        "value": "Multi-Port PTFE Lid"
+      },
+      {
+        "label": "Electrode Arrangement",
+        "value": "Suitable for Working, Counter, and Reference Electrode Configurations"
+      },
+      {
+        "label": "Gas Handling",
+        "value": "Provision for Application-Specific Gas Purging and Gas Connections"
+      },
+      {
+        "label": "Electrochemical Configuration",
+        "value": "Two- or Three-Electrode System, depending on the experimental setup"
+      },
+      {
+        "label": "Electrode Compatibility",
+        "value": "Application-Specific Electrodes"
+      },
+      {
+        "label": "Electrolyte Compatibility",
+        "value": "Suitable for Application-Specific Electrolytes, subject to material compatibility"
+      },
+      {
+        "label": "Visual Observation",
+        "value": "Transparent Chamber for Monitoring Electrolyte and Electrode Behavior"
+      },
+      {
+        "label": "Operating Environment",
+        "value": "Laboratory-Scale Electrochemical Research"
+      },
+      {
+        "label": "Operating Pressure",
+        "value": "Atmospheric or application-specific controlled gas conditions; not specified as a pressure-rated reactor"
+      },
+      {
+        "label": "Operating Temperature",
+        "value": "Suitable for application-specific laboratory conditions, subject to glass, PTFE, and sealing-material compatibility"
+      },
+      {
+        "label": "Applications",
+        "value": "Electrochemical Research, Electrocatalysis Research, Cyclic Voltammetry, Linear Sweep Voltammetry, Chronoamperometry, Chronopotentiometry, Catalyst Screening, Hydrogen Evolution Reaction (HER), Oxygen Evolution Reaction (OER), CO₂ Reduction Research, Gas-Purged Electrochemical Studies, Electrolyte Research, Material Science Research, Electrochemical Stability Studies"
+      },
+      {
+        "label": "Key Features",
+        "value": "50 mL Chamber Capacity; Single-Chamber Design; Transparent Glass Construction; PTFE Multi-Port Lid; Three-Electrode Compatibility; Gas Purging Support; Flexible Experimental Setup; Laboratory-Scale Design; Electrolyte Research Compatibility; Easy Visual Monitoring; Electrochemical Workstation Compatibility"
+      }
+    ],
+    "price": 7990,
+    "note": "Carried over from https://www.metnmat.in/product-page/50-ml-single-chamber-electrochemical-cell-glass-reactor (owner's own copy), 2026-10-27"
+  },
+  {
+    "name": "Graphite Felt Electrode for Electrochemical Applications (200 × 200 × 3 mm)",
+    "slug": "graphite-felt-electrode-200-200-3-mm",
+    "categorySlug": "carbon-gdl",
+    "shortDesc": "METNMAT Graphite Felt is a porous carbon-based electrode material designed for laboratory-scale electrochemical and energy-related applications. Its interconnected fibrous structure provides a high surface area and enables effective electrolyte interaction, making it suitable for a range of electrochemical research applications. Graphite felt can be used as a porous electrode or electrode-support material in applications such as fuel cells, electrolyzers, redox flow batteries, electrocatalysis, water splitting and other electrochemical systems.",
+    "specs": [
+      {
+        "label": "Material",
+        "value": "Graphite / carbon felt"
+      },
+      {
+        "label": "Size",
+        "value": "200 × 200 mm"
+      },
+      {
+        "label": "Thickness",
+        "value": "3 mm"
+      },
+      {
+        "label": "Structure",
+        "value": "3D porous fibrous structure"
+      },
+      {
+        "label": "Applications",
+        "value": "Electrochemical electrodes, Fuel cell research, Electrolyzer research, Redox flow batteries, Electrocatalysis, Water splitting, Energy storage research, Electrochemical synthesis, Laboratory electrochemical cells, Research and development applications"
+      },
+      {
+        "label": "Key Features",
+        "value": "High-purity graphite/carbon felt material; 3D porous fibrous structure; High surface-area electrode architecture; Suitable for electrochemical research; Flexible and easy to cut into required dimensions; Available in different thicknesses and sizes; Suitable for laboratory-scale electrode fabrication; Custom dimensions available on request"
+      }
+    ],
+    "price": 2560,
+    "note": "Carried over from https://www.metnmat.in/product-page/graphite-felt-electrode-for-electrochemical-applications-200x200x3mm (owner's own copy), 2026-10-27"
+  },
+  {
+    "name": "Nickel Fiber Felt Electrode – Porous Ni Felt for Fuel Cells & Electrolyzers",
+    "slug": "nickel-fiber-felt-electrode-10-10-cm",
+    "categorySlug": "carbon-gdl",
+    "shortDesc": "Nickel Fiber Sintered Felt is a versatile material prized for its exceptional electrical conductivity, high-temperature stability, and corrosion resistance. Composed of interconnected nickel fibers, this unique material finds extensive applications in various industries, particularly where robust electrical and thermal performance is essential.",
+    "specs": [
+      {
+        "label": "Material",
+        "value": "Sintered nickel fiber felt"
+      },
+      {
+        "label": "Size",
+        "value": "10 × 10 cm"
+      },
+      {
+        "label": "Thickness",
+        "value": "0.25 / 0.5 / 1.0 mm"
+      },
+      {
+        "label": "Applications",
+        "value": "Electronics, Thermal Management, Chemical Engineering, High-Temperature Processes, Corrosive Environments"
+      },
+      {
+        "label": "Key Features",
+        "value": "Outstanding Electrical Conductivity; High-Temperature Stability; Corrosion Resistance; Mechanical Strength"
+      }
+    ],
+    "price": 2000,
+    "note": "Carried over from https://www.metnmat.in/product-page/nickel-fiber-felt-electrode-material-porous-ni-felt-hydrogen-fuel-cell-diffusion (owner's own copy), 2026-10-27"
+  },
+  {
+    "name": "PEM Hydrogen Electrolyzer Cell, 60 mL/min",
+    "slug": "pem-hydrogen-electrolyzer-60-ml-min",
+    "categorySlug": "water-splitting-reactors",
+    "shortDesc": "The electrolyzer uses electrical energy to split purified water into hydrogen and oxygen, providing a convenient hydrogen source for laboratory and research applications. Its compact construction, easy installation, stable hydrogen production and low-maintenance design make it suitable for integration with PEM fuel cells, hydrogen research systems, electrochemical test setups and renewable energy experiments.",
+    "specs": [
+      {
+        "label": "Product Type",
+        "value": "PEM Hydrogen Electrolyzer Cell"
+      },
+      {
+        "label": "Technology",
+        "value": "Proton Exchange Membrane Electrolysis"
+      },
+      {
+        "label": "Hydrogen Production Capacity",
+        "value": "60 ml/min"
+      },
+      {
+        "label": "Available Models",
+        "value": "60 / 100 / 150 / 200 / 400 / 600 ml/min"
+      },
+      {
+        "label": "Electrolysis Medium",
+        "value": "Water"
+      },
+      {
+        "label": "Power Source",
+        "value": "Electric"
+      },
+      {
+        "label": "Installation Type",
+        "value": "Inline / Laboratory Setup"
+      },
+      {
+        "label": "Operating Temperature Range",
+        "value": "Approx. 5°C to 80°C"
+      },
+      {
+        "label": "Operating Pressure",
+        "value": "Approx. 0.1 MPa"
+      },
+      {
+        "label": "Recommended Water",
+        "value": "Purified / Deionized Water"
+      },
+      {
+        "label": "Maximum Recommended Water TDS",
+        "value": "50 ppm"
+      },
+      {
+        "label": "Internal Capacity",
+        "value": "Approx. 60 ml"
+      },
+      {
+        "label": "Approx. Dimensions",
+        "value": "10 × 8 × 12 cm"
+      },
+      {
+        "label": "Approx. Weight",
+        "value": "0.5 kg"
+      },
+      {
+        "label": "Membrane Type",
+        "value": "Proton Exchange Membrane"
+      },
+      {
+        "label": "Construction Material",
+        "value": "Engineering Plastic, Metal Alloy, Stainless Steel and PEM Membrane"
+      },
+      {
+        "label": "Hydrogen Outlet",
+        "value": "Provided"
+      },
+      {
+        "label": "Water Inlet",
+        "value": "Provided"
+      },
+      {
+        "label": "Design",
+        "value": "Compact and Durable"
+      },
+      {
+        "label": "Maintenance Requirement",
+        "value": "Low"
+      },
+      {
+        "label": "Applications",
+        "value": "PEM Fuel Cell Research, Hydrogen Generation Experiments, Water Electrolysis Research, Hydrogen Energy Research, Fuel Cell Testing, Electrochemistry Laboratories, Renewable Energy Research, Hydrogen Demonstration Systems, University Laboratories, Engineering Colleges, R&D Laboratories, Research Institutes, Hydrogen Production Studies, Educational Fuel Cell Systems, Small-Scale Hydrogen Generation, Electrolyzer Testing Systems"
+      },
+      {
+        "label": "Key Features",
+        "value": "Proton Exchange Membrane PEM electrolysis technology; High-efficiency hydrogen generation; Compact laboratory-scale construction; Stable and reliable hydrogen production; Easy installation and maintenance; Low-temperature water electrolysis; Leak-resistant connection ports; Suitable for continuous laboratory operation; Compatible with PEM fuel cell research setups; Multiple hydrogen generation capacities available; Suitable for educational and R&D applications; Compact and lightweight design"
+      }
+    ],
+    "price": 10500,
+    "note": "Carried over from https://www.metnmat.in/product-page/pem-hydrogen-electrolyzer-cell-60-ml-min (owner's own copy), 2026-10-27"
+  },
+  {
+    "name": "PiperION® Anion Exchange Ionomer Dispersion, 5 wt% – 20 mL",
+    "slug": "piperion-anion-exchange-ionomer-dispersion-5-wt-20-ml",
+    "categorySlug": "consumables",
+    "shortDesc": "PiperION® Anion Exchange Ionomer Dispersion is a specialized ion-conducting polymer dispersion manufactured from functionalized poly(aryl piperidinium) resin. Developed for electrochemical applications, this dispersion supports efficient anion transport within catalyst layers and membrane structures. It is suitable for preparing catalyst inks, catalyst slurries, self-supporting membranes, and mechanically reinforced membranes. Application suitability depends on the specific electrochemical system, operating conditions, and formulation requirements.",
+    "specs": [
+      {
+        "label": "Product Type",
+        "value": "Liquid polymer dispersion"
+      },
+      {
+        "label": "Ionomer Type",
+        "value": "Anion exchange ionomer"
+      },
+      {
+        "label": "Polymer Type",
+        "value": "Hydrocarbon-based poly(aryl piperidinium)"
+      },
+      {
+        "label": "Concentration",
+        "value": "5 wt%"
+      },
+      {
+        "label": "Functional Group",
+        "value": "Piperidinium cation"
+      },
+      {
+        "label": "Counter Ion",
+        "value": "Bicarbonate"
+      },
+      {
+        "label": "Solvent",
+        "value": "Organic solvent; specific composition not disclosed"
+      },
+      {
+        "label": "Physical Form",
+        "value": "Liquid dispersion"
+      },
+      {
+        "label": "Applications",
+        "value": "Anion exchange membrane fuel cells (AEMFCs), Water electrolysis and hydrogen generation research, Anode and cathode catalyst ink preparation, Electrode catalyst layer formulation, Self-supporting anion exchange membrane fabrication, Mechanically reinforced membrane manufacturing, Electrochemical energy conversion and research applications"
+      },
+      {
+        "label": "Key Features",
+        "value": "Anion Exchange Ionomer; Advanced Polymer Chemistry; 5 wt% Concentration; Piperidinium Functional Group; Bicarbonate Counter Ion; Catalyst Ink Formulation; Enhanced Ionic Conduction; Membrane Manufacturing; Electrochemical Applications"
+      }
+    ],
+    "price": 30000,
+    "note": "Carried over from https://www.metnmat.in/product-page/piperion-anion-exchange-dispersion-5-wt-20-ml (owner's own copy), 2026-10-27"
+  },
+  {
+    "name": "PTFE 40 mL Water Splitting Electrochemical Reactor – Three-Electrode System",
+    "slug": "ptfe-water-splitting-reactor-40-ml-three-electrode",
+    "categorySlug": "water-splitting-reactors",
+    "shortDesc": "PTFE water splitting reactor, 40 mL, three-electrode, for HER, OER and electrocatalyst screening. The main reactor body is manufactured from PTFE (Polytetrafluoroethylene), which provides an electrically insulating and chemically resistant construction suitable for laboratory electrochemical experiments with a wide range of aqueous electrolytes. Custom configurations available.",
+    "specs": [
+      {
+        "label": "Product Type",
+        "value": "Water Splitting Electrochemical Reactor"
+      },
+      {
+        "label": "Cell Material",
+        "value": "PTFE"
+      },
+      {
+        "label": "Electrolyte Capacity",
+        "value": "40 mL"
+      },
+      {
+        "label": "Electrochemical Configuration",
+        "value": "Three-Electrode System"
+      },
+      {
+        "label": "Working Electrode",
+        "value": "Application-Specific"
+      },
+      {
+        "label": "Counter Electrode",
+        "value": "Application-Specific"
+      },
+      {
+        "label": "Reference Electrode",
+        "value": "Application-Specific"
+      },
+      {
+        "label": "Electrode Ports",
+        "value": "Working / Counter / Reference"
+      },
+      {
+        "label": "Electrolyte Connection",
+        "value": "Inlet / Outlet"
+      },
+      {
+        "label": "Reactor Type",
+        "value": "Laboratory Electrochemical Reactor"
+      },
+      {
+        "label": "Assembly",
+        "value": "Modular PTFE Construction"
+      },
+      {
+        "label": "Instrument Compatibility",
+        "value": "Potentiostat / Galvanostat"
+      },
+      {
+        "label": "Primary Application",
+        "value": "Water Splitting & Electrocatalysis"
+      },
+      {
+        "label": "Customization",
+        "value": "Available"
+      },
+      {
+        "label": "Applications",
+        "value": "Hydrogen Evolution Reaction (HER), Oxygen Evolution Reaction (OER), Water electrolysis research, Electrocatalyst screening, HER catalyst evaluation, OER catalyst evaluation, Electrode material research, Electrochemical catalyst characterization, Electrolyte studies, Energy-conversion research, Hydrogen-production research, Oxygen-production research, Academic research and laboratory R&D"
+      },
+      {
+        "label": "Key Features",
+        "value": "40 mL electrolyte capacity; PTFE electrochemical reactor body; Three-electrode configuration; Dedicated WE / CE / RE connections; Electrolyte inlet and outlet; Chemically resistant construction; Electrically insulating reactor body; Suitable for aqueous electrochemical research; Compatible with potentiostat/galvanostat systems; Suitable for HER and OER research; Suitable for electrocatalyst screening; Compact laboratory-scale design; Custom configurations available"
+      }
+    ],
+    "price": 65000,
+    "note": "Carried over from https://www.metnmat.in/product-page/ptfe-40ml-water-splitting-electrochemical-reactor-three-electrode-system (owner's own copy), 2026-10-27"
+  }
+]

@@ -1,0 +1,1429 @@
+[
+ {
+  "collection": "products",
+  "slug": "pfsa-proton-exchange-membrane-300-mm-x-300-mm",
+  "set": {
+   "shortDesc": "PFSA Proton Exchange Membrane, constructed from a perfluorosulfonic acid (PFSA)/polytetrafluoroethylene (PTFE) copolymer, functions as a cation-conducting solid electrolyte in a broad spectrum of electrochemical applications."
+  },
+  "expect": {
+   "shortDesc": "FSA Proton Exchange Membrane, constructed from a perfluorosulfonic acid (PFSA)/polytetrafluoroethylene (PTFE) copolymer, function as cation-conducting solid electrolytes in a broad spectrum of electrochemical applications."
+  },
+  "note": "first letter was cut off"
+ },
+ {
+  "collection": "products",
+  "slug": "piperion-aem",
+  "set": {
+   "shortDesc": "PiperION® AEM (20 µm, self-supporting) is a high-performance anion exchange membrane (AEM) designed for advanced electrochemical applications."
+  },
+  "expect": {
+   "shortDesc": "ION® AEM MembraneThickness: 20 µmStructure: Self-SupportingProduct DescriptionPiperION® AEM (20 µm, Self-Supporting) is a high-performance Anion Exchange Membrane (AEM) designed for advanced electrochemical applications."
+  },
+  "note": "heading text had been run into the description"
+ },
+ {
+  "collection": "products",
+  "slug": "100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell",
+  "set": {
+   "shortDesc": "The 100 mL Water-Jacketed H-Cell is a laboratory H-type electrochemical cell designed for controlled three-electrode electrochemical experiments."
+  },
+  "expect": {
+   "shortDesc": "L Water-Jacketed H-Cell The 100 mL Water-Jacketed H-Cell is a laboratory H-type electrochemical cell designed for controlled three-electrode electrochemical experiments."
+  },
+  "note": "stray fragment at the start"
+ },
+ {
+  "collection": "products",
+  "slug": "ptfe-photoelectrochemical-cell-for-three-electrode-quantum-efficiency-ipce",
+  "set": {
+   "shortDesc": "The PTFE Photoelectrochemical Cell is a compact three-electrode cell designed for laboratory photoelectrochemical and optical measurements, including quantum efficiency and IPCE testing."
+  },
+  "expect": {
+   "shortDesc": "FE Photoelectrochemical Cell for Three-Electrode Quantum Efficiency & IPCE Testing The PTFE Photoelectrochemical Cell is a compact three-electrode cell designed for laboratory photoelectrochemical and optical measurements."
+  },
+  "note": "cut-off heading at the start"
+ },
+ {
+  "collection": "products",
+  "slug": "microbial-fuel-cell-stack-ma-mfc-5",
+  "set": {
+   "shortDesc": "The METNMAT Microbial Fuel Cell Stack (MA-MFC-5) is a modular research platform designed for studying bioelectrochemical systems, microbial fuel cells (MFCs), and wastewater-to-energy conversion technologies."
+  },
+  "expect": {
+   "shortDesc": "Microbial Fuel Cell Stack (MA-MFC-5) Description The METNMAT Microbial Fuel Cell Stack (MA-MFC-5) is a modular research platform designed for studying bioelectrochemical systems, microbial fuel cells (MFCs), and wastewater-to-energy conversion technologies."
+  },
+  "note": "heading words had been run into the description"
+ },
+ {
+  "collection": "products",
+  "slug": "fumion-faa-3-solut-10-anion-exchange-ionomer-dispersion",
+  "set": {
+   "shortDesc": "Fumion® FAA-3-SOLUT-10 Anion Exchange Ionomer Dispersion is a high-performance anion exchange polymer (AEM) dispersion developed for advanced electrochemical research, alkaline water electrolysis, CO₂ electrolysis, fuel cells, membrane electrode assembly (MEA) fabrication, and catalyst ink preparation. It serves as an ion-conducting binder for catalyst particles, anion exchange membranes and gas diffusion layers (GDLs). The dispersion is supplied as a ready-to-use brown transparent solution in N-Methyl-2-Pyrrolidone (NMP)."
+  },
+  "expect": {
+   "shortDesc": "AEM) dispersion developed for advanced electrochemical research, alkaline water electrolysis, CO₂ electrolysis, fuel cells, membrane electrode assembly (MEA) fabrication, and catalyst ink preparation."
+  },
+  "note": "description began mid-sentence; restored from the metnmat.in page"
+ },
+ {
+  "collection": "products",
+  "slug": "l-shaped-glassy-carbon-electrode-peek-rod-3mm",
+  "set": {
+   "shortDesc": "L-shaped glassy carbon disk working electrode with a Ø3 mm disk on a PEEK rod (body Ø6 × 80 mm) and a Ø2 × 20 mm conductive copper rod. For voltammetry and electrocatalysis research."
+  },
+  "expect": {
+   "shortDesc": "L-Shaped Glassy Carbon Electrode PEEK Rod Ø3mm — body material PTFE, body diameter 6mm, body length 80mmL-rod diameter:12mmL-rod length:12mm. Supplied by METNMAT for laboratory electrochemical research."
+  },
+  "note": "garbled run-together text; PEEK per the product name"
+ },
+ {
+  "collection": "products",
+  "slug": "h-cell-electrochemical-cell",
+  "set": {
+   "shortDesc": "Two-compartment gas-tight H-cell, 50 mL per side, with PTFE lids, separator fitting and gas purge ports for electrochemical studies."
+  },
+  "expect": {
+   "shortDesc": "H-Cell Electrochemical Cell — supplied by METNMAT for laboratory electrochemical research."
+  },
+  "note": "boilerplate replaced with the metnmat.in description"
+ },
+ {
+  "collection": "products",
+  "slug": "peristaltic-pump",
+  "set": {
+   "shortDesc": "Stepper-driven peristaltic pump, 24 V, 0–20 mL/min, with LCD, time/volume/cycle modes and RS485 control, for electrolyte transfer and dispensing."
+  },
+  "expect": {
+   "shortDesc": "LCD, ≤47dB noise, time/volume/cycle modes, RS485Motor: High-precision stepper."
+  },
+  "note": "boilerplate replaced with the metnmat.in description"
+ },
+ {
+  "collection": "products",
+  "slug": "noble-metal-plate-platinum-20-20-0-1mm",
+  "set": {
+   "shortDesc": "Platinum plate, 20 × 20 × 0.1 mm, for counter and working electrodes in electrochemical cells. Made to order."
+  },
+  "expect": {
+   "shortDesc": "Fits all major brands of potentiostats• This is a customized item, invalid for refund or exchange."
+  },
+  "note": "boilerplate replaced with the metnmat.in description"
+ },
+ {
+  "collection": "products",
+  "slug": "noble-metal-plate-platinum-30-30-0-1mm",
+  "set": {
+   "shortDesc": "Platinum plate, 30 × 30 × 0.1 mm, for counter and working electrodes in electrochemical cells. Made to order."
+  },
+  "expect": {
+   "shortDesc": "Fits all major brands of potentiostats• This is a customized item, invalid for refund or exchange."
+  },
+  "note": "boilerplate replaced with the metnmat.in description"
+ },
+ {
+  "collection": "products",
+  "slug": "lengthened-saturated-calomel-electrode-hg-hg2cl2-6-95mm",
+  "set": {
+   "shortDesc": "Lengthened saturated calomel reference electrode (Hg/Hg2Cl2), Ø6 × 95 mm, for taller cells. Fits all major potentiostats."
+  },
+  "expect": {
+   "shortDesc": "Lengthened Saturated Calomel Electrode Hg/Hg2Cl2 Ø6 × 95mm — supplied by METNMAT for laboratory electrochemical research."
+  },
+  "note": "boilerplate replaced with the metnmat.in description"
+ },
+ {
+  "collection": "products",
+  "slug": "pfsa-proton-exchange-membrane-300-mm-x-300-mm",
+  "set": {
+   "specs": [
+    {
+     "label": "Material",
+     "value": "PFSA/PTFE copolymer"
+    },
+    {
+     "label": "Size",
+     "value": "300 × 300 mm"
+    },
+    {
+     "label": "Applications",
+     "value": "Water electrolyzers, Hydrogen fuel cells, PEM-based research reactors, Electrochemical CO₂ reduction systems, Redox flow batteries, Photoelectrochemical devices"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "piperion-aem",
+  "set": {
+   "specs": [
+    {
+     "label": "Membrane Type",
+     "value": "Anion Exchange Membrane (AEM)"
+    },
+    {
+     "label": "Thickness",
+     "value": "20 µm"
+    },
+    {
+     "label": "Structure",
+     "value": "Self-Supporting"
+    },
+    {
+     "label": "Ion Conducting Species",
+     "value": "Hydroxide (OH⁻)"
+    },
+    {
+     "label": "Appearance",
+     "value": "Transparent to Light Yellow Film"
+    },
+    {
+     "label": "Ionic Resistance",
+     "value": "Low"
+    },
+    {
+     "label": "Conductivity",
+     "value": "High Hydroxide Ion Conductivity"
+    },
+    {
+     "label": "Chemical Stability",
+     "value": "Excellent in Alkaline Environment"
+    },
+    {
+     "label": "Applications",
+     "value": "AEM Water Electrolysis, AEM Fuel Cells, CO₂ Electrolysis, Electrodialysis"
+    },
+    {
+     "label": "Key Features",
+     "value": "Ultra-thin 20 µm membrane; Self-supporting structure; High hydroxide ion conductivity; Low ionic resistance; Excellent alkaline chemical stability; Good mechanical strength; Easy handling and assembly; Suitable for laboratory and industrial R&D; Designed for advanced hydrogen and electrochemical technologies"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "flow-electrolyzer-for-carbon-dioxide-reduction-peek-body",
+  "set": {
+   "specs": [
+    {
+     "label": "Body Material",
+     "value": "PEEK"
+    },
+    {
+     "label": "Optional Materials Available",
+     "value": "PEEK, PMMA (Transparent Acrylic), PVDF"
+    },
+    {
+     "label": "Applications",
+     "value": "Carbon Dioxide Reduction Reaction (CO₂RR), CO₂ Electrolysis, Carbon Capture & Utilization (CCU), Electrochemical CO₂ Conversion, Catalyst Screening, Electrocatalysis Research, Membrane Performance Evaluation, Gas Diffusion Electrode Research, Renewable Energy Research, Green Hydrogen Production, Fuel Cell Research, Electrochemical Engineering, Chemical Engineering, Material Science, Nanotechnology Research"
+    },
+    {
+     "label": "Key Features",
+     "value": "Advanced gas diffusion flow field design; Reduced mass transport limitations; High Faradaic efficiency testing; Low internal resistance; Precision leak-proof sealing; Uniform electrolyte circulation; Efficient CO₂ gas utilization; Easy membrane and electrode replacement; Compatible with continuous-flow electrolysis systems; Modular design for catalyst and membrane studies"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "flow-electrolyzer-for-carbon-dioxide-reduction-ptfe-body",
+  "set": {
+   "specs": [
+    {
+     "label": "Body Material",
+     "value": "PTFE"
+    },
+    {
+     "label": "Optional Materials Available",
+     "value": "PEEK, PMMA (Transparent Acrylic), PVDF"
+    },
+    {
+     "label": "Applications",
+     "value": "Carbon Dioxide Reduction Reaction (CO₂RR), CO₂ Electrolysis, Carbon Capture & Utilization (CCU), Electrochemical CO₂ Conversion, Catalyst Screening, Electrocatalysis Research, Membrane Performance Evaluation, Gas Diffusion Electrode Research, Renewable Energy Research, Green Hydrogen Production, Fuel Cell Research, Electrochemical Engineering, Chemical Engineering, Material Science, Nanotechnology Research"
+    },
+    {
+     "label": "Key Features",
+     "value": "Advanced gas diffusion flow field design; Reduced mass transport limitations; High Faradaic efficiency testing; Low internal resistance; Precision leak-proof sealing; Uniform electrolyte circulation; Efficient CO₂ gas utilization; Easy membrane and electrode replacement; Compatible with continuous-flow electrolysis systems; Modular design for catalyst and membrane studies"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "microbial-fuel-cell-mfc-reactor",
+  "set": {
+   "specs": [
+    {
+     "label": "Applications",
+     "value": "Microbial Fuel Cell Research, Bioelectricity Generation, Wastewater Treatment Research, Industrial Effluent Treatment, Bioelectrochemical Systems (BES), Microbial Electrolysis Cells (MEC), Environmental Biotechnology, Biosensor Development, Electrogenic Bacteria Studies, Carbon Neutral Energy Research, Renewable Energy, Environmental Engineering, Chemical Engineering, Material Science, Nanotechnology Research"
+    },
+    {
+     "label": "Key Features",
+     "value": "Dual-chamber design for anodic and cathodic reactions; High optical transparency for biofilm observation; Efficient ion transport through membrane separator; Leak-proof sealing system; Easy electrode replacement; Simple assembly and cleaning; Suitable for continuous and batch experiments; Compatible with standard electrochemical workstations and data acquisition systems; Customizable chamber sizes and electrode configurations"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "transparent-water-splitting-reactor",
+  "set": {
+   "specs": [
+    {
+     "label": "Applications",
+     "value": "Water Electrolysis, Green Hydrogen Research, Hydrogen Evolution Reaction (HER), Oxygen Evolution Reaction (OER), Electrocatalyst Evaluation, Electrochemical Catalyst Screening, Membrane Research, Electrochemical Energy Conversion, Renewable Energy Research, Fuel Cell Research, Material Science, Nanotechnology, Chemical Engineering Research, Electrochemical Education & Demonstration"
+    },
+    {
+     "label": "Key Features",
+     "value": "High optical transparency for in-situ observation; Independent anodic and cathodic chambers; Efficient gas collection system; Excellent chemical resistance; Precision leak-proof sealing; Modular and easy-to-clean design; Compatible with various electrode and membrane configurations; Suitable for continuous laboratory research and catalyst testing"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "in-situ-raman-electrochemical-cell-for-operando-raman-spectroscopy",
+  "set": {
+   "specs": [
+    {
+     "label": "Product Type",
+     "value": "In Situ Raman Electrochemical Cell"
+    },
+    {
+     "label": "Application",
+     "value": "In Situ / Operando Raman Spectroscopy"
+    },
+    {
+     "label": "Cell Configuration",
+     "value": "Two-Compartment Electrochemical Cell"
+    },
+    {
+     "label": "Anode Chamber",
+     "value": "Provided"
+    },
+    {
+     "label": "Cathode Chamber",
+     "value": "Provided"
+    },
+    {
+     "label": "Membrane",
+     "value": "Membrane placement provided"
+    },
+    {
+     "label": "Optical Window",
+     "value": "Quartz"
+    },
+    {
+     "label": "Quartz Window Diameter",
+     "value": "Ø35 mm"
+    },
+    {
+     "label": "Electrolyte Connections",
+     "value": "Anolyte / Catholyte Inlet"
+    },
+    {
+     "label": "Gas Connection",
+     "value": "Gas Inlet"
+    },
+    {
+     "label": "Reference Electrode",
+     "value": "Dedicated RE Port"
+    },
+    {
+     "label": "Counter Electrode",
+     "value": "Dedicated CE Port"
+    },
+    {
+     "label": "Overall Dimensions",
+     "value": "105 × 75 mm"
+    },
+    {
+     "label": "Customization",
+     "value": "Available"
+    },
+    {
+     "label": "Applications",
+     "value": "In Situ Raman Spectroscopy, Operando Raman Electrochemistry, Electrochemical Reaction Monitoring, Electrocatalysis Research, CO₂ Reduction Reaction (CO₂RR), Water Electrolysis, HER & OER Studies, Catalyst Characterization, Electrode/Electrolyte Interface Studies, Energy Conversion Research"
+    },
+    {
+     "label": "Key Features",
+     "value": "Designed for in situ / operando Raman spectroscopy; Quartz optical window for Raman laser access; Separate anode and cathode chambers; Membrane-based two-compartment configuration; Integrated electrolyte flow channels; Gas inlet for controlled gas delivery; Dedicated reference electrode port; Dedicated counter electrode port; Suitable for real-time electrochemical characterization; Compact laboratory-scale design; Custom configurations available"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "5-cm2-research-scale-electrolyzer-cell-graphite-nickel-serpentine-flow-field",
+  "set": {
+   "specs": [
+    {
+     "label": "Product Type",
+     "value": "Research-Scale Electrolyzer Cell"
+    },
+    {
+     "label": "Usable Anode Area",
+     "value": "5 cm²"
+    },
+    {
+     "label": "Usable Cathode Area",
+     "value": "5 cm²"
+    },
+    {
+     "label": "Cathode Flow Field",
+     "value": "Graphite"
+    },
+    {
+     "label": "Anode Flow Field",
+     "value": "Nickel"
+    },
+    {
+     "label": "Flow Channel",
+     "value": "Serpentine"
+    },
+    {
+     "label": "End Plates",
+     "value": "SS316 Stainless Steel"
+    },
+    {
+     "label": "Current Collectors",
+     "value": "Gold-Coated Copper"
+    },
+    {
+     "label": "Assembly",
+     "value": "Compression-Based"
+    },
+    {
+     "label": "Inlet/Outlet Fittings",
+     "value": "1/16\" or 1/8\" Compression Fittings"
+    },
+    {
+     "label": "Pump Compatibility",
+     "value": "Peristaltic Pump"
+    },
+    {
+     "label": "Membrane Compatibility",
+     "value": "BPM / AEM / Nafion"
+    },
+    {
+     "label": "Operation",
+     "value": "Continuous Electrochemical Flow"
+    },
+    {
+     "label": "Application",
+     "value": "Electrolysis & Electrocatalysis"
+    },
+    {
+     "label": "Applications",
+     "value": "Water Electrolysis, Hydrogen Evolution Reaction (HER), Oxygen Evolution Reaction (OER), CO₂ Electrolysis, CO₂ Reduction Reaction (CO₂RR), Electrocatalyst Testing, Catalyst Screening, Membrane Evaluation, AEM Electrolysis, BPM Electrolysis, PEM/Nafion-Based Electrochemical Research, Electrochemical Material Research, Laboratory-Scale Electrolyzer Testing"
+    },
+    {
+     "label": "Key Features",
+     "value": "5 cm² usable anode area; 5 cm² usable cathode area; Graphite cathode flow field; Nickel anode flow field; Serpentine flow-channel design; SS316 stainless-steel end plates; Gold-coated copper current collectors; Compression-based cell assembly; Leak-resistant design for continuous operation; Compatible with peristaltic pump operation; 1/16\" or 1/8\" compression fittings; Compatible with BPM, AEM and Nafion membranes; Suitable for laboratory-scale electrolysis and electrocatalysis; Custom configurations available"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "electrowinning-system-pp-electrochemical-cell-with-ss316-titanium-electrodes",
+  "set": {
+   "specs": [
+    {
+     "label": "Product Type",
+     "value": "Electrowinning System"
+    },
+    {
+     "label": "Cell Material",
+     "value": "Polypropylene (PP)"
+    },
+    {
+     "label": "Outer Frame",
+     "value": "Stainless Steel"
+    },
+    {
+     "label": "Electrode Configuration",
+     "value": "6 Pairs"
+    },
+    {
+     "label": "Number of Electrode Pairs",
+     "value": "6"
+    },
+    {
+     "label": "Electrode Materials",
+     "value": "SS316 Stainless Steel / Titanium"
+    },
+    {
+     "label": "Operation",
+     "value": "DC Electrochemical"
+    },
+    {
+     "label": "Application",
+     "value": "Electrowinning & Electrochemical Deposition"
+    },
+    {
+     "label": "Configuration",
+     "value": "Multi-Electrode System"
+    },
+    {
+     "label": "Customization",
+     "value": "Available"
+    },
+    {
+     "label": "Applications",
+     "value": "Electrowinning, Metal Recovery, Electrochemical Metal Deposition, Hydrometallurgy Research, Electrochemical Process Development, Metal Ion Recovery, Electrolyte and Electrode Studies, Wastewater Metal Recovery Research, Electrochemical Engineering, Laboratory-Scale Process Optimization"
+    },
+    {
+     "label": "Key Features",
+     "value": "6 pairs of electrodes; PP electrochemical cell body; Stainless-steel outer support frame; SS316 stainless steel electrodes; Titanium electrodes; Multi-electrode configuration for electrowinning research; Suitable for laboratory-scale metal recovery studies; Suitable for electrochemical deposition experiments; Designed for controlled DC electrochemical operation; Rugged and reusable laboratory construction; Custom electrode configurations available"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "gas-diffusion-layer-gdl-carbon-paper-for-co2-electrolysis-flow-cell",
+  "set": {
+   "specs": [
+    {
+     "label": "Material Type",
+     "value": "Carbon paper"
+    },
+    {
+     "label": "Thickness",
+     "value": "270 ± 15 µm"
+    },
+    {
+     "label": "Air Permeability",
+     "value": "0.2 – 0.4 cm³/cm²·s"
+    },
+    {
+     "label": "Areal Weight",
+     "value": "125 ± 5 g/m²"
+    },
+    {
+     "label": "Compressibility",
+     "value": "~10% @ 1 MPa"
+    },
+    {
+     "label": "Electrical Resistivity (Through-plane)",
+     "value": "< 11 mΩ·cm²"
+    },
+    {
+     "label": "In-Plane Pressure Drop",
+     "value": "0.5 bar @ 1 MPa"
+    },
+    {
+     "label": "PTFE Treatment",
+     "value": "5 – 10%"
+    },
+    {
+     "label": "Microporous Layer (MPL)",
+     "value": "Yes, one side"
+    },
+    {
+     "label": "Applications",
+     "value": "CO₂ reduction flow cells, water electrolysis, fuel cells, gas diffusion electrodes"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs; carbon-paper column of the metnmat.in data table"
+ },
+ {
+  "collection": "products",
+  "slug": "fumion-faa-3-solut-10-anion-exchange-ionomer-dispersion",
+  "set": {
+   "specs": [
+    {
+     "label": "Ionomer Type",
+     "value": "Anion exchange polymer (AEM) dispersion"
+    },
+    {
+     "label": "Solvent",
+     "value": "N-Methyl-2-Pyrrolidone (NMP)"
+    },
+    {
+     "label": "Appearance",
+     "value": "Brown transparent solution"
+    },
+    {
+     "label": "Applications",
+     "value": "Alkaline water electrolysis, CO₂ electrolysis, fuel cells, MEA fabrication, catalyst ink preparation"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "h-cell-electrochemical-cell",
+  "set": {
+   "specs": [
+    {
+     "label": "Cell Type",
+     "value": "Gas-tight two-compartment H-cell"
+    },
+    {
+     "label": "Chamber Volume",
+     "value": "50 mL per chamber"
+    },
+    {
+     "label": "Lid Material",
+     "value": "PTFE"
+    },
+    {
+     "label": "Separator",
+     "value": "Separator fitting between chambers"
+    },
+    {
+     "label": "Gas Ports",
+     "value": "Gas purge ports"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "peristaltic-pump",
+  "set": {
+   "specs": [
+    {
+     "label": "Drive",
+     "value": "Stepper motor"
+    },
+    {
+     "label": "Operating Voltage",
+     "value": "24 V"
+    },
+    {
+     "label": "Flow Rate",
+     "value": "0 – 20 mL/min"
+    },
+    {
+     "label": "Display",
+     "value": "LCD"
+    },
+    {
+     "label": "Operating Modes",
+     "value": "Time, volume and cycle modes"
+    },
+    {
+     "label": "Communication",
+     "value": "RS485"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "noble-metal-plate-platinum-20-20-0-1mm",
+  "set": {
+   "specs": [
+    {
+     "label": "Material",
+     "value": "Platinum (noble metal) plate"
+    },
+    {
+     "label": "Dimensions",
+     "value": "20 × 20 × 0.1 mm"
+    },
+    {
+     "label": "Use",
+     "value": "Counter and working electrodes in electrochemical cells"
+    },
+    {
+     "label": "Supply",
+     "value": "Made to order"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "noble-metal-plate-platinum-30-30-0-1mm",
+  "set": {
+   "specs": [
+    {
+     "label": "Material",
+     "value": "Platinum (noble metal) plate"
+    },
+    {
+     "label": "Dimensions",
+     "value": "30 × 30 × 0.1 mm"
+    },
+    {
+     "label": "Use",
+     "value": "Counter and working electrodes in electrochemical cells"
+    },
+    {
+     "label": "Supply",
+     "value": "Made to order"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "lengthened-saturated-calomel-electrode-hg-hg2cl2-6-95mm",
+  "set": {
+   "specs": [
+    {
+     "label": "Electrode Type",
+     "value": "Saturated calomel (Hg/Hg2Cl2)"
+    },
+    {
+     "label": "Dimensions",
+     "value": "Ø6 × 95 mm"
+    },
+    {
+     "label": "Compatibility",
+     "value": "Fits all major potentiostats"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Supplied By",
+     "value": "METNMAT"
+    },
+    {
+     "label": "Application",
+     "value": "Laboratory electrochemical research"
+    }
+   ]
+  },
+  "note": "placeholder specs"
+ },
+ {
+  "collection": "products",
+  "slug": "perfluorosulfonic-acid-pfsa-proton-exchange-membrane-n212-pem",
+  "set": {
+   "specs": [
+    {
+     "label": "Body / Material",
+     "value": "Perfluorosulfonic acid (PFSA)"
+    },
+    {
+     "label": "Type",
+     "value": "Proton Exchange Membrane"
+    },
+    {
+     "label": "Ionic Form",
+     "value": "H⁺ (Proton form)"
+    },
+    {
+     "label": "Thickness",
+     "value": "~50.8 μm (0.002 inch)"
+    },
+    {
+     "label": "Density",
+     "value": "~2.0 g/cm³"
+    },
+    {
+     "label": "Equivalent Weight (EW)",
+     "value": "~1100 g/mol"
+    },
+    {
+     "label": "Ion Exchange Capacity (IEC)",
+     "value": "~0.91 meq/g (dry)"
+    },
+    {
+     "label": "Water Uptake",
+     "value": "~22% (at 100% RH)"
+    },
+    {
+     "label": "Proton Conductivity",
+     "value": "~0.10 S/cm (at 100% RH and 30–80°C)"
+    },
+    {
+     "label": "Area Resistance",
+     "value": "~0.25–0.35 Ω·cm²"
+    },
+    {
+     "label": "Tensile Strength",
+     "value": ">30 MPa (dry); lower when hydrated"
+    },
+    {
+     "label": "Swelling",
+     "value": "10–15% in thickness when fully hydrated"
+    },
+    {
+     "label": "Thermal Stability",
+     "value": "Up to ~190 °C (decomposes >250°C)"
+    },
+    {
+     "label": "pH Stability Range",
+     "value": "0 – 4 (acidic conditions preferred)"
+    },
+    {
+     "label": "Water Permeability",
+     "value": "~2.0 × 10⁻⁶ cm²/s"
+    },
+    {
+     "label": "Hydrogen Permeability",
+     "value": "~2.5 × 10⁻⁶ cm³·cm/cm²·s·cmHg"
+    },
+    {
+     "label": "Applications",
+     "value": "PEM Fuel Cells (portable & stationary)\r, PEM Water Electrolyzers\r, Hydrogen Pumps\r, Electrochemical Sensors\r, CO₂ Reduction & Electrolyzers\r, Redox Flow Batteries"
+    },
+    {
+     "label": "In the box",
+     "value": "1 × PFSA N212 membrane (100 × 100 mm)"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Body / Material",
+     "value": "Perfluorosulfonic acid (PFSA)"
+    },
+    {
+     "label": "Type",
+     "value": "Proton Exchange Membrane"
+    },
+    {
+     "label": "Ionic Form",
+     "value": "H⁺ (Proton form)"
+    },
+    {
+     "label": "Thickness",
+     "value": "~183 μm (0.007 inch)"
+    },
+    {
+     "label": "Density",
+     "value": "~2.0 g/cm³"
+    },
+    {
+     "label": "Equivalent Weight (EW)",
+     "value": "~1100 g/mol"
+    },
+    {
+     "label": "Ion Exchange Capacity (IEC)",
+     "value": "~0.91 meq/g (dry)"
+    },
+    {
+     "label": "Water Uptake",
+     "value": "~22% (at 100% RH)"
+    },
+    {
+     "label": "Proton Conductivity",
+     "value": "~0.10 S/cm (at 100% RH and 30–80°C)"
+    },
+    {
+     "label": "Area Resistance",
+     "value": "~0.25–0.35 Ω·cm²"
+    },
+    {
+     "label": "Tensile Strength",
+     "value": ">30 MPa (dry); lower when hydrated"
+    },
+    {
+     "label": "Swelling",
+     "value": "10–15% in thickness when fully hydrated"
+    },
+    {
+     "label": "Thermal Stability",
+     "value": "Up to ~190 °C (decomposes >250°C)"
+    },
+    {
+     "label": "pH Stability Range",
+     "value": "0 – 4 (acidic conditions preferred)"
+    },
+    {
+     "label": "Water Permeability",
+     "value": "~2.0 × 10⁻⁶ cm²/s"
+    },
+    {
+     "label": "Hydrogen Permeability",
+     "value": "~2.5 × 10⁻⁶ cm³·cm/cm²·s·cmHg"
+    },
+    {
+     "label": "Applications",
+     "value": "PEM Fuel Cells (portable & stationary)\r, PEM Water Electrolyzers\r, Hydrogen Pumps\r, Electrochemical Sensors\r, CO₂ Reduction & Electrolyzers\r, Redox Flow Batteries"
+    },
+    {
+     "label": "In the box",
+     "value": "1 × PFSA N212 membrane (100 × 100 mm)"
+    }
+   ]
+  },
+  "note": "thickness was N117's (~183 µm); N212 is the 2-mil (50.8 µm) grade"
+ },
+ {
+  "collection": "products",
+  "slug": "l-shaped-glassy-carbon-electrode-peek-rod-3mm",
+  "set": {
+   "specs": [
+    {
+     "label": "Disk Diameter",
+     "value": "3 mm"
+    },
+    {
+     "label": "Disk Material",
+     "value": "Glassy carbon"
+    },
+    {
+     "label": "Body Material",
+     "value": "PEEK"
+    },
+    {
+     "label": "Body Diameter",
+     "value": "6 mm"
+    },
+    {
+     "label": "Body Length",
+     "value": "80 mm"
+    },
+    {
+     "label": "Conductive Rod",
+     "value": "Copper, Ø2 × 20 mm"
+    },
+    {
+     "label": "L-Rod Diameter",
+     "value": "12 mm"
+    },
+    {
+     "label": "L-Rod Length",
+     "value": "12 mm"
+    }
+   ]
+  },
+  "expect": {
+   "specs": [
+    {
+     "label": "Disk Diameter",
+     "value": "3mmconductive copper rod: Ø2*20 mm"
+    },
+    {
+     "label": "Body Material",
+     "value": "PTFE"
+    },
+    {
+     "label": "Body Diameter",
+     "value": "6mm"
+    },
+    {
+     "label": "Body Length",
+     "value": "80mmL-rod diameter:12mmL-rod length:12mm"
+    }
+   ]
+  },
+  "note": "run-together values split; body PEEK per the product name — please confirm"
+ },
+ {
+  "collection": "products",
+  "slug": "fumasep-faa-3-20-anion-exchange-membrane",
+  "set": {
+   "brand": "FUMATECH"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "fumasep-faa-3-50-anion-exchange-membrane",
+  "set": {
+   "brand": "FUMATECH"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "fumasep-fab-pk-130-anion-exchange-membrane",
+  "set": {
+   "brand": "FUMATECH"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "fumasep-fbm-bipolar-ion-exchange-membrane",
+  "set": {
+   "brand": "FUMATECH"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "fumasep-fs-9100-pk-cation-exchange-membrane",
+  "set": {
+   "brand": "FUMATECH"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "fumion-faa-3-solut-10-anion-exchange-ionomer-dispersion",
+  "set": {
+   "brand": "FUMATECH"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "sustainion-x37-50-grade-rt-anion-exchange-membrane-aem",
+  "set": {
+   "brand": "Dioxide Materials"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "sustainion-x37-fa-anion-exchange-membrane-aem",
+  "set": {
+   "brand": "Dioxide Materials"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "piperion-aem",
+  "set": {
+   "brand": "Versogen"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "compact-peristaltic-pump-knob-control-41-5-ml-min",
+  "set": {
+   "brand": "Kamoer"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "compact-peristaltic-pump-knob-control-65-ml-min",
+  "set": {
+   "brand": "Kamoer"
+  },
+  "expect": {
+   "brand": "METNMAT"
+  },
+  "note": "third-party product: brand is the manufacturer, not METNMAT"
+ },
+ {
+  "collection": "products",
+  "slug": "piperion-anion-exchange-ionomer-dispersion-5-wt-20-ml",
+  "set": {
+   "brand": "Versogen"
+  },
+  "note": "new product created from metnmat.in; PiperION is Versogen's"
+ },
+ {
+  "collection": "products",
+  "slug": "test",
+  "set": {
+   "noIndex": true,
+   "_status": "draft"
+  },
+  "expect": {
+   "_status": "published"
+  },
+  "note": "test item (₹54) was live in Water-Splitting Reactors; unpublished, not deleted"
+ },
+ {
+  "collection": "products",
+  "slug": "h-cell-electrochemical-cell",
+  "categorySlug": "h-cell",
+  "note": "H-Cell category existed but was empty"
+ },
+ {
+  "collection": "products",
+  "slug": "100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell",
+  "categorySlug": "h-cell",
+  "note": "H-Cell category existed but was empty"
+ },
+ {
+  "collection": "categories",
+  "slug": "electrodes",
+  "fillIfEmpty": {
+   "blurb": "Working, counter and reference electrodes: glassy carbon, gold, platinum, graphite, Ag/AgCl, Hg/HgO and calomel, in glass, PTFE and PEEK bodies."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "working-electrodes",
+  "fillIfEmpty": {
+   "blurb": "Glassy carbon, gold and platinum disk working electrodes, straight and L-shaped, in PTFE, PCTFE and PEEK bodies, for voltammetry and electrocatalysis."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "counter-electrodes",
+  "fillIfEmpty": {
+   "blurb": "Platinum sheet, mesh, wire, ring and spiral counter electrodes, graphite rod and plate electrodes, and gold wire rings for electrochemical cells."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "reference-electrodes",
+  "fillIfEmpty": {
+   "blurb": "Ag/AgCl, Hg/HgO, saturated calomel, mercurous sulfate and non-aqueous Ag/Ag+ reference electrodes in glass, PTFE and PEEK bodies, in several sizes."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "electrode-holders",
+  "fillIfEmpty": {
+   "blurb": "Replaceable PTFE and PEEK electrode holders for glassy carbon, platinum, titanium, copper and sheet electrodes, with gold-plated or steel clips."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "membranes",
+  "fillIfEmpty": {
+   "blurb": "Ion exchange membranes for electrolyzers, fuel cells and CO2 electrolysis: PFSA proton exchange, anion exchange, cation exchange and bipolar membranes."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "pem-membranes",
+  "fillIfEmpty": {
+   "blurb": "PFSA proton exchange membranes N115, N117, N212 and 300 × 300 mm sheets for PEM fuel cells, water electrolyzers and flow batteries."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "aem-membranes",
+  "fillIfEmpty": {
+   "blurb": "Anion exchange membranes for AEM water electrolysis, alkaline fuel cells and CO2 electrolysis: Sustainion, PiperION, Fumasep and PVP membranes."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "cem-membranes",
+  "fillIfEmpty": {
+   "blurb": "Cation exchange membranes for electrochemical cells, including the PK-reinforced perfluorinated Fumasep FS-9100-PK."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "bipolar-membranes",
+  "fillIfEmpty": {
+   "blurb": "Bipolar membranes that split water into H+ and OH- for in-situ acid and base generation and bipolar membrane electrolysis: Fumasep FBM."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "reactor-cell",
+  "fillIfEmpty": {
+   "blurb": "Electrochemical cells and reactors for lab research: H-cells, jacketed and single-chamber cells, flow cells, electrolyzers, fuel cells and battery cells."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "h-cell",
+  "fillIfEmpty": {
+   "blurb": "H-type dual-chamber electrochemical cells, 30 + 30 mL to 100 + 100 mL and water-jacketed, for membrane-separated HER, OER and CO2RR studies."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "water-splitting-reactors",
+  "fillIfEmpty": {
+   "blurb": "Water splitting reactors and electrolyzers for HER and OER research: zero-gap and PEM/AEM electrolyzer hardware, PMMA and PTFE cells, PEM H2 generators."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "co2-electrolysis",
+  "fillIfEmpty": {
+   "blurb": "CO2 reduction flow cells and electrolyzers: zero-gap MEA electrolyzers, gas diffusion flow cells in PTFE, PEEK and acrylic, and in-situ Raman cells."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "photo-ec-reactors",
+  "fillIfEmpty": {
+   "blurb": "Photoelectrochemical reactors for solar water splitting: PTFE PEC cells for IPCE, PV-biased PEC cells and photocatalytic panel reactors."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "fuel-cells",
+  "fillIfEmpty": {
+   "blurb": "Fuel cell hardware and reactors: 5 cm² PEM fuel cell hardware, microbial fuel cell reactors and stacks, and vanadium flow cell reactors."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "battery-reactors",
+  "fillIfEmpty": {
+   "blurb": "Battery test cells: Swagelok-type two-electrode cells and fixtures in PEEK and PTFE, metal-air battery reactors and metal-flow battery reactors."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "carbon-gdl",
+  "fillIfEmpty": {
+   "blurb": "Porous electrode materials: GDL carbon paper, carbon cloth, graphite felt, nickel foam, nickel fiber felt and copper foam for electrolyzers and fuel cells."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "consumables",
+  "fillIfEmpty": {
+   "blurb": "Ionomer dispersions for catalyst inks: PFSA 5 wt% resin solution, Fumion FAA-3-SOLUT-10 and PiperION 5 wt% anion exchange ionomer."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "peristaltic-pumps",
+  "fillIfEmpty": {
+   "blurb": "Peristaltic pumps for electrolyte circulation and dosing: compact knob-control pumps, intelligent stepper pumps with RS485 and Wi-Fi touchscreen models."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "equipments",
+  "fillIfEmpty": {
+   "blurb": "Lab equipment for electrochemistry: MEA hot presses and hydraulic presses, fuel cell test stations, temperature control units and accessories."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "mea-fabrication",
+  "fillIfEmpty": {
+   "blurb": "MEA fabrication equipment: a 20-ton MEA hot press (Model 2000) and 20- and 30-ton hydraulic presses for membrane electrode assembly work."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "specialised-equipment",
+  "fillIfEmpty": {
+   "blurb": "Specialised research equipment: 400 W fuel cell and metal-air battery tester, fuel cell test station, temperature controlling unit and triboelectric setup."
+  }
+ },
+ {
+  "collection": "categories",
+  "slug": "accessories",
+  "fillIfEmpty": {
+   "blurb": "Lab accessories and materials: a 1 L gas sampling bag with PTFE valve, high-purity aluminium and zinc sheets, and manganese dioxide nanoparticles."
+  }
+ }
+]
