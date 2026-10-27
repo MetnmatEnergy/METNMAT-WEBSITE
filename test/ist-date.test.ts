@@ -6,8 +6,8 @@ import { formatDateIST, formatDateTimeIST } from "../apps/website/src/frontend/l
 /**
  * Customer-facing dates are IST, whatever zone the server runs in (2026-10-27).
  *
- * Order MM-20261027-28CC0E was paid by UPI at 4:36 pm IST, and its tracking
- * timeline said "11:07 am": the prod host's clock is UTC and the formatter
+ * An order paid at 4:36 pm IST showed "11:07 am" on its tracking timeline,
+ * because the prod host's clock is UTC and the formatter
  * never named a zone. A developer laptop in India hides this completely, since
  * its local zone already is IST, so the first block pins the output against
  * fixed instants and the second checks the source for the call that caused it.
