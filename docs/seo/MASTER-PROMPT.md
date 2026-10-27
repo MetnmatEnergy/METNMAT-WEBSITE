@@ -231,15 +231,15 @@ Update this table at the end of every session. Dates are absolute.
 | Change of Address + sitemaps + Merchant Center | ⏳ owner | — | §3.5 |
 | Wix copy de-indexed | ⏳ owner | — | §3.6 |
 | Off-site profiles → `.com` | ⏳ owner | — | Part D.5 |
-| Product titles + meta descriptions | 📝 plan ready | 2026-10-26 | [`product-seo-plan.csv`](./product-seo-plan.csv) shows current and proposed values side by side for all 134 products. **132 proposed**: 95 are the `.in` page's own title and description (live `.in` titles are ≤ 50 characters, descriptions 108–152), and 37 were written from the catalogue record where no single `.in` page describes that exact SKU. All unique and within length. Apply **after the cutover**, after owner review: `npx tsx scripts/set-product-seo.ts scripts/seo-plans/products-2026-10.json --target=prod --dry-run`, then `--confirm`. It only fills empty fields |
-| 3 truncated shortDescs (P5) | ⏳ | — | Fix in CMS |
-| 17 placeholder spec tables (P6) | ⏳ needs datasheets | — | |
+| Product titles + meta descriptions | ✅ live | 2026-10-27 | All 142 published products have both. 132 from [`product-seo-plan.csv`](./product-seo-plan.csv) (95 are the `.in` page's own title and description, 37 written from the catalogue record) plus 10 in `seo-plans/products-new-2026-10.json` (the 9 new products and the L-shaped electrode). Filled only where empty; no staff value was overwritten |
+| 3 truncated shortDescs (P5) | ✅ live | 2026-10-27 | Among 12 descriptions repaired by `fixes-2026-10.json`; none now starts mid-word |
+| 17 placeholder spec tables (P6) | ✅ 18 replaced, 1 left | 2026-10-27 | Real tables from the owner's `.in` copy. Still a placeholder: `100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell` (no source data, needs a datasheet) |
 | 12 products without images (P8) | ⏳ needs photos | — | |
-| Catalogue data errors found while writing titles | ⏳ owner | 2026-10-26 | N212 lists N117's thickness (~183 µm). `l-shaped-glassy-carbon-electrode-peek-rod-3mm` is named PEEK but its spec says PTFE (no title proposed until fixed). 3 pumps priced ₹0 (KPK200, 150 RPM dual, KK1800 Wi-Fi), which puts a ₹0 offer in their Product schema. 11 third-party products (Fumasep, Fumion, Sustainion, PiperION, Kamoer) carry brand "METNMAT". All are flagged in the plan CSV |
+| Catalogue data errors found while writing titles | ✅ mostly | 2026-10-27 | N212 thickness now ~50.8 µm (0.002 in). L-shaped electrode body set to PEEK, as its name says; **owner to confirm PEEK, not PTFE**. 12 third-party products now carry their real brand (FUMATECH, Dioxide Materials, Versogen, Kamoer). The 3 ₹0 pumps (KPK200, 150 RPM dual, KK1800 Wi-Fi) show "Price on request" and emit no offer in their Product schema, so they are not an SEO fault; the owner may still price them |
 | 9 `.in` products missing on `.com` | ✅ live | 2026-10-27 | Created and published with 26 photographs; their old `.in` URLs 301 to them (no longer to a category) once the redirect update is merged. Queued first for indexing requests |
-| Published "Test" product (`/shop/p/test`, ₹54) | 🔄 applying | 2026-10-27 | `fixes-2026-10.json` sets noIndex and unpublishes it (catalogue run, step 4) |
-| Empty indexable category `/shop/c/h-cell` | 🔄 applying | 2026-10-27 | `fixes-2026-10.json` moves the two H-cells into it; the 2 new H-type cells are already there |
+| Published "Test" product (`/shop/p/test`, ₹54) | ✅ live | 2026-10-27 | Unpublished (draft) with noIndex, not deleted. `/shop/p/test` is 404 and it is gone from the product sitemap |
+| Empty indexable category `/shop/c/h-cell` | ✅ live | 2026-10-27 | Holds 4 products now (2 moved, 2 new). Any category that is still empty (`battery-components`, `raw-materials`) now answers `noindex, follow`, matching the sitemap, which already left it out |
 | Sibling-SKU duplicate pages (P13) | ⏳ needs owner decision | — | |
 | 26 legacy blog posts | ⏳ decision | — | Re-publish or leave to `/blog` |
 | Static-page parity (C.3) | ⏳ | — | |
-| Category intros (K3) | 🔄 applying | 2026-10-27 | 24 intros in `fixes-2026-10.json`, written only where the field is empty |
+| Category intros (K3) | ✅ live | 2026-10-27 | 12 written where the intro was empty; 12 categories kept the text staff had already set |
