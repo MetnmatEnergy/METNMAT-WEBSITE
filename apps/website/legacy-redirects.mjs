@@ -8,7 +8,7 @@
 //
 // Source of truth: the live Wix sitemaps
 //   /pages-sitemap.xml (36)  /store-products-sitemap.xml (115)  /blog-posts-sitemap.xml (26)
-// plus the live CMS catalogue (134 products) and every source of the
+// plus the live CMS catalogue (143 products) and every source of the
 // previous run (the map only grows). Captured 2026-10-27.
 //
 // Product mappings, strongest first:
@@ -69,13 +69,13 @@ export const legacyRedirects = [
   { source: "/my-addresses", destination: "/", statusCode: 301 },
 
   // ---- Store products (119 of 119 resolve to a product or its category) ----
-  { source: "/product-page/100-ml-100-ml-h-type-electrochemical-h-cell-dual-chamber-reactor", destination: "/shop/c/reactor-cell", statusCode: 301 }, // category
-  { source: "/product-page/100-ml-water-jacketed-electrochemical-cell-three-electrode", destination: "/shop/c/reactor-cell", statusCode: 301 }, // category
-  { source: "/product-page/30-ml-30-ml-h-type-electrochemical-h-cell-dual-chamber-electrochemical-cell", destination: "/shop/c/reactor-cell", statusCode: 301 }, // category
+  { source: "/product-page/100-ml-100-ml-h-type-electrochemical-h-cell-dual-chamber-reactor", destination: "/shop/p/h-type-electrochemical-cell-100-100-ml", statusCode: 301 }, // verified
+  { source: "/product-page/100-ml-water-jacketed-electrochemical-cell-three-electrode", destination: "/shop/p/water-jacketed-electrochemical-cell-100-ml", statusCode: 301 }, // verified
+  { source: "/product-page/30-ml-30-ml-h-type-electrochemical-h-cell-dual-chamber-electrochemical-cell", destination: "/shop/p/h-type-electrochemical-cell-30-30-ml", statusCode: 301 }, // verified
   { source: "/product-page/30-ton-hydraulic-press-four-pillar-hand-operated-semi-automatic-model-mhp-30", destination: "/shop/p/30-ton-hydraulic-press-four-pillar-hand-operated-semi-automatic-model", statusCode: 301 }, // truncated
   { source: "/product-page/400-w-metnmat-fuel-cell-metal-air-battery-testing-device", destination: "/shop/p/fuel-cell-metal-air-battery-testing-device-400-w", statusCode: 301 }, // verified
   { source: "/product-page/5-cm-pem-fuel-cell-hardware", destination: "/shop/p/pem-fuel-cell-hardware", statusCode: 301 }, // verified
-  { source: "/product-page/50-ml-single-chamber-electrochemical-cell-glass-reactor", destination: "/shop/c/reactor-cell", statusCode: 301 }, // category
+  { source: "/product-page/50-ml-single-chamber-electrochemical-cell-glass-reactor", destination: "/shop/p/single-chamber-electrochemical-cell-50-ml", statusCode: 301 }, // verified
   { source: "/product-page/5cm2-research-scale-electrolyzer-cell", destination: "/shop/p/5-cm2-research-scale-electrolyzer-cell-graphite-nickel-serpentine-flow-field", statusCode: 301 }, // verified
   { source: "/product-page/aluminum-sheet", destination: "/shop/p/aluminum-sheet", statusCode: 301 }, // exact
   { source: "/product-page/anion-exchange-membrane-fumasep-faa-3-50-100x100-mm", destination: "/shop/p/fumasep-faa-3-50-anion-exchange-membrane", statusCode: 301 }, // verified
@@ -106,7 +106,7 @@ export const legacyRedirects = [
   { source: "/product-page/gold-disk-electrode-straight-type-ptfe-rod-%CF%862mm", destination: "/shop/p/detachable-gold-disk-electrode-2-mm-auds", statusCode: 301 }, // spec-match
   { source: "/product-page/gold-wire-ring-counter-electrode-φ0-5-100mm", destination: "/shop/p/gold-wire-ring-counter-electrode-0-5-100mm", statusCode: 301 }, // normalized
   { source: "/product-page/gold-wire-ring-counter-electrode-%CF%860-5-100mm", destination: "/shop/p/gold-wire-ring-counter-electrode-0-5-100mm", statusCode: 301 }, // normalized
-  { source: "/product-page/graphite-felt-electrode-for-electrochemical-applications-200x200x3mm", destination: "/shop/c/carbon-gdl", statusCode: 301 }, // category
+  { source: "/product-page/graphite-felt-electrode-for-electrochemical-applications-200x200x3mm", destination: "/shop/p/graphite-felt-electrode-200-200-3-mm", statusCode: 301 }, // verified
   { source: "/product-page/graphite-plate-counter-electrode-10-10mm-thickness-3mm", destination: "/shop/p/graphite-counter-electrode", statusCode: 301 }, // spec-match
   { source: "/product-page/graphite-rod-counter-electrode-φ6-120mm", destination: "/shop/p/graphite-rod-counter-electrode-6-120mm", statusCode: 301 }, // normalized
   { source: "/product-page/graphite-rod-counter-electrode-%CF%866-120mm", destination: "/shop/p/graphite-rod-counter-electrode-6-120mm", statusCode: 301 }, // normalized
@@ -145,7 +145,7 @@ export const legacyRedirects = [
   { source: "/product-page/microbial-fuel-cell-mfc-dual-chamber-reactor", destination: "/shop/p/microbial-fuel-cell-mfc-reactor", statusCode: 301 }, // verified
   { source: "/product-page/microbial-fuel-cell-stack", destination: "/shop/p/microbial-fuel-cell-stack-ma-mfc-5", statusCode: 301 }, // verified
   { source: "/product-page/nafion-117-membrane", destination: "/shop/p/pfsa-proton-exchange-membrane-300-mm-x-300-mm", statusCode: 301 }, // verified
-  { source: "/product-page/nickel-fiber-felt-electrode-material-porous-ni-felt-hydrogen-fuel-cell-diffusion", destination: "/shop/c/carbon-gdl", statusCode: 301 }, // category
+  { source: "/product-page/nickel-fiber-felt-electrode-material-porous-ni-felt-hydrogen-fuel-cell-diffusion", destination: "/shop/p/nickel-fiber-felt-electrode-10-10-cm", statusCode: 301 }, // verified
   { source: "/product-page/nickel-foam-electrode-110-ppi-200x300mm", destination: "/shop/p/nickel-foam-electrode-200-300-1-5-mm", statusCode: 301 }, // verified
   { source: "/product-page/noble-metal-plate-platinum-20-20-0-1mm", destination: "/shop/p/noble-metal-plate-platinum-20-20-0-1mm", statusCode: 301 }, // exact
   { source: "/product-page/noble-metal-plate-platinum-30-30-0-1mm", destination: "/shop/p/noble-metal-plate-platinum-30-30-0-1mm", statusCode: 301 }, // exact
@@ -155,14 +155,14 @@ export const legacyRedirects = [
   { source: "/product-page/peek-replaceable-glassy-carbon-electrode-holder-slit-3mm", destination: "/shop/p/peek-replaceable-glassy-carbon-electrode-holder-slit-3mm", statusCode: 301 }, // exact
   { source: "/product-page/peek-replaceable-glassy-carbon-electrode-holder-slit-8mm", destination: "/shop/p/peek-replaceable-glassy-carbon-electrode-holder-slit-8mm", statusCode: 301 }, // exact
   { source: "/product-page/peek-replaceable-l-shaped-glassy-carbon-electrode-holder-slit-3mm", destination: "/shop/p/peek-replaceable-l-shaped-glassy-carbon-electrode-holder-slit-3mm", statusCode: 301 }, // exact
-  { source: "/product-page/pem-hydrogen-electrolyzer-cell-60-ml-min", destination: "/shop/c/water-splitting-reactors", statusCode: 301 }, // category
+  { source: "/product-page/pem-hydrogen-electrolyzer-cell-60-ml-min", destination: "/shop/p/pem-hydrogen-electrolyzer-60-ml-min", statusCode: 301 }, // verified
   { source: "/product-page/perfluorosulfonic-acid-pfsa-resin-dispersion-5wt-solution", destination: "/shop/p/perfluorosulfonic-acid-pfsa-resin-dispersion-5wt-solution", statusCode: 301 }, // exact
   { source: "/product-page/peristaltic-pump", destination: "/shop/p/peristaltic-pump", statusCode: 301 }, // exact
   { source: "/product-page/pfsa-proton-exchange-membrane-n115-100x100-mm", destination: "/shop/p/perfluorosulfonic-acid-pfsa-proton-exchange-membrane-n115-pem", statusCode: 301 }, // verified
   { source: "/product-page/photocatalyst-panel-reactor-for-hydrogen-generation", destination: "/shop/p/photocatalytic-water-splitting-panel-reactors-app-400", statusCode: 301 }, // verified
   { source: "/product-page/photovoltaic-biased-photoelectrochemical-cell", destination: "/shop/p/photovoltaic-pv-biased-photoelectrochemical-cell-pec", statusCode: 301 }, // verified
   { source: "/product-page/piperion-aem-20-microns-self-supporting", destination: "/shop/p/piperion-aem", statusCode: 301 }, // verified
-  { source: "/product-page/piperion-anion-exchange-dispersion-5-wt-20-ml", destination: "/shop/c/consumables", statusCode: 301 }, // category
+  { source: "/product-page/piperion-anion-exchange-dispersion-5-wt-20-ml", destination: "/shop/p/piperion-anion-exchange-ionomer-dispersion-5-wt-20-ml", statusCode: 301 }, // verified
   { source: "/product-page/platinum-counter-electrode-with-spring-shaped-pt-wire-electrode-sheath", destination: "/shop/p/platinum-spiral-counter-electrode", statusCode: 301 }, // verified
   { source: "/product-page/platinum-disk-electrode-straight-type-ptfe-rod-φ2mm", destination: "/shop/p/detachable-platinum-disk-electrode", statusCode: 301 }, // spec-match
   { source: "/product-page/platinum-disk-electrode-straight-type-ptfe-rod-%CF%862mm", destination: "/shop/p/detachable-platinum-disk-electrode", statusCode: 301 }, // spec-match
@@ -185,7 +185,7 @@ export const legacyRedirects = [
   { source: "/product-page/platinum-wire-ring-counter-electrode-%CF%860-5-100mm", destination: "/shop/p/platinum-wire-ring-counter-electrode-0-5-100mm", statusCode: 301 }, // normalized
   { source: "/product-page/platinum-wire-ring-counter-electrode-φ0-5-230mm", destination: "/shop/p/platinum-ring-counter-electrode-0-5-230-mm", statusCode: 301 }, // spec-match
   { source: "/product-page/platinum-wire-ring-counter-electrode-%CF%860-5-230mm", destination: "/shop/p/platinum-ring-counter-electrode-0-5-230-mm", statusCode: 301 }, // spec-match
-  { source: "/product-page/ptfe-40ml-water-splitting-electrochemical-reactor-three-electrode-system", destination: "/shop/c/water-splitting-reactors", statusCode: 301 }, // category
+  { source: "/product-page/ptfe-40ml-water-splitting-electrochemical-reactor-three-electrode-system", destination: "/shop/p/ptfe-water-splitting-reactor-40-ml-three-electrode", statusCode: 301 }, // verified
   { source: "/product-page/ptfe-electrode-holder", destination: "/shop/p/ptfe-replaceable-electrode-holder-mpg-10", statusCode: 301 }, // verified
   { source: "/product-page/ptfe-photoelectrochemical-cell-for-three-electrode-quantum-efficiency-ipce", destination: "/shop/p/ptfe-photoelectrochemical-cell-for-three-electrode-quantum-efficiency-ipce", statusCode: 301 }, // exact
   { source: "/product-page/ptfe-replaceable-copper-electrode-holder", destination: "/shop/p/ptfe-replaceable-copper-electrode-holder", statusCode: 301 }, // exact
