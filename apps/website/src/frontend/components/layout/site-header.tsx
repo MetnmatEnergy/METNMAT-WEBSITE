@@ -21,8 +21,13 @@ export async function SiteHeader() {
   const navItems = nav?.headerLinks ?? mainNav;
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/85 shadow-[0_1px_0_0_rgba(0,0,0,0.03)] backdrop-blur supports-[backdrop-filter]:bg-surface/70">
-      {/* Row 1: brand + global search + actions */}
-      <Container className="flex h-14 items-center gap-4">
+      {/* Row 1: brand + global search + actions.
+          justify-between: below lg the search bar is hidden, and with nothing
+          flex-1 left the actions packed up against the logo, leaving the right
+          of a phone header empty. This pins the logo and the menu button to the
+          same gutters as the page below. On lg+ the search bar takes the free
+          space, so it changes nothing there. */}
+      <Container className="flex h-14 items-center justify-between gap-4">
         <Logo />
 
         {/* Global site search — products, categories & pages.
