@@ -50,6 +50,11 @@ export async function generateMetadata({
   if (!cat) notFound();
   const query = parseShopQuery(await searchParams);
   const filtered = hasActiveFilters(query);
+  // A department with nothing in it (its sub-departments included) is left out of
+  // the sitemap; its page must not ask to be indexed either, or Google judges the
+  // shop by its emptiest pages. Same walk as the page body, served from the
+  // per-request cache, so this costs no extra request.
+  const empty = (await getProductsByCategory(category)).length === 0;
   const base = pageMetadata({
     title: `${cat.name} — Shop`,
     description:
@@ -61,7 +66,7 @@ export async function generateMetadata({
     ...base,
     // Filtered/sorted views are thin near-duplicates — noindex (still follow so
     // crawlers reach the products) rather than self-canonicalising away the filter.
-    ...(filtered ? { robots: { index: false, follow: true } } : {}),
+    ...(filtered || empty ? { robots: { index: false, follow: true } } : {}),
     alternates: {
       ...base.alternates,
       // Unfiltered pagination canonicalises to ITSELF — pointing pages 2+ at
