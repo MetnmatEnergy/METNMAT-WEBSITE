@@ -1,0 +1,9 @@
+[
+  {
+    "collection": "products",
+    "slug": "100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell",
+    "set": { "noIndex": true, "_status": "draft" },
+    "expect": { "_status": "published" },
+    "note": "Not an H-cell: its four photos show the single-chamber 100 mL water-jacketed cell (cone vessel, jacket, 4-port lid) sold as water-jacketed-electrochemical-cell-100-ml. metnmat.in's old name for that cell, imported 2026-09 and renamed (and repriced) on Wix since. Unpublished, not deleted; its URL 301s to the real product."
+  }
+]
