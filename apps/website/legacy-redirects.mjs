@@ -8,7 +8,7 @@
 //
 // Source of truth: the live Wix sitemaps
 //   /pages-sitemap.xml (36)  /store-products-sitemap.xml (115)  /blog-posts-sitemap.xml (26)
-// plus the live CMS catalogue (143 products) and every source of the
+// plus the live CMS catalogue (141 products) and every source of the
 // previous run (the map only grows). Captured 2026-10-27.
 //
 // Product mappings, strongest first:
@@ -226,6 +226,7 @@ export const legacyRedirects = [
   // ---- Renamed .com product slugs ---------------------------------------
   // Renamed outside the CMS hook, so product-slug-redirects never recorded them.
   // If a product ever takes one of these slugs again, delete its line first.
+  { source: "/shop/p/100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell", destination: "/shop/p/water-jacketed-electrochemical-cell-100-ml", statusCode: 301 },
   { source: "/shop/p/intelligent-peristaltic-pump-dual-channel-dc-24v", destination: "/shop/p/intelligent-peristaltic-pump-dual-channel-working-voltage-dc-24v", statusCode: 301 },
   { source: "/shop/p/kamoer-kcp-x-mini-peristaltic-pump-24v-19-65-ml-min-with-control", destination: "/shop/p/compact-peristaltic-pump-knob-control-65-ml-min", statusCode: 301 },
   { source: "/shop/p/kamoer-kcp2-kxf-s08-peristaltic-lab-pump-12v-dc-17-50-ml-min", destination: "/shop/p/compact-peristaltic-pump-knob-control-41-5-ml-min", statusCode: 301 },

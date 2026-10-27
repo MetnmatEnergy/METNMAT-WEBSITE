@@ -393,6 +393,9 @@ const COM_RENAMED = {
   "intelligent-peristaltic-pump-dual-channel-dc-24v": "intelligent-peristaltic-pump-dual-channel-working-voltage-dc-24v",
   "kamoer-kcp-x-mini-peristaltic-pump-24v-19-65-ml-min-with-control": "compact-peristaltic-pump-knob-control-65-ml-min",
   "kamoer-kcp2-kxf-s08-peristaltic-lab-pump-12v-dc-17-50-ml-min": "compact-peristaltic-pump-knob-control-41-5-ml-min",
+  // Not a rename but a duplicate, unpublished 2026-10-27: the "water-jacketed H-cell"
+  // was this single-chamber cell under metnmat.in's old name (same photos).
+  "100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell": "water-jacketed-electrochemical-cell-100-ml",
 };
 const previousRenamed = new Map(
   previous.filter((r) => r.source.startsWith("/shop/p/")).map((r) => [r.source.slice("/shop/p/".length), r.destination])

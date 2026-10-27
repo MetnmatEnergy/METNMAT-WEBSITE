@@ -92,6 +92,17 @@ describe("legacy redirect map", () => {
     expect(mapOf(from)).toBe(`/shop/p/${to}`);
   });
 
+  it("sends the unpublished duplicate 'water-jacketed H-cell' to the single cell it really is", () => {
+    // Same photos, same item: listed twice at two prices until 2026-10-27. Its
+    // .com URL was live and queued for indexing, so it must not become a 404.
+    const r = rules.find((x) => x.source === "/shop/p/100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell");
+    expect(r).toEqual({
+      source: "/shop/p/100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell",
+      destination: "/shop/p/water-jacketed-electrochemical-cell-100-ml",
+      statusCode: 301,
+    });
+  });
+
   it("sends every mapped legacy product to a product or its category — never the whole shop", () => {
     // A product URL that lands on /shop/all hands its ranking to a page about
     // nothing in particular. Only the catch-all may do that.
