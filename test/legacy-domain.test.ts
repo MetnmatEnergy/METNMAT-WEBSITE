@@ -1,8 +1,17 @@
 import { describe, it, expect } from "vitest";
 // @ts-expect-error — generated .mjs data module, no types
-import { legacyRedirects } from "../apps/website/legacy-redirects.mjs";
-// @ts-expect-error — plain .mjs config helper, no types
-import { legacyDomainRedirects, CANONICAL_ORIGIN, LEGACY_HOST } from "../apps/website/legacy-domain.mjs";
+import { legacyRedirects, legacyInPaths } from "../apps/website/legacy-redirects.mjs";
+import {
+  legacyDomainRedirects,
+  legacyDomainRewrites,
+  isLegacyHost,
+  CANONICAL_ORIGIN,
+  LEGACY_HOST,
+  LEGACY_SELF_SERVED,
+  // @ts-expect-error — plain .mjs config helper, no types
+} from "../apps/website/legacy-domain.mjs";
+import { GET as legacySitemap } from "../apps/website/src/app/legacy-in/sitemap.xml/route";
+import { GET as legacyRobots } from "../apps/website/src/app/legacy-in/robots.txt/route";
 
 /**
  * metnmat.in → www.metnmat.com. The whole point of serving the old domain from
@@ -13,8 +22,9 @@ import { legacyDomainRedirects, CANONICAL_ORIGIN, LEGACY_HOST } from "../apps/we
  * The resolver below is a deliberately small model of how Next evaluates
  * `redirects()` — first match wins; `has: host` is the Host header lower-cased,
  * port stripped, matched as ^value$; `:x` is one segment and `:x*` zero or more.
- * It covers exactly the source shapes these two files use, and the test pins
- * that, so a new shape fails here instead of being silently mis-modelled.
+ * `:x(re)` is one segment matching `re`, and `:x+` one or more segments. It
+ * covers exactly the source shapes these files use, and the test pins that, so
+ * a new shape fails here instead of being silently mis-modelled.
  */
 type Rule = { source: string; destination: string; statusCode: number; has?: { type: string; value: string }[] };
 
@@ -22,12 +32,16 @@ const legacy = legacyRedirects as Rule[];
 const domain = legacyDomainRedirects(legacy) as Rule[];
 const all: Rule[] = [...domain, ...legacy]; // the order next.config.mjs returns them in
 
-const SHAPE = /^(\/(?:[^/:]+|:[a-z]+\*?))+$|^\/:path\*$/;
+const CUSTOM = /^\/:[a-z]+\((.*)\)$/; // a whole source that is one regex-constrained segment
+const SHAPE = /^(\/(?:[^/:]*|:[a-z]+[*+]?))+$/;
 
 function compile(source: string): RegExp {
+  const custom = CUSTOM.exec(source);
+  if (custom) return new RegExp(`^/(${custom[1]})/?$`);
   let re = "";
   for (const seg of source.split("/").slice(1)) {
     if (/^:[a-z]+\*$/.test(seg)) re += "(?:/(.*))?";
+    else if (/^:[a-z]+\+$/.test(seg)) re += "/(.+)";
     else if (/^:[a-z]+$/.test(seg)) re += "/([^/]+)";
     else re += "/" + seg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
@@ -41,7 +55,7 @@ function resolve(host: string, pathname: string): string | null {
     const m = compile(r.source).exec(pathname);
     if (!m) continue;
     let i = 1;
-    return r.destination.replace(/:[a-z]+\*?/g, () => m[i++] ?? "");
+    return r.destination.replace(/:[a-z]+[*+]?/g, () => m[i++] ?? "");
   }
   return null;
 }
@@ -50,7 +64,7 @@ const pathOf = (url: string) => new URL(url, CANONICAL_ORIGIN).pathname;
 
 describe("metnmat.in → www.metnmat.com", () => {
   it("uses only source shapes the resolver models", () => {
-    const odd = all.map((r) => r.source).filter((s) => !SHAPE.test(s));
+    const odd = all.map((r) => r.source).filter((s) => !SHAPE.test(s) && !CUSTOM.test(s));
     expect(odd).toEqual([]);
   });
 
@@ -63,11 +77,31 @@ describe("metnmat.in → www.metnmat.com", () => {
     }
   });
 
-  it("puts every .in rule before every host-less rule, and the catch-all last of them", () => {
+  it("puts every .in rule before every host-less rule, and the catch-alls last of them", () => {
     // A host-less rule matched first would answer an .in request with a
     // RELATIVE Location — resolved against .in, it costs a second hop.
     expect(all.slice(0, domain.length).every((r) => r.has)).toBe(true);
-    expect(domain.at(-1)?.source).toBe("/:path*");
+    expect(domain.slice(-3).map((r) => r.source)[0]).toBe("/");
+    expect(domain.at(-1)?.source).toBe("/:segment/:rest+");
+  });
+
+  it("redirects every path on .in except the two files it serves itself", () => {
+    for (const p of ["/", "/about", "/a/b/c", "/sitemap.xml.bak", "/xsitemap.xml", "/robots.txt/", "/store-products-sitemap.xml"]) {
+      expect(resolve("www.metnmat.in", p), p).not.toBeNull();
+    }
+    for (const p of Object.keys(LEGACY_SELF_SERVED)) {
+      expect(resolve("www.metnmat.in", p), p).toBeNull();
+      expect(resolve("metnmat.in", p), p).toBeNull();
+    }
+  });
+
+  it("rewrites those two files to the legacy-in routes, on the .in hosts only", () => {
+    const rewrites = legacyDomainRewrites() as Rule[];
+    expect(rewrites.map((r) => [r.source, r.destination])).toEqual([
+      ["/sitemap.xml", "/legacy-in/sitemap.xml"],
+      ["/robots.txt", "/legacy-in/robots.txt"],
+    ]);
+    for (const r of rewrites) expect(r.has).toEqual([LEGACY_HOST]);
   });
 
   it("matches the apex and www of metnmat.in, and nothing else", () => {
@@ -95,7 +129,7 @@ describe("metnmat.in → www.metnmat.com", () => {
   });
 
   it("keeps the path for pages that exist on both sites", () => {
-    for (const p of ["/", "/about", "/contact", "/services", "/shop", "/blog", "/projects", "/robots.txt", "/sitemap.xml"]) {
+    for (const p of ["/", "/about", "/contact", "/services", "/shop", "/blog", "/projects", "/shop/all"]) {
       expect(resolve("www.metnmat.in", p), p).toBe(`${CANONICAL_ORIGIN}${p}`);
     }
   });
@@ -114,5 +148,54 @@ describe("metnmat.in → www.metnmat.com", () => {
     }
     // The shared legacy map still answers old links that arrive at .com directly.
     expect(resolve("www.metnmat.com", "/product-page/aluminum-sheet")).toBe("/shop/p/aluminum-sheet");
+  });
+});
+
+describe("metnmat.in's own sitemap.xml and robots.txt", () => {
+  const get = (handler: (r: Request) => Response, host: string, path: string) =>
+    handler(new Request(`https://${host}${path}`, { headers: { host } }));
+  const paths = legacyInPaths as string[];
+
+  it("lists every old URL the redirects cover — pages, products and posts", () => {
+    expect(paths).toContain("/");
+    expect(paths.filter((p) => p.startsWith("/product-page/")).length).toBeGreaterThanOrEqual(115);
+    expect(paths.filter((p) => p.startsWith("/post/")).length).toBeGreaterThanOrEqual(26);
+    // Every listed URL redirects, in one hop, somewhere on .com.
+    const unredirected = paths.filter((p) => !resolve("www.metnmat.in", p)?.startsWith(`${CANONICAL_ORIGIN}/`));
+    expect(unredirected).toEqual([]);
+    // As sent on the wire: φ percent-encoded, nothing a sitemap would reject.
+    expect(paths.filter((p) => /[^\x21-\x7e]/.test(p))).toEqual([]);
+  });
+
+  it("serves the sitemap on both .in hosts with absolute www.metnmat.in URLs", async () => {
+    for (const host of ["www.metnmat.in", "metnmat.in"]) {
+      const res = get(legacySitemap, host, "/legacy-in/sitemap.xml");
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("application/xml");
+      const xml = await res.text();
+      const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+      expect(locs.length).toBe(paths.length);
+      expect(locs.every((l) => l.startsWith("https://www.metnmat.in/"))).toBe(true);
+      expect(locs).toContain("https://www.metnmat.in/product-page/zero-gap-electrolyzer-for-carbon-dioxide-reduction");
+    }
+  });
+
+  it("serves a robots.txt that allows everything and names that sitemap", async () => {
+    const res = get(legacyRobots, "www.metnmat.in", "/legacy-in/robots.txt");
+    expect(res.status).toBe(200);
+    const txt = await res.text();
+    expect(txt).toContain("Allow: /");
+    expect(txt).not.toContain("Disallow");
+    expect(txt).toContain("Sitemap: https://www.metnmat.in/sitemap.xml");
+  });
+
+  it("is a 404 on every other host — .com never publishes another domain's URLs", () => {
+    for (const host of ["www.metnmat.com", "metnmat.com", "localhost:3000", "notmetnmat.in"]) {
+      expect(get(legacySitemap, host, "/legacy-in/sitemap.xml").status, host).toBe(404);
+      expect(get(legacyRobots, host, "/legacy-in/robots.txt").status, host).toBe(404);
+    }
+    expect(isLegacyHost("WWW.METNMAT.IN:443")).toBe(true);
+    expect(isLegacyHost(null)).toBe(false);
+    expect(isLegacyHost("")).toBe(false);
   });
 });

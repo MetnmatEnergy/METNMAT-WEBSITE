@@ -38,9 +38,25 @@ const WIX_ONLY = [
 ];
 
 /**
+ * The two files metnmat.in answers ITSELF instead of redirecting.
+ *
+ * Google consolidates an old URL only when it recrawls it and meets the 301, and
+ * left alone it revisits a small site's pages over weeks. A sitemap that lists
+ * every old URL, served on the old host and submitted in its Search Console
+ * property, makes it recrawl them now — Google's own site-move advice. The
+ * robots.txt beside it allows everything and points at that sitemap: redirecting
+ * it instead would hand .in the .com file, whose Sitemap line names the wrong
+ * host. Both are rewritten to app/legacy-in/*, which 404s on any other host.
+ */
+export const LEGACY_SELF_SERVED = {
+  "/sitemap.xml": "/legacy-in/sitemap.xml",
+  "/robots.txt": "/legacy-in/robots.txt",
+};
+
+/**
  * Host-scoped copies of the legacy map with absolute destinations, then the
  * Wix-only shapes, then a same-path catch-all for everything else on .in
- * (/, /about, /contact, /services, /robots.txt, /sitemap.xml …).
+ * (/, /about, /contact, /services …) — except the two self-served files above.
  *
  * @param {{source: string, destination: string, statusCode: number}[]} legacyRedirects
  */
@@ -51,8 +67,56 @@ export function legacyDomainRedirects(legacyRedirects) {
     destination: `${CANONICAL_ORIGIN}${r.destination}`,
     statusCode: 301,
   }));
+  // Three rules rather than one "/:path*", because a redirect cannot step aside
+  // for a later rewrite: the single-segment rule is the only one that could
+  // match /sitemap.xml or /robots.txt, so it alone carries the exclusion.
+  const selfServed = Object.keys(LEGACY_SELF_SERVED)
+    .map((p) => p.slice(1).replace(/\./g, "\\."))
+    .join("$|");
   return [
     ...scoped,
-    { source: "/:path*", has: [LEGACY_HOST], destination: `${CANONICAL_ORIGIN}/:path*`, statusCode: 301 },
+    { source: "/", has: [LEGACY_HOST], destination: `${CANONICAL_ORIGIN}/`, statusCode: 301 },
+    {
+      source: `/:segment((?!${selfServed}$)[^/]+)`,
+      has: [LEGACY_HOST],
+      destination: `${CANONICAL_ORIGIN}/:segment`,
+      statusCode: 301,
+    },
+    { source: "/:segment/:rest+", has: [LEGACY_HOST], destination: `${CANONICAL_ORIGIN}/:segment/:rest+`, statusCode: 301 },
   ];
+}
+
+/** beforeFiles rewrites: on metnmat.in, the self-served files go to app/legacy-in/*. */
+export function legacyDomainRewrites() {
+  return Object.entries(LEGACY_SELF_SERVED).map(([source, destination]) => ({
+    source,
+    has: [LEGACY_HOST],
+    destination,
+  }));
+}
+
+/** True when a Host header names metnmat.in or www.metnmat.in. */
+export function isLegacyHost(host) {
+  const hostname = (host ?? "").split(":", 1)[0].toLowerCase();
+  return new RegExp(`^${LEGACY_HOST.value}$`).test(hostname);
+}
+
+const LEGACY_ORIGIN = "https://www.metnmat.in";
+
+/**
+ * The old host's sitemap: every URL metnmat.in ever served, each of which now
+ * 301s. No <lastmod> — the move date is when DNS changes, which no build knows,
+ * and a guessed date is worse than none.
+ *
+ * @param {string[]} paths
+ */
+export function renderLegacySitemap(paths) {
+  const xmlEscape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const urls = paths.map((p) => `<url><loc>${xmlEscape(`${LEGACY_ORIGIN}${p}`)}</loc></url>`).join("");
+  return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
+}
+
+/** The old host's robots.txt: crawl everything, so every redirect is seen. */
+export function renderLegacyRobots() {
+  return `User-Agent: *\nAllow: /\n\nSitemap: ${LEGACY_ORIGIN}/sitemap.xml\n`;
 }

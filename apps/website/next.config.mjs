@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 
-import { legacyDomainRedirects } from "./legacy-domain.mjs";
+import { legacyDomainRedirects, legacyDomainRewrites } from "./legacy-domain.mjs";
 import { legacyRedirects } from "./legacy-redirects.mjs";
 
 // Monorepo root, two levels up from apps/website. Needed by the standalone
@@ -140,6 +140,11 @@ const nextConfig = {
   // legacy-domain.mjs.
   async redirects() {
     return [...legacyDomainRedirects(legacyRedirects), ...legacyRedirects];
+  },
+  // metnmat.in's own sitemap.xml (every old URL) and robots.txt. beforeFiles so
+  // they win over app/sitemap.xml and app/robots.ts, which describe .com.
+  async rewrites() {
+    return { beforeFiles: legacyDomainRewrites(), afterFiles: [], fallback: [] };
   },
   async headers() {
     return [

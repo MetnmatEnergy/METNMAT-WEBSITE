@@ -39,7 +39,8 @@ all self-canonical.
 |---|---|---|
 | The map | [`apps/website/legacy-redirects.mjs`](../../apps/website/legacy-redirects.mjs) | Every `.in` URL → its `.com` page. **All 115 live products + 4 historical slugs** resolve: 40 exact, 14 exact after dropping Wix's `φ`, 3 truncated, 20 spec-matched, 32 hand-verified (name **and** price checked on both sites), 1 carried, **9 to their category** (no counterpart in the catalogue yet, §6). **0 to `/shop/all`.** |
 | The generator | [`apps/website/scripts/build-legacy-redirects.mjs`](../../apps/website/scripts/build-legacy-redirects.mjs) | Rebuilds the map from the live Wix sitemaps + live catalogue. **Refuses to run** if any live `.in` product would fall to `/shop/all`, or any `.in` page is unmapped and 404s on `.com`. The map only grows. |
-| Host rules | [`apps/website/legacy-domain.mjs`](../../apps/website/legacy-domain.mjs) | Requests whose Host is `metnmat.in` or `www.metnmat.in` get **one 301 to the absolute `https://www.metnmat.com/...` URL**. Query strings are kept. |
+| Host rules | [`apps/website/legacy-domain.mjs`](../../apps/website/legacy-domain.mjs) | Requests whose Host is `metnmat.in` or `www.metnmat.in` get **one 301 to the absolute `https://www.metnmat.com/...` URL**. Query strings are kept. Two files are the exception (next row). |
+| The old host's own sitemap + robots | `apps/website/src/app/legacy-in/` | `metnmat.in/sitemap.xml` lists **every URL the old site served** (181: 36 pages, 119 products, 26 posts; `legacyInPaths` in the map). Each of them 301s. `metnmat.in/robots.txt` allows everything and names that sitemap. Submitted in the `.in` Search Console property, this makes Google recrawl the old URLs, and so find their redirects, now rather than over weeks. Both are 404 on any other host. |
 | Proxy | [`deploy/v2/caddy/Caddyfile`](../../deploy/v2/caddy/Caddyfile) | `metnmat.in, www.metnmat.in` → the website (:3100), with its own Host header and a TLS certificate. |
 | Tests | `test/legacy-domain.test.ts`, `test/legacy-redirects.test.ts` | Every legacy URL resolves in **exactly one hop** on both `.in` hosts, its target is not itself a redirect, `.com` traffic is untouched, and no product lands on a different material. |
 
@@ -53,7 +54,10 @@ www.metnmat.in /product-page/mercury-oxide-…-%CF%866-70mm 301 https://www.metn
 www.metnmat.in /product-page/kamoer-kcp-x-…?lang=en      301 https://www.metnmat.com/shop/p/compact-peristaltic-pump-knob-control-65-ml-min?lang=en
 www.metnmat.in /product-page/graphite-felt-…             301 https://www.metnmat.com/shop/c/carbon-gdl
 www.metnmat.in /category/all-products                    301 https://www.metnmat.com/shop/all
-www.metnmat.in /robots.txt                               301 https://www.metnmat.com/robots.txt
+www.metnmat.in /a/b/c?x=1                                301 https://www.metnmat.com/a/b/c?x=1
+www.metnmat.in /sitemap.xml                              200 application/xml — 181 old URLs
+www.metnmat.in /robots.txt                               200 text/plain — Allow: /, Sitemap: https://www.metnmat.in/sitemap.xml
+www.metnmat.com /legacy-in/sitemap.xml                   404
 ```
 
 All of it is **inert until `metnmat.in` resolves to `52.66.54.7`**. Merging and deploying it
@@ -131,11 +135,18 @@ anything the day the domain lapses.
    needs both properties verified, which is what the google-site-verification TXT records
    in §3.1 (and the one on `metnmat.com`) are for. Google checks that the homepage and a
    sample of URLs 301 correctly, which they now do.
-2. In the `metnmat.com` property, submit `https://www.metnmat.com/sitemap.xml` (again, if it
+2. **In the `metnmat.in` property → Sitemaps**, remove the old Wix sitemaps if they are
+   listed (`store-products-sitemap.xml`, `pages-sitemap.xml`, …, which now redirect away) and
+   **submit `https://www.metnmat.in/sitemap.xml`**. It lists all 181 old URLs, each of
+   which redirects, so Google recrawls them and finds the redirects now instead of
+   stumbling on them over weeks. Leave it submitted until `site:metnmat.in` shows nothing,
+   then leave it anyway: it costs nothing.
+3. In the `metnmat.com` property, submit `https://www.metnmat.com/sitemap.xml` (again, if it
    is already there) and run **URL Inspection → Request indexing** on the homepage, `/shop`
    and the 10 most important products.
-3. **Bing Webmaster Tools** has its own *Site Move* tool. Do the same there.
-4. If `metnmat.in`'s products feed **Google Merchant Center** (Wix Stores can sync them),
+4. **Bing Webmaster Tools** has its own *Site Move* tool. Do the same there, and submit the
+   same `.in` sitemap.
+5. If `metnmat.in`'s products feed **Google Merchant Center** (Wix Stores can sync them),
    move the feed to `metnmat.com` or remove the `.in` one. Shopping results otherwise keep
    pointing at the old domain.
 

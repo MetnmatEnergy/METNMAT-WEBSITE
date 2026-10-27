@@ -200,8 +200,9 @@ Score each URL against its list. A URL is done when every line is ✅ or has a r
 In order. Each item is a few minutes once the one before it is done.
 
 1. **DNS cutover** — DOMAIN-CONSOLIDATION.md §3.1–§3.4.
-2. **Search Console Change of Address** `.in` → `.com`; sitemap; request indexing for the top
-   pages (§3.5). Bing *Site Move* likewise.
+2. **Search Console Change of Address** `.in` → `.com`. Submit `https://www.metnmat.in/sitemap.xml`
+   (the old URLs, so Google recrawls them now) in the `.in` property, submit the `.com` sitemap,
+   and request indexing for the top pages (§3.5). Bing *Site Move* likewise.
 3. **Google Merchant Center**: move any `.in` product feed to `.com`.
 4. **Retire the Wix copy**: indexing off in Wix SEO settings (§3.6).
 5. **Profiles that link to `metnmat.in`**: change the website field to
@@ -223,6 +224,7 @@ Update this table at the end of every session. Dates are absolute.
 | Diagnosis | ✅ | 2026-10-26 | DOMAIN-CONSOLIDATION §1 — Google results, 42/134 indexed |
 | `.in` → `.com` map: every live product mapped, none to `/shop/all` | ✅ in repo | 2026-10-26 | 119/119; generator fails on any gap |
 | One-hop 301 rules for the `.in` host | ✅ in repo | 2026-10-26 | `legacy-domain.mjs`; tests; verified on a prod build |
+| `.in`'s own sitemap of every old URL (181) + permissive robots.txt, to speed Google's recrawl | ✅ in repo | 2026-10-27 | `app/legacy-in/`; verified on a prod build. Submit `https://www.metnmat.in/sitemap.xml` in the `.in` Search Console property at cutover (DOMAIN-CONSOLIDATION §3.5) |
 | Caddy serves `metnmat.in` | ✅ in repo | 2026-10-26 | Applied by *Bootstrap v2 host* at cutover |
 | 3 renamed pump URLs that 404ed | ✅ in repo | 2026-10-26 | Added to the map |
 | DNS cutover | ⏳ owner | — | DOMAIN-CONSOLIDATION §3 |

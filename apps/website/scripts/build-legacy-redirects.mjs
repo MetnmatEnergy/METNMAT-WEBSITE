@@ -367,7 +367,10 @@ for (const p of samePath) {
 }
 
 const postsXml = await fetchText(`${LEGACY}/blog-posts-sitemap.xml`);
-const livePosts = [...postsXml.matchAll(/<loc>([^<]+)<\/loc>/g)].filter((m) => m[1].includes("/post/")).length;
+const livePostPaths = [...postsXml.matchAll(/<loc>([^<]+)<\/loc>/g)]
+  .map((m) => new URL(m[1].trim()).pathname)
+  .filter((p) => p.startsWith("/post/"));
+const livePosts = livePostPaths.length;
 
 // ---------------------------------------------------------------------------
 // .com product slugs that were renamed outside the CMS hook that records
@@ -412,6 +415,18 @@ const productRow = (from, to, how) =>
     .map((s) => `  { source: ${esc(`/product-page/${s}`)}, destination: ${esc(to)}, statusCode: 301 }, // ${how}`)
     .join("\n");
 const today = new Date().toISOString().slice(0, 10);
+
+// Every URL metnmat.in has served, as it appears on the wire (φ percent-encoded).
+// Historical paths are kept like historical redirects: Google still has them.
+const previousPaths = fs.existsSync(OUT) ? ((await import(pathToFileURL(OUT).href)).legacyInPaths ?? []) : [];
+const inPaths = [
+  ...new Set([
+    ...previousPaths,
+    ...livePages,
+    ...legacy.map((s) => `/product-page/${encodeURI(s)}`),
+    ...livePostPaths,
+  ]),
+].sort();
 
 const file = `// AUTO-GENERATED — do not hand-edit. Regenerate with:
 //   node apps/website/scripts/build-legacy-redirects.mjs
@@ -472,6 +487,13 @@ ${Object.entries({ ...Object.fromEntries(previousRenamed), ...Object.fromEntries
   { source: "/product-page/:slug", destination: "/shop/all", statusCode: 301 },
   { source: "/post/:slug", destination: "/blog", statusCode: 301 },
 ];
+
+// Every URL metnmat.in has served (${inPaths.length}): pages, products current and
+// historical, and posts. Once metnmat.in points at this host it serves this list
+// as its own sitemap.xml (legacy-domain.mjs), so Google recrawls each old URL
+// and finds its redirect instead of waiting to stumble on it.
+/** @type {string[]} */
+export const legacyInPaths = ${JSON.stringify(inPaths, null, 2)};
 `;
 
 fs.writeFileSync(OUT, file);
