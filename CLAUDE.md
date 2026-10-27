@@ -265,7 +265,12 @@ exists but is not part of the plan. Two consequences worth knowing before a bulk
 See `docs/upgrade/AUDIT.md` for the full Phase 0 audit, findings register and Lighthouse
 baselines, and `deploy/README.md` for the runbook. **AUDIT.md is a dated snapshot
 (2026-07-31) — several findings have since been fixed; read its "Status since this audit" section
-before acting on any row.** Of its two P0s, one remains: `metnmat.in` is still live, fully
-indexable and self-canonical, which splits ranking authority with the site above. The other (no
-redirect map) is resolved on the side we control — `next.config.mjs` ships 122 legacy redirects
-from `legacy-redirects.mjs`.
+before acting on any row.** Of its two P0s, one remains: `metnmat.in` (the old Wix site) is
+still live, fully indexable and self-canonical, and on 2026-10-26 it outranked `.com` for the
+brand and for every product query checked. **SEO work starts from `docs/seo/MASTER-PROMPT.md`.**
+The fix is built and inert: `legacy-redirects.mjs` maps every `.in` URL (all 115 live products,
+none to `/shop/all`; regenerate with `scripts/build-legacy-redirects.mjs`, which refuses gaps),
+`legacy-domain.mjs` answers Host `metnmat.in`/`www.metnmat.in` with one absolute 301 to
+`www.metnmat.com`, and the Caddyfile proxies both names. It goes live when `metnmat.in`'s DNS
+leaves Wix for our host (`docs/seo/DOMAIN-CONSOLIDATION.md` §3: copy the GoDaddy MX/SPF and the
+google-site-verification TXT first, then nameservers, then *Bootstrap v2 host*).

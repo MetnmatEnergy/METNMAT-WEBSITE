@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 
+import { legacyDomainRedirects, legacyDomainRewrites } from "./legacy-domain.mjs";
 import { legacyRedirects } from "./legacy-redirects.mjs";
 
 // Monorepo root, two levels up from apps/website. Needed by the standalone
@@ -132,8 +133,18 @@ const nextConfig = {
   // it keeps working when the CMS is unreachable — a CMS-backed lookup would put
   // the CMS in the critical path of every 404. See legacy-redirects.mjs for how
   // each product mapping was derived.
+  //
+  // The metnmat.in host rules go FIRST: a request for www.metnmat.in/<x> must get
+  // one absolute 301 to www.metnmat.com, not the relative legacy redirect (which
+  // the browser would resolve against .in, costing a second hop). See
+  // legacy-domain.mjs.
   async redirects() {
-    return legacyRedirects;
+    return [...legacyDomainRedirects(legacyRedirects), ...legacyRedirects];
+  },
+  // metnmat.in's own sitemap.xml (every old URL) and robots.txt. beforeFiles so
+  // they win over app/sitemap.xml and app/robots.ts, which describe .com.
+  async rewrites() {
+    return { beforeFiles: legacyDomainRewrites(), afterFiles: [], fallback: [] };
   },
   async headers() {
     return [

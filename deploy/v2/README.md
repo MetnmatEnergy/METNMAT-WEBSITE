@@ -54,7 +54,7 @@ systemd/*.service            the four hardened units
 etc/<app>.conf               static, NON-secret environment per app (checked in)
 etc/<app>.required           variables the fetcher must find in the secret, or refuse to start
 nftables/metnmat.nft         IMDS root-only rule + C2 block
-caddy/Caddyfile              all five hostnames → loopback ports
+caddy/Caddyfile              all seven hostnames (incl. legacy metnmat.in) → loopback ports
 aws/instance-role-policy.json   what the host role may do (four secrets + artifacts)
 aws/cms-media-user-policy.json  the CMS's S3-only IAM user
 aws/github-deploy-role-*.json   what GitHub Actions may do (upload artifact, run release)

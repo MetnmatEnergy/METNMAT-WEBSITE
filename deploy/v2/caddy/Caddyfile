@@ -39,6 +39,19 @@ metnmat.com, www.metnmat.com {
 	import site_log website
 }
 
+# ── Legacy domain: metnmat.in (the old Wix site) ──────────────────────────
+# Every URL 301s, in one hop, to its www.metnmat.com equivalent. The map and the
+# rules live in the website (apps/website/legacy-domain.mjs), so this block only
+# delivers the request with its own Host header. It does nothing until
+# metnmat.in's DNS points at this host — docs/seo/DOMAIN-CONSOLIDATION.md has the
+# cutover order; until then Caddy just retries the certificate in the background.
+metnmat.in, www.metnmat.in {
+	reverse_proxy 127.0.0.1:3100 {
+		import proxy_headers
+	}
+	import site_log legacy-in
+}
+
 # ── Payload CMS ────────────────────────────────────────────────────────────
 admin.metnmat.com {
 	reverse_proxy 127.0.0.1:3200 {

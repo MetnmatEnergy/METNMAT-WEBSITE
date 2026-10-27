@@ -67,8 +67,8 @@ describe("legacy redirect map", () => {
     ["platinum-wire-counter-electrode-φ1-37mm-peek-rod", "platinum-wire-counter-electrode-1-37-mm-ptwk"],
     ["platinum-wire-ring-counter-electrode-φ0-5-230mm", "platinum-ring-counter-electrode-0-5-230-mm"],
     ["platinum-counter-electrode-with-spring-shaped-pt-wire-electrode-sheath", "platinum-spiral-counter-electrode"],
-    // …while the sheet URLs still do
-    ["platinum-sheet-counter-electrode-30-30-0-1mm", "platinum-counter-electrode"],
+    // …while the sheet URLs land on a sheet (each size now has its own page)
+    ["platinum-sheet-counter-electrode-30-30-0-1mm", "platinum-sheet-counter-electrode-30-30-0-1mm"],
     // Ag/AgCl: glass / PTFE / PEEK bodies are three different SKUs
     ["silver-silver-chloride-ag-agcl-reference-electrode-φ6-140mm-glass-rod", "ag-agcl-reference-electrode-6-140-mm"],
     ["silver-silver-chloride-ag-agcl-reference-electrode-φ6mm-ptfe-rod", "ag-agcl-reference-electrode-6-mm"],
@@ -77,14 +77,26 @@ describe("legacy redirect map", () => {
     ["mercury-oxide-reference-electrode-hg-hgo-galss-rod-φ6-70mm", "hg-hgo-reference-electrode-6-70-mm"],
     ["mercury-oxide-reference-electrode-hg-hgo-ptfe-rod-φ6-60mm", "hg-hgo-reference-electrode-6-60-mm"],
     ["mercury-oxide-reference-electrode-hg-hgo-peek-rod-φ4-60mm", "mercury-oxide-reference-electrode-hg-hgo"],
-    // graphite: rod ≠ plate
-    ["graphite-rod-counter-electrode-φ6-120mm", "graphite-rod-counter-electrode-6-80-mm"],
+    // graphite: rod ≠ plate, and a size with its own page goes to that page
+    // rather than to the family page that lists it as one size option
+    ["graphite-rod-counter-electrode-φ6-120mm", "graphite-rod-counter-electrode-6-120mm"],
+    // Wix's "galss" typo and its φ sign must not stop an exact match
+    ["flow-cell-accessories-mercury-oxide-reference-electrode-hg-hgo-galss-rod-φ4-70", "flow-cell-accessories-mercury-oxide-reference-electrode-hg-hgo-glass-rod-4-70"],
+    // Kamoer pumps whose .com slugs were renamed — the redirect follows the rename
+    ["kamoer-kcp-x-mini-peristaltic-pump-24v", "compact-peristaltic-pump-knob-control-65-ml-min"],
     ["graphite-plate-counter-electrode-10-10mm-thickness-3mm", "graphite-counter-electrode"],
     // straight vs L-shaped are different parts
     ["glassy-carbon-electrode-straight-type-ptfe-rod-φ3mm", "glassy-carbon-electrode-straight-type-ptfe-rod"],
     ["l-shaped-glassy-carbon-electrode-ptfe-rod-φ3mm", "l-shaped-glassy-carbon-disk-working-electrode-3-mm"],
   ])("maps %s to the SKU that matches its body and dimensions", (from, to) => {
     expect(mapOf(from)).toBe(`/shop/p/${to}`);
+  });
+
+  it("sends every mapped legacy product to a product or its category — never the whole shop", () => {
+    // A product URL that lands on /shop/all hands its ranking to a page about
+    // nothing in particular. Only the catch-all may do that.
+    const bad = productRules.filter((r) => !/^\/shop\/(p|c)\/[a-z0-9-]+$/.test(r.destination));
+    expect(bad.map((r) => `${r.source} -> ${r.destination}`)).toEqual([]);
   });
 
   it("sends every unresolved legacy product to a real page, not a redirect chain into a 404", () => {
