@@ -222,7 +222,7 @@ Update this table at the end of every session. Dates are absolute.
 | Item | State | Date | Evidence / next action |
 |---|---|---|---|
 | Diagnosis | ✅ | 2026-10-26 | DOMAIN-CONSOLIDATION §1 — Google results, 42/134 indexed |
-| `.in` → `.com` map: every live product mapped, none to `/shop/all` | ✅ in repo | 2026-10-26 | 119/119; generator fails on any gap |
+| `.in` → `.com` map: every live product mapped, none to `/shop/all` | ✅ in repo | 2026-10-27 | 119/119, 0 to a category since the 9 new products; generator fails on any gap and reads `.in`'s sitemaps from the 2026-10-26 snapshot |
 | One-hop 301 rules for the `.in` host | ✅ in repo | 2026-10-26 | `legacy-domain.mjs`; tests; verified on a prod build |
 | `.in`'s own sitemap of every old URL (181) + permissive robots.txt, to speed Google's recrawl | ✅ in repo | 2026-10-27 | `app/legacy-in/`; verified on a prod build. Submit `https://www.metnmat.in/sitemap.xml` in the `.in` Search Console property at cutover (DOMAIN-CONSOLIDATION §3.5) |
 | Caddy serves `metnmat.in` | ✅ in repo | 2026-10-26 | Applied by *Bootstrap v2 host* at cutover |
@@ -236,10 +236,10 @@ Update this table at the end of every session. Dates are absolute.
 | 17 placeholder spec tables (P6) | ⏳ needs datasheets | — | |
 | 12 products without images (P8) | ⏳ needs photos | — | |
 | Catalogue data errors found while writing titles | ⏳ owner | 2026-10-26 | N212 lists N117's thickness (~183 µm). `l-shaped-glassy-carbon-electrode-peek-rod-3mm` is named PEEK but its spec says PTFE (no title proposed until fixed). 3 pumps priced ₹0 (KPK200, 150 RPM dual, KK1800 Wi-Fi), which puts a ₹0 offer in their Product schema. 11 third-party products (Fumasep, Fumion, Sustainion, PiperION, Kamoer) carry brand "METNMAT". All are flagged in the plan CSV |
-| 9 `.in` products missing on `.com` | ⏳ | — | List in DOMAIN-CONSOLIDATION §6 |
-| Published "Test" product (`/shop/p/test`, ₹54) | ⏳ owner decision | 2026-10-26 | Indexable and in a real category. Unpublish it or set noIndex |
-| Empty indexable category `/shop/c/h-cell` | ⏳ | 2026-10-26 | Fill or noindex |
+| 9 `.in` products missing on `.com` | ✅ live | 2026-10-27 | Created and published with 26 photographs; their old `.in` URLs 301 to them (no longer to a category) once the redirect update is merged. Queued first for indexing requests |
+| Published "Test" product (`/shop/p/test`, ₹54) | 🔄 applying | 2026-10-27 | `fixes-2026-10.json` sets noIndex and unpublishes it (catalogue run, step 4) |
+| Empty indexable category `/shop/c/h-cell` | 🔄 applying | 2026-10-27 | `fixes-2026-10.json` moves the two H-cells into it; the 2 new H-type cells are already there |
 | Sibling-SKU duplicate pages (P13) | ⏳ needs owner decision | — | |
 | 26 legacy blog posts | ⏳ decision | — | Re-publish or leave to `/blog` |
 | Static-page parity (C.3) | ⏳ | — | |
-| Category intros (K3) | ⏳ | — | |
+| Category intros (K3) | 🔄 applying | 2026-10-27 | 24 intros in `fixes-2026-10.json`, written only where the field is empty |

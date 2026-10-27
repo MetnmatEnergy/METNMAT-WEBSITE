@@ -37,7 +37,7 @@ all self-canonical.
 
 | Piece | File | What it does |
 |---|---|---|
-| The map | [`apps/website/legacy-redirects.mjs`](../../apps/website/legacy-redirects.mjs) | Every `.in` URL → its `.com` page. **All 115 live products + 4 historical slugs** resolve: 40 exact, 14 exact after dropping Wix's `φ`, 3 truncated, 20 spec-matched, 32 hand-verified (name **and** price checked on both sites), 1 carried, **9 to their category** (no counterpart in the catalogue yet, §6). **0 to `/shop/all`.** |
+| The map | [`apps/website/legacy-redirects.mjs`](../../apps/website/legacy-redirects.mjs) | Every `.in` URL → its `.com` page. **All 115 live products + 4 historical slugs** resolve: 40 exact, 14 exact after dropping Wix's `φ`, 3 truncated, 20 spec-matched, 41 hand-verified (name **and** price checked on both sites; 9 of them are products created on `.com` on 2026-10-27 from their `.in` pages, §6), 1 carried. **0 to a category, 0 to `/shop/all`.** Since the cutover the generator reads `.in`'s sitemaps from the 2026-10-26 snapshot in `apps/website/scripts/legacy-in-snapshot/`, because `.in` itself now redirects. |
 | The generator | [`apps/website/scripts/build-legacy-redirects.mjs`](../../apps/website/scripts/build-legacy-redirects.mjs) | Rebuilds the map from the live Wix sitemaps + live catalogue. **Refuses to run** if any live `.in` product would fall to `/shop/all`, or any `.in` page is unmapped and 404s on `.com`. The map only grows. |
 | Host rules | [`apps/website/legacy-domain.mjs`](../../apps/website/legacy-domain.mjs) | Requests whose Host is `metnmat.in` or `www.metnmat.in` get **one 301 to the absolute `https://www.metnmat.com/...` URL**. Query strings are kept. Two files are the exception (next row). |
 | The old host's own sitemap + robots | `apps/website/src/app/legacy-in/` | `metnmat.in/sitemap.xml` lists **every URL the old site served** (181: 36 pages, 119 products, 26 posts; `legacyInPaths` in the map). Each of them 301s. `metnmat.in/robots.txt` allows everything and names that sitemap. Submitted in the `.in` Search Console property, this makes Google recrawl the old URLs, and so find their redirects, now rather than over weeks. Both are 404 on any other host. |
@@ -183,12 +183,13 @@ again within the DNS TTL. Nothing on `.com` needs undoing.
 
 ## 6. Open items this does not close
 
-- **9 `.in` products have no `.com` page yet.** They redirect to their category for now:
-  the 100+100 mL and 30+30 mL H-type cells, the 100 mL water-jacketed single cell, the 50 mL
-  single-chamber glass cell, graphite felt 200×200×3 mm, nickel fiber felt, the PEM hydrogen
-  electrolyzer (60 mL/min), PiperION ionomer dispersion 5 wt % 20 mL, and the PTFE 40 mL
-  water-splitting reactor. Add each to the catalogue (the Wix page has the copy and price),
-  delete its line from `CATEGORY` in the generator, and re-run it.
+- ~~**9 `.in` products have no `.com` page yet.**~~ **Closed 2026-10-27.** The 100+100 mL and
+  30+30 mL H-type cells, the 100 mL water-jacketed single cell, the 50 mL single-chamber glass
+  cell, graphite felt 200×200×3 mm, nickel fiber felt, the PEM hydrogen electrolyzer
+  (60 mL/min), PiperION ionomer dispersion 5 wt % 20 mL and the PTFE 40 mL water-splitting
+  reactor were created on `.com` from their own `.in` pages (copy, price, 26 photographs;
+  `apps/dashboard/scripts/draft-products/metnmat-in-missing-2026-10.json`), and their old URLs
+  moved from `CATEGORY` to `MANUAL` in the generator.
 - **26 legacy blog posts** go to `/blog`. They are METNMAT's own 2023 articles. Re-publishing
   the ones still worth reading on `.com` and adding them to the map would keep their traffic.
 - **Backlinks.** Profiles and listings that link to `metnmat.in` (LinkedIn, Justdial,
