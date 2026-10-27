@@ -3,7 +3,8 @@
  *
  *   node apps/website/scripts/build-legacy-redirects.mjs [out] [legacyOrigin] [cmsOrigin]
  *
- * Reads the legacy Wix sitemaps and the live CMS catalogue, then maps each legacy
+ * Reads the legacy Wix sitemaps (frozen in scripts/legacy-in-snapshot/ since the
+ * cutover) and the live CMS catalogue, then maps each legacy
  * product URL onto its .com equivalent. Read-only against both sources.
  *
  * Matching is done against PRODUCT DATA (body material, form factor, size
@@ -19,6 +20,7 @@
  * today's catalogue like any other legacy URL.
  */
 import fs from "node:fs";
+import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 // fileURLToPath, not URL.pathname: the pathname is percent-encoded, so a checkout
@@ -33,7 +35,16 @@ const fetchText = async (url) => {
   return res.text();
 };
 
-const storeXml = await fetchText(`${LEGACY}/store-products-sitemap.xml`);
+// Since 2026-10-27 metnmat.in itself redirects to .com, so its Wix sitemaps are
+// no longer reachable at that address. The copies captured on 2026-10-26, the
+// last day the Wix site served them, are the source of truth from now on.
+const SNAPSHOT = fileURLToPath(new URL("./legacy-in-snapshot/", import.meta.url));
+const legacySitemap = (name) =>
+  fs.existsSync(path.join(SNAPSHOT, name))
+    ? fs.readFileSync(path.join(SNAPSHOT, name), "utf8")
+    : fetchText(`${LEGACY}/${name}`);
+
+const storeXml = await legacySitemap("store-products-sitemap.xml");
 const live = new Set(
   [...storeXml.matchAll(/<loc>([^<]+)<\/loc>/g)]
     .map((m) => m[1].trim())
@@ -212,26 +223,27 @@ const MANUAL = {
   // Wix "PMMA Water Splitting Cell with Gas Collection", 2/3-electrode = EWB. ₹6,000.
   "water-splitting-reactor": "ewb-water-splitting-reactor",
   "water-splitting-reactor-ewf-zero-gap-electrolyzer-acrylic-transparent-model": "ewf-transparent-flow-electrolyzer-zero-gap", // Model EWF, ₹50,000
+  // ---- Created on .com 2026-10-27 from these very Wix pages (same name, price,
+  //      specs and photos; apps/dashboard/scripts/draft-products/metnmat-in-missing-2026-10.json) ----
+  "100-ml-100-ml-h-type-electrochemical-h-cell-dual-chamber-reactor": "h-type-electrochemical-cell-100-100-ml",
+  "30-ml-30-ml-h-type-electrochemical-h-cell-dual-chamber-electrochemical-cell": "h-type-electrochemical-cell-30-30-ml",
+  // The single 100 mL jacketed cell (₹42,000) — NOT the two-chamber 100 mL
+  // water-jacketed H-cell (₹65,000), which is a different product.
+  "100-ml-water-jacketed-electrochemical-cell-three-electrode": "water-jacketed-electrochemical-cell-100-ml",
+  "50-ml-single-chamber-electrochemical-cell-glass-reactor": "single-chamber-electrochemical-cell-50-ml",
+  "graphite-felt-electrode-for-electrochemical-applications-200x200x3mm": "graphite-felt-electrode-200-200-3-mm",
+  "nickel-fiber-felt-electrode-material-porous-ni-felt-hydrogen-fuel-cell-diffusion": "nickel-fiber-felt-electrode-10-10-cm",
+  "pem-hydrogen-electrolyzer-cell-60-ml-min": "pem-hydrogen-electrolyzer-60-ml-min",
+  "piperion-anion-exchange-dispersion-5-wt-20-ml": "piperion-anion-exchange-ionomer-dispersion-5-wt-20-ml",
+  "ptfe-40ml-water-splitting-electrochemical-reactor-three-electrode-system": "ptfe-water-splitting-reactor-40-ml-three-electrode",
 };
 
 // Legacy products with NO counterpart in the catalogue yet. Each lands on the
 // category a buyer of that product would browse, not on the whole shop — the
 // closest page we actually have. When the product itself is added to the
-// catalogue, delete its line here and the generator maps it exactly.
-const CATEGORY = {
-  "100-ml-100-ml-h-type-electrochemical-h-cell-dual-chamber-reactor": "reactor-cell",
-  "30-ml-30-ml-h-type-electrochemical-h-cell-dual-chamber-electrochemical-cell": "reactor-cell",
-  // A single 100 mL jacketed cell (₹42,000) — NOT the 100 mL water-jacketed
-  // H-cell in the catalogue (₹65,000), which is a two-chamber part.
-  "100-ml-water-jacketed-electrochemical-cell-three-electrode": "reactor-cell",
-  "50-ml-single-chamber-electrochemical-cell-glass-reactor": "reactor-cell",
-  "graphite-felt-electrode-for-electrochemical-applications-200x200x3mm": "carbon-gdl",
-  "nickel-fiber-felt-electrode-material-porous-ni-felt-hydrogen-fuel-cell-diffusion": "carbon-gdl",
-  "pem-hydrogen-electrolyzer-cell-60-ml-min": "water-splitting-reactors",
-  "piperion-anion-exchange-dispersion-5-wt-20-ml": "consumables",
-  // PTFE body, 40 mL, ₹65,000 — not the PMMA EWB (₹6,000) or the H-type EWB.
-  "ptfe-40ml-water-splitting-electrochemical-reactor-three-electrode-system": "water-splitting-reactors",
-};
+// catalogue, delete its line here and add it to MANUAL (the 9 that were here
+// until 2026-10-27 were all created on .com and moved).
+const CATEGORY = {};
 
 // Fail loudly rather than silently dropping a stale hand entry.
 for (const [from, to] of Object.entries(MANUAL)) {
@@ -353,7 +365,7 @@ const PAGES = [
 const DELIBERATE_404 = new Set(["/blank-2"]);
 const SITE = "https://www.metnmat.com";
 
-const pagesXml = await fetchText(`${LEGACY}/pages-sitemap.xml`);
+const pagesXml = await legacySitemap("pages-sitemap.xml");
 const livePages = [...pagesXml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
   (m) => new URL(m[1].trim()).pathname.replace(/\/$/, "") || "/"
 );
@@ -366,7 +378,7 @@ for (const p of samePath) {
   }
 }
 
-const postsXml = await fetchText(`${LEGACY}/blog-posts-sitemap.xml`);
+const postsXml = await legacySitemap("blog-posts-sitemap.xml");
 const livePostPaths = [...postsXml.matchAll(/<loc>([^<]+)<\/loc>/g)]
   .map((m) => new URL(m[1].trim()).pathname)
   .filter((p) => p.startsWith("/post/"));
