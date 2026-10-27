@@ -87,10 +87,16 @@ sec "Caddy"
 # 0755 (not 0750): the copr caddy.service failed to open its log files under a
 # 0750 dir; the individual .log files are still 0600, so nothing sensitive leaks.
 install -d -o caddy -g caddy -m 0755 /var/log/caddy
-chown -R caddy:caddy /var/log/caddy 2>/dev/null || true
 install -m 0644 "$SRC/caddy/Caddyfile" /etc/caddy/Caddyfile
 rm -rf /etc/caddy/conf.d
 caddy validate --config /etc/caddy/Caddyfile >/dev/null
+# The chown comes AFTER validate, never before. Validate runs as root and
+# provisions every site's log writer, which creates a missing log file as
+# root:root 0600. The first run after a new site was added (metnmat.in,
+# 2026-10-27) left legacy-in.log unreadable to the caddy user, so the reload
+# failed and the restart could not open its logs: every hostname refused
+# connections for ~3 minutes until a second run chowned the file.
+chown -R caddy:caddy /var/log/caddy 2>/dev/null || true
 systemctl enable --now caddy
 systemctl reload caddy || systemctl restart caddy
 ok "Caddyfile installed (7 hostnames → loopback)"
