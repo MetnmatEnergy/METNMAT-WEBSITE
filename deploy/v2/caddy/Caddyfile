@@ -85,3 +85,29 @@ command-center.metnmat.com {
 	encode zstd gzip
 	import site_log command-center
 }
+
+# ── Z900 attendance terminal forwarder ─────────────────────────────────────
+# The office Z900 biometric terminal can only dial a numeric ws://IP:PORT URL
+# (no TLS, no hostnames), so it connects to this host's fixed IP on port 8090
+# and Caddy carries the WebSocket on to attendance.metnmat.com (the Attendance
+# server behind Cloudflare). Only /ws/z900* is forwarded; every other path
+# answers 404. Security group metnmat-prod-web-sg allows TCP 8090.
+# Added by hand on 2026-09-25 and lost on the 2026-10-27 bootstrap, which took
+# the terminal offline for a day — keep this block. Details: MetnmatEnergy/
+# Attendance, deploy/README.md, section "Z900 over the internet".
+http://:8090 {
+	@z900 path /ws/z900*
+	handle @z900 {
+		reverse_proxy attendance.metnmat.com:443 {
+			header_up Host attendance.metnmat.com
+			transport http {
+				tls
+				tls_server_name attendance.metnmat.com
+			}
+		}
+	}
+	handle {
+		respond 404
+	}
+	import site_log z900-forwarder
+}
