@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 import { isAllowedBlogSubmissionSignature, safeFilename } from "@/backend/lib/file-signature";
 import { sendBlogSubmissionEmails } from "@/backend/lib/email";
+import { checkEmailSanity } from "@/backend/lib/form-guard";
+import { alertResearchGroup } from "@/backend/lib/group-alert";
 import {
   createBlogSubmission,
   findRecentDuplicateSubmission,
@@ -266,6 +268,26 @@ export async function POST(req: NextRequest) {
     keywords: str(form, "keywords", 400) || undefined,
     attachmentNames,
   }).catch(() => {});
+
+  // Group heads-up. No bot challenge here either, so an address with no mail
+  // server is taken as spam and kept out of the group (see /api/contact).
+  void checkEmailSanity(email)
+    .then((s) =>
+      s.reasons.length
+        ? false
+        : alertResearchGroup({
+            kind: "blog",
+            reference: referenceNumber,
+            name: fullName,
+            company: str(form, "organisation", 200) || undefined,
+            email,
+            subject: proposedTitle,
+            category: [contentTypeName, categoryName].filter(Boolean).join(" · ") || undefined,
+            message: abstract,
+            attachments: attachmentIds.length,
+          })
+    )
+    .catch(() => false);
 
   return NextResponse.json({ ok: true, reference: referenceNumber });
 }
