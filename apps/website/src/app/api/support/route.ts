@@ -5,6 +5,7 @@ import { limitRate, clientIp } from "@/backend/lib/rate-limit";
 import { collectGrantedIds } from "@/backend/lib/attachment-grant";
 import { screenSubmission, checkEmailSanity, autoReplyBudget } from "@/backend/lib/form-guard";
 import { honeypotTripped } from "@/backend/validation";
+import { alertResearchGroup } from "@/backend/lib/group-alert";
 
 /**
  * POST /api/support — raise a support ticket.
@@ -158,6 +159,21 @@ export async function POST(req: Request) {
     orderNumber: body.orderNumber?.trim() || undefined,
     statusUrl,
   }, { sendCustomerCopy, suspectReasons }).catch(() => false);
+
+  // Group heads-up, as for an RFQ (skipped when tagged). No email or phone: the
+  // ticket number plus the customer's email is what opens the ticket, and
+  // replies belong in the ticket, not in WhatsApp.
+  if (suspectReasons.length === 0) {
+    void alertResearchGroup({
+      kind: "support",
+      reference: ticketNumber,
+      name,
+      subject,
+      category,
+      message: description,
+      attachments: granted.ids.length,
+    });
+  }
 
   return NextResponse.json({ ok: true, ticketNumber, emailed });
 }

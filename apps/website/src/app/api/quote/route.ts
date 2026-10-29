@@ -12,6 +12,7 @@ import { screenSubmission, checkEmailSanity, autoReplyBudget } from "@/backend/l
 import { isAllowedUploadSignature, safeFilename } from "@/backend/lib/file-signature";
 import { collectGrantedIds } from "@/backend/lib/attachment-grant";
 import { recordIntegrationLog } from "@/backend/services/orders.service";
+import { alertResearchGroup } from "@/backend/lib/group-alert";
 import {
   beginIdempotent,
   completeIdempotent,
@@ -346,6 +347,25 @@ export async function POST(request: Request) {
       },
       { status: 502 }
     );
+  }
+
+  // A heads-up in the Metnmat Research WhatsApp group, after the RFQ is filed.
+  // Not for a tagged submission: the group's send budget is shared with the
+  // Amazon order alerts, and the tagged email already reaches sales.
+  if (suspectReasons.length === 0) {
+    void alertResearchGroup({
+      kind: "quote",
+      reference: saved.referenceId,
+      name: enquiry.name,
+      company: enquiry.company,
+      email: enquiry.email,
+      phone: enquiry.phone,
+      product: [enquiry.productName, enquiry.quantity && `qty ${enquiry.quantity}`]
+        .filter(Boolean)
+        .join(" · "),
+      message: enquiry.message,
+      attachments: attachmentIds.length,
+    });
   }
 
   const payload = {
