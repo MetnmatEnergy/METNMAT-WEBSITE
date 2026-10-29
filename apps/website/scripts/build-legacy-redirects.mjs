@@ -63,7 +63,26 @@ const historical = new Set(
     .filter((s) => s.startsWith("/product-page/") && !s.includes(":"))
     .map((s) => decodeURIComponent(s.slice("/product-page/".length)))
 );
-const legacy = [...new Set([...live, ...historical])].sort();
+// Old product URLs that were in neither the 2026-10-26 sitemap nor any earlier
+// run, found in the metnmat.in Search Console Performance report (pages with
+// impressions, last 3 months, read 2026-10-29). Wix renamed or re-slugged these
+// products over the years; Google still ranks the old address, and without a
+// rule each fell through to /shop/all and its ranking was thrown away.
+const SEEN_IN_SEARCH_CONSOLE = [
+  "100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell",
+  "copy-of-flow-electrolyzer-for-carbon-dioxide-reduction-ptfe-body",
+  "flow-electrolyzer-for-carbon-dioxide-reduction-peek-body-co-reduction-react",
+  "fuel-cell-reactor",
+  "gas-diffusion-layer-teflonzed-substrate",
+  "gas-sampling-bag-0-5-litre-with-ptfe-valve-pvdf-gas-collection-bag-for-laborat",
+  "in-situ-raman-spectroscopy-electrochemical-cell-for-operando-raman-spectroscopy",
+  "intelligent-dual-channel-peristaltic-pump-working-voltage-dc-24v",
+  "kamoer-kcp-x-mini-peristaltic-pump-24v-with-control-low-flow-rate",
+  "nickel-foam-electrode-purity-99-with-cell-density-110-ppi-size-w-20",
+  "nickel-foam-electrode-purity-99-with-cell-density-20",
+  "the-pem-hydrogen-electrolyzer-cell-60-ml-min-is-a-compact-and-efficientfor-lab",
+];
+const legacy = [...new Set([...live, ...historical, ...SEEN_IN_SEARCH_CONSOLE])].sort();
 
 const cat = JSON.parse(await fetchText(`${CMS}/api/products?limit=500&depth=0`)).docs || [];
 const bySlug = new Map(cat.map((p) => [p.slug, p]));
@@ -227,8 +246,9 @@ const MANUAL = {
   //      specs and photos; apps/dashboard/scripts/draft-products/metnmat-in-missing-2026-10.json) ----
   "100-ml-100-ml-h-type-electrochemical-h-cell-dual-chamber-reactor": "h-type-electrochemical-cell-100-100-ml",
   "30-ml-30-ml-h-type-electrochemical-h-cell-dual-chamber-electrochemical-cell": "h-type-electrochemical-cell-30-30-ml",
-  // The single 100 mL jacketed cell (₹42,000) — NOT the two-chamber 100 mL
-  // water-jacketed H-cell (₹65,000), which is a different product.
+  // The single 100 mL jacketed cell (₹42,000). The ".com water-jacketed H-cell"
+  // turned out to be this same cell under .in's old name (same photos) and was
+  // unpublished on 2026-10-27.
   "100-ml-water-jacketed-electrochemical-cell-three-electrode": "water-jacketed-electrochemical-cell-100-ml",
   "50-ml-single-chamber-electrochemical-cell-glass-reactor": "single-chamber-electrochemical-cell-50-ml",
   "graphite-felt-electrode-for-electrochemical-applications-200x200x3mm": "graphite-felt-electrode-200-200-3-mm",
@@ -236,6 +256,22 @@ const MANUAL = {
   "pem-hydrogen-electrolyzer-cell-60-ml-min": "pem-hydrogen-electrolyzer-60-ml-min",
   "piperion-anion-exchange-dispersion-5-wt-20-ml": "piperion-anion-exchange-ionomer-dispersion-5-wt-20-ml",
   "ptfe-40ml-water-splitting-electrochemical-reactor-three-electrode-system": "ptfe-water-splitting-reactor-40-ml-three-electrode",
+  // ---- SEEN_IN_SEARCH_CONSOLE (2026-10-29). Where the slug alone did not prove
+  //      the product, the Internet Archive copy of the .in page did. ----
+  "100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell": "water-jacketed-electrochemical-cell-100-ml", // .in's old name for the single jacketed cell
+  "copy-of-flow-electrolyzer-for-carbon-dioxide-reduction-ptfe-body": "flow-electrolyzer-for-carbon-dioxide-reduction-ptfe-body",
+  "flow-electrolyzer-for-carbon-dioxide-reduction-peek-body-co-reduction-react": "flow-electrolyzer-for-carbon-dioxide-reduction-peek-body",
+  // archive 2023-09-30: "Fuel Cell / Metal Air Transparent Acrylic Reactor / Testing device – Model T2" (PMMA); .com sells models T1–T4
+  "fuel-cell-reactor": "metal-air-battery-reactor",
+  // archive 2026-04-21: carbon paper 270 ± 15 µm, PTFE 5–10 %, MPL one side, ₹9,000 — the .com GDL's exact spec and price
+  "gas-diffusion-layer-teflonzed-substrate": "gas-diffusion-layer-gdl-carbon-paper-for-co2-electrolysis-flow-cell",
+  // archive 2026-06-11: the page under this "0.5 litre" slug was titled "Gas Sampling Bag 1 Litre with PTFE Valve", ₹1,500
+  "gas-sampling-bag-0-5-litre-with-ptfe-valve-pvdf-gas-collection-bag-for-laborat": "gas-sampling-bag-1-litre-with-ptfe-valve",
+  "in-situ-raman-spectroscopy-electrochemical-cell-for-operando-raman-spectroscopy": "in-situ-raman-electrochemical-cell-for-operando-raman-spectroscopy",
+  "intelligent-dual-channel-peristaltic-pump-working-voltage-dc-24v": "intelligent-peristaltic-pump-dual-channel-working-voltage-dc-24v",
+  "kamoer-kcp-x-mini-peristaltic-pump-24v-with-control-low-flow-rate": "compact-peristaltic-pump-knob-control-65-ml-min", // same KCP-X mini as its two siblings above
+  "nickel-foam-electrode-purity-99-with-cell-density-110-ppi-size-w-20": "nickel-foam-electrode-200-300-1-5-mm", // 110 PPI, W 200 × L 300
+  "the-pem-hydrogen-electrolyzer-cell-60-ml-min-is-a-compact-and-efficientfor-lab": "pem-hydrogen-electrolyzer-60-ml-min",
 };
 
 // Legacy products with NO counterpart in the catalogue yet. Each lands on the
@@ -243,7 +279,12 @@ const MANUAL = {
 // closest page we actually have. When the product itself is added to the
 // catalogue, delete its line here and add it to MANUAL (the 9 that were here
 // until 2026-10-27 were all created on .com and moved).
-const CATEGORY = {};
+const CATEGORY = {
+  // Seen in Search Console only; no archive copy. Its cell density cannot be told
+  // from the slug (20 PPI is not the 110 PPI foam .com sells), so the category,
+  // which lists the nickel foam, rather than a guess at the product.
+  "nickel-foam-electrode-purity-99-with-cell-density-20": "carbon-gdl",
+};
 
 // Fail loudly rather than silently dropping a stale hand entry.
 for (const [from, to] of Object.entries(MANUAL)) {
