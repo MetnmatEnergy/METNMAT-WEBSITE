@@ -88,6 +88,14 @@ describe("legacy redirect map", () => {
     // straight vs L-shaped are different parts
     ["glassy-carbon-electrode-straight-type-ptfe-rod-φ3mm", "glassy-carbon-electrode-straight-type-ptfe-rod"],
     ["l-shaped-glassy-carbon-electrode-ptfe-rod-φ3mm", "l-shaped-glassy-carbon-disk-working-electrode-3-mm"],
+    // Old slugs found only in Search Console (2026-10-29), proven by the
+    // Internet Archive copy of the .in page, not by the slug text:
+    // "fuel-cell-reactor" was the acrylic Model T2 metal-air reactor,
+    ["fuel-cell-reactor", "metal-air-battery-reactor"],
+    // the "0.5 litre" slug carried the 1 litre bag,
+    ["gas-sampling-bag-0-5-litre-with-ptfe-valve-pvdf-gas-collection-bag-for-laborat", "gas-sampling-bag-1-litre-with-ptfe-valve"],
+    // and the "teflonzed substrate" GDL had the .com carbon paper's spec and price.
+    ["gas-diffusion-layer-teflonzed-substrate", "gas-diffusion-layer-gdl-carbon-paper-for-co2-electrolysis-flow-cell"],
   ])("maps %s to the SKU that matches its body and dimensions", (from, to) => {
     expect(mapOf(from)).toBe(`/shop/p/${to}`);
   });

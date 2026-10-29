@@ -9,7 +9,7 @@
 // Source of truth: the live Wix sitemaps
 //   /pages-sitemap.xml (36)  /store-products-sitemap.xml (115)  /blog-posts-sitemap.xml (26)
 // plus the live CMS catalogue (141 products) and every source of the
-// previous run (the map only grows). Captured 2026-10-27.
+// previous run (the map only grows). Captured 2026-10-29.
 //
 // Product mappings, strongest first:
 //   exact       the slug carried over unchanged
@@ -68,9 +68,10 @@ export const legacyRedirects = [
   { source: "/members", destination: "/", statusCode: 301 },
   { source: "/my-addresses", destination: "/", statusCode: 301 },
 
-  // ---- Store products (119 of 119 resolve to a product or its category) ----
+  // ---- Store products (131 of 131 resolve to a product or its category) ----
   { source: "/product-page/100-ml-100-ml-h-type-electrochemical-h-cell-dual-chamber-reactor", destination: "/shop/p/h-type-electrochemical-cell-100-100-ml", statusCode: 301 }, // verified
   { source: "/product-page/100-ml-water-jacketed-electrochemical-cell-three-electrode", destination: "/shop/p/water-jacketed-electrochemical-cell-100-ml", statusCode: 301 }, // verified
+  { source: "/product-page/100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell", destination: "/shop/p/water-jacketed-electrochemical-cell-100-ml", statusCode: 301 }, // verified
   { source: "/product-page/30-ml-30-ml-h-type-electrochemical-h-cell-dual-chamber-electrochemical-cell", destination: "/shop/p/h-type-electrochemical-cell-30-30-ml", statusCode: 301 }, // verified
   { source: "/product-page/30-ton-hydraulic-press-four-pillar-hand-operated-semi-automatic-model-mhp-30", destination: "/shop/p/30-ton-hydraulic-press-four-pillar-hand-operated-semi-automatic-model", statusCode: 301 }, // truncated
   { source: "/product-page/400-w-metnmat-fuel-cell-metal-air-battery-testing-device", destination: "/shop/p/fuel-cell-metal-air-battery-testing-device-400-w", statusCode: 301 }, // verified
@@ -81,6 +82,7 @@ export const legacyRedirects = [
   { source: "/product-page/anion-exchange-membrane-fumasep-faa-3-50-100x100-mm", destination: "/shop/p/fumasep-faa-3-50-anion-exchange-membrane", statusCode: 301 }, // verified
   { source: "/product-page/conducting-carbon-fiber-cloth-ct-200mm-x-200mm", destination: "/shop/p/conducting-carbon-fiber-cloth-ct-200mm-x-200mm", statusCode: 301 }, // exact
   { source: "/product-page/copper-foam-200mm-x-300mm", destination: "/shop/p/copper-foam-200mm-x-300mm", statusCode: 301 }, // exact
+  { source: "/product-page/copy-of-flow-electrolyzer-for-carbon-dioxide-reduction-ptfe-body", destination: "/shop/p/flow-electrolyzer-for-carbon-dioxide-reduction-ptfe-body", statusCode: 301 }, // verified
   { source: "/product-page/detachable-gold-dsic-electrode-straight-type-peek-rod-sem-φ3mm", destination: "/shop/p/detachable-gold-disk-electrode-3-mm", statusCode: 301 }, // spec-match
   { source: "/product-page/detachable-gold-dsic-electrode-straight-type-peek-rod-sem-%CF%863mm", destination: "/shop/p/detachable-gold-disk-electrode-3-mm", statusCode: 301 }, // spec-match
   { source: "/product-page/detachable-l-shaped-gold-disk-electrode-φ4mm", destination: "/shop/p/detachable-gold-disk-electrode", statusCode: 301 }, // spec-match
@@ -95,8 +97,12 @@ export const legacyRedirects = [
   { source: "/product-page/flow-cell-accessories-mercury-oxide-reference-electrode-hg-hgo-galss-rod-%CF%864-70", destination: "/shop/p/flow-cell-accessories-mercury-oxide-reference-electrode-hg-hgo-glass-rod-4-70", statusCode: 301 }, // normalized
   { source: "/product-page/flow-electrolyzer-co2-reduction-peek", destination: "/shop/p/flow-electrolyzer-for-carbon-dioxide-reduction-peek-body", statusCode: 301 }, // verified
   { source: "/product-page/flow-electrolyzer-co2-reduction-ptfe", destination: "/shop/p/flow-electrolyzer-for-carbon-dioxide-reduction-ptfe-body", statusCode: 301 }, // verified
+  { source: "/product-page/flow-electrolyzer-for-carbon-dioxide-reduction-peek-body-co-reduction-react", destination: "/shop/p/flow-electrolyzer-for-carbon-dioxide-reduction-peek-body", statusCode: 301 }, // verified
+  { source: "/product-page/fuel-cell-reactor", destination: "/shop/p/metal-air-battery-reactor", statusCode: 301 }, // verified
   { source: "/product-page/fumion-dispersion-fumion-faa-3-solut-10", destination: "/shop/p/fumion-faa-3-solut-10-anion-exchange-ionomer-dispersion", statusCode: 301 }, // verified
   { source: "/product-page/gas-diffusion-layer-gdl-carbon-paper", destination: "/shop/p/gas-diffusion-layer-gdl-carbon-paper-for-co2-electrolysis-flow-cell", statusCode: 301 }, // verified
+  { source: "/product-page/gas-diffusion-layer-teflonzed-substrate", destination: "/shop/p/gas-diffusion-layer-gdl-carbon-paper-for-co2-electrolysis-flow-cell", statusCode: 301 }, // verified
+  { source: "/product-page/gas-sampling-bag-0-5-litre-with-ptfe-valve-pvdf-gas-collection-bag-for-laborat", destination: "/shop/p/gas-sampling-bag-1-litre-with-ptfe-valve", statusCode: 301 }, // verified
   { source: "/product-page/gas-sampling-bag-1-l-pvdf-film-ptfe-valve", destination: "/shop/p/gas-sampling-bag-1-litre-with-ptfe-valve", statusCode: 301 }, // verified
   { source: "/product-page/glassy-carbon-electrode-straight-type-ptfe-rod-φ3mm", destination: "/shop/p/glassy-carbon-electrode-straight-type-ptfe-rod", statusCode: 301 }, // spec-match
   { source: "/product-page/glassy-carbon-electrode-straight-type-ptfe-rod-%CF%863mm", destination: "/shop/p/glassy-carbon-electrode-straight-type-ptfe-rod", statusCode: 301 }, // spec-match
@@ -121,8 +127,11 @@ export const legacyRedirects = [
   { source: "/product-page/hydraulic-hot-press-pem-fuel-cell-mea", destination: "/shop/p/hot-press-machine-for-pefc-membrane-electrode-assembly-hydraulic-hot-p", statusCode: 301 }, // verified
   { source: "/product-page/hydraulic-pressing-machine", destination: "/shop/p/hydraulic-pressing-machine", statusCode: 301 }, // exact
   { source: "/product-page/in-situ-raman-electrochemical-cell-for-operando-raman-spectroscopy", destination: "/shop/p/in-situ-raman-electrochemical-cell-for-operando-raman-spectroscopy", statusCode: 301 }, // exact
+  { source: "/product-page/in-situ-raman-spectroscopy-electrochemical-cell-for-operando-raman-spectroscopy", destination: "/shop/p/in-situ-raman-electrochemical-cell-for-operando-raman-spectroscopy", statusCode: 301 }, // verified
+  { source: "/product-page/intelligent-dual-channel-peristaltic-pump-working-voltage-dc-24v", destination: "/shop/p/intelligent-peristaltic-pump-dual-channel-working-voltage-dc-24v", statusCode: 301 }, // verified
   { source: "/product-page/intelligent-peristaltic-pump-dual-channel-working-voltage-dc-24v", destination: "/shop/p/intelligent-peristaltic-pump-dual-channel-working-voltage-dc-24v", statusCode: 301 }, // exact
   { source: "/product-page/kamoer-kcp-x-mini-peristaltic-pump-24v", destination: "/shop/p/compact-peristaltic-pump-knob-control-65-ml-min", statusCode: 301 }, // verified
+  { source: "/product-page/kamoer-kcp-x-mini-peristaltic-pump-24v-with-control-low-flow-rate", destination: "/shop/p/compact-peristaltic-pump-knob-control-65-ml-min", statusCode: 301 }, // verified
   { source: "/product-page/kamoer-kcp-x-mini-peristaltic-pump-24v-with-control-low-flow-rate-19-65ml-min-ad", destination: "/shop/p/compact-peristaltic-pump-knob-control-65-ml-min", statusCode: 301 }, // verified
   { source: "/product-page/kamoer-kcp2-kxf-s08-peristaltic-lab-pump-12v-dc-flow-rate-17-50-ml-min", destination: "/shop/p/compact-peristaltic-pump-knob-control-41-5-ml-min", statusCode: 301 }, // verified
   { source: "/product-page/l-shaped-glassy-carbon-electrode-ptfe-rod-φ3mm", destination: "/shop/p/l-shaped-glassy-carbon-disk-working-electrode-3-mm", statusCode: 301 }, // verified
@@ -147,6 +156,8 @@ export const legacyRedirects = [
   { source: "/product-page/nafion-117-membrane", destination: "/shop/p/pfsa-proton-exchange-membrane-300-mm-x-300-mm", statusCode: 301 }, // verified
   { source: "/product-page/nickel-fiber-felt-electrode-material-porous-ni-felt-hydrogen-fuel-cell-diffusion", destination: "/shop/p/nickel-fiber-felt-electrode-10-10-cm", statusCode: 301 }, // verified
   { source: "/product-page/nickel-foam-electrode-110-ppi-200x300mm", destination: "/shop/p/nickel-foam-electrode-200-300-1-5-mm", statusCode: 301 }, // verified
+  { source: "/product-page/nickel-foam-electrode-purity-99-with-cell-density-110-ppi-size-w-20", destination: "/shop/p/nickel-foam-electrode-200-300-1-5-mm", statusCode: 301 }, // verified
+  { source: "/product-page/nickel-foam-electrode-purity-99-with-cell-density-20", destination: "/shop/c/carbon-gdl", statusCode: 301 }, // category
   { source: "/product-page/noble-metal-plate-platinum-20-20-0-1mm", destination: "/shop/p/noble-metal-plate-platinum-20-20-0-1mm", statusCode: 301 }, // exact
   { source: "/product-page/noble-metal-plate-platinum-30-30-0-1mm", destination: "/shop/p/noble-metal-plate-platinum-30-30-0-1mm", statusCode: 301 }, // exact
   { source: "/product-page/non-aqueous-silver-silver-ion-reference-electrode-ag-ag-glass-rod", destination: "/shop/p/non-aqueous-silver-silver-ion-reference-electrode-ag-ag", statusCode: 301 }, // verified
@@ -213,6 +224,7 @@ export const legacyRedirects = [
   { source: "/product-page/silver-silver-chloride-ag-agcl-reference-electrode-%CF%866mm-ptfe-rod", destination: "/shop/p/ag-agcl-reference-electrode-6-mm", statusCode: 301 }, // spec-match
   { source: "/product-page/swagelok-battery-test-fixture", destination: "/shop/p/swagelok-battery-test-fixture", statusCode: 301 }, // exact
   { source: "/product-page/temperature-controlling-unit", destination: "/shop/p/temperature-controlling-unit", statusCode: 301 }, // exact
+  { source: "/product-page/the-pem-hydrogen-electrolyzer-cell-60-ml-min-is-a-compact-and-efficientfor-lab", destination: "/shop/p/pem-hydrogen-electrolyzer-60-ml-min", statusCode: 301 }, // verified
   { source: "/product-page/titanium-felt-electrode-porous-ti-felt", destination: "/shop/p/titanium-felt-electrode", statusCode: 301 }, // verified
   { source: "/product-page/titanium-felt-electrode-porous-ti-felt-for-electrochemical-applications-fuel", destination: "/shop/p/titanium-felt-electrode", statusCode: 301 }, // carried
   { source: "/product-page/transparent-carbon-dioxide-gas-diffusion-flow-cell", destination: "/shop/p/transparent-carbon-dioxide-gas-diffusion-flow-cell", statusCode: 301 }, // exact
@@ -237,7 +249,7 @@ export const legacyRedirects = [
   { source: "/post/:slug", destination: "/blog", statusCode: 301 },
 ];
 
-// Every URL metnmat.in has served (181): pages, products current and
+// Every URL metnmat.in has served (193): pages, products current and
 // historical, and posts. Once metnmat.in points at this host it serves this list
 // as its own sitemap.xml (legacy-domain.mjs), so Google recrawls each old URL
 // and finds its redirect instead of waiting to stumble on it.
@@ -295,6 +307,7 @@ export const legacyInPaths = [
   "/product-benchmarking",
   "/product-page/100-ml-100-ml-h-type-electrochemical-h-cell-dual-chamber-reactor",
   "/product-page/100-ml-water-jacketed-electrochemical-cell-three-electrode",
+  "/product-page/100-ml-water-jacketed-h-cell-three-electrode-electrochemical-cell",
   "/product-page/30-ml-30-ml-h-type-electrochemical-h-cell-dual-chamber-electrochemical-cell",
   "/product-page/30-ton-hydraulic-press-four-pillar-hand-operated-semi-automatic-model-mhp-30",
   "/product-page/400-w-metnmat-fuel-cell-metal-air-battery-testing-device",
@@ -305,6 +318,7 @@ export const legacyInPaths = [
   "/product-page/anion-exchange-membrane-fumasep-faa-3-50-100x100-mm",
   "/product-page/conducting-carbon-fiber-cloth-ct-200mm-x-200mm",
   "/product-page/copper-foam-200mm-x-300mm",
+  "/product-page/copy-of-flow-electrolyzer-for-carbon-dioxide-reduction-ptfe-body",
   "/product-page/detachable-gold-dsic-electrode-straight-type-peek-rod-sem-%CF%863mm",
   "/product-page/detachable-l-shaped-gold-disk-electrode-%CF%864mm",
   "/product-page/detachable-l-shaped-platinum-disk-electrode-%CF%864mm",
@@ -315,8 +329,12 @@ export const legacyInPaths = [
   "/product-page/flow-cell-accessories-mercury-oxide-reference-electrode-hg-hgo-galss-rod-%CF%864-70",
   "/product-page/flow-electrolyzer-co2-reduction-peek",
   "/product-page/flow-electrolyzer-co2-reduction-ptfe",
+  "/product-page/flow-electrolyzer-for-carbon-dioxide-reduction-peek-body-co-reduction-react",
+  "/product-page/fuel-cell-reactor",
   "/product-page/fumion-dispersion-fumion-faa-3-solut-10",
   "/product-page/gas-diffusion-layer-gdl-carbon-paper",
+  "/product-page/gas-diffusion-layer-teflonzed-substrate",
+  "/product-page/gas-sampling-bag-0-5-litre-with-ptfe-valve-pvdf-gas-collection-bag-for-laborat",
   "/product-page/gas-sampling-bag-1-l-pvdf-film-ptfe-valve",
   "/product-page/glassy-carbon-electrode-straight-type-ptfe-rod-%CF%863mm",
   "/product-page/gold-disk-electrode-straight-type-ptcfe-rod-%CF%862mm",
@@ -334,8 +352,11 @@ export const legacyInPaths = [
   "/product-page/hydraulic-hot-press-pem-fuel-cell-mea",
   "/product-page/hydraulic-pressing-machine",
   "/product-page/in-situ-raman-electrochemical-cell-for-operando-raman-spectroscopy",
+  "/product-page/in-situ-raman-spectroscopy-electrochemical-cell-for-operando-raman-spectroscopy",
+  "/product-page/intelligent-dual-channel-peristaltic-pump-working-voltage-dc-24v",
   "/product-page/intelligent-peristaltic-pump-dual-channel-working-voltage-dc-24v",
   "/product-page/kamoer-kcp-x-mini-peristaltic-pump-24v",
+  "/product-page/kamoer-kcp-x-mini-peristaltic-pump-24v-with-control-low-flow-rate",
   "/product-page/kamoer-kcp-x-mini-peristaltic-pump-24v-with-control-low-flow-rate-19-65ml-min-ad",
   "/product-page/kamoer-kcp2-kxf-s08-peristaltic-lab-pump-12v-dc-flow-rate-17-50-ml-min",
   "/product-page/l-shaped-glassy-carbon-electrode-ptfe-rod-%CF%863mm",
@@ -353,6 +374,8 @@ export const legacyInPaths = [
   "/product-page/nafion-117-membrane",
   "/product-page/nickel-fiber-felt-electrode-material-porous-ni-felt-hydrogen-fuel-cell-diffusion",
   "/product-page/nickel-foam-electrode-110-ppi-200x300mm",
+  "/product-page/nickel-foam-electrode-purity-99-with-cell-density-110-ppi-size-w-20",
+  "/product-page/nickel-foam-electrode-purity-99-with-cell-density-20",
   "/product-page/noble-metal-plate-platinum-20-20-0-1mm",
   "/product-page/noble-metal-plate-platinum-30-30-0-1mm",
   "/product-page/non-aqueous-silver-silver-ion-reference-electrode-ag-ag-glass-rod",
@@ -403,6 +426,7 @@ export const legacyInPaths = [
   "/product-page/silver-silver-chloride-ag-agcl-reference-electrode-peek-rod",
   "/product-page/swagelok-battery-test-fixture",
   "/product-page/temperature-controlling-unit",
+  "/product-page/the-pem-hydrogen-electrolyzer-cell-60-ml-min-is-a-compact-and-efficientfor-lab",
   "/product-page/titanium-felt-electrode-porous-ti-felt",
   "/product-page/titanium-felt-electrode-porous-ti-felt-for-electrochemical-applications-fuel",
   "/product-page/transparent-carbon-dioxide-gas-diffusion-flow-cell",
