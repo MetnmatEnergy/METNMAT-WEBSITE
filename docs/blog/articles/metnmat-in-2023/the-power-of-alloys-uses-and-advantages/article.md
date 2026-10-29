@@ -32,9 +32,7 @@ Solid solution alloys are formed when the atoms of the added elements are evenly
 
 ### Interstitial Alloys
 
-Interstitial alloys occur when small atoms fit into the spaces between the atoms of the base metal's crystal lattice. This process alters the properties of the base metal, such as increased hardness. An example of an interstitial alloy is steel with carbon atoms occupying interstitial
-
-positions within the iron lattice.
+Interstitial alloys occur when small atoms fit into the spaces between the atoms of the base metal's crystal lattice. This process alters the properties of the base metal, such as increased hardness. An example of an interstitial alloy is steel with carbon atoms occupying interstitial positions within the iron lattice.
 
 ### Substitutional Alloys
 
