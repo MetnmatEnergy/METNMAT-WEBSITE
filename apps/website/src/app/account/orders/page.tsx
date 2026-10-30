@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Package, ChevronRight, RefreshCw } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
 import { formatINR } from "@/frontend/lib/catalog";
+import { formatDateIST } from "@/frontend/lib/ist-date";
 import { getCurrentCustomer, getCustomerOrders } from "@/backend/lib/customer";
 
 export const dynamic = "force-dynamic";
@@ -59,9 +60,7 @@ export default async function OrdersPage() {
   return (
     <div className="space-y-3">
       {orders.map((o, i) => {
-        const date = o.createdAt
-          ? new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-          : "—";
+        const date = formatDateIST(o.createdAt) || "—";
         const itemCount = (o.items ?? []).reduce((n, it) => n + (it.qty || 0), 0);
         const status = (o.status || "pending").toLowerCase();
         const href = o.orderNumber ? `/account/orders/${encodeURIComponent(o.orderNumber)}` : "#";
