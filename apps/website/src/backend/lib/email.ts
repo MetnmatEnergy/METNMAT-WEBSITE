@@ -66,6 +66,12 @@ export type QuoteEmailOptions = {
    * "[possible spam]" and says why.
    */
   suspectReasons?: string[];
+  /**
+   * Which form this came from, so the email names it. The contact form shares
+   * this mailer and the "RFQ-" reference, but its visitors sent a message, not
+   * a customization request. Defaults to "quote".
+   */
+  kind?: "quote" | "contact";
 };
 
 /** A file to attach to the email. `content` is base64-encoded. */
@@ -187,6 +193,7 @@ export async function sendQuoteEmails(
       : undefined;
   const suspect = options.suspectReasons ?? [];
   const tagged = suspect.length > 0;
+  const what = options.kind === "contact" ? "contact message" : "customization request";
 
   const from = process.env.QUOTE_FROM_EMAIL || "METNMAT <onboarding@resend.dev>";
   const notify = notifyRecipients(process.env.QUOTE_NOTIFY_EMAIL);
@@ -203,19 +210,19 @@ export async function sendQuoteEmails(
   const customerHtml = shell({
     heading: `Thank you for your request, ${esc(input.name)}!`,
     intro:
-      "We&rsquo;ve received your customization request and our team will review it and get back to you shortly." +
+      `We&rsquo;ve received your ${what} and our team will review it and get back to you shortly.` +
       reference +
       " Here&rsquo;s a copy of the details you submitted, for your records:",
-    body: `<h3 style="margin:0 0 8px;font-size:14px;color:#111827">Your customization request</h3>${table}`,
+    body: `<h3 style="margin:0 0 8px;font-size:14px;color:#111827">Your ${what}</h3>${table}`,
   });
 
   const notifyHtml = shell({
-    heading: tagged ? "New customization request (possible spam)" : "New customization request",
+    heading: tagged ? `New ${what} (possible spam)` : `New ${what}`,
     intro: tagged
-      ? `A customer submitted a customization request from the website. It was flagged as <strong>possible spam</strong> (${esc(
+      ? `A customer submitted a ${what} from the website. It was flagged as <strong>possible spam</strong> (${esc(
           suspect.join(", ")
         )}), so no automatic reply was sent to the visitor. Treat the contact details with care before replying.`
-      : "A customer submitted a customization request from the website.",
+      : `A customer submitted a ${what} from the website.`,
     body: table,
   });
 
@@ -247,8 +254,8 @@ export async function sendQuoteEmails(
   const subject =
     (tagged ? "[possible spam] " : "") +
     (input.referenceId
-      ? `New customization request from ${input.name} (${input.referenceId})`
-      : `New customization request from ${input.name}`);
+      ? `New ${what} from ${input.name} (${input.referenceId})`
+      : `New ${what} from ${input.name}`);
 
   const skipped = customerSkipped ? { customerSkipped } : {};
   try {
