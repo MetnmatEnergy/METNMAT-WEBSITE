@@ -105,6 +105,18 @@ describe("sendQuoteEmails", () => {
     expect(r.customerSkipped).toBeUndefined();
   });
 
+  it("names a contact-form message as one, not as a customization request", async () => {
+    const r = await sendQuoteEmails(enquiry, [], { kind: "contact", sendCustomerCopy: false });
+    expect(r).toEqual({ customer: false, team: true, customerSkipped: "suppressed" });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toBe("New contact message from Dr Anita Rao (RFQ-20260917-ABC123)");
+    expect(sent[0]!.html).toContain("New contact message");
+    expect(sent[0]!.html).not.toContain("customization request");
+    // The message itself is in the email: the contact form has no structured fields.
+    expect(sent[0]!.html).toContain("custom reference electrode");
+    expect(sent[0]!.reply_to).toBe("anita@lab.example");
+  });
+
   it("is a no-op without a Resend key", async () => {
     delete process.env.RESEND_API_KEY;
     expect(await sendQuoteEmails(enquiry)).toEqual({ customer: false, team: false });

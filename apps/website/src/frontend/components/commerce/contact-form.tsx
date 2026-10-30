@@ -4,6 +4,7 @@ import { getTracker } from "@/frontend/lib/analytics/collector";
 import * as React from "react";
 import { Loader2, CheckCircle2, AlertCircle, Send } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
+import { useBotCheck } from "@/frontend/components/commerce/bot-check";
 
 const field =
   "w-full rounded-lg border border-input bg-surface px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-2 focus:ring-ring/30 aria-[invalid=true]:border-red-500 aria-[invalid=true]:focus:ring-red-500/30";
@@ -29,6 +30,8 @@ export function ContactForm() {
   const [topError, setTopError] = React.useState("");
   const formRef = React.useRef<HTMLFormElement>(null);
   const successRef = React.useRef<HTMLDivElement>(null);
+  // Timing token + Turnstile (when configured), shared with the quote and support forms.
+  const bot = useBotCheck(status !== "success");
 
   // Move focus to the first field with an error (keyboard + screen-reader UX).
   const focusFirstError = React.useCallback((errs: Fields) => {
@@ -74,18 +77,22 @@ export function ContactForm() {
     setFieldErrors({});
 
     try {
+      const botFields = await bot.collect();
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, ...botFields }),
       });
+      const data = await res.json().catch(() => null);
+      // Turnstile tokens are single-use; a refused timing token is re-minted
+      // unless the server only asked us to wait a moment.
+      bot.reset({ formToken: data?.code === "bot-check" && data?.reason !== "form-token-too_fast" });
       if (res.ok) {
         setStatus("success");
         getTracker().track("form_submit", { meta: { form: "contact" } });
         form.reset();
         return;
       }
-      const data = await res.json().catch(() => null);
       if (res.status === 400 && data?.fields) {
         setFieldErrors(data.fields);
         if (data.fields._rejected) setTopError("We could not accept this submission. Please reload the page and try again, or email us directly.");
@@ -244,6 +251,8 @@ export function ContactForm() {
           </p>
         )}
       </div>
+
+      {bot.widget}
 
       <Button type="submit" size="lg" disabled={sending} className="justify-self-start">
         {sending ? (
