@@ -304,6 +304,8 @@ type OrderEmailInput = {
   total: number;
   razorpayPaymentId: string;
   address?: string;
+  /** Delivery address is in India, where shipping is free. */
+  shipsToIndia?: boolean;
   /** International customers browsed in USD — show both currencies. */
   displayCurrency?: "INR" | "USD";
   usdRateAtPurchase?: number;
@@ -344,7 +346,11 @@ function orderTable(input: OrderEmailInput): string {
   <p style="margin:14px 0 0;font-size:13px;color:#6b7280">
     Order <strong>${esc(input.orderNumber)}</strong> · Payment ID ${esc(input.razorpayPaymentId)}
     ${input.address ? `<br/>Ships to: ${esc(input.address)}` : ""}
-    <br/>Shipping is arranged separately — we&rsquo;ll confirm freight and dispatch details for your location.
+    <br/>${
+      input.shipsToIndia
+        ? "Shipping within India is free — we&rsquo;ll confirm dispatch details by email."
+        : "International freight is arranged separately — we&rsquo;ll confirm freight and dispatch details for your location."
+    }
   </p>`;
 }
 

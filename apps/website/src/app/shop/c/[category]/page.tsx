@@ -59,7 +59,7 @@ export async function generateMetadata({
     title: `${cat.name} — Shop`,
     description:
       cat.blurb ||
-      `Browse ${cat.name} products at METNMAT — lab-grade electrochemistry equipment with GST invoicing and shipping across India & worldwide.`,
+      `Browse ${cat.name} products at METNMAT — lab-grade electrochemistry equipment with GST invoicing, free shipping across India and worldwide delivery.`,
     path: `/shop/c/${category}`,
   });
   return {

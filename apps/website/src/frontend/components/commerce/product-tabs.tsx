@@ -114,7 +114,7 @@ export function ProductTabs({ product }: { product: Product }) {
               </p>
             ) : null}
             <ul className="list-disc space-y-1 pl-5">
-              <li>Shipping across India &amp; worldwide.</li>
+              <li>Free shipping within India. We also ship worldwide; international freight is confirmed after you order.</li>
               <li>GST invoice provided on every order.</li>
               <li>Dispatch lead times vary by item; bulk orders may take longer.</li>
               <li>

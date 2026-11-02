@@ -17,7 +17,7 @@ import { RegionBar } from "@/frontend/components/commerce/region-bar";
 export const metadata: Metadata = pageMetadata({
   title: "Shop — Electrodes, Membranes, Cells & Lab Equipment",
   description:
-    "Buy lab-grade electrochemistry equipment — reference/counter/working electrodes, ion-exchange membranes (PEM/AEM/BPM/CEM), electrochemical cells & reactors, peristaltic pumps, MEA fabrication presses and accessories. Bulk B2B pricing, GST invoice, pan-India + worldwide shipping.",
+    "Buy lab-grade electrochemistry equipment — reference/counter/working electrodes, ion-exchange membranes (PEM/AEM/BPM/CEM), electrochemical cells & reactors, peristaltic pumps, MEA fabrication presses and accessories. Bulk B2B pricing, GST invoice, free shipping across India + worldwide delivery.",
   path: "/shop",
 });
 
@@ -66,7 +66,7 @@ export default async function ShopHomePage() {
           </div>
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2"><BadgeCheck className="h-4 w-4 text-brand" /> GST invoice</span>
-            <span className="inline-flex items-center gap-2"><Truck className="h-4 w-4 text-brand" /> India &amp; worldwide shipping</span>
+            <span className="inline-flex items-center gap-2"><Truck className="h-4 w-4 text-brand" /> Free shipping in India</span>
             <span className="inline-flex items-center gap-2"><FileText className="h-4 w-4 text-brand" /> Datasheets &amp; SDS</span>
           </div>
         </Container>

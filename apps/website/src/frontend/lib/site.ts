@@ -19,7 +19,7 @@ export const site = {
     email2: "mk@metnmat.com",
     phone: "+91 78726 86501",
     phone2: "+91 80018 38711",
-    shipping: "Shipping across India & worldwide",
+    shipping: "Free shipping within India · worldwide shipping",
   },
 
   // Office addresses. Index 0 is the Howrah HQ — the GST invoice, JSON-LD

@@ -65,9 +65,10 @@ export default function TermsPage() {
       heading: "5. Shipping",
       body: (
         <p>
-          We ship across India and worldwide. Dispatch lead times vary by item and are indicated on
-          the product page; bulk orders may take longer. Risk passes on delivery to your carrier or
-          address as applicable.
+          We ship across India and worldwide. Shipping within India is free. For orders outside
+          India, freight is quoted for your location and confirmed with you after the order.
+          Dispatch lead times vary by item and are indicated on the product page; bulk orders may
+          take longer. Risk passes on delivery to your carrier or address as applicable.
         </p>
       ),
     },

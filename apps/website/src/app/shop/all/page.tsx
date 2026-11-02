@@ -27,7 +27,7 @@ export async function generateMetadata({
   const base = pageMetadata({
     title: "All Products — Shop the Full Catalog",
     description:
-      "Browse the complete METNMAT catalog — electrodes, ion-exchange membranes, electrochemical cells & reactors, lab equipment and accessories. Filter by brand, price and availability. GST invoice, pan-India & worldwide shipping.",
+      "Browse the complete METNMAT catalog — electrodes, ion-exchange membranes, electrochemical cells & reactors, lab equipment and accessories. Filter by brand, price and availability. GST invoice, free shipping across India, worldwide delivery.",
     path: "/shop/all",
   });
   return {

@@ -206,7 +206,11 @@ export default function CartPage() {
               <p className="text-xs text-muted-foreground">Includes GST</p>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Shipping</dt>
-                <dd className="text-right text-xs text-muted-foreground">Arranged separately after payment</dd>
+                {/* The cart has no address yet, so it goes by the region the shopper
+                    browses in: INR = India, where shipping is free. */}
+                <dd className="text-right text-xs text-muted-foreground">
+                  {currency === "INR" ? "Free within India" : "International freight confirmed after payment"}
+                </dd>
               </div>
             </dl>
             <div className="mt-4 grid gap-2">
@@ -218,7 +222,7 @@ export default function CartPage() {
               </Button>
             </div>
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              GST invoice · Secured by Razorpay · India &amp; worldwide shipping
+              GST invoice · Secured by Razorpay · Free shipping in India · Worldwide shipping
             </p>
           </div>
         </div>
