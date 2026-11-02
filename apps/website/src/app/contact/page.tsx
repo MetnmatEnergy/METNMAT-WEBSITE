@@ -30,7 +30,7 @@ export const metadata: Metadata = pageMetadata({
 const trust = [
   { icon: Clock, label: "≤ 1 business-day reply" },
   { icon: ShieldCheck, label: "GST invoice on every order" },
-  { icon: Truck, label: "India & worldwide shipping" },
+  { icon: Truck, label: "Free shipping in India" },
   { icon: GraduationCap, label: "IIT Kharagpur founding team" },
 ];
 

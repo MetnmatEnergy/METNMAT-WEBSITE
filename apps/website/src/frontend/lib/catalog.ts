@@ -148,7 +148,7 @@ export const products: Product[] = [
 export const deals: Deal[] = [
   { title: "Electrodes for every setup", subtitle: "Reference · counter · working", href: "/shop/c/electrodes" },
   { title: "New: ion-exchange membranes", subtitle: "PEM · AEM · BPM · CEM", href: "/shop/c/membranes" },
-  { title: "Request a bulk quote", subtitle: "GST invoice · pan-India shipping", href: "/quote" },
+  { title: "Request a bulk quote", subtitle: "GST invoice · free shipping in India", href: "/quote" },
 ];
 
 // Sort options used by the listing page.

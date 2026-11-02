@@ -329,6 +329,16 @@ export function productJsonLd({
               refundType: "https://schema.org/ExchangeRefund",
               merchantReturnLink: `${site.url}/replacement-policy`,
             },
+            // Free delivery within India (owner decision 2026-11-02; the cart,
+            // checkout, product page and terms all say the same, and Merchant
+            // Center is set up with it). International freight is quoted per
+            // order, so no rate is claimed for other countries. Delivery time is
+            // omitted: lead times vary by item and none is promised.
+            shippingDetails: {
+              "@type": "OfferShippingDetails",
+              shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "INR" },
+              shippingDestination: { "@type": "DefinedRegion", addressCountry: "IN" },
+            },
           },
         }
       : {}),
@@ -485,7 +495,7 @@ export function productFaqs(p: FaqProductInput): { q: string; a: string }[] {
   });
   faqs.push({
     q: `Do you ship outside India?`,
-    a: `Yes — we ship across India and worldwide.`,
+    a: `Yes — we ship worldwide. Shipping within India is free; international freight is confirmed after you order.`,
   });
 
   return faqs;

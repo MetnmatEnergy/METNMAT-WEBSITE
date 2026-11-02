@@ -89,7 +89,7 @@ export function ProductBuyBox({ product }: { product: Product }) {
           <WishlistButton product={product} withLabel className="w-full justify-center" />
         </div>
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          GST invoice · Pan-India &amp; worldwide shipping · Datasheet on request
+          GST invoice · Free shipping in India · Datasheet on request
         </p>
       </div>
     );

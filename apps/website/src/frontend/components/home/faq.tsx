@@ -16,7 +16,7 @@ const DEFAULT_FAQS = [
   },
   {
     q: "Do you ship across India and worldwide?",
-    a: "Yes. We ship across India and worldwide, with a GST invoice provided on every order.",
+    a: "Yes. Shipping within India is free, and we ship worldwide (international freight is confirmed after you order). A GST invoice is provided on every order.",
   },
   {
     q: "Can I request a customized product?",

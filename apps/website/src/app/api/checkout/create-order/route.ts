@@ -195,7 +195,7 @@ export async function POST(req: Request) {
     taxLine.ratePercent <= 0
       ? 0
       : orderItems.reduce((n, it) => n + (it.taxAmount ?? 0), 0);
-  const total = subtotal; // shipping arranged separately for B2B lab equipment
+  const total = subtotal; // shipping is free within India; international freight is quoted separately
 
   // Capture what the customer saw (display context — the charge stays INR).
   const displayCurrency: "INR" | "USD" = body.displayCurrency === "USD" ? "USD" : "INR";

@@ -918,8 +918,8 @@ export default function CheckoutPage() {
                 <Truck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" aria-hidden />
                 <span>
                   Tip: give a <span className="font-medium text-foreground">daytime / work address</span> —
-                  our courier delivers during business hours. We ship across India &amp; worldwide;
-                  international payments are charged in INR (your bank converts to your currency).
+                  our courier delivers during business hours. Shipping is free within India and we ship
+                  worldwide; international payments are charged in INR (your bank converts to your currency).
                 </span>
               </p>
 
@@ -1058,7 +1058,13 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Shipping</span>
-                <span className="text-right text-xs">Arranged separately — we&apos;ll confirm freight for your location</span>
+                {/* Free within India (owner decision 2026-11-02, and what Google
+                    Shopping is told). International freight is still quoted per order. */}
+                {isIndia ? (
+                  <span className="text-right font-medium text-foreground">Free</span>
+                ) : (
+                  <span className="text-right text-xs">Arranged separately — we&apos;ll confirm international freight for your location</span>
+                )}
               </div>
               <div className="flex items-baseline justify-between border-t border-border pt-2.5">
                 <span className="font-semibold">Total</span>

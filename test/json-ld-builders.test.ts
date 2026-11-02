@@ -35,6 +35,18 @@ describe("productJsonLd", () => {
     expect(out.offers.hasMerchantReturnPolicy.merchantReturnDays).toBe(7);
   });
 
+  it("states free delivery within India and claims no rate anywhere else", () => {
+    // Google Shopping (free listings) needs a shipping cost for India, and it
+    // must match the checkout, which shows "Free" for an Indian address. Abroad,
+    // freight is quoted per order, so no country but IN may carry a rate.
+    const out = productJsonLd({ product: baseProduct, priceInclGst: 1180, offerable: true }) as Record<string, any>;
+    expect(out.offers.shippingDetails).toEqual({
+      "@type": "OfferShippingDetails",
+      shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "INR" },
+      shippingDestination: { "@type": "DefinedRegion", addressCountry: "IN" },
+    });
+  });
+
   it("marks out-of-stock rather than claiming availability", () => {
     const out = productJsonLd({
       product: { ...baseProduct, inStock: false },

@@ -6,6 +6,7 @@
  */
 import { outboundKey } from "@/backend/lib/internal-key";
 import { sendOrderEmails } from "@/backend/lib/email";
+import { isIndiaName } from "@/frontend/lib/countries";
 
 const CMS = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
 const INTERNAL_KEY = outboundKey("CMS_ORDER_WRITE_KEY");
@@ -253,6 +254,7 @@ export async function sendOrderConfirmation(order: OrderDoc, paymentId: string):
     address: [order.addressLine1, order.addressLine2, order.city, order.state, order.pincode, order.country]
       .filter(Boolean)
       .join(", "),
+    shipsToIndia: isIndiaName(order.country ?? ""),
     displayCurrency: order.displayCurrency,
     usdRateAtPurchase: order.usdRateAtPurchase,
     totalUsdApprox: order.totalUsdApprox,

@@ -299,7 +299,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
       {/* Trust badges */}
       <div className="mt-10 grid grid-cols-2 gap-3 rounded-2xl border border-border bg-surface/40 p-4 text-sm sm:grid-cols-4">
         {[
-          { icon: Truck, label: "India & worldwide shipping" },
+          { icon: Truck, label: "Free shipping in India" },
           { icon: BadgeCheck, label: "ISO-aligned R&D" },
           { icon: FileText, label: "GST invoice" },
           { icon: ShieldCheck, label: "Secure checkout" },
