@@ -137,7 +137,7 @@ describe("legacy redirect map", () => {
     //
     // Derived from robots.ts rather than a hardcoded list, so adding a disallow
     // there fails this test instead of silently creating dead redirects.
-    const disallowed = (robots().rules as { disallow?: string[] }).disallow ?? [];
+    const disallowed = [robots().rules].flat().flatMap((r) => [r.disallow ?? []].flat());
     expect(disallowed.length).toBeGreaterThan(0);
 
     const bad = rules

@@ -18,6 +18,38 @@ import { inclGSTForProduct, isQuoteOnly, type Category, type Product } from "@/f
  */
 export const FEED_PATH = "/merchant-feed.xml";
 
+/**
+ * Google rejected the CMS photos as "Invalid image encoding" (2026-11-03): all
+ * WebP, some with alpha, served from admin.metnmat.com, which sends
+ * `X-Robots-Tag: noindex` on everything. The feed therefore links a JPEG copy
+ * on this site instead — flattened onto white, under a .jpg URL — made by
+ * app/merchant-image/[file]/route.ts. The product pages keep the WebP.
+ */
+export const IMAGE_PATH = "/merchant-image";
+
+export function merchantImageUrl(src: string, siteUrl: string): string {
+  const file = src.match(/\/api\/media\/file\/([^/?#]+)$/)?.[1];
+  return file ? `${siteUrl}${IMAGE_PATH}/${file}.jpg` : src;
+}
+
+/**
+ * The CMS media filename (still URL-encoded) that a /merchant-image path
+ * segment stands for, or null when it is not one: the route fetches whatever
+ * this returns from the CMS, so it must never yield a path.
+ */
+export function mediaFileForImageSegment(segment: string): string | null {
+  if (!segment.endsWith(".jpg")) return null;
+  const file = segment.slice(0, -".jpg".length);
+  let name: string;
+  try {
+    name = decodeURIComponent(file);
+  } catch {
+    return null;
+  }
+  if (/[/\\]/.test(name) || name.startsWith(".")) return null;
+  return /\.(webp|png|jpe?g|avif|gif)$/i.test(name) ? file : null;
+}
+
 const esc = (s: string) =>
   s
     .replace(/&/g, "&amp;")
@@ -36,7 +68,9 @@ export function isFeedable(p: Product): boolean {
 }
 
 export function feedItem(p: Product, siteUrl: string, categoryName?: string): string {
-  const images = (p.imageFulls?.length ? p.imageFulls : [p.imageUrl]).filter(Boolean) as string[];
+  const images = ((p.imageFulls?.length ? p.imageFulls : [p.imageUrl]).filter(Boolean) as string[]).map((src) =>
+    merchantImageUrl(src, siteUrl),
+  );
   const tag = (name: string, value: string | undefined) => (value ? `<${name}>${esc(clean(value))}</${name}>` : "");
   return [
     "<item>",
