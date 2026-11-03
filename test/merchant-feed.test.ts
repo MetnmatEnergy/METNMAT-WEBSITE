@@ -8,6 +8,7 @@ import type { Product } from "../apps/website/src/frontend/lib/catalog";
  */
 
 const base = {
+  id: "6ae056abe0702d8fa7ab095c",
   slug: "swagelok-cell",
   name: "Swagelok Cell <PEEK> & Co",
   brand: "METNMAT",
@@ -35,7 +36,7 @@ const feed = (ps: Partial<Product>[]) =>
 describe("merchant feed", () => {
   it("lists a buyable product with the page's GST-inclusive price", () => {
     const xml = feed([{}]);
-    expect(xml).toContain("<g:id>swagelok-cell</g:id>");
+    expect(xml).toContain("<g:id>6ae056abe0702d8fa7ab095c</g:id>");
     expect(xml).toContain("<g:price>1180.00 INR</g:price>");
     expect(xml).toContain("<link>https://www.metnmat.com/shop/p/swagelok-cell</link>");
     expect(xml).toContain("<g:availability>in_stock</g:availability>");
@@ -43,6 +44,13 @@ describe("merchant feed", () => {
     expect(xml).toContain("<g:additional_image_link>https://admin.metnmat.com/api/media/file/b.webp</g:additional_image_link>");
     expect(xml).toContain("<g:identifier_exists>no</g:identifier_exists>");
     expect(xml).toContain("<g:product_type>Battery Reactors</g:product_type>");
+  });
+
+  it("keys items by the CMS id, which stays within Google's 50-character limit when the slug does not", () => {
+    const long = "fumion-faa-3-solut-10-anion-exchange-ionomer-dispersion-in-nmp-100-ml";
+    const xml = feed([{ slug: long }]);
+    expect(xml).toContain("<g:id>6ae056abe0702d8fa7ab095c</g:id>");
+    expect(xml).toContain(`<link>https://www.metnmat.com/shop/p/${long}</link>`);
   });
 
   it("escapes XML so one product name cannot break the whole file", () => {
