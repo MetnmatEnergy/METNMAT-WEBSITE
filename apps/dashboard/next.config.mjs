@@ -5,13 +5,19 @@ const nextConfig = {
   reactStrictMode: true,
   // "X-Powered-By: Next.js, Payload" is free reconnaissance for an attacker.
   poweredByHeader: false,
-  // This whole service IS the operations console — never index any of it.
   async headers() {
     return [
       {
+        // This service IS the operations console — never index any of it,
+        // except the uploaded media the storefront embeds. The product photos
+        // on www.metnmat.com are served from /api/media/file/ here, and a
+        // noindex on them kept every one out of Google Images (2026-11-03).
+        source: "/:path((?!api/media/file/).*)",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }],
+      },
+      {
         source: "/:path*",
         headers: [
-          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" },
           // Baseline hardening the website already sends and this origin did
           // not (2026-09-17 audit): pin HTTPS, stop MIME sniffing of uploads
           // served from /api/media, keep the admin out of other sites' frames.
