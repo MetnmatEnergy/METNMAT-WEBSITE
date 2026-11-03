@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import {
   renderMerchantFeed,
@@ -116,5 +117,21 @@ describe("robots.txt for Merchant Center", () => {
     // would let the page's /api/geo call run and price the page in dollars.
     expect(google?.disallow).toContain("/api/");
     expect(google?.disallow).not.toContain("/merchant-image");
+  });
+});
+
+describe("merchant image route stays cheap for the shop's small host", () => {
+  const src = readFileSync(
+    new URL("../apps/website/src/app/merchant-image/[file]/route.ts", import.meta.url),
+    "utf8",
+  );
+
+  it("converts each photo once, keeps it on disk, and one conversion at a time", () => {
+    expect(src).toMatch(/writeFile\(cached, jpeg\)/);
+    expect(src).toMatch(/\(await readCached\(cached\)\) \?\? \(await oneAtATime\(/);
+  });
+
+  it("uses the plain JPEG encoder (mozjpeg cost 3x the CPU on the live host)", () => {
+    expect(src).not.toMatch(/mozjpeg:\s*true/);
   });
 });
