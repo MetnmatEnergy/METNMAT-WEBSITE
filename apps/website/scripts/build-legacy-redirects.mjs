@@ -426,6 +426,69 @@ const livePostPaths = [...postsXml.matchAll(/<loc>([^<]+)<\/loc>/g)]
 const livePosts = livePostPaths.length;
 
 // ---------------------------------------------------------------------------
+// Blog posts. The 15 that still drew search traffic (metnmat.in Search Console,
+// Performance → Pages, 3 months, read 2026-10-29: 100+ impressions each) were
+// republished on .com from their Wix originals (docs/blog/articles/metnmat-in-2023),
+// so each old URL goes to its own article instead of the blog index. The rest
+// keep the /post/:slug → /blog catch-all below.
+const BLOG_POSTS = {
+  "the-basics-of-metals-and-alloys-understanding-composition-properties-and-applications": "the-basics-of-metals-and-alloys",
+  "the-power-of-alloys-unveiling-their-uses-advantages-a-comprehensive-guide": "the-power-of-alloys-uses-and-advantages",
+  "introduction-to-metallurgy-exploring-the-science-of-metals-metnmat-research-and-innovation": "introduction-to-metallurgy",
+  "microstructural-analysis-empowers-researchers-to-design-advanced-materials-enhance-quality-control":
+    "microstructural-analysis-advanced-materials-and-quality-control",
+  "modern-technologies-and-innovations-in-metallurgy-shaping-industries-with-cutting-edge-metal-advanc":
+    "modern-technologies-and-innovations-in-metallurgy",
+  "the-role-of-research-and-development-in-driving-innovation-a-key-to-growth-and-success":
+    "the-role-of-research-and-development-in-driving-innovation",
+  "the-importance-of-metallurgical-testing-in-quality-control-and-assurance": "metallurgical-testing-in-quality-control-and-assurance",
+  "key-elements-of-an-effective-research-and-development-process": "key-elements-of-an-effective-research-and-development-process",
+  "new-materials-in-aerospace-engineering-lightweight-and-high-performance-solutions": "new-materials-in-aerospace-engineering",
+  "exploring-the-world-of-high-temperature-alloys-a-comprehensive-guide": "high-temperature-alloys-a-comprehensive-guide",
+  "the-future-of-new-materials-in-metallurgy-advancements-and-applications": "the-future-of-new-materials-in-metallurgy",
+  "emerging-trends-and-innovations-in-new-materials-shaping-the-future-of-technology-and-sustainability":
+    "emerging-trends-and-innovations-in-new-materials",
+  "defect-and-microstructure-analysis-by-diffraction-unveiling-materials-at-the-atomic-level":
+    "defect-and-microstructure-analysis-by-diffraction",
+  "how-research-and-development-drives-sustainable-development": "how-research-and-development-drives-sustainable-development",
+  "the-future-of-research-and-development-trends-and-predictions": "the-future-of-research-and-development-trends-and-predictions",
+  // Earlier Wix slugs of three of those posts, in the same report but in no sitemap.
+  "introduction-to-metallurgy-exploring-the-science-of-metnmat-research-and-innovation": "introduction-to-metallurgy",
+  "the-basics-of-metals-and-understanding-composition-properties-and-applications": "the-basics-of-metals-and-alloys",
+  "the-role-of-research-and-development-driving-innovation-a-key-to-growth-and-success":
+    "the-role-of-research-and-development-in-driving-innovation",
+};
+const POSTS_SEEN_IN_SEARCH_CONSOLE = [
+  "introduction-to-metallurgy-exploring-the-science-of-metnmat-research-and-innovation",
+  "the-basics-of-metals-and-understanding-composition-properties-and-applications",
+  "the-role-of-research-and-development-driving-innovation-a-key-to-growth-and-success",
+];
+// Not an article but a 2023 advert for METNMAT's services (109 impressions):
+// its readers were looking for the services, so it goes to that page.
+const POST_PAGES = {
+  "tailored-solutions-for-metallurgy-and-materials-industries-metnmat-research-and-innovation": "/services",
+};
+
+const knownPosts = new Set([...livePostPaths.map((p) => p.slice("/post/".length)), ...POSTS_SEEN_IN_SEARCH_CONSOLE]);
+for (const from of [...Object.keys(BLOG_POSTS), ...Object.keys(POST_PAGES)]) {
+  if (!knownPosts.has(from)) throw new Error(`not a metnmat.in post: /post/${from}`);
+}
+// A redirect into an unpublished draft is a 404 to the visitor and to Google.
+for (const to of new Set(Object.values(BLOG_POSTS))) {
+  const found = JSON.parse(await fetchText(`${CMS}/api/posts?where[slug][equals]=${to}&limit=1&depth=0`)).docs || [];
+  if (!found.length) throw new Error(`BLOG_POSTS target is not a published article: /blog/${to} — publish it first`);
+}
+for (const to of Object.values(POST_PAGES)) {
+  const res = await fetch(`${SITE}${to}`, { redirect: "manual" });
+  if (res.status !== 200) throw new Error(`POST_PAGES target answers ${res.status}: ${to}`);
+}
+// The map only grows: a post rule from an earlier run must still be here.
+for (const r of previous.filter((x) => x.source.startsWith("/post/") && !x.source.includes(":"))) {
+  const from = r.source.slice("/post/".length);
+  if (!BLOG_POSTS[from] && !POST_PAGES[from]) throw new Error(`post redirect dropped since the last run: ${r.source}`);
+}
+
+// ---------------------------------------------------------------------------
 // .com product slugs that were renamed outside the CMS hook that records
 // product-slug-redirects, so their old URLs — once redirect destinations here,
 // and still in Google's index — 404. Every previous destination that has left
@@ -481,6 +544,7 @@ const inPaths = [
     ...livePages,
     ...legacy.map((s) => `/product-page/${encodeURI(s)}`),
     ...livePostPaths,
+    ...POSTS_SEEN_IN_SEARCH_CONSOLE.map((s) => `/post/${s}`),
   ]),
 ].sort();
 
@@ -519,8 +583,9 @@ const file = `// AUTO-GENERATED — do not hand-edit. Regenerate with:
 // material and form factor are not decoration on a reference electrode — they
 // decide whether the probe fits the customer's cell.
 //
-// Blog: the ${livePosts} legacy posts share no subject with the posts on .com, so
-// /post/:slug goes to the blog index rather than inventing equivalences.
+// Blog: ${new Set(Object.values(BLOG_POSTS)).size} of the ${livePosts} legacy posts were republished on .com and each goes to
+// its own article (BLOG_POSTS in the generator); one services advert goes to
+// /services. The rest go to the blog index rather than to an invented equivalent.
 
 /** @type {{source: string, destination: string, statusCode: number}[]} */
 export const legacyRedirects = [
@@ -536,6 +601,14 @@ ${rows.map(([from, to, how]) => productRow(from, to, how)).join("\n")}
 ${Object.entries({ ...Object.fromEntries(previousRenamed), ...Object.fromEntries(Object.entries(COM_RENAMED).map(([k, v]) => [k, `/shop/p/${v}`])) })
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([from, to]) => `  { source: ${esc(`/shop/p/${from}`)}, destination: ${esc(to)}, statusCode: 301 },`)
+  .join("\n")}
+
+  // ---- Blog posts republished on .com (docs/blog/articles/metnmat-in-2023) ----
+${Object.entries(BLOG_POSTS)
+  .map(([from, to]) => `  { source: ${esc(`/post/${from}`)}, destination: ${esc(`/blog/${to}`)}, statusCode: 301 },`)
+  .join("\n")}
+${Object.entries(POST_PAGES)
+  .map(([from, to]) => `  { source: ${esc(`/post/${from}`)}, destination: ${esc(to)}, statusCode: 301 },`)
   .join("\n")}
 
   // ---- Catch-alls (MUST stay last: first match wins) --------------------
