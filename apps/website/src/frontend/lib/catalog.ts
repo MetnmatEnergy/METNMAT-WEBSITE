@@ -34,6 +34,8 @@ export type Review = {
 };
 
 export type Product = {
+  /** The CMS document id: unlike the slug, it survives a rename. */
+  id?: string;
   slug: string;
   name: string;
   brand: string;

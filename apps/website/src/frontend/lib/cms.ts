@@ -201,6 +201,7 @@ type CmsCategory = {
 };
 
 type CmsProduct = {
+  id?: string;
   slug: string;
   name: string;
   brand?: string;
@@ -277,6 +278,7 @@ export function mapProduct(d: CmsProduct): Product {
       } => Boolean(g.src) && Boolean(g.card) && Boolean(g.full)
     );
   return {
+    id: d.id,
     slug: d.slug,
     name: d.name,
     brand: d.brand ?? "",

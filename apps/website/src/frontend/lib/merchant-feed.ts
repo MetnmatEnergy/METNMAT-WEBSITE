@@ -40,7 +40,9 @@ export function feedItem(p: Product, siteUrl: string, categoryName?: string): st
   const tag = (name: string, value: string | undefined) => (value ? `<${name}>${esc(clean(value))}</${name}>` : "");
   return [
     "<item>",
-    tag("g:id", p.slug),
+    // Google caps g:id at 50 characters, which 38 slugs exceed, and a changed id
+    // is a new listing that starts review over. The CMS id is 24 and never changes.
+    tag("g:id", p.id || p.slug),
     tag("title", p.name.slice(0, 150)),
     tag("description", (p.shortDesc || p.name).slice(0, 5000)),
     tag("link", `${siteUrl}/shop/p/${p.slug}`),
