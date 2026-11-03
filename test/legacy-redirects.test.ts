@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 // @ts-expect-error — generated .mjs data module, no types
 import { legacyRedirects } from "../apps/website/legacy-redirects.mjs";
@@ -5,6 +7,7 @@ import robots from "../apps/website/src/app/robots";
 
 type Rule = { source: string; destination: string; statusCode: number };
 const rules = legacyRedirects as Rule[];
+const read = (p: string) => readFileSync(join(__dirname, "..", p), "utf8");
 
 const productRules = rules.filter((r) => r.source.startsWith("/product-page/") && !r.source.includes(":slug"));
 const mapOf = (s: string) => productRules.find((r) => decodeURI(r.source) === `/product-page/${s}`)?.destination;
@@ -109,6 +112,42 @@ describe("legacy redirect map", () => {
       destination: "/shop/p/water-jacketed-electrochemical-cell-100-ml",
       statusCode: 301,
     });
+  });
+
+  // The metnmat.in posts that still ranked were republished on .com. Sending them
+  // to /blog told Google the article was gone, so its ranking was dropped.
+  it.each([
+    ["the-basics-of-metals-and-alloys-understanding-composition-properties-and-applications", "the-basics-of-metals-and-alloys"],
+    ["the-power-of-alloys-unveiling-their-uses-advantages-a-comprehensive-guide", "the-power-of-alloys-uses-and-advantages"],
+    ["introduction-to-metallurgy-exploring-the-science-of-metals-metnmat-research-and-innovation", "introduction-to-metallurgy"],
+    ["microstructural-analysis-empowers-researchers-to-design-advanced-materials-enhance-quality-control", "microstructural-analysis-advanced-materials-and-quality-control"],
+    ["the-role-of-research-and-development-in-driving-innovation-a-key-to-growth-and-success", "the-role-of-research-and-development-in-driving-innovation"],
+    // an earlier Wix slug of the same post, seen only in Search Console
+    ["introduction-to-metallurgy-exploring-the-science-of-metnmat-research-and-innovation", "introduction-to-metallurgy"],
+  ])("sends the ranking post /post/%s to its own article", (from, to) => {
+    expect(rules.find((r) => r.source === `/post/${from}`)?.destination).toBe(`/blog/${to}`);
+  });
+
+  it("sends the 2023 services advert to /services, not to the blog", () => {
+    const r = rules.find((x) => x.source === "/post/tailored-solutions-for-metallurgy-and-materials-industries-metnmat-research-and-innovation");
+    expect(r?.destination).toBe("/services");
+  });
+
+  it("keeps the text of every republished post in the repo, filed under the URL it came from", () => {
+    // Each /blog destination must be one of the prepared articles, so the map can
+    // never point an old URL at an article that is not its own text.
+    const posts = rules.filter((r) => r.source.startsWith("/post/") && r.destination.startsWith("/blog/"));
+    expect(posts.length).toBeGreaterThanOrEqual(15);
+    for (const r of posts) {
+      const slug = r.destination.slice("/blog/".length);
+      const meta = JSON.parse(read(`docs/blog/articles/metnmat-in-2023/${slug}/meta.json`)) as {
+        slug: string;
+        republishedFrom: { url: string; alsoServedAt?: string[] };
+      };
+      expect(meta.slug).toBe(slug);
+      const from = `https://www.metnmat.in${r.source}`;
+      expect([meta.republishedFrom.url, ...(meta.republishedFrom.alsoServedAt ?? [])]).toContain(from);
+    }
   });
 
   it("sends every mapped legacy product to a product or its category — never the whole shop", () => {

@@ -9,7 +9,7 @@
 // Source of truth: the live Wix sitemaps
 //   /pages-sitemap.xml (36)  /store-products-sitemap.xml (115)  /blog-posts-sitemap.xml (26)
 // plus the live CMS catalogue (141 products) and every source of the
-// previous run (the map only grows). Captured 2026-10-29.
+// previous run (the map only grows). Captured 2026-11-03.
 //
 // Product mappings, strongest first:
 //   exact       the slug carried over unchanged
@@ -33,8 +33,9 @@
 // material and form factor are not decoration on a reference electrode — they
 // decide whether the probe fits the customer's cell.
 //
-// Blog: the 26 legacy posts share no subject with the posts on .com, so
-// /post/:slug goes to the blog index rather than inventing equivalences.
+// Blog: 15 of the 26 legacy posts were republished on .com and each goes to
+// its own article (BLOG_POSTS in the generator); one services advert goes to
+// /services. The rest go to the blog index rather than to an invented equivalent.
 
 /** @type {{source: string, destination: string, statusCode: number}[]} */
 export const legacyRedirects = [
@@ -243,13 +244,34 @@ export const legacyRedirects = [
   { source: "/shop/p/kamoer-kcp-x-mini-peristaltic-pump-24v-19-65-ml-min-with-control", destination: "/shop/p/compact-peristaltic-pump-knob-control-65-ml-min", statusCode: 301 },
   { source: "/shop/p/kamoer-kcp2-kxf-s08-peristaltic-lab-pump-12v-dc-17-50-ml-min", destination: "/shop/p/compact-peristaltic-pump-knob-control-41-5-ml-min", statusCode: 301 },
 
+  // ---- Blog posts republished on .com (docs/blog/articles/metnmat-in-2023) ----
+  { source: "/post/the-basics-of-metals-and-alloys-understanding-composition-properties-and-applications", destination: "/blog/the-basics-of-metals-and-alloys", statusCode: 301 },
+  { source: "/post/the-power-of-alloys-unveiling-their-uses-advantages-a-comprehensive-guide", destination: "/blog/the-power-of-alloys-uses-and-advantages", statusCode: 301 },
+  { source: "/post/introduction-to-metallurgy-exploring-the-science-of-metals-metnmat-research-and-innovation", destination: "/blog/introduction-to-metallurgy", statusCode: 301 },
+  { source: "/post/microstructural-analysis-empowers-researchers-to-design-advanced-materials-enhance-quality-control", destination: "/blog/microstructural-analysis-advanced-materials-and-quality-control", statusCode: 301 },
+  { source: "/post/modern-technologies-and-innovations-in-metallurgy-shaping-industries-with-cutting-edge-metal-advanc", destination: "/blog/modern-technologies-and-innovations-in-metallurgy", statusCode: 301 },
+  { source: "/post/the-role-of-research-and-development-in-driving-innovation-a-key-to-growth-and-success", destination: "/blog/the-role-of-research-and-development-in-driving-innovation", statusCode: 301 },
+  { source: "/post/the-importance-of-metallurgical-testing-in-quality-control-and-assurance", destination: "/blog/metallurgical-testing-in-quality-control-and-assurance", statusCode: 301 },
+  { source: "/post/key-elements-of-an-effective-research-and-development-process", destination: "/blog/key-elements-of-an-effective-research-and-development-process", statusCode: 301 },
+  { source: "/post/new-materials-in-aerospace-engineering-lightweight-and-high-performance-solutions", destination: "/blog/new-materials-in-aerospace-engineering", statusCode: 301 },
+  { source: "/post/exploring-the-world-of-high-temperature-alloys-a-comprehensive-guide", destination: "/blog/high-temperature-alloys-a-comprehensive-guide", statusCode: 301 },
+  { source: "/post/the-future-of-new-materials-in-metallurgy-advancements-and-applications", destination: "/blog/the-future-of-new-materials-in-metallurgy", statusCode: 301 },
+  { source: "/post/emerging-trends-and-innovations-in-new-materials-shaping-the-future-of-technology-and-sustainability", destination: "/blog/emerging-trends-and-innovations-in-new-materials", statusCode: 301 },
+  { source: "/post/defect-and-microstructure-analysis-by-diffraction-unveiling-materials-at-the-atomic-level", destination: "/blog/defect-and-microstructure-analysis-by-diffraction", statusCode: 301 },
+  { source: "/post/how-research-and-development-drives-sustainable-development", destination: "/blog/how-research-and-development-drives-sustainable-development", statusCode: 301 },
+  { source: "/post/the-future-of-research-and-development-trends-and-predictions", destination: "/blog/the-future-of-research-and-development-trends-and-predictions", statusCode: 301 },
+  { source: "/post/introduction-to-metallurgy-exploring-the-science-of-metnmat-research-and-innovation", destination: "/blog/introduction-to-metallurgy", statusCode: 301 },
+  { source: "/post/the-basics-of-metals-and-understanding-composition-properties-and-applications", destination: "/blog/the-basics-of-metals-and-alloys", statusCode: 301 },
+  { source: "/post/the-role-of-research-and-development-driving-innovation-a-key-to-growth-and-success", destination: "/blog/the-role-of-research-and-development-in-driving-innovation", statusCode: 301 },
+  { source: "/post/tailored-solutions-for-metallurgy-and-materials-industries-metnmat-research-and-innovation", destination: "/services", statusCode: 301 },
+
   // ---- Catch-alls (MUST stay last: first match wins) --------------------
   // 0 historical legacy product(s) have no equivalent we can prove.
   { source: "/product-page/:slug", destination: "/shop/all", statusCode: 301 },
   { source: "/post/:slug", destination: "/blog", statusCode: 301 },
 ];
 
-// Every URL metnmat.in has served (193): pages, products current and
+// Every URL metnmat.in has served (196): pages, products current and
 // historical, and posts. Once metnmat.in points at this host it serves this list
 // as its own sitemap.xml (legacy-domain.mjs), so Google recrawls each old URL
 // and finds its redirect instead of waiting to stumble on it.
@@ -286,6 +308,7 @@ export const legacyInPaths = [
   "/post/how-metallurgical-techniques-improve-material-performance",
   "/post/how-research-and-development-drives-sustainable-development",
   "/post/introduction-to-metallurgy-exploring-the-science-of-metals-metnmat-research-and-innovation",
+  "/post/introduction-to-metallurgy-exploring-the-science-of-metnmat-research-and-innovation",
   "/post/key-elements-of-an-effective-research-and-development-process",
   "/post/metal-manufacturing-as-the-smart-specialization-of-the-regions",
   "/post/metallurgy-and-material-selection-for-extreme-environments-exploring-high-performance-materials",
@@ -296,11 +319,13 @@ export const legacyInPaths = [
   "/post/progress-in-research-and-development-of-electron-beam-technology-in-metallurgy-refining-field",
   "/post/tailored-solutions-for-metallurgy-and-materials-industries-metnmat-research-and-innovation",
   "/post/the-basics-of-metals-and-alloys-understanding-composition-properties-and-applications",
+  "/post/the-basics-of-metals-and-understanding-composition-properties-and-applications",
   "/post/the-future-of-new-materials-in-metallurgy-advancements-and-applications",
   "/post/the-future-of-research-and-development-trends-and-predictions",
   "/post/the-impact-of-r-d-on-new-materials-from-lab-to-reality",
   "/post/the-importance-of-metallurgical-testing-in-quality-control-and-assurance",
   "/post/the-power-of-alloys-unveiling-their-uses-advantages-a-comprehensive-guide",
+  "/post/the-role-of-research-and-development-driving-innovation-a-key-to-growth-and-success",
   "/post/the-role-of-research-and-development-in-driving-innovation-a-key-to-growth-and-success",
   "/privacy-policy",
   "/process-quality-improvement",
