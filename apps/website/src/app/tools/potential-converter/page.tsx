@@ -11,7 +11,7 @@ import { site } from "@/frontend/lib/site";
 const PATH = "/tools/potential-converter";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Reference Electrode Converter: Potential to RHE and SHE",
+  title: "Ag/AgCl to RHE Converter, Also Hg/HgO and SCE to RHE",
   description:
     "Free calculator: convert a potential from Ag/AgCl, SCE, Hg/HgO or Hg/Hg₂SO₄ to RHE and SHE, with the formula and reference electrode potentials at 25 °C.",
   path: PATH,

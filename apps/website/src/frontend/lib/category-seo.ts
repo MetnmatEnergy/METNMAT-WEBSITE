@@ -311,7 +311,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "reactor-cell": {
-    title: "Electrochemical Cells & Reactors for Labs, India",
+    title: "Electrochemical Cell Supplier in India: Lab Reactors",
     h1: "Electrochemical Cells and Reactors",
     lead: "Electrochemical cells, electrolyzers and flow reactors for laboratory research.",
     nouns: "electrochemical cells and reactors",
@@ -335,7 +335,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "h-cell": {
-    title: "H-Cell Electrochemical Cells, H-Type: Price India",
+    title: "H Type Electrochemical Cell (H-Cell): Price in India",
     h1: "H-Cells: H-Type Electrochemical Cells",
     lead: "H-type dual-chamber electrochemical cells in 30, 50 and 100 mL per side.",
     nouns: "H-cells",
