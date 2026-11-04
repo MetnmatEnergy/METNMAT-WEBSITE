@@ -61,12 +61,18 @@ export async function generateMetadata({
   const products = await getProductsByCategory(category);
   const empty = products.length === 0;
   const seo = CATEGORY_SEO[category];
+  // Page 2 canonicalises to itself, so Google judges it as a page of its own. With
+  // page 1's title and description it reads as a copy, and on 2026-10-24 Google left
+  // /shop/c/peristaltic-pumps?page=2 out for that reason.
+  const pageNote = !filtered && query.page > 1 ? `Page ${query.page}` : "";
+  const title = seo?.title ?? `${cat.name} — Shop`;
   const base = pageMetadata({
-    title: seo?.title ?? `${cat.name} — Shop`,
+    title: pageNote ? `${title}, ${pageNote}` : title,
     description:
-      (seo && categoryMetaDescription(seo, products)) ||
+      (pageNote ? `${pageNote}. ` : "") +
+      ((seo && categoryMetaDescription(seo, products)) ||
       cat.blurb ||
-      `Browse ${cat.name} products at METNMAT — lab-grade electrochemistry equipment with GST invoicing, free shipping across India and worldwide delivery.`,
+      `Browse ${cat.name} products at METNMAT — lab-grade electrochemistry equipment with GST invoicing, free shipping across India and worldwide delivery.`),
     path: `/shop/c/${category}`,
     ...(seo ? { keywords: seo.keywords } : {}),
   });

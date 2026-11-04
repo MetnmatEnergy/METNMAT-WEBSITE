@@ -255,11 +255,22 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
     guide: [
       { term: "Divided cells", text: "Keeps anode and cathode products apart while ions complete the circuit." },
       { term: "Electrodialysis", text: "Paired with anion exchange membranes to separate salts." },
+      { term: "Fixed negative groups", text: "Usually sulfonic acid groups, which repel anions and let cations pass." },
+      { term: "Thickness", text: "A thinner membrane has lower resistance. A thicker one is stronger and lets less through by crossover." },
+      { term: "Before first use", text: "Many membranes must be soaked or conditioned first. Follow the supplier's instructions for your membrane." },
     ],
     faqs: [
       {
         q: "What is the difference between a cation and an anion exchange membrane?",
         a: "A cation exchange membrane carries fixed negative groups and passes positive ions. An anion exchange membrane carries fixed positive groups and passes negative ions.",
+      },
+      {
+        q: "Where are cation exchange membranes used?",
+        a: "In electrodialysis, chlor-alkali cells, redox flow batteries, fuel cells, and divided laboratory cells such as H-cells.",
+      },
+      {
+        q: "Is a proton exchange membrane a cation exchange membrane?",
+        a: "Yes. A proton exchange membrane is a cation exchange membrane used to carry protons, as in a PEM fuel cell or electrolyzer.",
       },
     ],
     related: ["pem-membranes", "aem-membranes", "bipolar-membranes", "h-cell"],
@@ -277,11 +288,22 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
     guide: [
       { term: "Bipolar electrodialysis", text: "Produces acid and base from a salt solution." },
       { term: "Electrolysis research", text: "Keeps an acidic and an alkaline side in the same cell." },
+      { term: "Orientation", text: "For water splitting, the cation layer faces the cathode and the anion layer faces the anode. Fitted the other way, the ions recombine at the junction instead." },
+      { term: "Extra voltage", text: "Splitting water at the junction costs about 0.83 V in theory between pH 0 and pH 14, so allow for it in the cell voltage." },
+      { term: "CO₂ electrolysis", text: "Studied as a way to limit the CO₂ lost as carbonate crossing the membrane." },
     ],
     faqs: [
       {
         q: "How does a bipolar membrane work?",
         a: "Water at the junction between its two layers dissociates under the applied field. Protons leave through the cation layer and hydroxide ions through the anion layer.",
+      },
+      {
+        q: "What is a bipolar membrane used for?",
+        a: "For making acid and base from a salt solution by bipolar electrodialysis, and in research cells that need a different pH on each side.",
+      },
+      {
+        q: "What is the difference between a bipolar membrane and an anion exchange membrane?",
+        a: "An anion exchange membrane has one layer and carries negative ions across it. A bipolar membrane has two layers and makes H⁺ and OH⁻ at the junction between them, which then leave in opposite directions.",
       },
     ],
     related: ["aem-membranes", "cem-membranes", "co2-electrolysis"],
@@ -324,6 +346,9 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
       { term: "Volume", text: "Smaller chambers concentrate products for detection. Larger ones hold more electrolyte for longer runs." },
       { term: "Gas-tight or open", text: "Choose a gas-tight cell when you analyse gas products, for example in CO₂ reduction." },
       { term: "Membrane", text: "Fit a PEM for acidic electrolytes or an AEM for alkaline ones." },
+      { term: "Ports", text: "Count what each chamber must hold: working, reference and counter electrodes, plus a gas inlet and outlet if you purge." },
+      { term: "Stirring", text: "A small stir bar in each chamber keeps the electrolyte mixed near the electrode, so repeat runs agree better." },
+      { term: "Glass body", text: "Glass lets you watch the electrolyte and the gas bubbles. Avoid it with hydrofluoric acid and hot, strong alkali, which attack it." },
     ],
     faqs: [
       {
@@ -333,6 +358,18 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
       {
         q: "When should I move from an H-cell to a flow cell?",
         a: "When you need higher current density. Dissolved CO₂ limits an H-cell, while a gas diffusion flow cell feeds gas straight to the catalyst.",
+      },
+      {
+        q: "Why does an H-cell need a membrane?",
+        a: "It stops what is made at one electrode from reaching the other and reacting again. In CO₂ reduction, for example, it keeps liquid products away from the anode, where they could be oxidised.",
+      },
+      {
+        q: "How do I set up an H-cell?",
+        a: "Clamp the membrane in the bridge so the joint seals, fill both chambers to the same level, then fit the electrodes. If you analyse gas products or need to remove oxygen, purge the chamber before you start.",
+      },
+      {
+        q: "What is the difference between an H-cell and a single-chamber cell?",
+        a: "A single-chamber cell holds all the electrodes in one electrolyte, so products can reach the opposite electrode. An H-cell divides the two sides with a membrane, which makes it the better choice when you measure what each electrode produces.",
       },
     ],
     related: ["reactor-cell", "co2-electrolysis", "pem-membranes", "aem-membranes", "reference-electrodes"],
@@ -398,11 +435,25 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
       { term: "PEM fuel cell hardware", text: "Single-cell hardware for testing membrane electrode assemblies." },
       { term: "Microbial fuel cell", text: "For bioelectricity and wastewater research." },
       { term: "Vanadium flow cell", text: "For vanadium redox flow battery research." },
+      { term: "Active area", text: "Choose it to match your MEA, because current density is worked out from this area." },
+      { term: "Flow field", text: "The channels that spread gas across the MEA. Their pattern affects gas supply and water removal." },
     ],
     faqs: [
       {
         q: "What is a microbial fuel cell?",
         a: "A cell in which bacteria on the anode oxidise organic matter and pass electrons to the electrode, generating electricity directly from waste or other organic feeds.",
+      },
+      {
+        q: "What is in PEM fuel cell hardware?",
+        a: "End plates, flow field plates, current collectors and gaskets. The MEA sits between them, and the assembly is bolted together so that the layers stay in even contact.",
+      },
+      {
+        q: "What is the difference between a fuel cell and a flow battery?",
+        a: "A fuel cell keeps making power while it is fed a fuel such as hydrogen. A flow battery stores energy in liquid electrolytes, which are recharged in the cell.",
+      },
+      {
+        q: "How is a microbial fuel cell tested?",
+        a: "Usually by changing the external resistance and recording the voltage, which gives a power curve. Results are often given per unit of electrode area or reactor volume.",
       },
     ],
     related: ["pem-membranes", "carbon-gdl", "specialised-equipment", "mea-fabrication"],
@@ -422,11 +473,26 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
       { term: "PTFE or PEEK body", text: "PEEK is the stiffer body; PTFE is the most chemically inert." },
       { term: "Metal-air reactor", text: "An air-breathing cell for metal-air chemistries." },
       { term: "Metal-flow reactor", text: "A flow platform for flow battery development." },
+      { term: "Two or three electrodes", text: "A two-electrode cell measures the whole cell. A third, reference electrode lets you follow each electrode on its own." },
+      { term: "Air-sensitive chemistries", text: "Lithium and sodium metal react with air and water, so those cells are assembled in an argon glovebox." },
+      { term: "Stack pressure", text: "Close the cell the same way each time, because pressure on the stack changes contact and so the result." },
     ],
     faqs: [
       {
         q: "What is a Swagelok cell?",
         a: "A reusable compression cell that holds an electrode, separator and counter electrode between two plungers. It can be opened, cleaned and refilled, which makes it faster than building coin cells for early screening.",
+      },
+      {
+        q: "Should I use a Swagelok cell or a coin cell?",
+        a: "A Swagelok cell can be opened, cleaned and reused, which suits early screening of new materials. A coin cell is sealed and used once, which suits making many matching cells when a material looks promising.",
+      },
+      {
+        q: "What is a metal-air battery?",
+        a: "A battery with a metal anode, such as zinc or aluminium, and a cathode that takes oxygen from the air. Its air electrode is usually a gas diffusion layer carrying a catalyst.",
+      },
+      {
+        q: "What is a flow battery?",
+        a: "A battery that keeps its electrolyte in outside tanks and pumps it through the cell. Cell size sets the power and tank size sets the energy, so the two can be scaled apart.",
       },
     ],
     related: ["reactor-cell", "fuel-cells", "specialised-equipment", "carbon-gdl"],
@@ -445,11 +511,25 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
       { term: "Three-electrode PEC cell", text: "For measuring a photoelectrode under controlled potential." },
       { term: "PV-biased cell", text: "Adds a photovoltaic bias to the photoelectrode." },
       { term: "Panel reactor", text: "For photocatalytic water splitting on a panel." },
+      { term: "Window material", text: "Quartz lets ultraviolet light through, while ordinary glass blocks much of it, so quartz is the usual choice for PEC work." },
+      { term: "Light source", text: "Results are usually reported under simulated sunlight at AM 1.5G, 100 mW/cm², so measure the light at the sample." },
     ],
     faqs: [
       {
         q: "What is a photoelectrochemical cell?",
         a: "An electrochemical cell with a light-absorbing electrode. Light creates charge carriers in the electrode, and they drive a reaction such as splitting water into hydrogen and oxygen.",
+      },
+      {
+        q: "What is the difference between photocatalysis and photoelectrochemistry?",
+        a: "A photocatalyst is a powder or film that reacts without wires. A photoelectrode is wired into a circuit, so you can set its potential and measure the current.",
+      },
+      {
+        q: "What is IPCE?",
+        a: "Incident photon-to-current efficiency: the share of photons at one wavelength that become current. It shows which colours of light an electrode can use.",
+      },
+      {
+        q: "What do I need to run a PEC measurement?",
+        a: "A PEC cell with a light window, a photoelectrode, reference and counter electrodes, a potentiostat, and a calibrated light source.",
       },
     ],
     related: ["water-splitting-reactors", "reference-electrodes", "co2-electrolysis"],
@@ -527,6 +607,18 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
         q: "What does an ionomer do in a catalyst ink?",
         a: "It binds the catalyst particles to the electrode and gives them an ion-conducting path. Without it, much of the catalyst would be cut off from the reaction.",
       },
+      {
+        q: "How much ionomer should a catalyst ink contain?",
+        a: "It depends on the catalyst and its support, so test a range. Too little leaves catalyst cut off from ions, and too much blocks gas from reaching it. Many PEM studies on carbon-supported catalysts settle near 30% of the catalyst layer by weight.",
+      },
+      {
+        q: "Can I use a proton ionomer with an anion exchange membrane?",
+        a: "No. The ionomer must carry the same ion as the membrane, or ions cannot pass between them. Use a PFSA ionomer with a PEM, and an anion-conducting ionomer with an AEM.",
+      },
+      {
+        q: "How should an ionomer dispersion be stored?",
+        a: "Keep it tightly closed, because solvent loss changes its strength, and follow the supplier's storage instructions.",
+      },
     ],
     related: ["pem-membranes", "aem-membranes", "carbon-gdl", "working-electrodes"],
     keywords: ["ionomer dispersion", "PFSA dispersion", "Fumion FAA-3", "PiperION ionomer", "anion exchange ionomer"],
@@ -545,7 +637,20 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
       { term: "Research equipment", text: "Fuel cell test stations and temperature control." },
       { term: "Accessories", text: "Metal sheets, gas sampling bags and materials." },
     ],
-    faqs: [],
+    faqs: [
+      {
+        q: "What equipment does an electrochemistry lab need?",
+        a: "A potentiostat, a cell, and reference, counter and working electrodes. Flow work also needs a way to move liquid or gas, such as a peristaltic pump, and MEA work needs a press.",
+      },
+      {
+        q: "What is a peristaltic pump used for in electrochemistry?",
+        a: "For circulating electrolyte through a flow cell or electrolyzer. The liquid touches only the tube, so a corrosive electrolyte stays clean and away from the pump.",
+      },
+      {
+        q: "Do I need a hot press to make an MEA?",
+        a: "Usually, yes. Bonding an MEA normally needs heat and pressure together, which a hot press gives. A hydraulic press gives pressure alone.",
+      },
+    ],
     related: ["mea-fabrication", "specialised-equipment", "peristaltic-pumps", "accessories"],
     keywords: ["electrochemistry lab equipment", "lab equipment India"],
   },
@@ -564,7 +669,24 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
       { term: "Temperature controlling unit", text: "A PID heating plate for holding a cell at temperature." },
       { term: "Triboelectric setup", text: "For characterising triboelectric materials." },
     ],
-    faqs: [],
+    faqs: [
+      {
+        q: "What does a fuel cell test station do?",
+        a: "It controls the conditions around a cell, such as gas flow and temperature, and records voltage and current, so that performance can be compared from run to run.",
+      },
+      {
+        q: "What is a polarisation curve?",
+        a: "A plot of cell voltage against current density. It is the standard way to show how a fuel cell or electrolyzer performs, and where it loses voltage.",
+      },
+      {
+        q: "What is a triboelectric measurement?",
+        a: "It measures the charge a material gains when it touches and separates from another material. It is used to study materials for triboelectric nanogenerators.",
+      },
+      {
+        q: "Why control temperature in an electrochemical test?",
+        a: "Reaction speed, conductivity and reference electrode potentials all change with temperature, so a steady temperature keeps results comparable.",
+      },
+    ],
     related: ["fuel-cells", "battery-reactors", "mea-fabrication"],
     keywords: ["fuel cell test station", "fuel cell testing equipment India", "triboelectric measurement setup"],
   },
@@ -581,11 +703,25 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
       { term: "Hot press", text: "Applies heat and pressure together, which bonding an MEA normally needs." },
       { term: "Hydraulic press", text: "Applies pressure alone, for lamination and electrode pressing." },
       { term: "Tonnage", text: "Choose the capacity from the pressure you need and your sample area." },
+      { term: "Flat, parallel plates", text: "Pressure must be even across the sample, so check that the plates are flat and parallel." },
+      { term: "Temperature control", text: "Hold the temperature your membrane needs: too low bonds poorly, and too high can damage the membrane." },
     ],
     faqs: [
       {
         q: "What is a membrane electrode assembly?",
         a: "The core of a PEM or AEM fuel cell or electrolyzer: a membrane with catalyst layers and usually gas diffusion layers bonded to both sides.",
+      },
+      {
+        q: "How is an MEA made?",
+        a: "Catalyst ink goes onto either the membrane or the gas diffusion layers, and the layers are then pressed together, usually with heat.",
+      },
+      {
+        q: "What is the difference between a CCM and a GDE?",
+        a: "A catalyst-coated membrane (CCM) has the catalyst on the membrane. A gas diffusion electrode (GDE) has it on the gas diffusion layer. Both end up as an MEA.",
+      },
+      {
+        q: "How do I work out the force a press must give?",
+        a: "Multiply the pressure you want by the sample area. For example, 1 MPa on a 25 cm² sample needs 2,500 N, which is about 0.25 tonne-force.",
       },
     ],
     related: ["pem-membranes", "carbon-gdl", "fuel-cells", "consumables"],
@@ -604,8 +740,22 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
       { term: "Zinc sheet", text: "An anode material for zinc-air and zinc-ion battery research." },
       { term: "Aluminium sheet", text: "For electrode work, fabrication and research." },
       { term: "Gas sampling bag", text: "For collecting gas products from a cell for later analysis." },
+      { term: "Manganese dioxide nanoparticles", text: "A cathode material in zinc-ion battery research and a catalyst for oxygen reactions." },
     ],
-    faqs: [],
+    faqs: [
+      {
+        q: "What is zinc sheet used for in battery research?",
+        a: "As the anode in zinc-air and zinc-ion cells. Purity matters because metal impurities can speed up corrosion and hydrogen evolution at the zinc surface.",
+      },
+      {
+        q: "What is a gas sampling bag used for?",
+        a: "For collecting gas from a cell or reactor so it can be carried to an instrument, usually a gas chromatograph, and measured.",
+      },
+      {
+        q: "What is manganese dioxide used for?",
+        a: "It is a long-established battery cathode material, studied today in zinc-ion cells, and it also catalyses oxygen reactions in metal-air work.",
+      },
+    ],
     related: ["battery-reactors", "co2-electrolysis", "consumables"],
     keywords: ["zinc sheet", "pure zinc sheet", "high purity zinc sheet", "aluminium sheet", "gas sampling bag", "manganese dioxide nanoparticles"],
   },

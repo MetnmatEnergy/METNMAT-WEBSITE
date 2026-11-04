@@ -99,4 +99,17 @@ describe("category page wiring", () => {
     expect(page).toMatch(/faqs\.length > 0 && <JsonLd data=\{faqJsonLd\(faqs\)\}/);
     expect(page).toMatch(/<CategoryGuide seo=\{seo\} faqs=\{faqs\}/);
   });
+
+  it("gives page 2 of a category its own title and description", () => {
+    const page = readFileSync(new URL("../apps/website/src/app/shop/c/[category]/page.tsx", import.meta.url), "utf8");
+    expect(page).toMatch(/pageNote \? `\$\{title\}, \$\{pageNote\}` : title/);
+    expect(page).toMatch(/\(pageNote \? `\$\{pageNote\}\. ` : ""\)/);
+  });
+
+  it("leaves no category thin: at least four guide points or three questions, and always a question", () => {
+    for (const [slug, seo] of Object.entries(CATEGORY_SEO)) {
+      expect(seo.faqs.length, slug).toBeGreaterThanOrEqual(1);
+      expect(seo.guide.length + seo.faqs.length, slug).toBeGreaterThanOrEqual(4);
+    }
+  });
 });
