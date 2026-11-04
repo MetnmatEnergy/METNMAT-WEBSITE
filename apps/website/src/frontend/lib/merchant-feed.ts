@@ -1,4 +1,5 @@
 import { inclGSTForProduct, isQuoteOnly, type Category, type Product } from "@/frontend/lib/catalog";
+import { alsoKnownAs } from "@/frontend/lib/product-terms";
 
 /**
  * Google Merchant Center product feed (RSS 2.0 + the g: namespace).
@@ -78,7 +79,8 @@ export function feedItem(p: Product, siteUrl: string, categoryName?: string): st
     // is a new listing that starts review over. The CMS id is 24 and never changes.
     tag("g:id", p.id || p.slug),
     tag("title", p.name.slice(0, 150)),
-    tag("description", (p.shortDesc || p.name).slice(0, 5000)),
+    // Shopping matches on this text too, and buyers rarely use the catalogue name.
+    tag("description", [p.shortDesc || p.name, alsoKnownAs(p).length ? `Also known as: ${alsoKnownAs(p).join(", ")}.` : ""].filter(Boolean).join(" ").slice(0, 5000)),
     tag("link", `${siteUrl}/shop/p/${p.slug}`),
     tag("g:image_link", images[0]),
     ...images.slice(1, 11).map((u) => tag("g:additional_image_link", u)),

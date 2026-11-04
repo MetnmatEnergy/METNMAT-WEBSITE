@@ -267,6 +267,7 @@ export function productJsonLd({
   priceInclGst,
   offerable,
   related,
+  alternateNames,
 }: {
   product: ProductSchemaInput;
   categoryName?: string;
@@ -276,12 +277,15 @@ export function productJsonLd({
   offerable: boolean;
   /** The products actually rendered in the "Related products" strip. */
   related?: { slug: string; name: string }[];
+  /** The names buyers use for it: frontend/lib/product-terms.ts. Shown on the page. */
+  alternateNames?: string[];
 }) {
   const specs = (product.specs ?? []).filter((s) => s.label && s.value);
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
+    ...(alternateNames?.length ? { alternateName: alternateNames } : {}),
     ...(product.sku ? { sku: product.sku, mpn: product.sku } : {}),
     ...(categoryName ? { category: categoryName } : {}),
     // Mirrors the "Related products" strip on the page — the same catalogue
@@ -411,6 +415,7 @@ export function articleJsonLd(article: ArticleSchemaInput, isTech: boolean) {
 
 type FaqProductInput = {
   name: string;
+  brand?: string;
   inStock?: boolean;
   leadTime?: string;
   productType?: string;
@@ -478,7 +483,9 @@ export function productFaqs(p: FaqProductInput): { q: string; a: string }[] {
     });
   }
 
-  if (p.countryOfOrigin) {
+  // Own-brand only. The CMS field defaults to India, so it also read "India" on
+  // FUMATECH, Versogen and Kamoer products, which is not true of them.
+  if (p.countryOfOrigin && (!p.brand || p.brand === site.name)) {
     faqs.push({ q: `Where is it made?`, a: `Country of origin: ${p.countryOfOrigin}.` });
   }
 

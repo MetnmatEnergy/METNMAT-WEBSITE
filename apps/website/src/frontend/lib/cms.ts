@@ -8,6 +8,7 @@
  * header, footer, top bar and page all share one settings/nav lookup).
  */
 import { cache } from "react";
+import { productSearchTerms } from "@/frontend/lib/product-terms";
 import { DEFAULT_TAX_POLICY, taxPolicyFrom, type TaxPolicy } from "./tax";
 import type { Product, Category } from "@/frontend/lib/catalog";
 import { categoryBranchSlugs, selectBrowsable } from "@/frontend/lib/catalog";
@@ -507,7 +508,8 @@ export async function searchProducts(q: string): Promise<Product[]> {
     const name = normalizeSearchText(p.name);
     const sku = normalizeSearchText(p.sku ?? "");
     const brand = normalizeSearchText(p.brand ?? "");
-    const desc = normalizeSearchText(p.shortDesc ?? "");
+    // The names buyers use count as description, so "sce" finds the calomel electrode.
+    const desc = normalizeSearchText(`${p.shortDesc ?? ""} ${productSearchTerms(p).join(" ")}`);
     const fields = [name, sku, brand, desc];
     // AND across tokens, OR across each token's accepted wordings.
     if (!tokens.every((t) => tokenVariants(t).some((v) => fields.some((f) => f.includes(v))))) continue;

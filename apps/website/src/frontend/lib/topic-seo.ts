@@ -29,7 +29,7 @@ export const TOPIC_SEO: Record<string, TopicSeo> = {
     lead: "Platinum wire, sheet, mesh, spiral, ring and disk electrodes for electrochemistry.",
     nouns: "platinum electrodes",
     intro:
-      "A platinum electrode is made of platinum metal, which is chosen because it resists corrosion and catalyses many reactions. METNMAT sells platinum wire, sheet, mesh, spiral and ring counter electrodes, and platinum disk working electrodes, in a range of sizes with PTFE or PEEK rods where listed.",
+      "A platinum electrode, or Pt electrode, is made of platinum metal, which is chosen because it resists corrosion and catalyses many reactions. METNMAT sells platinum wire, sheet, mesh, spiral and ring counter electrodes, and platinum disk working electrodes, in a range of sizes with PTFE or PEEK rods where listed.",
     guideTitle: "Which platinum electrode shape do you need?",
     guide: [
       { term: "Wire", text: "For small cells, where a counter electrode must fit a narrow port." },
@@ -64,7 +64,7 @@ export const TOPIC_SEO: Record<string, TopicSeo> = {
     lead: "Silver/silver chloride reference electrodes in glass, PTFE and PEEK, from Ø2 mm to Ø6 mm.",
     nouns: "Ag/AgCl reference electrodes",
     intro:
-      "An Ag/AgCl reference electrode is a silver wire coated with silver chloride, sitting in a chloride solution, usually KCl. It is one of the most widely used reference electrodes in electrochemistry. METNMAT sells Ag/AgCl electrodes with glass, PTFE and PEEK bodies, from Ø2 mm to Ø6 mm.",
+      "An Ag/AgCl reference electrode, also called a silver chloride or AgCl electrode, is a silver wire coated with silver chloride, sitting in a chloride solution, usually KCl. It is one of the most widely used reference electrodes in electrochemistry. METNMAT sells Ag/AgCl electrodes with glass, PTFE and PEEK bodies, from Ø2 mm to Ø6 mm.",
     guideTitle: "How to choose an Ag/AgCl electrode",
     guide: [
       { term: "Potential", text: "It depends on the filling: about +0.197 V vs SHE in saturated KCl, +0.210 V in 3 M KCl and +0.235 V in 1 M KCl, at 25 °C." },
@@ -98,7 +98,7 @@ export const TOPIC_SEO: Record<string, TopicSeo> = {
     lead: "Mercury/mercury oxide reference electrodes for KOH and NaOH, in glass, PTFE and PEEK.",
     nouns: "Hg/HgO reference electrodes",
     intro:
-      "An Hg/HgO (mercury/mercury oxide) electrode is the usual reference electrode for alkaline electrolytes such as KOH and NaOH, including alkaline water electrolysis and AEM studies. METNMAT sells Hg/HgO electrodes with glass, PTFE and PEEK bodies, in Ø4 mm and Ø6 mm.",
+      "An Hg/HgO electrode, also written HgO reference electrode or mercury oxide electrode, is the usual reference electrode for alkaline electrolytes such as KOH and NaOH, including alkaline water electrolysis and AEM studies. METNMAT sells Hg/HgO electrodes with glass, PTFE and PEEK bodies, in Ø4 mm and Ø6 mm.",
     guideTitle: "How to use an Hg/HgO electrode",
     guide: [
       { term: "Potential", text: "About +0.098 V vs SHE in 1 M KOH, the value most alkaline electrolysis papers use." },
@@ -128,7 +128,7 @@ export const TOPIC_SEO: Record<string, TopicSeo> = {
     lead: "Graphite rod and plate counter electrodes and graphite felt for electrochemistry.",
     nouns: "graphite electrodes",
     intro:
-      "A graphite electrode is a conductive carbon electrode that costs little and adds no metal contamination, which makes it a common counter electrode. METNMAT sells graphite rods from Ø6 × 60 mm to Ø6 × 120 mm, a graphite plate electrode, and graphite felt in 200 × 200 mm sheets.",
+      "A graphite electrode, also called a carbon rod electrode, is a conductive carbon electrode that costs little and adds no metal contamination, which makes it a common counter electrode. METNMAT sells graphite rods from Ø6 × 60 mm to Ø6 × 120 mm, a graphite plate electrode, and graphite felt in 200 × 200 mm sheets.",
     guideTitle: "Which graphite electrode do you need?",
     guide: [
       { term: "Rod", text: "The usual counter electrode. Choose the length that reaches your electrolyte." },
@@ -147,6 +147,66 @@ export const TOPIC_SEO: Record<string, TopicSeo> = {
     ],
     related: ["counter-electrodes", "carbon-gdl", "working-electrodes"],
     keywords: ["graphite electrode", "graphite rod electrode", "graphite rod electrode price", "graphite plate electrode", "graphite felt electrode"],
+  },
+
+  "gold-electrodes": {
+    parent: "working-electrodes",
+    matches: (p) => /gold/i.test(p.name) && inCategory(p, "working-electrodes", "counter-electrodes"),
+    title: "Gold Electrode Price in India: Disk and Wire",
+    h1: "Gold Electrodes",
+    lead: "Gold disk working electrodes in PTFE, PEEK and PCTFE, and a gold wire ring counter electrode.",
+    nouns: "gold electrodes",
+    intro:
+      "A gold electrode, or Au electrode, has a polishable, conductive gold surface that suits sensing and surfaces modified with thiols. METNMAT sells gold disk working electrodes from Ø2 mm to Ø4 mm, straight and L-shaped, with detachable models, and a gold wire ring counter electrode.",
+    guideTitle: "How to choose a gold electrode",
+    guide: [
+      { term: "Disk electrode", text: "A polished working electrode with a defined area. Choose the body that suits your electrolyte." },
+      { term: "Straight or L-shaped", text: "Choose the shape that presents the disk where your cell needs it." },
+      { term: "Detachable", text: "Lets the electrode head come off its rod." },
+      { term: "Wire ring", text: "A counter electrode, for work where gold is needed instead of platinum." },
+    ],
+    faqs: [
+      {
+        q: "What is a gold electrode used for?",
+        a: "Mainly electrochemical sensing and studies of modified surfaces, because thiols bond readily to gold.",
+      },
+      {
+        q: "How do I clean a gold electrode?",
+        a: "Polish with alumina slurry and rinse with deionised water, then cycle the potential in dilute sulfuric acid if your protocol calls for it.",
+      },
+    ],
+    related: ["working-electrodes", "counter-electrodes", "electrode-holders", "reference-electrodes"],
+    keywords: ["gold electrode", "gold electrode price", "gold disk electrode", "gold working electrode", "Au electrode"],
+  },
+
+  "nickel-foam-and-metal-felt": {
+    parent: "carbon-gdl",
+    matches: (p) => /nickel|copper foam|titanium felt/i.test(p.name) && inCategory(p, "carbon-gdl", "working-electrodes"),
+    title: "Nickel Foam Price in India: Ni Foam, Felt, Cu Foam",
+    h1: "Nickel Foam and Metal Felt Electrodes",
+    lead: "Nickel foam, nickel fiber felt, copper foam and titanium felt for electrodes and electrolyzers.",
+    nouns: "nickel foam and metal felt products",
+    intro:
+      "Nickel foam, or Ni foam, is a porous, conductive metal sheet with an open-cell structure, widely used as an electrode and catalyst support. METNMAT sells nickel foam, nickel fiber felt, copper foam and titanium felt, as sheets you can cut to fit your cell.",
+    guideTitle: "Which porous metal do you need?",
+    guide: [
+      { term: "Nickel foam", text: "A high-surface open-cell support for alkaline electrolysis and catalyst growth." },
+      { term: "Nickel felt", text: "A sintered fibre sheet with finer pores than foam." },
+      { term: "Copper foam", text: "An open-cell copper support." },
+      { term: "Titanium felt", text: "A corrosion-resistant porous sheet, used in PEM electrolyzers." },
+    ],
+    faqs: [
+      {
+        q: "What does PPI mean for nickel foam?",
+        a: "Pores per inch. A higher PPI means smaller, more numerous pores and more surface area. METNMAT's nickel foam is 110 PPI, 1.5 mm thick.",
+      },
+      {
+        q: "How is nickel foam cleaned before use?",
+        a: "Usually by sonicating in dilute hydrochloric acid to remove the surface oxide, then rinsing with deionised water and ethanol, and drying.",
+      },
+    ],
+    related: ["carbon-gdl", "water-splitting-reactors", "working-electrodes"],
+    keywords: ["nickel foam", "nickel foam price", "Ni foam", "nickel foam sheet", "nickel felt", "copper foam", "titanium felt"],
   },
 
   "glassy-carbon-electrodes": {
