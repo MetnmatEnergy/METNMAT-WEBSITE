@@ -180,6 +180,13 @@ describe("metnmat.in's own sitemap.xml and robots.txt", () => {
     }
   });
 
+  it("dates every old URL with the day it became a redirect", async () => {
+    const xml = await get(legacySitemap, "www.metnmat.in", "/legacy-in/sitemap.xml").text();
+    const urls = xml.match(/<url>/g)?.length ?? 0;
+    expect(urls).toBeGreaterThan(100);
+    expect(xml.match(/<lastmod>2026-10-27<\/lastmod>/g)?.length).toBe(urls);
+  });
+
   it("serves a robots.txt that allows everything and names that sitemap", async () => {
     const res = get(legacyRobots, "www.metnmat.in", "/legacy-in/robots.txt");
     expect(res.status).toBe(200);

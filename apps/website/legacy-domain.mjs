@@ -103,16 +103,21 @@ export function isLegacyHost(host) {
 
 const LEGACY_ORIGIN = "https://www.metnmat.in";
 
+/** The day metnmat.in's DNS moved to this host and every old URL became a 301. */
+export const LEGACY_MOVED_ON = "2026-10-27";
+
 /**
  * The old host's sitemap: every URL metnmat.in ever served, each of which now
- * 301s. No <lastmod> — the move date is when DNS changes, which no build knows,
- * and a guessed date is worse than none.
+ * 301s. <lastmod> is the day they all became redirects, which is true of every
+ * URL and is what tells Google a URL it last read as a Wix page has changed. It
+ * was left out until the DNS date was known, and Google then read this file once
+ * and did not come back for over a week.
  *
  * @param {string[]} paths
  */
 export function renderLegacySitemap(paths) {
   const xmlEscape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const urls = paths.map((p) => `<url><loc>${xmlEscape(`${LEGACY_ORIGIN}${p}`)}</loc></url>`).join("");
+  const urls = paths.map((p) => `<url><loc>${xmlEscape(`${LEGACY_ORIGIN}${p}`)}</loc><lastmod>${LEGACY_MOVED_ON}</lastmod></url>`).join("");
   return `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`;
 }
 
