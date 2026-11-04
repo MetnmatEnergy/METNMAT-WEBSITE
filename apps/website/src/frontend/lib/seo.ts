@@ -16,6 +16,9 @@ function truncate(text: string, max: number): string {
   return `${(at > max * 0.6 ? cut.slice(0, at) : cut).replace(/[\s,;:.–—-]+$/, "")}…`;
 }
 
+/** A description that a search result can show whole, for text written elsewhere (the CMS). */
+export const clampDescription = (text: string) => truncate(text, META_DESCRIPTION_MAX);
+
 /**
  * Meta description for a product page.
  *
@@ -133,6 +136,7 @@ export function pageMetadata({
   imageAlt?: string;
 }): Metadata {
   const images = image ? [{ url: image, alt: imageAlt ?? title }] : undefined;
+  description = clampDescription(description);
   return {
     title,
     description,

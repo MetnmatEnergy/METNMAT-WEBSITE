@@ -34,7 +34,7 @@ const unique = [...new Set(urls)];
 console.log(`${unique.length} URLs${days ? ` changed in the last ${days} days` : ""}`);
 if (dry || !unique.length) process.exit(0);
 
-const res = await fetch("https://api.indexnow.org/indexnow", {
+const res = await fetch("https://www.bing.com/indexnow", {
   method: "POST",
   headers: { "Content-Type": "application/json; charset=utf-8" },
   body: JSON.stringify({ host: "www.metnmat.com", key: KEY, keyLocation: `${SITE}/${KEY}.txt`, urlList: unique.slice(0, 10_000) }),

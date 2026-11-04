@@ -18,7 +18,7 @@ import { RegionBar } from "@/frontend/components/commerce/region-bar";
 export const metadata: Metadata = pageMetadata({
   title: "Buy Electrochemistry Lab Equipment Online in India",
   description:
-    "Buy lab-grade electrochemistry equipment — reference/counter/working electrodes, ion-exchange membranes (PEM/AEM/BPM/CEM), electrochemical cells & reactors, peristaltic pumps, MEA fabrication presses and accessories. Bulk B2B pricing, GST invoice, free shipping across India + worldwide delivery.",
+    "Buy reference, counter and working electrodes, ion exchange membranes, H-cells, electrolyzers and lab pumps online in India. Free shipping, GST invoice.",
   path: "/shop",
 });
 
