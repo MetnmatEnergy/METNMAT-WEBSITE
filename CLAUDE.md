@@ -199,6 +199,12 @@ auditing orphaned resources.
   real select holds the value (so FormData, reset and `onChange` work) and the list opens in the top layer. Never write a
   bare `<select>`: `test/site-dropdowns.test.ts` fails on one.
 - No fabricated content. Structured data and copy must trace to a real CMS field or a real page.
+- **Sitemap dates** (`frontend/lib/sitemap-dates.ts`): page text in `product-copy.ts`, `category-seo.ts` and
+  `topic-seo.ts` changes without touching a CMS record, so move `SHOP_PAGES_CHANGED_ON` when those pages really
+  change, then resubmit the sitemap. Never tie it to a deploy: Google stops trusting lastmod that is often wrong.
+- **Crawl paths into the shop:** the header's Categories panel stays in the HTML (`hidden` while closed), the
+  home page has `home/browse-shop.tsx`, and `/shop/all` page 1 lists every product (`commerce/product-index.tsx`).
+  Rendering the panel only on open left the home page with no link to any category.
 - **Admin sidebar** (`apps/dashboard/src/app/(payload)/custom-admin.css`): Payload's DefaultNav is
   kept and dressed. Group order = first appearance in `payload.config.ts` `collections` (Catalog
   first, technical collections in a `System` group last). Every entry gets an icon via

@@ -238,6 +238,113 @@ export const TOPIC_SEO: Record<string, TopicSeo> = {
     related: ["working-electrodes", "electrode-holders", "consumables", "counter-electrodes"],
     keywords: ["glassy carbon electrode", "glassy carbon electrode price", "GCE electrode", "glassy carbon disk electrode"],
   },
+
+  "pem-electrolyzers": {
+    parent: "water-splitting-reactors",
+    matches: (p) => /pem hydrogen|pem\/aem|research-scale electrolyzer|ewf transparent/i.test(p.name) && inCategory(p, "water-splitting-reactors"),
+    title: "PEM Electrolyzer Price in India: Lab Cells, Hardware",
+    h1: "PEM Electrolyzers",
+    lead: "PEM electrolyzer cells and test hardware for hydrogen and water electrolysis research.",
+    nouns: "PEM electrolyzers",
+    intro:
+      "A PEM electrolyzer splits purified water into hydrogen and oxygen, using a proton exchange membrane as the electrolyte. Protons cross the membrane from the anode to the cathode, where they form hydrogen. METNMAT sells a compact PEM hydrogen electrolyzer cell for lab hydrogen, and research hardware for testing your own membrane electrode assemblies.",
+    guideTitle: "How to choose a PEM electrolyzer",
+    guide: [
+      { term: "Hydrogen source or test hardware", text: "A compact cell gives you hydrogen for an experiment. Test hardware lets you build and measure your own membrane electrode assembly." },
+      { term: "Hydrogen output", text: "A compact cell is rated in mL/min of hydrogen, so size it to what your experiment uses." },
+      { term: "Active area", text: "Test hardware is sized by electrode area in cm². A small area uses less catalyst and membrane per test." },
+      { term: "Water", text: "Use purified or deionised water. Dissolved ions in tap water foul the membrane." },
+      { term: "Temperature", text: "Hardware with a heating plate and a thermocouple lets you test above room temperature." },
+    ],
+    faqs: [
+      {
+        q: "How does a PEM electrolyzer work?",
+        a: "Water splits at the anode into oxygen, protons and electrons. The protons cross the membrane and join the electrons at the cathode to form hydrogen.",
+      },
+      {
+        q: "What is the difference between a PEM and an AEM electrolyzer?",
+        a: "A PEM electrolyzer carries protons through an acidic membrane and usually needs platinum group catalysts. An AEM electrolyzer carries hydroxide ions through an alkaline membrane, which allows non-precious catalysts.",
+      },
+      {
+        q: "What water does a PEM electrolyzer need?",
+        a: "Purified or deionised water. Dissolved ions foul the membrane and shorten its life, so tap water is not suitable.",
+      },
+      {
+        q: "Can this hardware also take an AEM membrane?",
+        a: "Some of it can. The specifications of each model list the membranes it is compatible with.",
+      },
+    ],
+    related: ["water-splitting-reactors", "pem-membranes", "aem-membranes", "carbon-gdl", "fuel-cells"],
+    keywords: ["PEM electrolyzer", "PEM electrolyzer price", "PEM electrolyser", "PEM water electrolyzer", "hydrogen electrolyzer", "PEM electrolyzer cell", "lab electrolyzer"],
+  },
+
+  "fumasep-membranes": {
+    parent: "membranes",
+    matches: (p) => /fumasep/i.test(p.name) && inCategory(p, "aem-membranes", "cem-membranes", "bipolar-membranes"),
+    title: "Fumasep Membrane Price in India: FAA-3, FS-9100, FBM",
+    h1: "Fumasep Membranes",
+    lead: "Fumasep anion exchange, cation exchange and bipolar membranes for electrochemistry.",
+    nouns: "Fumasep membranes",
+    intro:
+      "Fumasep is a family of ion exchange membranes from FUMATECH, used in electrolyzers, fuel cells, flow batteries and electrodialysis. METNMAT sells Fumasep anion exchange membranes such as FAA-3 and FAB, the FS-9100 cation exchange membrane and the FBM bipolar membrane.",
+    guideTitle: "Which Fumasep membrane do you need?",
+    guide: [
+      { term: "FAA-3", text: "An anion exchange membrane in thin grades. Thinner means lower resistance, but a weaker film." },
+      { term: "FAB", text: "A reinforced anion exchange membrane, stronger and easier to handle than a thin film." },
+      { term: "FS-9100", text: "A cation exchange membrane, which passes positive ions." },
+      { term: "FBM", text: "A bipolar membrane, with an anion and a cation layer joined together. It splits water into H⁺ and OH⁻ at the junction." },
+    ],
+    faqs: [
+      {
+        q: "What is a Fumasep membrane?",
+        a: "An ion exchange membrane from FUMATECH. The name covers anion exchange, cation exchange and bipolar types.",
+      },
+      {
+        q: "What is the difference between anion and cation exchange membranes?",
+        a: "An anion exchange membrane passes negative ions such as hydroxide. A cation exchange membrane passes positive ions such as sodium or protons.",
+      },
+      {
+        q: "Which Fumasep membrane suits water electrolysis?",
+        a: "Anion exchange types such as FAA-3 are the usual choice for alkaline membrane water electrolysis. Check the membrane against your electrolyte and temperature.",
+      },
+    ],
+    related: ["membranes", "aem-membranes", "cem-membranes", "bipolar-membranes", "consumables"],
+    keywords: ["Fumasep membrane", "Fumasep price", "Fumasep FAA-3", "FAA-3-50", "Fumasep FAB-PK-130", "Fumasep FS-9100", "Fumasep FBM", "Fumasep anion exchange membrane"],
+  },
+
+  "swagelok-cells": {
+    parent: "battery-reactors",
+    matches: (p) => /swagelok/i.test(p.name) && inCategory(p, "battery-reactors"),
+    title: "Swagelok Cell Price in India: Battery Test Cells",
+    h1: "Swagelok Cells for Battery Testing",
+    lead: "Swagelok type battery test cells in SS316 with PTFE or PEEK insulation.",
+    nouns: "Swagelok cells",
+    intro:
+      "A Swagelok cell is a reusable battery test cell built from stainless steel tube fittings, which hold the electrodes and separator together and seal them. Labs use it to test battery materials without building a full coin or pouch cell. METNMAT sells Swagelok type cells in SS316, with PTFE or PEEK insulation.",
+    guideTitle: "How to choose a Swagelok cell",
+    guide: [
+      { term: "PTFE or PEEK insulation", text: "PTFE is the most chemically inert. PEEK is stiffer and holds its shape under clamping." },
+      { term: "Two electrodes", text: "A two-electrode cell measures the voltage of the whole cell." },
+      { term: "Assembly", text: "Assemble it in a glove box for air-sensitive materials such as lithium metal." },
+      { term: "Reuse", text: "The parts can be cleaned and used again, unlike a coin cell." },
+    ],
+    faqs: [
+      {
+        q: "What is a Swagelok cell?",
+        a: "A reusable battery test cell based on stainless steel tube fittings. The electrodes and a separator sit between two current collectors, and the fitting seals them.",
+      },
+      {
+        q: "Should I use a Swagelok cell or a coin cell?",
+        a: "A coin cell is cheap and single use, but needs a crimper. A Swagelok cell costs more, can be used again and is quick to assemble when screening materials.",
+      },
+      {
+        q: "What can I test in a Swagelok cell?",
+        a: "Electrode materials for lithium ion, sodium ion and similar batteries, in a two-electrode setup.",
+      },
+    ],
+    related: ["battery-reactors", "reactor-cell", "fuel-cells"],
+    keywords: ["Swagelok cell", "Swagelok cell price", "Swagelok type cell", "Swagelok battery cell", "battery test cell", "battery test fixture"],
+  },
 };
 
 /** Cheapest first, for buyers comparing prices; items without a price go last. */
@@ -245,6 +352,9 @@ export function topicProducts(topic: TopicSeo, all: Product[]): Product[] {
   const price = (p: Product) => (p.price > 0 && !isQuoteOnly(p) ? inclGSTForProduct(p, p.price) : Infinity);
   return all.filter(topic.matches).sort((a, b) => price(a) - price(b));
 }
+
+/** Every topic page, for the header menu and the home page. */
+export const topicLinks = () => Object.entries(TOPIC_SEO).map(([slug, t]) => ({ href: `/shop/t/${slug}`, name: t.h1 }));
 
 /** Topics that sit under a category, for the links on its page. */
 export const topicsForCategory = (category: string) =>

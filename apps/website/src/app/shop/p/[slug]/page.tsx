@@ -11,7 +11,7 @@ import { ProductGallery } from "@/frontend/components/commerce/product-gallery";
 import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd, productFaqs, faqJsonLd } from "@/frontend/components/seo/json-ld";
-import { productSearchDescription } from "@/frontend/lib/seo";
+import { productSearchDescription, productPageTitle } from "@/frontend/lib/seo";
 import { CATEGORY_SEO } from "@/frontend/lib/category-seo";
 import { topicsForCategory } from "@/frontend/lib/topic-seo";
 import { alsoKnownAs, productSearchTerms } from "@/frontend/lib/product-terms";
@@ -145,7 +145,7 @@ export async function generateMetadata({
   );
   const image = product.ogImageUrl || product.imageUrl;
   return {
-    title,
+    title: productPageTitle(title, product.price > 0 && !isQuoteOnly(product)),
     description,
     keywords: [
       ...productSearchTerms(product),

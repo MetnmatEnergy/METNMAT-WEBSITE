@@ -12,6 +12,7 @@ import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-but
 import { SearchBar } from "@/frontend/components/commerce/search-bar";
 import { getVisibleCategories, getNavigation } from "@/frontend/lib/cms";
 import { mainNav } from "@/frontend/lib/site";
+import { topicLinks } from "@/frontend/lib/topic-seo";
 
 const iconLink =
   "flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-all hover:bg-muted hover:border-foreground/20 active:scale-95";
@@ -69,7 +70,7 @@ export async function SiteHeader() {
       {/* Row 2: departments + primary nav (desktop) */}
       <div className="hidden border-t border-border lg:block">
         <Container className="flex h-11 items-center gap-2">
-          <DepartmentsMenu categories={categories} />
+          <DepartmentsMenu categories={categories} popular={topicLinks()} />
           <span className="mx-1 h-5 w-px bg-border" />
           <NavLinks items={navItems} />
         </Container>

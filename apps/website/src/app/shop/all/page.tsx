@@ -8,6 +8,7 @@ import { FilterDrawer } from "@/frontend/components/commerce/filter-drawer";
 import { SortSelect } from "@/frontend/components/commerce/sort-select";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { Pagination } from "@/frontend/components/commerce/pagination";
+import { ProductIndex } from "@/frontend/components/commerce/product-index";
 import { ShopTransitionProvider } from "@/frontend/components/commerce/shop-transition";
 import { AppliedFilters } from "@/frontend/components/commerce/applied-filters";
 import { ResultsRegion } from "@/frontend/components/commerce/results-region";
@@ -150,6 +151,8 @@ export default async function AllProductsPage({
           </div>
         </div>
       </ShopTransitionProvider>
+
+      {!filtersActive && page === 1 && <ProductIndex products={all} categories={allCategories} />}
     </Container>
   );
 }

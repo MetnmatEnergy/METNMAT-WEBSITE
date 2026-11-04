@@ -147,9 +147,12 @@ export const GUIDES: Record<string, Guide> = {
       },
     ],
     links: [
+      { href: "/shop/t/pem-electrolyzers", name: "PEM electrolyzers" },
+      { href: "/shop/p/pem-hydrogen-electrolyzer-60-ml-min", name: "PEM hydrogen electrolyzer, 60 mL/min" },
       { href: "/shop/c/pem-membranes", name: "Proton exchange membranes" },
       { href: "/shop/c/aem-membranes", name: "Anion exchange membranes" },
-      { href: "/shop/c/water-splitting-reactors", name: "Electrolyzer cells" },
+      { href: "/shop/t/fumasep-membranes", name: "Fumasep membranes" },
+      { href: "/shop/c/water-splitting-reactors", name: "Water splitting reactors" },
       { href: "/shop/c/consumables", name: "Ionomer dispersions" },
     ],
     keywords: ["PEM vs AEM", "AEM electrolyzer", "PEM electrolyzer", "difference between PEM and AEM electrolysis", "anion exchange membrane water electrolysis"],

@@ -8,6 +8,7 @@ import {
   getAllProducts,
 } from "@/frontend/lib/cms";
 import { listBlogArticlesForFeed } from "@/frontend/lib/blog";
+import { changesWithShop, pageLastmod, SHOP_PAGES_CHANGED_ON } from "@/frontend/lib/sitemap-dates";
 
 /**
  * Sitemap generation, shared by the index (`/sitemap.xml`) and each child
@@ -58,6 +59,7 @@ async function pages(): Promise<SitemapUrl[]> {
   );
   return paths.map((p) => ({
     loc: abs(p),
+    ...(changesWithShop(p) ? { lastmod: SHOP_PAGES_CHANGED_ON } : {}),
     changefreq: "weekly" as const,
     priority: p === "/" ? 1 : 0.7,
   }));
@@ -68,8 +70,9 @@ async function products(): Promise<SitemapUrl[]> {
   return docs.map((p) => ({
     loc: abs(`/shop/p/${p.slug}`),
     // Prefer the last EDIT date (price/stock/spec/image changes) over creation,
-    // so a re-crawl is signalled when staff update a product.
-    lastmod: p.updatedAt || p.createdAt,
+    // so a re-crawl is signalled when staff update a product. Text kept in code
+    // changes without touching that date: see sitemap-dates.ts.
+    lastmod: pageLastmod(p.updatedAt || p.createdAt),
     changefreq: "weekly" as const,
     priority: 0.8,
   }));
@@ -82,7 +85,7 @@ async function categories(): Promise<SitemapUrl[]> {
   const docs = await getIndexableCategories().catch(() => []);
   return docs.map((c) => ({
     loc: abs(`/shop/c/${c.slug}`),
-    lastmod: c.updatedAt,
+    lastmod: pageLastmod(c.updatedAt),
     changefreq: "weekly" as const,
     priority: 0.6,
   }));
