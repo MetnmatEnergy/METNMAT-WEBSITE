@@ -117,7 +117,7 @@ export default async function RootLayout({
   // ₹-per-$ display rate, maintained by staff in the dashboard.
   const usdRate = await getUsdRate();
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
+    <html lang="en-IN" className={`${inter.variable} ${spaceGrotesk.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         {/* Feed autodiscovery, emitted here rather than through Metadata.

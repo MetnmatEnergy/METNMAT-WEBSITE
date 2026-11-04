@@ -1,0 +1,193 @@
+import { inclGSTForProduct, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
+import type { CategorySeo } from "@/frontend/lib/category-seo";
+
+/**
+ * Topic pages (/shop/t/<slug>) for searches wider or narrower than one category.
+ * "platinum electrode" alone drew 1,295 impressions on metnmat.in, yet platinum
+ * spans two categories and shares them with graphite and gold, so no category
+ * page can answer it. Each topic is a real selection of live products with its
+ * own guide, not a reworded category: add one only when a search has demand in
+ * Search Console and at least three products to show.
+ *
+ * The rules in category-seo.ts apply: no typed prices or counts, nothing beyond
+ * the catalogue and standard electrochemistry.
+ */
+export type TopicSeo = CategorySeo & {
+  /** The category this topic sits under, for the breadcrumb and for the link back. */
+  parent: string;
+  matches: (p: Pick<Product, "name" | "categorySlug">) => boolean;
+};
+
+const inCategory = (p: { categorySlug: string }, ...slugs: string[]) => slugs.includes(p.categorySlug);
+
+export const TOPIC_SEO: Record<string, TopicSeo> = {
+  "platinum-electrodes": {
+    parent: "counter-electrodes",
+    matches: (p) => /platinum|noble metal plate/i.test(p.name) && inCategory(p, "counter-electrodes", "working-electrodes"),
+    title: "Platinum Electrode Price in India: Wire, Mesh, Disk",
+    h1: "Platinum Electrodes",
+    lead: "Platinum wire, sheet, mesh, spiral, ring and disk electrodes for electrochemistry.",
+    nouns: "platinum electrodes",
+    intro:
+      "A platinum electrode is made of platinum metal, which is chosen because it resists corrosion and catalyses many reactions. METNMAT sells platinum wire, sheet, mesh, spiral and ring counter electrodes, and platinum disk working electrodes, in a range of sizes with PTFE or PEEK rods where listed.",
+    guideTitle: "Which platinum electrode shape do you need?",
+    guide: [
+      { term: "Wire", text: "For small cells, where a counter electrode must fit a narrow port." },
+      { term: "Sheet or plate", text: "A flat electrode with a known area." },
+      { term: "Mesh", text: "The most surface for its size, and open, so gas bubbles and electrolyte pass through." },
+      { term: "Spiral or ring", text: "A long length of wire in a small volume, for an even current around the working electrode." },
+      { term: "Disk", text: "A polished working electrode with a defined area." },
+    ],
+    faqs: [
+      {
+        q: "Why is platinum used for electrodes?",
+        a: "It stays inert in most electrolytes, conducts well and catalyses many reactions, so the electrode itself rarely interferes with a measurement.",
+      },
+      {
+        q: "How do I clean a platinum electrode?",
+        a: "Common methods are rinsing with deionised water, soaking in dilute nitric acid, and cycling the potential in dilute sulfuric acid. Follow the method your protocol specifies.",
+      },
+      {
+        q: "When should I avoid a platinum counter electrode?",
+        a: "In hydrogen evolution catalyst studies, platinum can dissolve and redeposit on the working electrode. Use a graphite counter electrode there.",
+      },
+    ],
+    related: ["counter-electrodes", "working-electrodes", "electrode-holders", "reference-electrodes"],
+    keywords: ["platinum electrode", "platinum electrode price", "platinum wire electrode", "platinum mesh electrode", "platinum sheet electrode", "pt electrode", "platinum plate price"],
+  },
+
+  "ag-agcl-reference-electrodes": {
+    parent: "reference-electrodes",
+    matches: (p) => /Ag\/AgCl/.test(p.name) && inCategory(p, "reference-electrodes"),
+    title: "Ag/AgCl Reference Electrode Price in India",
+    h1: "Ag/AgCl Reference Electrodes",
+    lead: "Silver/silver chloride reference electrodes in glass, PTFE and PEEK, from Ø2 mm to Ø6 mm.",
+    nouns: "Ag/AgCl reference electrodes",
+    intro:
+      "An Ag/AgCl reference electrode is a silver wire coated with silver chloride, sitting in a chloride solution, usually KCl. It is one of the most widely used reference electrodes in electrochemistry. METNMAT sells Ag/AgCl electrodes with glass, PTFE and PEEK bodies, from Ø2 mm to Ø6 mm.",
+    guideTitle: "How to choose an Ag/AgCl electrode",
+    guide: [
+      { term: "Potential", text: "It depends on the filling: about +0.197 V vs SHE in saturated KCl, +0.210 V in 3 M KCl and +0.235 V in 1 M KCl, at 25 °C." },
+      { term: "Body", text: "Glass suits most work. PTFE or PEEK is tougher and suits electrolytes that attack glass." },
+      { term: "Diameter", text: "Match it to the port in your cell. Ø6 mm is common; Ø2 mm and Ø4 mm suit small cells." },
+      { term: "When not to use it", text: "For strongly alkaline solutions use Hg/HgO. Where chloride must stay out of the cell use Hg/Hg₂SO₄." },
+    ],
+    faqs: [
+      {
+        q: "What is the potential of an Ag/AgCl electrode?",
+        a: "About +0.197 V against the standard hydrogen electrode in saturated KCl at 25 °C, and about +0.210 V in 3 M KCl. Always report which filling solution you used.",
+      },
+      {
+        q: "Can I use an Ag/AgCl electrode in KOH?",
+        a: "It is not the best choice for strongly alkaline solutions. Hg/HgO is the usual reference there.",
+      },
+      {
+        q: "What is the difference between Ag/AgCl and a calomel electrode?",
+        a: "Both use chloride solutions and give a similar potential, but Ag/AgCl contains no mercury. A saturated calomel electrode sits at about +0.241 V vs SHE.",
+      },
+    ],
+    related: ["reference-electrodes", "counter-electrodes", "working-electrodes", "h-cell"],
+    keywords: ["Ag/AgCl reference electrode", "Ag/AgCl electrode price", "silver silver chloride electrode", "ag agcl electrode", "AgCl electrode"],
+  },
+
+  "hg-hgo-reference-electrodes": {
+    parent: "reference-electrodes",
+    matches: (p) => /Hg\/HgO|mercury oxide/i.test(p.name) && inCategory(p, "reference-electrodes"),
+    title: "Hg/HgO Reference Electrode Price in India",
+    h1: "Hg/HgO Reference Electrodes for Alkaline Solutions",
+    lead: "Mercury/mercury oxide reference electrodes for KOH and NaOH, in glass, PTFE and PEEK.",
+    nouns: "Hg/HgO reference electrodes",
+    intro:
+      "An Hg/HgO (mercury/mercury oxide) electrode is the usual reference electrode for alkaline electrolytes such as KOH and NaOH, including alkaline water electrolysis and AEM studies. METNMAT sells Hg/HgO electrodes with glass, PTFE and PEEK bodies, in Ø4 mm and Ø6 mm.",
+    guideTitle: "How to use an Hg/HgO electrode",
+    guide: [
+      { term: "Potential", text: "About +0.098 V vs SHE in 1 M KOH, the value most alkaline electrolysis papers use." },
+      { term: "Filling solution", text: "Match it to your electrolyte, commonly 1 M KOH or NaOH." },
+      { term: "Body", text: "PTFE or PEEK resists hot, strong alkali better than glass." },
+      { term: "Handling", text: "It contains mercury. Follow your lab's rules for storage and disposal." },
+    ],
+    faqs: [
+      {
+        q: "Why use Hg/HgO in alkaline solutions?",
+        a: "Its reaction involves hydroxide ions, so it is stable in KOH and NaOH, and it leaks no chloride into the cell.",
+      },
+      {
+        q: "How do I convert Hg/HgO to RHE?",
+        a: "At 25 °C, E(RHE) = E(Hg/HgO) + 0.098 V + 0.059 × pH, with 0.098 V as the electrode's potential in 1 M KOH. Calibrating your own electrode is more accurate.",
+      },
+    ],
+    related: ["reference-electrodes", "aem-membranes", "water-splitting-reactors"],
+    keywords: ["Hg/HgO reference electrode", "Hg/HgO reference electrode price", "mercury oxide electrode", "reference electrode for KOH"],
+  },
+
+  "graphite-electrodes": {
+    parent: "counter-electrodes",
+    matches: (p) => /graphite/i.test(p.name) && inCategory(p, "counter-electrodes", "carbon-gdl"),
+    title: "Graphite Electrode Price in India: Rods and Plates",
+    h1: "Graphite Electrodes: Rods, Plates and Felt",
+    lead: "Graphite rod and plate counter electrodes and graphite felt for electrochemistry.",
+    nouns: "graphite electrodes",
+    intro:
+      "A graphite electrode is a conductive carbon electrode that costs little and adds no metal contamination, which makes it a common counter electrode. METNMAT sells graphite rods from Ø6 × 60 mm to Ø6 × 120 mm, a graphite plate electrode, and graphite felt in 200 × 200 mm sheets.",
+    guideTitle: "Which graphite electrode do you need?",
+    guide: [
+      { term: "Rod", text: "The usual counter electrode. Choose the length that reaches your electrolyte." },
+      { term: "Plate", text: "A flat electrode with a known area." },
+      { term: "Felt", text: "A thick, porous sheet with far more surface area, common in flow batteries." },
+    ],
+    faqs: [
+      {
+        q: "Is a graphite rod a good counter electrode?",
+        a: "Yes. It conducts well and costs less than platinum, and it avoids the risk of platinum depositing on your working electrode.",
+      },
+      {
+        q: "What is the difference between graphite and glassy carbon?",
+        a: "Graphite is porous and layered, so it suits counter electrodes and bulk use. Glassy carbon is hard and non-porous, and it can be polished, so it suits working electrodes.",
+      },
+    ],
+    related: ["counter-electrodes", "carbon-gdl", "working-electrodes"],
+    keywords: ["graphite electrode", "graphite rod electrode", "graphite rod electrode price", "graphite plate electrode", "graphite felt electrode"],
+  },
+
+  "glassy-carbon-electrodes": {
+    parent: "working-electrodes",
+    matches: (p) => /glassy carbon/i.test(p.name) && inCategory(p, "working-electrodes", "electrode-holders"),
+    title: "Glassy Carbon Electrode Price in India",
+    h1: "Glassy Carbon Electrodes and Holders",
+    lead: "Glassy carbon disk electrodes in PTFE and PEEK, and holders for glassy carbon samples.",
+    nouns: "glassy carbon electrodes and holders",
+    intro:
+      "A glassy carbon electrode (GCE) is a hard, non-porous carbon electrode with a wide potential window, and it is the usual surface for testing catalyst inks. METNMAT sells Ø3 mm glassy carbon disk electrodes, straight and L-shaped, in PTFE and PEEK, and PEEK holders for glassy carbon.",
+    guideTitle: "How to choose and use a glassy carbon electrode",
+    guide: [
+      { term: "Straight or L-shaped", text: "Choose the shape that presents the disk where your cell needs it." },
+      { term: "PTFE or PEEK body", text: "PTFE is the most chemically inert; PEEK is stiffer." },
+      { term: "Area", text: "A Ø3 mm disk has an area of 0.0707 cm², for reporting current density." },
+      { term: "Before each run", text: "Polish with alumina slurry and rinse well, so that results repeat." },
+    ],
+    faqs: [
+      {
+        q: "How do I load a catalyst on a glassy carbon electrode?",
+        a: "Polish and dry the disk, drop-cast a measured volume of catalyst ink on it, and let it dry evenly before testing.",
+      },
+      {
+        q: "How do I polish a glassy carbon electrode?",
+        a: "Use an alumina slurry on a polishing pad in a figure-eight motion, then rinse with deionised water. A short sonication removes leftover alumina.",
+      },
+    ],
+    related: ["working-electrodes", "electrode-holders", "consumables", "counter-electrodes"],
+    keywords: ["glassy carbon electrode", "glassy carbon electrode price", "GCE electrode", "glassy carbon disk electrode"],
+  },
+};
+
+/** Cheapest first, for buyers comparing prices; items without a price go last. */
+export function topicProducts(topic: TopicSeo, all: Product[]): Product[] {
+  const price = (p: Product) => (p.price > 0 && !isQuoteOnly(p) ? inclGSTForProduct(p, p.price) : Infinity);
+  return all.filter(topic.matches).sort((a, b) => price(a) - price(b));
+}
+
+/** Topics that sit under a category, for the links on its page. */
+export const topicsForCategory = (category: string) =>
+  Object.entries(TOPIC_SEO)
+    .filter(([, t]) => t.parent === category || t.related.includes(category))
+    .map(([slug, t]) => ({ href: `/shop/t/${slug}`, name: t.h1 }));

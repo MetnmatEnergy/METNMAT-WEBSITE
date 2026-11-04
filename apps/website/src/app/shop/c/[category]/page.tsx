@@ -23,6 +23,7 @@ import {
 import { parseShopQuery, shopFacets, applyShopQuery, hasActiveFilters } from "@/frontend/lib/shop-query";
 import { pageMetadata } from "@/frontend/lib/seo";
 import { CATEGORY_SEO, categoryFaqs, categoryMetaDescription } from "@/frontend/lib/category-seo";
+import { topicsForCategory } from "@/frontend/lib/topic-seo";
 
 type Params = { category: string };
 type Search = Record<string, string | string[] | undefined>;
@@ -115,8 +116,11 @@ export default async function CategoryPage({
   // views are noindex, and repeating it on ?page=2 would only duplicate it.
   const seo = !filtersActive && page === 1 && all.length > 0 ? CATEGORY_SEO[category] : undefined;
   const faqs = seo ? categoryFaqs(seo, all) : [];
-  const relatedCategories = seo
-    ? seo.related.flatMap((slug) => allCategories.filter((c) => c.slug === slug).map((c) => ({ slug: c.slug, name: c.name })))
+  const guideLinks = seo
+    ? [
+        ...topicsForCategory(category),
+        ...seo.related.flatMap((slug) => allCategories.filter((c) => c.slug === slug).map((c) => ({ href: `/shop/c/${c.slug}`, name: c.name }))),
+      ]
     : [];
   const sidebarProps = {
     activeCategory: parent?.slug ?? cat.slug,
@@ -242,7 +246,8 @@ export default async function CategoryPage({
         </div>
       </ShopTransitionProvider>
 
-      {seo && <CategoryGuide seo={seo} faqs={faqs} related={relatedCategories} />}
+      {/* A parent lists its sub-categories' products: too long a table to be useful. */}
+      {seo && <CategoryGuide seo={seo} faqs={faqs} links={guideLinks} products={subs.length ? [] : all} />}
     </Container>
   );
 }
