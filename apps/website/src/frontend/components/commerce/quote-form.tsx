@@ -6,6 +6,7 @@ import { useBotCheck } from "@/frontend/components/commerce/bot-check";
 import * as React from "react";
 import { Loader2, CheckCircle2, AlertCircle, Send } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
+import { Select } from "@/frontend/components/ui/select";
 
 const field =
   "w-full rounded-lg border border-input bg-surface px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-2 focus:ring-ring/30";
@@ -151,12 +152,12 @@ export function QuoteForm() {
 
       <div>
         <label className={labelCls} htmlFor="qf-category">What do you need a quote for?</label>
-        <select id="qf-category" name="category" className={field} defaultValue="">
+        <Select id="qf-category" name="category" className={field} defaultValue="">
           <option value="" disabled>Select an option</option>
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div>

@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { sortOptions } from "@/frontend/lib/catalog";
 import { useOptionalShopTransition } from "@/frontend/components/commerce/shop-transition";
+import { Select } from "@/frontend/components/ui/select";
 
 /** Sort dropdown — writes ?sort= to the URL (and resets paging). On a shop
  *  listing it shares the page's filter transition (so re-sorting dims the
@@ -40,24 +40,19 @@ export function SortSelect() {
   return (
     <label className="flex items-center gap-2 text-sm">
       <span className="text-muted-foreground">Sort by</span>
-      <span className="relative inline-flex items-center">
-        <select
-          value={current}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={isPending}
-          aria-busy={isPending}
-          className="h-9 rounded-lg border border-input bg-surface px-3 text-sm outline-none focus:border-brand disabled:opacity-60"
-        >
-          {sortOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        {isPending && (
-          <Loader2 className="pointer-events-none absolute right-2 h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden />
-        )}
-      </span>
+      <Select
+        value={current}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={isPending}
+        aria-busy={isPending}
+        className="h-9 min-w-[11rem] rounded-lg border border-input bg-surface px-3 text-sm outline-none focus:border-brand"
+      >
+        {sortOptions.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </Select>
     </label>
   );
 }

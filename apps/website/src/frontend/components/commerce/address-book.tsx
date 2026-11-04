@@ -316,7 +316,7 @@ function AddressForm({
         <TextField label="City / District / Town" value={f.city || ""} onChange={(e) => set("city", e.target.value)} error={errs.city} autoComplete="address-level2" />
         {india ? (
           <SelectField label="State" value={f.state || ""} onChange={(e) => set("state", e.target.value)} error={errs.state}>
-            <option value="">Select State</option>
+            <option value="" disabled>Select State</option>
             {INDIAN_STATES.map((s) => (
               <option key={s} value={s}>
                 {s}

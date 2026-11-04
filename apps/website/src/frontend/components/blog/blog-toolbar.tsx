@@ -17,6 +17,7 @@ import {
   parseBlogQuery,
   type BlogQuery,
 } from "@/frontend/lib/blog-query";
+import { Select } from "@/frontend/components/ui/select";
 
 export type FilterOption = { slug: string; name: string };
 
@@ -28,7 +29,7 @@ type Props = {
 };
 
 const SELECT_CLASS =
-  "h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:w-auto";
+  "h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:w-auto sm:min-w-[9rem]";
 
 export function BlogToolbar({ categories, contentTypes, authors, years }: Props) {
   const router = useRouter();
@@ -82,14 +83,14 @@ export function BlogToolbar({ categories, contentTypes, authors, years }: Props)
   ) => (
     <label className="flex w-full flex-col gap-1 sm:w-auto">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <select id={id} className={SELECT_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
+      <Select id={id} className={SELECT_CLASS} value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">All</option>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 
@@ -163,7 +164,7 @@ export function BlogToolbar({ categories, contentTypes, authors, years }: Props)
           )}
         <label className="flex w-full flex-col gap-1 sm:ml-auto sm:w-auto">
           <span className="text-xs font-medium text-muted-foreground">Sort by</span>
-          <select
+          <Select
             id="f-sort"
             className={SELECT_CLASS}
             value={query.sort}
@@ -174,7 +175,7 @@ export function BlogToolbar({ categories, contentTypes, authors, years }: Props)
                 {BLOG_SORT_LABELS[s]}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         {active && (
           <button

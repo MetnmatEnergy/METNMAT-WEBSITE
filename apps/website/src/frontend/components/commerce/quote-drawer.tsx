@@ -12,6 +12,7 @@ import {
 } from "@/frontend/components/commerce/attachment-uploader";
 import { cn } from "@/frontend/lib/utils";
 import { useBotCheck } from "@/frontend/components/commerce/bot-check";
+import { Select } from "@/frontend/components/ui/select";
 
 const field =
   "w-full rounded-xl border border-input bg-surface px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-2 focus:ring-ring/30";
@@ -294,11 +295,11 @@ export function QuoteDrawer() {
                   placeholder="Enter value — e.g. 50 or 6×70"
                   className="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground"
                 />
-                <select
+                <Select
                   name="sizeUnit"
                   defaultValue="mm"
                   aria-label="Unit"
-                  className="shrink-0 border-l border-input bg-muted/40 px-3 text-sm font-medium outline-none"
+                  className="min-w-[5rem] shrink-0 border-l border-input bg-muted/40 px-3 text-sm font-medium outline-none"
                 >
                   <optgroup label="Length" style={{ fontWeight: 700 }}>
                     <option value="nm">nm (nanometre)</option>
@@ -337,7 +338,7 @@ export function QuoteDrawer() {
                     <option value="°F">°F</option>
                     <option value="K">K</option>
                   </optgroup>
-                </select>
+                </Select>
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground">
                 Type the measurement and choose its unit — e.g. 6×70 mm or 50 mL.

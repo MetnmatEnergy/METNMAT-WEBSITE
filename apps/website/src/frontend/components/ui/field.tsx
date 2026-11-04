@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { Select, type SelectProps } from "@/frontend/components/ui/select";
 import { cn } from "@/frontend/lib/utils";
 
 /**
@@ -112,14 +113,13 @@ export const PasswordField = React.forwardRef<HTMLInputElement, PasswordFieldPro
   );
 });
 
-type SelectFieldProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
+type SelectFieldProps = SelectProps & {
   label?: React.ReactNode;
   error?: string;
   hint?: React.ReactNode;
-  children: React.ReactNode;
 };
 
-/** Labelled native select, styled to match TextField. */
+/** Labelled dropdown, styled to match TextField. */
 export const SelectField = React.forwardRef<HTMLSelectElement, SelectFieldProps>(function SelectField(
   { label, error, hint, className, id, children, ...props },
   ref,
@@ -130,16 +130,16 @@ export const SelectField = React.forwardRef<HTMLSelectElement, SelectFieldProps>
   return (
     <div className="grid gap-1.5">
       {label ? <Label htmlFor={selectId}>{label}</Label> : null}
-      <select
+      <Select
         ref={ref}
         id={selectId}
-        className={cn(fieldClass, "cursor-pointer appearance-none bg-[right_0.75rem_center] pr-9", error && "border-brand focus:border-brand", className)}
+        className={cn(fieldClass, error && "border-brand focus:border-brand", className)}
         aria-invalid={error ? true : undefined}
         aria-describedby={errId}
         {...props}
       >
         {children}
-      </select>
+      </Select>
       {error ? <FieldError id={errId}>{error}</FieldError> : hint ? (
         <span className="text-xs text-muted-foreground">{hint}</span>
       ) : null}
