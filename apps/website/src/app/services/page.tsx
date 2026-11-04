@@ -16,7 +16,7 @@ import { pageMetadata } from "@/frontend/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Materials & Metallurgy R&D Services in India",
   description:
-    "Customized, turnkey materials & metallurgy R&D from METNMAT — product & process development, applied research & consultancy, process & quality improvement, product benchmarking, materials testing & characterization, and materials processing facilities.",
+    "Turnkey materials and metallurgy R&D from METNMAT: process development, applied research, heat treatment and simulation, from lab scale to industry.",
   path: "/services",
 });
 

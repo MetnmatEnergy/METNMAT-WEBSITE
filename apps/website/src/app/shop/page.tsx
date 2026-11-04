@@ -10,6 +10,7 @@ import { GetQuoteButton } from "@/frontend/components/commerce/request-quote-but
 import { ShopShowcase } from "@/frontend/components/commerce/shop-showcase";
 import { getVisibleTopCategories, getFeaturedProducts } from "@/frontend/lib/cms";
 import { pageMetadata } from "@/frontend/lib/seo";
+import { TOPIC_SEO } from "@/frontend/lib/topic-seo";
 import { JsonLd, itemListJsonLd } from "@/frontend/components/seo/json-ld";
 import { PageBreadcrumbs } from "@/frontend/components/seo/page-breadcrumbs";
 import { RegionBar } from "@/frontend/components/commerce/region-bar";
@@ -17,7 +18,7 @@ import { RegionBar } from "@/frontend/components/commerce/region-bar";
 export const metadata: Metadata = pageMetadata({
   title: "Buy Electrochemistry Lab Equipment Online in India",
   description:
-    "Buy lab-grade electrochemistry equipment — reference/counter/working electrodes, ion-exchange membranes (PEM/AEM/BPM/CEM), electrochemical cells & reactors, peristaltic pumps, MEA fabrication presses and accessories. Bulk B2B pricing, GST invoice, free shipping across India + worldwide delivery.",
+    "Buy reference, counter and working electrodes, ion exchange membranes, H-cells, electrolyzers and lab pumps online in India. Free shipping, GST invoice.",
   path: "/shop",
 });
 
@@ -42,6 +43,17 @@ export default async function ShopHomePage() {
           {/* States the region rather than asking for it: the catalogue is
               already rendered by the time this appears. */}
           <RegionBar className="mt-3" />
+          <nav aria-label="Popular products" className="mt-3 flex flex-wrap gap-2">
+            {Object.entries(TOPIC_SEO).map(([slug, t]) => (
+              <Link
+                key={slug}
+                href={`/shop/t/${slug}`}
+                className="rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted-foreground hover:border-brand/40 hover:text-foreground"
+              >
+                {t.h1}
+              </Link>
+            ))}
+          </nav>
         </Container>
       </section>
 

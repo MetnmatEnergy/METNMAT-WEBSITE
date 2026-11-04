@@ -13,9 +13,9 @@ import { site } from "@/frontend/lib/site";
 import type { Project } from "@/frontend/lib/placeholder";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Projects & Case Studies",
+  title: "Industrial R&D Projects and Case Studies",
   description:
-    "Explore METNMAT's delivered R&D — high-conductivity copper alloys, high-temperature materials, metal foams and composites, and thermoelectric waste-heat recovery, from lab to industrial scale.",
+    "Industrial R&D case studies from METNMAT: heat treatment, simulation, alloy development, high-temperature materials, waste-heat recovery and composites.",
   path: "/projects",
 });
 

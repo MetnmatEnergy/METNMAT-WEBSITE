@@ -31,9 +31,9 @@ import { JsonLd, organizationJsonLd } from "@/frontend/components/seo/json-ld";
 import { PageBreadcrumbs } from "@/frontend/components/seo/page-breadcrumbs";
 
 export const metadata: Metadata = pageMetadata({
-  title: "About",
+  title: "About METNMAT: Materials R&D and Lab Equipment",
   description:
-    "METNMAT Innovations — an advanced materials & engineering R&D company spanning metallurgy, materials science, electrochemistry, catalysts, membranes, reactors and custom research systems. Founded by IIT Kharagpur alumni; concept to industrial scale-up.",
+    "METNMAT Innovations: a materials and electrochemistry R&D company and lab equipment supplier in Howrah, India, founded in 2018 by IIT Kharagpur alumni.",
   path: "/about",
 });
 

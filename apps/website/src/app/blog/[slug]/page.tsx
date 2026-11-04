@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { clampDescription } from "@/frontend/lib/seo";
+import { BlogShopLinks } from "@/frontend/components/blog/shop-links";
 import { draftMode } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
@@ -60,9 +62,10 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     notFound();
   }
   const title = article.seoTitle ?? article.title;
-  const description = article.metaDescription ?? article.excerpt;
+  const description = clampDescription(article.metaDescription ?? article.excerpt);
   return {
-    title,
+    // A long SEO title plus " · METNMAT" runs past what Google shows.
+    title: title.length > 52 ? { absolute: title } : title,
     description,
     alternates: { canonical: article.canonicalUrl ?? `${site.url}/blog/${article.slug}` },
     ...(article.noIndex ? { robots: { index: false, follow: true } } : {}),
@@ -349,6 +352,8 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
             </div>
           </aside>
         </div>
+
+        <BlogShopLinks categorySlug={article.categorySlug} />
 
         {/* ── Related ───────────────────────────────────────────────────────── */}
         {related.length > 0 && (

@@ -37,6 +37,26 @@ Google India on 2026-11-04, 8 searches: metnmat.in is on page one for 5 of them,
 The rankings are .in's, and they reach .com only as Google re-reads each old URL. **So the first job
 is to give that authority strong pages to land on.**
 
+**Nobody can promise a Google position.** Google decides, competitors keep moving, and backlinks and
+reviews take time. The promise this plan makes is narrower: no page of ours is weaker than the
+competitor's for the same search, and progress is measured weekly on the scoreboard below.
+
+Scoreboard, Google India, 2026-11-04 (position; "–" means not in the first results read):
+
+| Search | metnmat.com | metnmat.in | DekResearch | Electrochemistry Store |
+|---|---|---|---|---|
+| ag/agcl reference electrode price | – | 2 | – | 4 |
+| platinum electrode price | – | – | – | 3 |
+| h type electrochemical cell | – | – | 5 | 7 |
+| electrochemical cell supplier india | – | – | – | – |
+| co2 electrolyzer flow cell india | – | 1 | – | – |
+| proton exchange membrane price india | – | 2 | – | – |
+| glassy carbon electrode price | – | 5 | 9 | 1 |
+| nickel foam price | – | 3 | – | 4 |
+
+DekResearch appears in only 2 of the 8, and metnmat.in already beats it on one. The real rival in
+India is Electrochemistry Store. The job is to move .in's positions to .com, then gain the rest.
+
 Where the demand is (.in, 3 months, non-brand):
 
 | Topic | Impressions | Clicks | Avg. position |
@@ -230,14 +250,32 @@ Ranked by effect:
 | Item | State | Date | Evidence / next |
 |---|---|---|---|
 | Keyword research and competitor teardown | ✅ | 2026-11-04 | Parts A to C |
-| 24 category landing pages | ✅ in PR | 2026-11-04 | `frontend/lib/category-seo.ts` |
-| Home, shop, services titles and headings | ✅ in PR | 2026-11-04 | |
-| llms.txt catalogue, IndexNow | ✅ in PR | 2026-11-04 | `scripts/indexnow.mjs` |
-| Topic hubs: platinum electrodes, Ag/AgCl, nickel foam | next | | Real products, own buying guide, sitemap, linked from categories |
-| Product pages: "Buy" and "Price" in titles | next | | Plan through the SEO script, dry run first |
-| Product pages: family FAQs, compatibility, care | next | | Beats Part B on page depth |
-| Blog posts link to products; products link to posts | next | | Passes the old posts' authority to the shop |
+| 24 category landing pages | ✅ live | 2026-11-04 | `frontend/lib/category-seo.ts`, PR #59 |
+| Home, shop, services titles and headings | ✅ live | 2026-11-04 | PR #59 |
+| llms.txt catalogue, IndexNow | ✅ live | 2026-11-04 | `scripts/indexnow.mjs`; all 213 URLs sent, Bing answered 200 |
+| Full crawl of all 213 pages | ✅ | 2026-11-04 | All 200, one H1 each, no duplicate titles or descriptions, canonicals correct, every image has alt text |
+| Product tabs in the HTML for crawlers | ✅ in PR | 2026-11-04 | Specifications, Documents and Shipping were missing from what crawlers read |
+| 26 over-long descriptions, 8 long blog titles, bare /about and /contact titles | ✅ in PR | 2026-11-04 | |
+| Audit of all 141 products | ✅ | 2026-11-04 | [`product-audit.csv`](./product-audit.csv): every product and what it needs |
+| Long descriptions for all 141 products (none exist; pages run on a short one, median 181 characters) | next | | Biggest content gap against DekResearch; CMS write by script, top sellers first, facts from datasheets |
+| 5 topic pages `/shop/t/*`: platinum, Ag/AgCl, Hg/HgO, graphite, glassy carbon | ✅ in PR | 2026-11-04 | `frontend/lib/topic-seo.ts`; cheapest first, price list table, own guide, sitemap, linked from `/shop`, categories and products |
+| Price list tables on category and topic pages | ✅ in PR | 2026-11-04 | Not found on any competitor page read |
+| Product search description leads with the live price | ✅ in PR | 2026-11-04 | `productSearchDescription` |
+| Product pages: family guide, family FAQs, 8 related products, links to topics | ✅ in PR | 2026-11-04 | Hg/HgO page now 9 FAQs, about 1,140 words |
+| Blog articles link to the shop and `/services` | ✅ in PR | 2026-11-04 | `components/blog/shop-links.tsx`; in-text links still to do |
+| `<html lang="en-IN">` | ✅ in PR | 2026-11-04 | |
+| After merge: run `scripts/indexnow.mjs`, request indexing of topics and top categories | next | | Add a weekly IndexNow step to the daily task |
+| Product titles: "Buy" and "Price" | next | | Only 13 of 141 titles leave room; needs a CMS plan and dry run |
+| Per-product compatibility, what's in the box, care | next | | Needs owner facts (Part G) |
+| In-text links from the 15 moved posts to products | next | | CMS write by script, never through ingest |
 | `/services` page for microstructure analysis and metallurgical testing | next | | 1,190 impressions; check .in's old pages for what was offered |
-| India-first signals: `hreflang`, `en-IN` | next | | Dek has a separate India site |
-| Sibling duplicate products | owner | | e.g. two platinum 20 × 20 listings |
+| Comparison articles: Ag/AgCl vs SCE, PEM vs AEM, H-cell vs flow cell | next | | GEO; publish by the no-email script |
+| More topic pages when Search Console shows demand | next | | Candidates: gold electrodes, calomel, nickel foam |
+| Sibling duplicate products | owner | | e.g. Platinum Sheet 20 × 20 × 0.1 mm and Noble metal plate platinum 20 × 20 × 0.1 mm |
+| Catalogue prices that look wrong | owner | | Platinum mesh 10 × 10 mm ₹41,300 vs 20 × 20 mm ₹29,500; platinum sheet 10 × 10 mm ₹23,600 vs 15 × 20 mm ₹18,880. Now visible side by side in the price lists |
+| Zinc sheet SEO title says 99.9%, spec says 99.99% to 99.995% | owner | | 1,248 impressions on this topic; confirm purity, then fix through the SEO script |
+| "ISO-aligned R&D" badge on every product page | owner | | Confirm it is true, or remove it |
+| Delivery promise against "Made to order" | owner | | Merchant Center says 0 to 1 days for all products, but 71 of 141 are made to order. Decide a true figure; the feed and JSON-LD say in stock |
+| 12 products with no photo, 18 with one | owner | | Without a photo a product stays out of Google Shopping; see `product-audit.csv` |
+| 71 products with no SKU, 3 with no price, 4 with placeholder specs | owner | | `product-audit.csv` |
 | Reviews, datasheets, papers | owner | | Part G |

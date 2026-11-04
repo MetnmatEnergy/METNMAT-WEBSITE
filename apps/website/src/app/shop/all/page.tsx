@@ -25,9 +25,9 @@ export async function generateMetadata({
   const query = parseShopQuery(await searchParams);
   const filtered = hasActiveFilters(query);
   const base = pageMetadata({
-    title: "All Products — Shop the Full Catalog",
+    title: "All Electrochemistry Products with Prices",
     description:
-      "Browse the complete METNMAT catalog — electrodes, ion-exchange membranes, electrochemical cells & reactors, lab equipment and accessories. Filter by brand, price and availability. GST invoice, free shipping across India, worldwide delivery.",
+    "The full METNMAT catalogue: electrodes, ion exchange membranes, electrochemical cells, reactors and lab equipment, with prices including GST.",
     path: "/shop/all",
   });
   return {

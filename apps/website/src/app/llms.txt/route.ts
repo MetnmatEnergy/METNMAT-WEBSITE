@@ -1,6 +1,7 @@
 import { formatINR } from "@/frontend/lib/catalog";
 import { CATEGORY_SEO, categoryPriceFacts } from "@/frontend/lib/category-seo";
 import { getAllProducts } from "@/frontend/lib/cms";
+import { TOPIC_SEO, topicProducts } from "@/frontend/lib/topic-seo";
 import { site } from "@/frontend/lib/site";
 
 /**
@@ -18,15 +19,16 @@ const addressLines = site.addresses
 
 async function catalogueLines(): Promise<string> {
   const products = await getAllProducts();
-  return Object.entries(CATEGORY_SEO)
-    .flatMap(([slug, seo]) => {
-      const inCategory = products.filter((p) => p.categorySlug === slug);
-      if (!inCategory.length) return [];
-      const { min } = categoryPriceFacts(inCategory);
-      const price = min ? ` From ${formatINR(min)} including GST.` : "";
-      return [`- [${seo.h1}](${site.url}/shop/c/${slug}): ${seo.lead}${price}`];
-    })
-    .join("\n");
+  const line = (path: string, seo: { h1: string; lead: string }, items: typeof products) => {
+    if (!items.length) return [];
+    const { min } = categoryPriceFacts(items);
+    const price = min ? ` From ${formatINR(min)} including GST.` : "";
+    return [`- [${seo.h1}](${site.url}${path}): ${seo.lead}${price}`];
+  };
+  return [
+    ...Object.entries(TOPIC_SEO).flatMap(([slug, t]) => line(`/shop/t/${slug}`, t, topicProducts(t, products))),
+    ...Object.entries(CATEGORY_SEO).flatMap(([slug, seo]) => line(`/shop/c/${slug}`, seo, products.filter((p) => p.categorySlug === slug))),
+  ].join("\n");
 }
 
 export async function GET() {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { formatINR } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 
 /** Google renders roughly 155-160 characters of a description before truncating. */
@@ -14,6 +15,9 @@ function truncate(text: string, max: number): string {
   const at = cut.lastIndexOf(" ");
   return `${(at > max * 0.6 ? cut.slice(0, at) : cut).replace(/[\s,;:.–—-]+$/, "")}…`;
 }
+
+/** A description that a search result can show whole, for text written elsewhere (the CMS). */
+export const clampDescription = (text: string) => truncate(text, META_DESCRIPTION_MAX);
 
 /**
  * Meta description for a product page.
@@ -90,6 +94,20 @@ export function productMetaDescription(product: {
 }
 
 /**
+ * What a search result says about a product: the price first, because buyers
+ * search "<product> price" and marketplace listings often hide theirs. The price
+ * is the live one, so staff never have to keep a description in step with it.
+ */
+export function productSearchDescription(
+  product: Parameters<typeof productMetaDescription>[0],
+  priceInclGst?: number,
+): string {
+  const body = productMetaDescription(product);
+  if (!priceInclGst) return body;
+  return truncate(`${formatINR(priceInclGst)} incl. GST, free shipping in India. ${body}`, META_DESCRIPTION_MAX);
+}
+
+/**
  * Per-page metadata helper.
  *
  * Sets a correct SELF-canonical (resolved against `metadataBase` in
@@ -118,6 +136,7 @@ export function pageMetadata({
   imageAlt?: string;
 }): Metadata {
   const images = image ? [{ url: image, alt: imageAlt ?? title }] : undefined;
+  description = clampDescription(description);
   return {
     title,
     description,

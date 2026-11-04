@@ -21,9 +21,9 @@ import { JsonLd, organizationJsonLd } from "@/frontend/components/seo/json-ld";
 import { PageBreadcrumbs } from "@/frontend/components/seo/page-breadcrumbs";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Contact",
+  title: "Contact METNMAT: Howrah, Mumbai, Sambalpur",
   description:
-    "Get in touch with METNMAT Research & Innovations — discuss a materials R&D project, request a quote, or visit our office in Howrah, West Bengal. We typically reply within one business day.",
+    "Contact METNMAT in Howrah, Mumbai or Sambalpur for electrochemistry lab equipment, quotes and materials R&D. Phone, email and office addresses.",
   path: "/contact",
 });
 

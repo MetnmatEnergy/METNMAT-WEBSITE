@@ -11,6 +11,27 @@ type Tab = (typeof TABS)[number];
 
 const tabId = (t: Tab) => `product-tab-${t.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
+/**
+ * Every panel stays in the HTML and the inactive ones are only hidden. Crawlers
+ * and answer engines do not click tabs: when a panel was rendered only once
+ * selected, the full specifications, documents and shipping terms were missing
+ * from what they read, and a product with 22 specs showed them just the first 6.
+ */
+function Panel({ t, active, children }: { t: Tab; active: Tab; children: React.ReactNode }) {
+  return (
+    <div
+      id={`${tabId(t)}-panel`}
+      role="tabpanel"
+      aria-labelledby={tabId(t)}
+      tabIndex={0}
+      hidden={active !== t}
+      className="py-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+    >
+      {children}
+    </div>
+  );
+}
+
 export function ProductTabs({ product }: { product: Product }) {
   const [tab, setTab] = React.useState<Tab>("Description");
 
@@ -25,7 +46,7 @@ export function ProductTabs({ product }: { product: Product }) {
             role="tab"
             id={tabId(t)}
             aria-selected={tab === t}
-            aria-controls="product-tabpanel"
+            aria-controls={`${tabId(t)}-panel`}
             onClick={() => setTab(t)}
             className={cn(
               "relative px-4 py-3 text-sm font-medium transition-colors",
@@ -38,14 +59,7 @@ export function ProductTabs({ product }: { product: Product }) {
         ))}
       </div>
 
-      <div
-        id="product-tabpanel"
-        role="tabpanel"
-        aria-labelledby={tabId(tab)}
-        tabIndex={0}
-        className="py-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
-      >
-        {tab === "Description" && (
+      <Panel t="Description" active={tab}>
           <div className="max-w-3xl space-y-4 text-muted-foreground">
             {hasRichText(product.description) ? (
               <RichText content={product.description} />
@@ -67,13 +81,13 @@ export function ProductTabs({ product }: { product: Product }) {
               </ul>
             </div>
           </div>
-        )}
+      </Panel>
 
-        {tab === "Specifications" && (
+      <Panel t="Specifications" active={tab}>
           <dl className="max-w-2xl divide-y divide-border border-y border-border text-sm">
             {[
               { label: "Brand", value: product.brand || "—" },
-              { label: "SKU", value: product.sku || "—" },
+              ...(product.sku ? [{ label: "SKU", value: product.sku }] : []),
               { label: "Minimum order", value: `${product.moq} ${product.unit}` },
               ...product.specs.map((s) => ({ label: s.label, value: s.value })),
             ].map((row, i) => (
@@ -83,9 +97,9 @@ export function ProductTabs({ product }: { product: Product }) {
               </div>
             ))}
           </dl>
-        )}
+      </Panel>
 
-        {tab === "Documents" && (
+      <Panel t="Documents" active={tab}>
           <div className="max-w-2xl">
             {product.datasheets.length > 0 ? (
               <ul className="space-y-2">
@@ -104,9 +118,9 @@ export function ProductTabs({ product }: { product: Product }) {
               </p>
             )}
           </div>
-        )}
+      </Panel>
 
-        {tab === "Shipping & Returns" && (
+      <Panel t="Shipping & Returns" active={tab}>
           <div className="max-w-2xl space-y-3 text-sm text-muted-foreground">
             {product.leadTime ? (
               <p className="flex items-center gap-2 font-medium text-foreground">
@@ -127,8 +141,7 @@ export function ProductTabs({ product }: { product: Product }) {
               </li>
             </ul>
           </div>
-        )}
-      </div>
+      </Panel>
     </div>
   );
 }
