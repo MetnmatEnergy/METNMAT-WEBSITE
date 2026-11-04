@@ -9,6 +9,7 @@ import React from "react";
 import { CheckCircle2, FileUp, Loader2, X } from "lucide-react";
 import { Button } from "@/frontend/components/ui/button";
 import type { FilterOption } from "@/frontend/components/blog/blog-toolbar";
+import { Select } from "@/frontend/components/ui/select";
 
 const MAX_FILES = 5;
 const MAX_FILE_MB = 10;
@@ -220,7 +221,7 @@ export function SubmitForm({
         </Field>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field name="contentType" label="Article type" required errors={errors}>
-            <select id="contentType" name="contentType" required className={inputCls} aria-invalid={!!errors.contentType} defaultValue="">
+            <Select id="contentType" name="contentType" required className={inputCls} aria-invalid={!!errors.contentType} defaultValue="">
               <option value="" disabled>
                 Select a type…
               </option>
@@ -229,10 +230,10 @@ export function SubmitForm({
                   {t.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field name="category" label="Category" required errors={errors}>
-            <select id="category" name="category" required className={inputCls} aria-invalid={!!errors.category} defaultValue="">
+            <Select id="category" name="category" required className={inputCls} aria-invalid={!!errors.category} defaultValue="">
               <option value="" disabled>
                 Select a category…
               </option>
@@ -241,7 +242,7 @@ export function SubmitForm({
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
         </div>
         <Field name="researchArea" label="Research area" errors={errors} hint="e.g. PEM electrolysis, copper metallurgy, battery materials">

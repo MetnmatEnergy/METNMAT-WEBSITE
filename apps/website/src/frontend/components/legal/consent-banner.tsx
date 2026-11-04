@@ -18,6 +18,7 @@ import {
   saveConsent,
   type ConsentRecord,
 } from "@/frontend/lib/consent";
+import { Select } from "@/frontend/components/ui/select";
 
 /** Footer (or anywhere) can dispatch this to reopen the choice. */
 export const OPEN_CONSENT_EVENT = "mm:open-consent";
@@ -240,18 +241,18 @@ export function ConsentBanner() {
               reason: s.5(3) requires the notice to be available in an Eighth
               Schedule language. */}
           <div className="flex shrink-0 flex-wrap items-center gap-2.5 sm:gap-3 lg:flex-nowrap">
-            <select
+            <Select
               aria-label={t.languageLabel}
               value={langKey}
               onChange={(e) => setLangKey(e.target.value)}
-              className="h-10 rounded-md border border-border bg-surface px-2 text-xs font-medium text-foreground outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:bg-background/40"
+              className="h-10 min-w-[7.5rem] rounded-md border border-border bg-surface px-2 text-xs font-medium text-foreground outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:bg-background/40"
             >
               {NOTICE_LANGUAGE_KEYS.map((k) => (
                 <option key={k} value={k} lang={NOTICE_LANGUAGES[k].lang}>
                   {NOTICE_LANGUAGES[k].label}
                 </option>
               ))}
-            </select>
+            </Select>
             <button
               type="button"
               onClick={() => setShowPrefs(true)}
@@ -320,18 +321,18 @@ export function ConsentBanner() {
                 <select> also contains its options, which makes the computed
                 accessible name depend on the browser's name-from-content rules.
                 This one is unambiguous. */}
-            <select
+            <Select
               aria-label={t.languageLabel}
               value={langKey}
               onChange={(e) => setLangKey(e.target.value)}
-              className="shrink-0 rounded-lg border border-border bg-surface px-2 py-1 text-xs font-medium text-foreground outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:bg-background/40"
+              className="min-w-[7.5rem] shrink-0 rounded-lg border border-border bg-surface px-2 py-1 text-xs font-medium text-foreground outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand dark:bg-background/40"
             >
               {NOTICE_LANGUAGE_KEYS.map((k) => (
                 <option key={k} value={k} lang={NOTICE_LANGUAGES[k].lang}>
                   {NOTICE_LANGUAGES[k].label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <div id={bodyId} className="mt-4 space-y-2 text-sm leading-relaxed text-muted-foreground">

@@ -195,6 +195,9 @@ auditing orphaned resources.
 - Client-side overlays (cart rail, categories menu) close on outside click via a **capture-phase
   `pointerdown` listener that never calls `preventDefault`** — never a click-catching overlay,
   which swallows the click.
+- Every dropdown is `frontend/components/ui/select.tsx`, used exactly like a `<select>` with `<option>` children. A hidden
+  real select holds the value (so FormData, reset and `onChange` work) and the list opens in the top layer. Never write a
+  bare `<select>`: `test/site-dropdowns.test.ts` fails on one.
 - No fabricated content. Structured data and copy must trace to a real CMS field or a real page.
 - **Admin sidebar** (`apps/dashboard/src/app/(payload)/custom-admin.css`): Payload's DefaultNav is
   kept and dressed. Group order = first appearance in `payload.config.ts` `collections` (Catalog

@@ -10,7 +10,7 @@ type Fields = Record<string, string>;
 type Status = "idle" | "sending" | "sent" | "error";
 
 /**
- * Kept short on purpose: a native <select> truncates its own label, and the
+ * Kept short on purpose: a dropdown truncates its own label, and the
  * longer wording overflowed the control below ~390px. The full meaning of each
  * right is set out in section 8 of the privacy policy, which this page links to.
  */

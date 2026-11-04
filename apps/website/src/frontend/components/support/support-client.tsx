@@ -11,6 +11,7 @@ import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { cn } from "@/frontend/lib/utils";
 import { useBotCheck } from "@/frontend/components/commerce/bot-check";
+import { Select } from "@/frontend/components/ui/select";
 
 const field =
   "w-full rounded-lg border border-input bg-surface px-4 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-2 focus:ring-ring/30";
@@ -270,9 +271,9 @@ function RaiseTicket({ defaultOrder, onRaised }: { defaultOrder: string; onRaise
         </div>
         <div className="sm:col-span-2">
           <Label htmlFor="s-category" required>What is this about?</Label>
-          <select id="s-category" className={field} value={f.category} onChange={set("category")}>
+          <Select id="s-category" className={field} value={f.category} onChange={set("category")}>
             {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="sm:col-span-2">
           <Label htmlFor="s-subject" required>Subject</Label>

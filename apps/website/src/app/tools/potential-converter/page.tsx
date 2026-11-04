@@ -4,7 +4,7 @@ import { Container } from "@/frontend/components/ui/container";
 import { PageHero } from "@/frontend/components/layout/page-hero";
 import { JsonLd, faqJsonLd } from "@/frontend/components/seo/json-ld";
 import { PotentialConverter } from "@/frontend/components/tools/potential-converter";
-import { REFERENCE_ELECTRODES } from "@/frontend/lib/potential-convert";
+import { REFERENCE_ELECTRODES, formatVsShe } from "@/frontend/lib/potential-convert";
 import { pageMetadata } from "@/frontend/lib/seo";
 import { site } from "@/frontend/lib/site";
 
@@ -25,11 +25,19 @@ const FAQS = [
   },
   {
     q: "How do I convert Hg/HgO to RHE?",
-    a: "At 25 °C, E(RHE) = E(Hg/HgO) + 0.098 V + 0.0592 × pH, using 0.098 V for Hg/HgO in 1 M KOH. In 1 M KOH the pH is about 14, so the sum is close to E(Hg/HgO) + 0.927 V.",
+    a: "At 25 °C, E(RHE) = E(Hg/HgO) + 0.098 V + 0.0592 × pH, using 0.098 V for Hg/HgO in 1 M KOH. At pH 14 the sum is E(Hg/HgO) + 0.927 V, which agrees with the 0.923 to 0.927 V labs measure when they calibrate in 1 M KOH. When the solution inside the electrode matches your electrolyte, this gap stays close to 0.927 V at any strength, because Hg/HgO and RHE both shift with the hydroxide in the same way.",
+  },
+  {
+    q: "Why do tables give different values for Hg/HgO?",
+    a: "Because they mean different things. +0.098 V is the standard potential, and most papers use it for 1 M KOH. Worked out from the real activity of hydroxide, the figure is close to +0.105 V in 1 M KOH and +0.108 V in 1 M NaOH. Metrohm's table lists +0.140 V for 1 M NaOH, which puts results about 30 mV higher. State the value you used when you report a result.",
   },
   {
     q: "How do I convert SCE to RHE?",
     a: "At 25 °C, E(RHE) = E(SCE) + 0.241 V + 0.0592 × pH.",
+  },
+  {
+    q: "What do I set on the potentiostat for a potential vs RHE?",
+    a: "Work backwards: E(set) = E(RHE) − E(reference vs SHE) − 0.0592 × pH. In the converter above, choose RHE under Measured against and your electrode under Convert to, or press Swap.",
   },
   {
     q: "What is the difference between SHE and RHE?",
@@ -37,7 +45,7 @@ const FAQS = [
   },
   {
     q: "Are these values exact for my electrode?",
-    a: "No. They are textbook values at 25 °C, and a real electrode can differ by a few millivolts. For precise work, calibrate your reference against a reversible hydrogen electrode in your own electrolyte.",
+    a: "No. They are published values at 25 °C, and a real electrode can differ by a few millivolts. For precise work, calibrate your reference against a reversible hydrogen electrode in your own electrolyte.",
   },
 ];
 
@@ -61,7 +69,7 @@ export default function PotentialConverterPage() {
       <PageHero
         eyebrow="Free tool"
         title="Reference Electrode Potential Converter"
-        description="Convert a measured potential to RHE, SHE or another reference electrode."
+        description="Convert a measured potential to RHE, SHE or another reference electrode, and back."
         bordered={false}
         breadcrumbs={[
           { name: "Home", path: "/" },
@@ -97,16 +105,28 @@ export default function PotentialConverterPage() {
                 {REFERENCE_ELECTRODES.map((r) => (
                   <tr key={r.id}>
                     <td className="py-2 pr-4 text-foreground">{r.label}</td>
-                    <td className="whitespace-nowrap py-2 pr-4 font-medium">{r.vsShe === 0 ? "0.000 V" : `+${r.vsShe.toFixed(3)} V`}</td>
-                    <td className="py-2 text-muted-foreground">{r.useIn}</td>
+                    <td className="whitespace-nowrap py-2 pr-4 font-medium">{formatVsShe(r)}</td>
+                    <td className="py-2 text-muted-foreground">
+                      {r.useIn}
+                      {r.note && <span className="mt-0.5 block text-xs">{r.note}</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            Textbook values. Published figures vary a little, and Ag/Ag⁺ is left out because its potential depends on the
-            solvent and salt.
+            Some tables give the KCl strength per kilogram of water rather than per litre, which moves the figure by a few
+            millivolts. Ag/Ag⁺ is left out because its potential depends on the solvent and salt.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Sources:{" "}
+            <a href="https://en.wikipedia.org/wiki/Reference_electrode" className="text-brand-soft hover:underline" rel="noopener noreferrer" target="_blank">reference electrode table</a>{" "}
+            (after Bard and Faulkner),{" "}
+            <a href="https://en.wikipedia.org/wiki/Silver_chloride_electrode" className="text-brand-soft hover:underline" rel="noopener noreferrer" target="_blank">silver chloride electrode</a>,{" "}
+            <a href="https://www.metrohm.com/content/dam/metrohm/shared/documents/application-notes/an-e/AN-EC-002.pdf" className="text-brand-soft hover:underline" rel="noopener noreferrer" target="_blank">Metrohm note AN-EC-002</a>{" "}
+            and a{" "}
+            <a href="https://www.sciencedirect.com/science/article/abs/pii/S0378775306010329" className="text-brand-soft hover:underline" rel="noopener noreferrer" target="_blank">Journal of Power Sources paper on Hg/HgO in NaOH</a>.
           </p>
         </section>
 
