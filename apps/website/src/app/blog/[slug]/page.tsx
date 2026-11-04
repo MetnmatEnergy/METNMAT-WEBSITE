@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BlogShopLinks } from "@/frontend/components/blog/shop-links";
 import { draftMode } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
@@ -349,6 +350,8 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
             </div>
           </aside>
         </div>
+
+        <BlogShopLinks categorySlug={article.categorySlug} />
 
         {/* ── Related ───────────────────────────────────────────────────────── */}
         {related.length > 0 && (

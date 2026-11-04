@@ -1,3 +1,4 @@
+import { TOPIC_SEO } from "@/frontend/lib/topic-seo";
 import { site, mainNav } from "@/frontend/lib/site";
 import {
   getProductSitemapEntries,
@@ -47,6 +48,7 @@ async function pages(): Promise<SitemapUrl[]> {
       "/privacy",
       "/terms",
       "/replacement-policy",
+      ...Object.keys(TOPIC_SEO).map((t) => `/shop/t/${t}`),
       ...mainNav.map((n) => n.href),
     ])
   );

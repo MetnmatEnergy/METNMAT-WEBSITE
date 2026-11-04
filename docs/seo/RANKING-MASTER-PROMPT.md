@@ -233,11 +233,21 @@ Ranked by effect:
 | 24 category landing pages | ✅ in PR | 2026-11-04 | `frontend/lib/category-seo.ts` |
 | Home, shop, services titles and headings | ✅ in PR | 2026-11-04 | |
 | llms.txt catalogue, IndexNow | ✅ in PR | 2026-11-04 | `scripts/indexnow.mjs` |
-| Topic hubs: platinum electrodes, Ag/AgCl, nickel foam | next | | Real products, own buying guide, sitemap, linked from categories |
-| Product pages: "Buy" and "Price" in titles | next | | Plan through the SEO script, dry run first |
-| Product pages: family FAQs, compatibility, care | next | | Beats Part B on page depth |
-| Blog posts link to products; products link to posts | next | | Passes the old posts' authority to the shop |
+| 5 topic pages `/shop/t/*`: platinum, Ag/AgCl, Hg/HgO, graphite, glassy carbon | ✅ in PR | 2026-11-04 | `frontend/lib/topic-seo.ts`; cheapest first, price list table, own guide, sitemap, linked from `/shop`, categories and products |
+| Price list tables on category and topic pages | ✅ in PR | 2026-11-04 | Not found on any competitor page read |
+| Product search description leads with the live price | ✅ in PR | 2026-11-04 | `productSearchDescription` |
+| Product pages: family guide, family FAQs, 8 related products, links to topics | ✅ in PR | 2026-11-04 | Hg/HgO page now 9 FAQs, about 1,140 words |
+| Blog articles link to the shop and `/services` | ✅ in PR | 2026-11-04 | `components/blog/shop-links.tsx`; in-text links still to do |
+| `<html lang="en-IN">` | ✅ in PR | 2026-11-04 | |
+| After merge: run `scripts/indexnow.mjs`, request indexing of topics and top categories | next | | Add a weekly IndexNow step to the daily task |
+| Product titles: "Buy" and "Price" | next | | Only 13 of 141 titles leave room; needs a CMS plan and dry run |
+| Per-product compatibility, what's in the box, care | next | | Needs owner facts (Part G) |
+| In-text links from the 15 moved posts to products | next | | CMS write by script, never through ingest |
 | `/services` page for microstructure analysis and metallurgical testing | next | | 1,190 impressions; check .in's old pages for what was offered |
-| India-first signals: `hreflang`, `en-IN` | next | | Dek has a separate India site |
-| Sibling duplicate products | owner | | e.g. two platinum 20 × 20 listings |
+| Comparison articles: Ag/AgCl vs SCE, PEM vs AEM, H-cell vs flow cell | next | | GEO; publish by the no-email script |
+| More topic pages when Search Console shows demand | next | | Candidates: gold electrodes, calomel, nickel foam |
+| Sibling duplicate products | owner | | e.g. Platinum Sheet 20 × 20 × 0.1 mm and Noble metal plate platinum 20 × 20 × 0.1 mm |
+| Catalogue prices that look wrong | owner | | Platinum mesh 10 × 10 mm ₹41,300 vs 20 × 20 mm ₹29,500; platinum sheet 10 × 10 mm ₹23,600 vs 15 × 20 mm ₹18,880. Now visible side by side in the price lists |
+| Zinc sheet SEO title says 99.9%, spec says 99.99% to 99.995% | owner | | 1,248 impressions on this topic; confirm purity, then fix through the SEO script |
+| "ISO-aligned R&D" badge on every product page | owner | | Confirm it is true, or remove it |
 | Reviews, datasheets, papers | owner | | Part G |

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { draftMode } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
+import Link from "next/link";
 import { Container } from "@/frontend/components/ui/container";
 import { Truck, BadgeCheck, FileText, ShieldCheck } from "lucide-react";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
@@ -10,7 +11,9 @@ import { ProductGallery } from "@/frontend/components/commerce/product-gallery";
 import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd, productFaqs, faqJsonLd } from "@/frontend/components/seo/json-ld";
-import { productMetaDescription } from "@/frontend/lib/seo";
+import { productSearchDescription } from "@/frontend/lib/seo";
+import { CATEGORY_SEO } from "@/frontend/lib/category-seo";
+import { topicsForCategory } from "@/frontend/lib/topic-seo";
 import { inclGSTForProduct, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
@@ -132,7 +135,10 @@ export async function generateMetadata({
   // Derived per SKU rather than `metaDescription || shortDesc`: shortDesc is
   // written per product FAMILY, so that fallback repeated one description across
   // up to three different SKUs. See productMetaDescription().
-  const description = productMetaDescription(product);
+  const description = productSearchDescription(
+    product,
+    product.price > 0 && !isQuoteOnly(product) ? inclGSTForProduct(product, product.price) : undefined,
+  );
   const image = product.ogImageUrl || product.imageUrl;
   return {
     title,
@@ -179,8 +185,18 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   const parent = category?.parent ? await getCategoryBySlug(category.parent) : null;
   const related = (await getProductsByCategory(product.categorySlug))
     .filter((p) => p.slug !== product.slug)
-    .slice(0, 4);
-  const faqs = productFaqs(product);
+    .slice(0, 8);
+  // The family's guide and technical FAQs: what a buyer of this kind of product
+  // needs to know. productFaqs covers only this SKU's own facts.
+  const familySeo = Object.hasOwn(CATEGORY_SEO, product.categorySlug) ? CATEGORY_SEO[product.categorySlug] : undefined;
+  const faqs = [...productFaqs(product), ...(familySeo?.faqs ?? [])];
+  const familyLinks = [
+    { href: `/shop/c/${product.categorySlug}`, name: `All ${familySeo?.nouns ?? "products in this category"}` },
+    ...topicsForCategory(product.categorySlug),
+    ...(familySeo?.related ?? []).flatMap((r) =>
+      Object.hasOwn(CATEGORY_SEO, r) ? [{ href: `/shop/c/${r}`, name: CATEGORY_SEO[r].h1 }] : [],
+    ),
+  ];
 
   return (
     <Container className="py-8">
@@ -265,7 +281,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             {product.name}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <span className="text-sm text-muted-foreground">SKU: {product.sku}</span>
+            {product.sku && <span className="text-sm text-muted-foreground">SKU: {product.sku}</span>}
           </div>
 
           {product.badges && product.badges.length > 0 && (
@@ -315,14 +331,41 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         <ProductTabs product={product} />
       </div>
 
+      {familySeo && (
+        <section className="mt-14" aria-labelledby="guide-heading">
+          <h2 id="guide-heading" className="font-display text-xl font-bold">
+            {familySeo.guideTitle}
+          </h2>
+          <dl className="mt-5 grid gap-x-10 gap-y-4 text-sm sm:grid-cols-2">
+            {familySeo.guide.map((g) => (
+              <div key={g.term}>
+                <dt className="font-semibold">{g.term}</dt>
+                <dd className="mt-1 leading-relaxed text-muted-foreground">{g.text}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {familyLinks.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="rounded-full border border-border bg-surface px-4 py-1.5 text-sm text-muted-foreground hover:border-brand/40 hover:text-foreground"
+              >
+                {l.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Buyer questions. Rendered as real page content, not schema-only —
           Google requires FAQ answers to be visible on the page, and an answer a
-          customer can't read is no use to them either. Every entry is derived
-          from a field set on THIS product or from a published policy page. */}
+          customer can't read is no use to them either. Entries come from a field
+          set on THIS product, a published policy page, or the family's FAQs. */}
       {faqs.length > 0 && (
         <section className="mt-14" aria-labelledby="faq-heading">
           <h2 id="faq-heading" className="font-display text-xl font-bold">
-            Questions about this product
+            Frequently asked questions
           </h2>
           <dl className="mt-6 divide-y divide-border border-y border-border">
             {faqs.map((f) => (

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { formatINR } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 
 /** Google renders roughly 155-160 characters of a description before truncating. */
@@ -87,6 +88,20 @@ export function productMetaDescription(product: {
   if (!prefix) return truncate(body, META_DESCRIPTION_MAX);
   if (!body) return truncate(prefix, META_DESCRIPTION_MAX);
   return truncate(`${prefix}. ${body}`, META_DESCRIPTION_MAX);
+}
+
+/**
+ * What a search result says about a product: the price first, because buyers
+ * search "<product> price" and marketplace listings often hide theirs. The price
+ * is the live one, so staff never have to keep a description in step with it.
+ */
+export function productSearchDescription(
+  product: Parameters<typeof productMetaDescription>[0],
+  priceInclGst?: number,
+): string {
+  const body = productMetaDescription(product);
+  if (!priceInclGst) return body;
+  return truncate(`${formatINR(priceInclGst)} incl. GST, free shipping in India. ${body}`, META_DESCRIPTION_MAX);
 }
 
 /**
