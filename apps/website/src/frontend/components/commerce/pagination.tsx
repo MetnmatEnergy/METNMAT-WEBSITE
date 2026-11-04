@@ -84,7 +84,7 @@ export function Pagination({ current = 1, total = 1 }: { current?: number; total
     const label = dir === "prev" ? "Previous page" : "Next page";
     if (disabled) {
       return (
-        <span aria-label={label} aria-disabled className={cn(ARROW, "pointer-events-none opacity-40")}>
+        <span role="link" aria-label={label} aria-disabled className={cn(ARROW, "pointer-events-none opacity-40")}>
           <Icon className="h-4 w-4" />
         </span>
       );

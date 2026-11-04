@@ -108,3 +108,15 @@ export const footerNav: { title: string; links: { label: string; href: string }[
     ],
   },
 ];
+
+/**
+ * Added after the footer groups, including ones from the CMS Navigation global: the
+ * guides and the converter need a link from every page to be found and ranked.
+ */
+export const footerResources = {
+  title: "Resources",
+  links: [
+    { label: "Guides", href: "/guides" },
+    { label: "Potential converter", href: "/tools/potential-converter" },
+  ],
+};

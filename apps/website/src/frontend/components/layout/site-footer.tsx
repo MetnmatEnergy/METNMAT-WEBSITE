@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { AmazonIcon, FacebookIcon, LinkedInIcon, YouTubeIcon } from "@/frontend/components/ui/brand-icons";
 import { Container } from "@/frontend/components/ui/container";
-import { site, footerNav } from "@/frontend/lib/site";
+import { site, footerNav, footerResources } from "@/frontend/lib/site";
 import { PrivacyChoicesLink } from "@/frontend/components/legal/privacy-choices-link";
 import { getSettings, getNavigation } from "@/frontend/lib/cms";
 
@@ -28,7 +28,7 @@ export async function SiteFooter() {
     amazon:
       settings.social.amazon && settings.social.amazon !== "#" ? settings.social.amazon : site.social.amazon,
   };
-  const groups = nav?.footerGroups?.length ? nav.footerGroups : footerNav;
+  const groups = [...(nav?.footerGroups?.length ? nav.footerGroups : footerNav), footerResources];
   const tagline = settings.company.tagline || site.tagline;
   const legalName = settings.company.legalName || site.legalName;
   const about =

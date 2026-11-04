@@ -270,7 +270,12 @@ Ranked by effect:
 | Product tabs in the HTML for crawlers | ✅ in PR | 2026-11-04 | Specifications, Documents and Shipping were missing from what crawlers read |
 | 26 over-long descriptions, 8 long blog titles, bare /about and /contact titles | ✅ in PR | 2026-11-04 | |
 | Audit of all 141 products | ✅ | 2026-11-04 | [`product-audit.csv`](./product-audit.csv): every product and what it needs |
-| Long descriptions for all 141 products (none exist; pages run on a short one, median 181 characters) | next | | Biggest content gap against DekResearch; CMS write by script, top sellers first, facts from datasheets |
+| Written content for all 141 products: what it is, typical uses, care and handling | ✅ in PR | 2026-11-04 | `frontend/lib/product-copy.ts`, 78 families; product pages now about 1,150 to 1,490 words. Standard science only: per-model facts still want datasheets |
+| "Compare other models" price table on product pages | ✅ in PR | 2026-11-04 | Same plain name, live prices |
+| Free reference electrode to RHE converter | ✅ in PR | 2026-11-04 | `/tools/potential-converter`; none of the competitors read has one. Tell your researchers: this is what earns links |
+| 4 comparison guides (`/guides`) | ✅ in PR | 2026-11-04 | Reference electrodes, PEM vs AEM, H-cell vs flow cell, three-electrode setup |
+| Speed check | ✅ | 2026-11-04 | Real throttled mobile LCP 1.9 s (good). Lighthouse's simulated 4.9 s is an artefact; SEO 100, accessibility 97 to 100. No work needed |
+| "Crawled - currently not indexed": 37 pages (report dated 2026-10-23) | watch | | Google's verdict on thin pages; re-read the report after the new content is crawled |
 | 5 topic pages `/shop/t/*`: platinum, Ag/AgCl, Hg/HgO, graphite, glassy carbon | ✅ in PR | 2026-11-04 | `frontend/lib/topic-seo.ts`; cheapest first, price list table, own guide, sitemap, linked from `/shop`, categories and products |
 | Price list tables on category and topic pages | ✅ in PR | 2026-11-04 | Not found on any competitor page read |
 | Product search description leads with the live price | ✅ in PR | 2026-11-04 | `productSearchDescription` |
@@ -285,7 +290,6 @@ Ranked by effect:
 | Per-product compatibility, what's in the box, care | next | | Needs owner facts (Part G) |
 | In-text links from the 15 moved posts to products | next | | CMS write by script, never through ingest |
 | `/services` page for microstructure analysis and metallurgical testing | next | | 1,190 impressions; check .in's old pages for what was offered |
-| Comparison articles: Ag/AgCl vs SCE, PEM vs AEM, H-cell vs flow cell | next | | GEO; publish by the no-email script |
 | More topic pages when Search Console shows demand | next | | Candidates: gold electrodes, calomel, nickel foam |
 | Sibling duplicate products | owner | | e.g. Platinum Sheet 20 × 20 × 0.1 mm and Noble metal plate platinum 20 × 20 × 0.1 mm |
 | Catalogue prices that look wrong | owner | | Platinum mesh 10 × 10 mm ₹41,300 vs 20 × 20 mm ₹29,500; platinum sheet 10 × 10 mm ₹23,600 vs 15 × 20 mm ₹18,880. Now visible side by side in the price lists |

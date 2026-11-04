@@ -3,6 +3,7 @@
 import * as React from "react";
 import { FileText, Truck } from "lucide-react";
 import type { Product } from "@/frontend/lib/catalog";
+import type { ProductCopy } from "@/frontend/lib/product-copy";
 import { RichText, hasRichText } from "@/frontend/components/blog/rich-text";
 import { cn } from "@/frontend/lib/utils";
 
@@ -32,7 +33,7 @@ function Panel({ t, active, children }: { t: Tab; active: Tab; children: React.R
   );
 }
 
-export function ProductTabs({ product }: { product: Product }) {
+export function ProductTabs({ product, copy }: { product: Product; copy?: ProductCopy }) {
   const [tab, setTab] = React.useState<Tab>("Description");
 
   return (
@@ -65,6 +66,27 @@ export function ProductTabs({ product }: { product: Product }) {
               <RichText content={product.description} />
             ) : (
               <p>{product.shortDesc || "Detailed product description."}</p>
+            )}
+            {copy && (
+              <>
+                <p>{copy.about}</p>
+                <div>
+                  <h3 className="mb-2 font-semibold text-foreground">Typical uses</h3>
+                  <ul className="list-disc space-y-1 pl-5">
+                    {copy.uses.map((u) => (
+                      <li key={u}>{u}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="mb-2 font-semibold text-foreground">Care and handling</h3>
+                  <ul className="list-disc space-y-1 pl-5">
+                    {copy.care.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                </div>
+              </>
             )}
             <p>
               Engineered for laboratory and industrial use. Contact us for custom
