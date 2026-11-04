@@ -61,9 +61,8 @@ export async function generateMetadata({
   const products = await getProductsByCategory(category);
   const empty = products.length === 0;
   const seo = CATEGORY_SEO[category];
-  // Page 2 canonicalises to itself, so Google judges it as a page of its own. With
-  // page 1's title and description it reads as a copy, and on 2026-10-24 Google left
-  // /shop/c/peristaltic-pumps?page=2 out for that reason.
+  // Page 2 canonicalises to itself, so Google treats it as a page of its own, and
+  // it should not repeat page 1's title and description.
   const pageNote = !filtered && query.page > 1 ? `Page ${query.page}` : "";
   const title = seo?.title ?? `${cat.name} — Shop`;
   const base = pageMetadata({
