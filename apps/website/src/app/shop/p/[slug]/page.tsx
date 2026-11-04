@@ -14,7 +14,8 @@ import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd, productFaq
 import { productSearchDescription } from "@/frontend/lib/seo";
 import { CATEGORY_SEO } from "@/frontend/lib/category-seo";
 import { topicsForCategory } from "@/frontend/lib/topic-seo";
-import { inclGSTForProduct, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
+import { alsoKnownAs, productSearchTerms } from "@/frontend/lib/product-terms";
+import { formatINR, inclGSTForProduct, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
 import { PreviewBanner } from "@/frontend/components/preview-banner";
@@ -143,7 +144,10 @@ export async function generateMetadata({
   return {
     title,
     description,
-    ...(product.seoKeywords ? { keywords: product.seoKeywords.split(",").map((k) => k.trim()).filter(Boolean) } : {}),
+    keywords: [
+      ...productSearchTerms(product),
+      ...(product.seoKeywords ?? "").split(",").map((k) => k.trim()).filter(Boolean),
+    ],
     // noIndex keeps the page reachable on the site but out of the index — the
     // usual reason is a product that is listed for existing customers only.
     ...(product.noIndex ? { robots: { index: false, follow: true } } : {}),
@@ -189,7 +193,22 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // The family's guide and technical FAQs: what a buyer of this kind of product
   // needs to know. productFaqs covers only this SKU's own facts.
   const familySeo = Object.hasOwn(CATEGORY_SEO, product.categorySlug) ? CATEGORY_SEO[product.categorySlug] : undefined;
-  const faqs = [...productFaqs(product), ...(familySeo?.faqs ?? [])];
+  const searchTerms = productSearchTerms(product);
+  const otherNames = alsoKnownAs(product);
+  const price = product.price > 0 && !isQuoteOnly(product) ? inclGSTForProduct(product, product.price) : 0;
+  const faqs = [
+    // In the buyer's own words: they search the plain name, not the catalogue title.
+    ...(price && searchTerms[0]
+      ? [
+          {
+            q: `What is the price of this ${searchTerms[0]} in India?`,
+            a: `The ${product.name} costs ${formatINR(price)} including GST, with free shipping within India and a GST invoice.`,
+          },
+        ]
+      : []),
+    ...productFaqs(product),
+    ...(familySeo?.faqs ?? []),
+  ];
   const familyLinks = [
     { href: `/shop/c/${product.categorySlug}`, name: `All ${familySeo?.nouns ?? "products in this category"}` },
     ...topicsForCategory(product.categorySlug),
@@ -215,6 +234,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           priceInclGst: product.price ? inclGSTForProduct(product, product.price) : undefined,
           offerable: !isQuoteOnly(product),
           related: related.map((p) => ({ slug: p.slug, name: p.name })),
+          alternateNames: searchTerms,
         })}
       />
       {faqs.length > 0 && <JsonLd data={faqJsonLd(faqs)} />}
@@ -280,6 +300,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">
             {product.name}
           </h1>
+          {otherNames.length > 0 && (
+            <p className="mt-1.5 text-sm text-muted-foreground">Also known as: {otherNames.join(", ")}</p>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-3">
             {product.sku && <span className="text-sm text-muted-foreground">SKU: {product.sku}</span>}
           </div>

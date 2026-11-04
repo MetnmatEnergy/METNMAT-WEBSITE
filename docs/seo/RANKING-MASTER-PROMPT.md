@@ -144,6 +144,19 @@ One page owns each search, so pages do not compete with each other.
 
 ---
 
+### Every product, in the buyer's words
+
+[`product-keywords.csv`](./product-keywords.csv) lists all 141 products with the names people type
+for them, and `frontend/lib/product-terms.ts` is the source. Buyers do not search
+"Hg/HgO Reference Electrode (Ø4 × 60 mm, PEEK Rod)": they search "hgo reference electrode", "pt wire
+electrode", "sce electrode", "ni foam", "gce electrode", "teflon electrode holder", and "aluminium"
+with the Indian spelling. Terms come from Google India autocomplete and Search Console, never from
+guesses. They appear in the "Also known as" line under the H1, the price FAQ, `alternateName` in the
+Product data, the meta keywords, the Merchant feed and the shop's own search. A new product needs a
+rule there, or `test/product-terms.test.ts` should gain it.
+
+---
+
 ## D. Operating prompt
 
 <!-- BEGIN operating-prompt -->
@@ -264,7 +277,10 @@ Ranked by effect:
 | Product pages: family guide, family FAQs, 8 related products, links to topics | ✅ in PR | 2026-11-04 | Hg/HgO page now 9 FAQs, about 1,140 words |
 | Blog articles link to the shop and `/services` | ✅ in PR | 2026-11-04 | `components/blog/shop-links.tsx`; in-text links still to do |
 | `<html lang="en-IN">` | ✅ in PR | 2026-11-04 | |
-| After merge: run `scripts/indexnow.mjs`, request indexing of topics and top categories | next | | Add a weekly IndexNow step to the daily task |
+| After merge: run `scripts/indexnow.mjs`, request indexing of topics and top categories | ✅ | 2026-11-04 | 218 URLs sent; queued first in the daily task; IndexNow runs in STEP E |
+| Buyer's search words on all 141 products | ✅ in PR | 2026-11-04 | `product-terms.ts`, `product-keywords.csv` |
+| Country of origin claimed "India" on third-party products | ✅ in PR | 2026-11-04 | The CMS default also fed the FAQ on FUMATECH, Versogen, Dioxide Materials and Kamoer items |
+| Topic pages for gold electrodes and nickel foam | ✅ in PR | 2026-11-04 | |
 | Product titles: "Buy" and "Price" | next | | Only 13 of 141 titles leave room; needs a CMS plan and dry run |
 | Per-product compatibility, what's in the box, care | next | | Needs owner facts (Part G) |
 | In-text links from the 15 moved posts to products | next | | CMS write by script, never through ingest |
@@ -274,6 +290,8 @@ Ranked by effect:
 | Sibling duplicate products | owner | | e.g. Platinum Sheet 20 × 20 × 0.1 mm and Noble metal plate platinum 20 × 20 × 0.1 mm |
 | Catalogue prices that look wrong | owner | | Platinum mesh 10 × 10 mm ₹41,300 vs 20 × 20 mm ₹29,500; platinum sheet 10 × 10 mm ₹23,600 vs 15 × 20 mm ₹18,880. Now visible side by side in the price lists |
 | Zinc sheet SEO title says 99.9%, spec says 99.99% to 99.995% | owner | | 1,248 impressions on this topic; confirm purity, then fix through the SEO script |
+| Aluminium sheet title says 99.9%, spec says at least 99.8%; gas bag title says PVDF, spec says PVF | owner | | Confirm, then fix through the SEO script |
+| Country of origin on METNMAT-brand products | owner | | Every product reads India by default; confirm it is true of METNMAT-brand items |
 | "ISO-aligned R&D" badge on every product page | owner | | Confirm it is true, or remove it |
 | Delivery promise against "Made to order" | owner | | Merchant Center says 0 to 1 days for all products, but 71 of 141 are made to order. Decide a true figure; the feed and JSON-LD say in stock |
 | 12 products with no photo, 18 with one | owner | | Without a photo a product stays out of Google Shopping; see `product-audit.csv` |
