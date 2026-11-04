@@ -14,7 +14,7 @@ import { site } from "@/frontend/lib/site";
 import { pageMetadata } from "@/frontend/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Services",
+  title: "Materials & Metallurgy R&D Services in India",
   description:
     "Customized, turnkey materials & metallurgy R&D from METNMAT — product & process development, applied research & consultancy, process & quality improvement, product benchmarking, materials testing & characterization, and materials processing facilities.",
   path: "/services",
@@ -109,7 +109,7 @@ export default async function ServicesPage() {
       <JsonLd data={servicesJsonLd} />
       <PageHero
         eyebrow="Services"
-        title="What we do"
+        title="Materials and Metallurgy R&D Services"
         description="Customized, turnkey R&D for metallurgy & materials. Every client is unique, so we tailor each solution to your requirement — from lab-scale prototype to full industrial scale."
         bordered={false}
         breadcrumbs={[

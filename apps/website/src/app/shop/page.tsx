@@ -15,7 +15,7 @@ import { PageBreadcrumbs } from "@/frontend/components/seo/page-breadcrumbs";
 import { RegionBar } from "@/frontend/components/commerce/region-bar";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Shop — Electrodes, Membranes, Cells & Lab Equipment",
+  title: "Buy Electrochemistry Lab Equipment Online in India",
   description:
     "Buy lab-grade electrochemistry equipment — reference/counter/working electrodes, ion-exchange membranes (PEM/AEM/BPM/CEM), electrochemical cells & reactors, peristaltic pumps, MEA fabrication presses and accessories. Bulk B2B pricing, GST invoice, free shipping across India + worldwide delivery.",
   path: "/shop",
@@ -34,7 +34,7 @@ export default async function ShopHomePage() {
         <Container className="pb-2 pt-4">
           <PageBreadcrumbs items={[{ name: "Home", path: "/" }, { name: "Shop", path: "/shop" }]} className="mb-3" />
           <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-            METNMAT Store
+            Electrochemistry Lab Equipment
           </h1>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">
             Research-grade electrochemistry &amp; lab equipment — electrodes, membranes, cells, reactors and accessories.
