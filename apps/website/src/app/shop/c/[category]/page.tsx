@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { Container } from "@/frontend/components/ui/container";
-import { JsonLd, breadcrumbJsonLd, itemListJsonLd } from "@/frontend/components/seo/json-ld";
+import { JsonLd, breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from "@/frontend/components/seo/json-ld";
 import { Breadcrumbs } from "@/frontend/components/commerce/breadcrumbs";
 import { FilterSidebar } from "@/frontend/components/commerce/filter-sidebar";
 import { FilterDrawer } from "@/frontend/components/commerce/filter-drawer";
@@ -12,6 +12,7 @@ import { Pagination } from "@/frontend/components/commerce/pagination";
 import { ShopTransitionProvider } from "@/frontend/components/commerce/shop-transition";
 import { AppliedFilters } from "@/frontend/components/commerce/applied-filters";
 import { ResultsRegion } from "@/frontend/components/commerce/results-region";
+import { CategoryGuide } from "@/frontend/components/commerce/category-guide";
 import {
   getCategoryBySlug,
   getProductsByCategory,
@@ -21,6 +22,7 @@ import {
 } from "@/frontend/lib/cms";
 import { parseShopQuery, shopFacets, applyShopQuery, hasActiveFilters } from "@/frontend/lib/shop-query";
 import { pageMetadata } from "@/frontend/lib/seo";
+import { CATEGORY_SEO, categoryFaqs, categoryMetaDescription } from "@/frontend/lib/category-seo";
 
 type Params = { category: string };
 type Search = Record<string, string | string[] | undefined>;
@@ -54,13 +56,17 @@ export async function generateMetadata({
   // the sitemap; its page must not ask to be indexed either, or Google judges the
   // shop by its emptiest pages. Same walk as the page body, served from the
   // per-request cache, so this costs no extra request.
-  const empty = (await getProductsByCategory(category)).length === 0;
+  const products = await getProductsByCategory(category);
+  const empty = products.length === 0;
+  const seo = CATEGORY_SEO[category];
   const base = pageMetadata({
-    title: `${cat.name} — Shop`,
+    title: seo?.title ?? `${cat.name} — Shop`,
     description:
+      (seo && categoryMetaDescription(seo, products)) ||
       cat.blurb ||
       `Browse ${cat.name} products at METNMAT — lab-grade electrochemistry equipment with GST invoicing, free shipping across India and worldwide delivery.`,
     path: `/shop/c/${category}`,
+    ...(seo ? { keywords: seo.keywords } : {}),
   });
   return {
     ...base,
@@ -105,6 +111,13 @@ export default async function CategoryPage({
   const facets = shopFacets(all);
   const { items, total, totalPages, page } = applyShopQuery(all, query);
   const filtersActive = hasActiveFilters(query);
+  // The landing copy belongs to the one indexable view of the category: filtered
+  // views are noindex, and repeating it on ?page=2 would only duplicate it.
+  const seo = !filtersActive && page === 1 && all.length > 0 ? CATEGORY_SEO[category] : undefined;
+  const faqs = seo ? categoryFaqs(seo, all) : [];
+  const relatedCategories = seo
+    ? seo.related.flatMap((slug) => allCategories.filter((c) => c.slug === slug).map((c) => ({ slug: c.slug, name: c.name })))
+    : [];
   const sidebarProps = {
     activeCategory: parent?.slug ?? cat.slug,
     categories: allCategories,
@@ -131,6 +144,7 @@ export default async function CategoryPage({
           )}
         />
       )}
+      {faqs.length > 0 && <JsonLd data={faqJsonLd(faqs)} />}
       <Breadcrumbs
         items={[
           { name: "Home", href: "/" },
@@ -142,9 +156,13 @@ export default async function CategoryPage({
 
       <div className="mt-4">
         <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-          {cat.name}
+          {CATEGORY_SEO[category]?.h1 ?? cat.name}
         </h1>
-        {cat.blurb && <p className="mt-1 text-muted-foreground">{cat.blurb}</p>}
+        {seo ? (
+          <p className="mt-2 max-w-3xl text-muted-foreground">{seo.intro}</p>
+        ) : (
+          cat.blurb && <p className="mt-1 text-muted-foreground">{cat.blurb}</p>
+        )}
       </div>
 
       {/* Subcategory chips */}
@@ -223,6 +241,8 @@ export default async function CategoryPage({
           </div>
         </div>
       </ShopTransitionProvider>
+
+      {seo && <CategoryGuide seo={seo} faqs={faqs} related={relatedCategories} />}
     </Container>
   );
 }

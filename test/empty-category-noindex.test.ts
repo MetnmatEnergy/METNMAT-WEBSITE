@@ -66,7 +66,7 @@ describe("the category page's robots", () => {
   const meta = src.slice(src.indexOf("export async function generateMetadata"), src.indexOf("export default"));
 
   it("decides emptiness in generateMetadata with the page's own walk", () => {
-    expect(meta).toMatch(/const empty = \(await getProductsByCategory\(category\)\)\.length === 0;/);
+    expect(meta).toMatch(/const products = await getProductsByCategory\(category\);\s+const empty = products\.length === 0;/);
   });
 
   it("noindexes (and still follows) a filtered view or an empty department", () => {

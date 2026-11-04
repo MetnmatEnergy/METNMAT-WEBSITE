@@ -13,7 +13,14 @@ import { listBlogArticlesForFeed } from "@/frontend/lib/blog";
 
 // Self-canonical for the homepage. The root layout no longer forces canonical
 // "/" on every route (Next merges metadata down the tree), so each page sets its own.
-export const metadata: Metadata = { alternates: { canonical: "/" } };
+// The title names the products rather than repeating the CMS default: this is the
+// page that ranks for the brand, so it should also say what the brand sells.
+export const metadata: Metadata = {
+  title: { absolute: "METNMAT: Electrochemical Cells, Electrodes & Membranes, India" },
+  description:
+    "Electrochemical cells, reference electrodes, ion exchange membranes and electrolyzers, sold in India with prices online, plus materials and metallurgy R&D.",
+  alternates: { canonical: "/" },
+};
 
 export default async function HomePage() {
   const [home, services, posts, logos, faqs, projects] = await Promise.all([
