@@ -24,6 +24,7 @@ import { parseShopQuery, shopFacets, applyShopQuery, hasActiveFilters } from "@/
 import { pageMetadata } from "@/frontend/lib/seo";
 import { CATEGORY_SEO, categoryFaqs, categoryMetaDescription } from "@/frontend/lib/category-seo";
 import { topicsForCategory } from "@/frontend/lib/topic-seo";
+import { guidesForCategory } from "@/frontend/lib/guides";
 
 type Params = { category: string };
 type Search = Record<string, string | string[] | undefined>;
@@ -119,6 +120,7 @@ export default async function CategoryPage({
   const guideLinks = seo
     ? [
         ...topicsForCategory(category),
+        ...guidesForCategory(category),
         ...seo.related.flatMap((slug) => allCategories.filter((c) => c.slug === slug).map((c) => ({ href: `/shop/c/${c.slug}`, name: c.name }))),
       ]
     : [];

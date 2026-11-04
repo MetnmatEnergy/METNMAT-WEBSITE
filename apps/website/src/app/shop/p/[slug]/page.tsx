@@ -15,11 +15,14 @@ import { productSearchDescription } from "@/frontend/lib/seo";
 import { CATEGORY_SEO } from "@/frontend/lib/category-seo";
 import { topicsForCategory } from "@/frontend/lib/topic-seo";
 import { alsoKnownAs, productSearchTerms } from "@/frontend/lib/product-terms";
+import { productCopy, siblingProducts } from "@/frontend/lib/product-copy";
+import { guidesForCategory } from "@/frontend/lib/guides";
 import { formatINR, inclGSTForProduct, isQuoteOnly, type Product } from "@/frontend/lib/catalog";
 import { site } from "@/frontend/lib/site";
 import { AnalyticsEntity } from "@/frontend/lib/analytics/entity";
 import { PreviewBanner } from "@/frontend/components/preview-banner";
 import {
+  getAllProducts,
   getProductBySlug,
   getCategoryBySlug,
   resolveProductSlugRedirect,
@@ -193,6 +196,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // The family's guide and technical FAQs: what a buyer of this kind of product
   // needs to know. productFaqs covers only this SKU's own facts.
   const familySeo = Object.hasOwn(CATEGORY_SEO, product.categorySlug) ? CATEGORY_SEO[product.categorySlug] : undefined;
+  const copy = productCopy(product);
+  // The other models a buyer is choosing between, under the same plain name.
+  const siblings = siblingProducts(product, await getAllProducts());
   const searchTerms = productSearchTerms(product);
   const otherNames = alsoKnownAs(product);
   const price = product.price > 0 && !isQuoteOnly(product) ? inclGSTForProduct(product, product.price) : 0;
@@ -212,6 +218,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   const familyLinks = [
     { href: `/shop/c/${product.categorySlug}`, name: `All ${familySeo?.nouns ?? "products in this category"}` },
     ...topicsForCategory(product.categorySlug),
+    ...guidesForCategory(product.categorySlug),
     ...(familySeo?.related ?? []).flatMap((r) =>
       Object.hasOwn(CATEGORY_SEO, r) ? [{ href: `/shop/c/${r}`, name: CATEGORY_SEO[r].h1 }] : [],
     ),
@@ -351,8 +358,41 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
       {/* Tabbed product details */}
       <div className="mt-10">
-        <ProductTabs product={product} />
+        <ProductTabs product={product} copy={copy} />
       </div>
+
+      {siblings.length > 0 && (
+        <section className="mt-14" aria-labelledby="models-heading">
+          <h2 id="models-heading" className="font-display text-xl font-bold">
+            Compare other {searchTerms[0]} models
+          </h2>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full max-w-3xl text-sm">
+              <caption className="sr-only">Other models and their prices including GST</caption>
+              <thead>
+                <tr className="border-b border-border text-left text-muted-foreground">
+                  <th scope="col" className="py-2 pr-4 font-medium">Model</th>
+                  <th scope="col" className="py-2 text-right font-medium">Price incl. GST</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {siblings.map((s) => (
+                  <tr key={s.slug}>
+                    <td className="py-2 pr-4">
+                      <Link href={`/shop/p/${s.slug}`} className="text-foreground hover:text-brand hover:underline">
+                        {s.name}
+                      </Link>
+                    </td>
+                    <td className="whitespace-nowrap py-2 text-right font-medium">
+                      {formatINR(s.price > 0 && !isQuoteOnly(s) ? inclGSTForProduct(s, s.price) : 0)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {familySeo && (
         <section className="mt-14" aria-labelledby="guide-heading">

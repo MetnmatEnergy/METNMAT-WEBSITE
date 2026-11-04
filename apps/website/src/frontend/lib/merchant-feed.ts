@@ -1,4 +1,5 @@
 import { inclGSTForProduct, isQuoteOnly, type Category, type Product } from "@/frontend/lib/catalog";
+import { productCopy } from "@/frontend/lib/product-copy";
 import { alsoKnownAs } from "@/frontend/lib/product-terms";
 
 /**
@@ -80,7 +81,7 @@ export function feedItem(p: Product, siteUrl: string, categoryName?: string): st
     tag("g:id", p.id || p.slug),
     tag("title", p.name.slice(0, 150)),
     // Shopping matches on this text too, and buyers rarely use the catalogue name.
-    tag("description", [p.shortDesc || p.name, alsoKnownAs(p).length ? `Also known as: ${alsoKnownAs(p).join(", ")}.` : ""].filter(Boolean).join(" ").slice(0, 5000)),
+    tag("description", [p.shortDesc || p.name, productCopy(p)?.about ?? "", alsoKnownAs(p).length ? `Also known as: ${alsoKnownAs(p).join(", ")}.` : ""].filter(Boolean).join(" ").slice(0, 5000)),
     tag("link", `${siteUrl}/shop/p/${p.slug}`),
     tag("g:image_link", images[0]),
     ...images.slice(1, 11).map((u) => tag("g:additional_image_link", u)),
