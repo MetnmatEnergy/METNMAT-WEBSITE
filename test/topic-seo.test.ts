@@ -91,7 +91,7 @@ describe("product page", () => {
   });
 
   it("marks up the family FAQs only because they are shown on the page", () => {
-    expect(page).toMatch(/\.\.\.productFaqs\(product\),\s+\.\.\.\(familySeo\?\.faqs \?\? \[\]\),/);
+    expect(page).toMatch(/\.\.\.productFaqs\(product, \{ policies: !guideOnHub \}\),\s+\.\.\.\(guideOnHub \? \[\] : familySeo\?\.faqs \?\? \[\]\),/);
     expect(page).toMatch(/\{faqs\.map\(\(f\) => \(/);
   });
 });

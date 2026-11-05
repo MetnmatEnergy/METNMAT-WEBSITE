@@ -239,6 +239,98 @@ export const TOPIC_SEO: Record<string, TopicSeo> = {
     keywords: ["glassy carbon electrode", "glassy carbon electrode price", "GCE electrode", "glassy carbon disk electrode"],
   },
 
+  "platinum-wire-electrodes": {
+    parent: "counter-electrodes",
+    matches: (p) => /platinum wire/i.test(p.name) && !/ring/i.test(p.name) && inCategory(p, "counter-electrodes"),
+    title: "Platinum Wire Electrode Price in India: PTFE, PEEK",
+    h1: "Platinum Wire Electrodes",
+    lead: "Platinum wire counter electrodes on PTFE and PEEK rods.",
+    nouns: "platinum wire electrodes",
+    intro:
+      "A platinum wire electrode, or Pt wire electrode, is a length of platinum wire on an insulated rod. It is the most common counter electrode, also called an auxiliary electrode, because it stays inert and fits narrow ports. METNMAT sells platinum wire electrodes on PTFE and PEEK rods.",
+    guideTitle: "How to choose a platinum wire electrode",
+    guide: [
+      { term: "Wire diameter", text: "A thicker wire is sturdier and has more surface for its length." },
+      { term: "Rod material", text: "PTFE is the most chemically inert. PEEK is stiffer and handles heat better." },
+      { term: "Surface area", text: "The counter electrode should have more surface than the working electrode, so that it does not limit the current." },
+      { term: "When a wire is too small", text: "For large working electrodes, choose a mesh or a sheet instead." },
+    ],
+    faqs: [
+      {
+        q: "What is a platinum wire electrode used for?",
+        a: "Mostly as the counter electrode in a three-electrode cell, where it carries the current while the working electrode is measured.",
+      },
+      {
+        q: "What is the difference between a counter and an auxiliary electrode?",
+        a: "Nothing. They are two names for the same electrode.",
+      },
+      {
+        q: "Can I use a platinum wire for hydrogen evolution studies?",
+        a: "Take care. Platinum can dissolve from the counter electrode and redeposit on the working electrode, which inflates catalyst activity. Many labs use graphite for this work.",
+      },
+    ],
+    related: ["counter-electrodes", "working-electrodes", "electrode-holders", "reference-electrodes"],
+    keywords: ["platinum wire electrode", "platinum wire electrode price", "pt wire electrode", "platinum wire counter electrode", "platinum wire auxiliary electrode"],
+  },
+
+  "platinum-mesh-electrodes": {
+    parent: "counter-electrodes",
+    matches: (p) => /platinum mesh/i.test(p.name) && inCategory(p, "counter-electrodes"),
+    title: "Platinum Mesh Electrode Price in India",
+    h1: "Platinum Mesh Electrodes",
+    lead: "Woven platinum mesh counter electrodes in several sizes.",
+    nouns: "platinum mesh electrodes",
+    intro:
+      "A platinum mesh electrode, also called platinum gauze, is woven from fine platinum wire. The weave gives far more surface than a wire or sheet of the same outline, and it lets electrolyte and gas bubbles pass through. METNMAT sells platinum mesh counter electrodes in several sizes.",
+    guideTitle: "How to choose a platinum mesh electrode",
+    guide: [
+      { term: "Size", text: "Match the mesh to the working electrode and the cell: it should face the working electrode evenly." },
+      { term: "Mesh or sheet", text: "Mesh has more surface and passes gas bubbles. A sheet has a known flat area." },
+      { term: "Handling", text: "Mesh is soft and bends easily, so do not press it against the cell wall." },
+    ],
+    faqs: [
+      {
+        q: "Why use a platinum mesh counter electrode?",
+        a: "It offers a large surface in a small space, so it does not limit the current, and bubbles escape through it rather than sticking to it.",
+      },
+      {
+        q: "Is platinum mesh the same as platinum gauze?",
+        a: "Yes. Both names describe a woven platinum wire electrode.",
+      },
+    ],
+    related: ["counter-electrodes", "working-electrodes", "electrode-holders", "reactor-cell"],
+    keywords: ["platinum mesh electrode", "platinum mesh electrode price", "platinum mesh counter electrode", "platinum gauze electrode", "pt mesh electrode"],
+  },
+
+  "platinum-sheet-electrodes": {
+    parent: "counter-electrodes",
+    matches: (p) => /platinum sheet|noble metal plate/i.test(p.name) && inCategory(p, "counter-electrodes"),
+    title: "Platinum Sheet & Plate Electrode Price in India",
+    h1: "Platinum Sheet and Plate Electrodes",
+    lead: "Platinum sheet and plate electrodes in sizes from 10 × 10 mm to 30 × 30 mm.",
+    nouns: "platinum sheet electrodes",
+    intro:
+      "A platinum sheet electrode, also called a platinum plate or foil electrode, is a thin flat piece of platinum on a connecting wire. Its flat shape gives a known area and an even current across the working electrode. METNMAT sells platinum sheet and plate electrodes in a range of sizes.",
+    guideTitle: "How to choose a platinum sheet electrode",
+    guide: [
+      { term: "Area", text: "Choose a sheet with more surface than your working electrode, counting both faces." },
+      { term: "Sheet or mesh", text: "A sheet has a known flat area. Mesh has more surface and lets bubbles through." },
+      { term: "Fit", text: "Check that the width passes through the port of your cell." },
+    ],
+    faqs: [
+      {
+        q: "What is the difference between a platinum sheet and a platinum plate electrode?",
+        a: "They are the same kind of electrode. Sheet, plate and foil all describe a thin flat piece of platinum.",
+      },
+      {
+        q: "How do I work out the area of a platinum sheet electrode?",
+        a: "Multiply the width by the height for one face, then double it if both faces sit in the electrolyte.",
+      },
+    ],
+    related: ["counter-electrodes", "working-electrodes", "electrode-holders", "reactor-cell"],
+    keywords: ["platinum sheet electrode", "platinum plate electrode", "platinum plate price", "platinum foil electrode", "pt foil electrode", "platinum sheet price"],
+  },
+
   "pem-electrolyzers": {
     parent: "water-splitting-reactors",
     matches: (p) => /pem hydrogen|pem\/aem|research-scale electrolyzer|ewf transparent/i.test(p.name) && inCategory(p, "water-splitting-reactors"),

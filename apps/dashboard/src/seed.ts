@@ -4,6 +4,7 @@ import type { Payload } from "payload";
 import { decideDirectorCredential, decideDirectorPinWrite, directorPinForced } from "./lib/director-pin";
 import { planCredentialResync } from "./lib/credential-resync";
 import { hasAttachedImage, decideCategorySeed } from "./lib/seed-ownership";
+import { latestImageSet } from "./lib/seed-ownership";
 import { classifyProbe, purgeMode, purgeSummary } from "./lib/media-purge";
 import { derivePinLookup } from "./lib/pin";
 import { seedCategories, seedProducts, type SeedCategory } from "./catalog-data";
@@ -1193,6 +1194,35 @@ async function backfillPricingMode(payload: Payload): Promise<void> {
   );
 }
 
+/**
+ * One-shot (2026-11-05): MPP60 and MPP70 were deleted and recreated on 2026-09-04,
+ * which dropped the link to their photos while the files stayed in the media
+ * library. With no photo they show none on the site and cannot be in the Merchant
+ * feed. Acts only on a product with no images, so staff photos are never replaced.
+ */
+async function relinkPumpPhotos(payload: Payload): Promise<void> {
+  const sets = [
+    { slug: "peristaltic-pump-mpp70", name: "Peristaltic Pump Single Channel MPP70", model: "MPP70" },
+    { slug: "peristaltic-pump-mpp60", name: "Peristaltic Pump Single Channel MPP60", model: "MPP60" },
+  ];
+  for (const { slug, name, model } of sets) {
+    try {
+      const found = await payload.find({ collection: "products", where: { slug: { equals: slug } }, limit: 1, depth: 0, overrideAccess: true });
+      const product = found.docs[0] as { id: string; images?: unknown[] } | undefined;
+      if (!product || product.images?.length) continue;
+      const media = await payload.find({ collection: "media", where: { filename: { contains: model } }, limit: 100, depth: 0, overrideAccess: true });
+      const docs = media.docs as unknown as { id: string; filename?: string | null }[];
+      const chosen = latestImageSet(docs.flatMap((m) => (m.filename ? [m.filename] : [])), name);
+      const images = chosen.flatMap((filename) => docs.filter((m) => m.filename === filename).map((m) => ({ image: m.id })));
+      if (images.length === 0) continue;
+      await payload.update({ collection: "products", id: product.id, data: { images } as never, overrideAccess: true });
+      payload.logger.info(`[seed] relinkPumpPhotos: ${slug} now has ${images.length} images.`);
+    } catch (e) {
+      payload.logger.warn(`[seed] relinkPumpPhotos failed for ${slug}: ${(e as Error).message}`);
+    }
+  }
+}
+
 async function rebrandHomepageCopy(payload: Payload): Promise<void> {
   const OLD_EYEBROW = "India's private Metallurgy & Materials R&D";
   const OLD_SUBTITLE =
@@ -2134,6 +2164,7 @@ export async function seedContentAndCatalogue(payload: Payload): Promise<void> {
   // After the banners are attached, so a row this removes is one nothing wanted.
   await purgeDanglingMedia(payload);
   await retireDepartments(payload);
+  await relinkPumpPhotos(payload);
 
   // 3) (Opt-in only) remove stale categories (now that no products reference them).
   if (allowPrune) await pruneStale(payload, "categories", catSlugs);

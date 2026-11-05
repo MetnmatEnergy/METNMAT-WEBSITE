@@ -62,6 +62,7 @@ export const legacyRedirects = [
   { source: "/material-processing-facilities", destination: "/services#materials-processing-facilities", statusCode: 301 },
   { source: "/blank", destination: "/quote", statusCode: 301 },
   { source: "/blank-1", destination: "/terms", statusCode: 301 },
+  { source: "/blank-2", destination: "/support", statusCode: 301 },
   { source: "/blank-3", destination: "/support", statusCode: 301 },
   { source: "/blank-4", destination: "/support", statusCode: 301 },
   { source: "/blank-5", destination: "/support", statusCode: 301 },

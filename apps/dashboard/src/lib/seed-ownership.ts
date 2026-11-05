@@ -52,3 +52,20 @@ export type CategorySeedAction = "create" | "leave-alone";
 export function decideCategorySeed(existing: unknown): CategorySeedAction {
   return existing ? "leave-alone" : "create";
 }
+
+/**
+ * The newest upload of a numbered photo set, in order. Each re-run of the attach
+ * script adds a generation ("<name> 2-1.webp", then "<name> 2-2.webp"), so only the
+ * highest generation is one complete, current set.
+ */
+export function latestImageSet(filenames: string[], name: string): string[] {
+  const rows = filenames.flatMap((filename) => {
+    const m = filename.match(/^(.*) (\d+)(?:-(\d+))?\.[a-z]+$/i);
+    return m && m[1] === name ? [{ filename, order: Number(m[2]), generation: Number(m[3] ?? 0) }] : [];
+  });
+  const newest = Math.max(...rows.map((r) => r.generation));
+  return rows
+    .filter((r) => r.generation === newest)
+    .sort((a, b) => a.order - b.order)
+    .map((r) => r.filename);
+}

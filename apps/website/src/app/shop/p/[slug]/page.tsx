@@ -12,6 +12,7 @@ import { ProductTabs } from "@/frontend/components/commerce/product-tabs";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
 import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd, productFaqs, faqJsonLd } from "@/frontend/components/seo/json-ld";
 import { productSearchDescription, productPageTitle } from "@/frontend/lib/seo";
+import { productFacts } from "@/frontend/lib/product-facts";
 import { CATEGORY_SEO } from "@/frontend/lib/category-seo";
 import { topicsForCategory } from "@/frontend/lib/topic-seo";
 import { alsoKnownAs, productSearchTerms } from "@/frontend/lib/product-terms";
@@ -190,16 +191,23 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
   const category = await getCategoryBySlug(product.categorySlug);
   const parent = category?.parent ? await getCategoryBySlug(category.parent) : null;
-  const related = (await getProductsByCategory(product.categorySlug))
-    .filter((p) => p.slug !== product.slug)
-    .slice(0, 8);
+  const inCategory = await getProductsByCategory(product.categorySlug);
+  const others = inCategory.filter((p) => p.slug !== product.slug);
+  // A family guide repeated on twenty near-identical pages tells Google nothing
+  // about any of them, and makes them compete with the category page that owns
+  // those questions. Large families link to it instead; small ones keep it here.
+  const guideOnHub = inCategory.length > 6;
   // The family's guide and technical FAQs: what a buyer of this kind of product
   // needs to know. productFaqs covers only this SKU's own facts.
   const familySeo = Object.hasOwn(CATEGORY_SEO, product.categorySlug) ? CATEGORY_SEO[product.categorySlug] : undefined;
   const copy = productCopy(product);
   // The other models a buyer is choosing between, under the same plain name.
   const siblings = siblingProducts(product, await getAllProducts());
+  // The compare table already links the same-named models, so a large family
+  // shows a few of the rest rather than repeating them as cards.
+  const related = guideOnHub ? others.filter((p) => !siblings.some((s) => s.slug === p.slug)).slice(0, 4) : others.slice(0, 8);
   const searchTerms = productSearchTerms(product);
+  const facts = productFacts(product, siblings, searchTerms[0]);
   const otherNames = alsoKnownAs(product);
   const price = product.price > 0 && !isQuoteOnly(product) ? inclGSTForProduct(product, product.price) : 0;
   const faqs = [
@@ -212,8 +220,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           },
         ]
       : []),
-    ...productFaqs(product),
-    ...(familySeo?.faqs ?? []),
+    ...facts.faqs,
+    ...productFaqs(product, { policies: !guideOnHub }),
+    ...(guideOnHub ? [] : familySeo?.faqs ?? []),
   ];
   const familyLinks = [
     { href: `/shop/c/${product.categorySlug}`, name: `All ${familySeo?.nouns ?? "products in this category"}` },
@@ -361,6 +370,19 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         <ProductTabs product={product} copy={copy} />
       </div>
 
+      {facts.model.length + facts.buying.length > 0 && (
+        <section className="mt-14" aria-labelledby="model-heading">
+          <h2 id="model-heading" className="font-display text-xl font-bold">
+            About this {searchTerms[0] ?? "model"}
+          </h2>
+          <ul className="mt-4 max-w-3xl list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
+            {[...facts.model, ...facts.buying].map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {siblings.length > 0 && (
         <section className="mt-14" aria-labelledby="models-heading">
           <h2 id="models-heading" className="font-display text-xl font-bold">
@@ -397,16 +419,26 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
       {familySeo && (
         <section className="mt-14" aria-labelledby="guide-heading">
           <h2 id="guide-heading" className="font-display text-xl font-bold">
-            {familySeo.guideTitle}
+            {guideOnHub ? `More on ${familySeo.nouns}` : familySeo.guideTitle}
           </h2>
-          <dl className="mt-5 grid gap-x-10 gap-y-4 text-sm sm:grid-cols-2">
-            {familySeo.guide.map((g) => (
-              <div key={g.term}>
-                <dt className="font-semibold">{g.term}</dt>
-                <dd className="mt-1 leading-relaxed text-muted-foreground">{g.text}</dd>
-              </div>
-            ))}
-          </dl>
+          {guideOnHub ? (
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              Our guide, {familySeo.guideTitle.toLowerCase().replace(/\?$/, "")}, and common questions are on the{" "}
+              <Link href={`/shop/c/${product.categorySlug}`} className="text-brand hover:underline">
+                {familySeo.h1}
+              </Link>{" "}
+              page.
+            </p>
+          ) : (
+            <dl className="mt-5 grid gap-x-10 gap-y-4 text-sm sm:grid-cols-2">
+              {familySeo.guide.map((g) => (
+                <div key={g.term}>
+                  <dt className="font-semibold">{g.term}</dt>
+                  <dd className="mt-1 leading-relaxed text-muted-foreground">{g.text}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
           <div className="mt-6 flex flex-wrap gap-2">
             {familyLinks.map((l) => (
               <Link
