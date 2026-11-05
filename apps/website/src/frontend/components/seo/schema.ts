@@ -437,7 +437,7 @@ type FaqProductInput = {
  * product with no lead time recorded would be invented content, and it would be
  * backing FAQPage structured data with a claim the business never made.
  */
-export function productFaqs(p: FaqProductInput): { q: string; a: string }[] {
+export function productFaqs(p: FaqProductInput, { policies = true }: { policies?: boolean } = {}): { q: string; a: string }[] {
   const faqs: { q: string; a: string }[] = [];
   const quoteOnly = p.productType === "quote-only";
   const discontinued = p.productType === "discontinued";
@@ -496,7 +496,9 @@ export function productFaqs(p: FaqProductInput): { q: string; a: string }[] {
     });
   }
 
-  // Policies published on the site, identical for every product.
+  // Policies published on the site, identical for every product. Pages in a large
+  // family leave them to the Shipping & Returns tab, which says the same thing.
+  if (!policies) return faqs;
   faqs.push({
     q: `Do you provide a GST invoice?`,
     a: `Yes. Every order ships with a GST invoice${p.hsnSac ? ` (HSN/SAC ${p.hsnSac})` : ""}.`,

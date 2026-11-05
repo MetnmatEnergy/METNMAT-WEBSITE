@@ -26,7 +26,7 @@ export type Guide = {
   keywords: string[];
 };
 
-export const GUIDES_UPDATED = "2026-11-04";
+export const GUIDES_UPDATED = "2026-11-05";
 
 export const GUIDES: Record<string, Guide> = {
   "reference-electrode-comparison": {
@@ -272,6 +272,280 @@ export const GUIDES: Record<string, Guide> = {
       { href: "/tools/potential-converter", name: "Potential converter" },
     ],
     keywords: ["three electrode cell setup", "three electrode system", "how to set up electrochemical cell", "working reference counter electrode"],
+  },
+
+  "how-to-clean-electrodes": {
+    title: "How to Clean Glassy Carbon and Platinum Electrodes",
+    h1: "How to Clean Glassy Carbon and Platinum Electrodes",
+    description: "How to polish a glassy carbon electrode, clean a platinum electrode and store an Ag/AgCl reference electrode, using the steps labs commonly follow.",
+    answer:
+      "Polish a glassy carbon electrode on a wet cloth with alumina slurry, then rinse it well. Clean a platinum electrode by rinsing it, then soaking it in dilute acid or cycling it in dilute sulfuric acid. Keep the tip of an Ag/AgCl reference electrode in its filling solution. Where your own protocol differs, follow your protocol.",
+    sections: [
+      {
+        h2: "How to clean a glassy carbon electrode",
+        list: [
+          "Wet a polishing cloth on a flat surface and add a little alumina slurry.",
+          "Move the electrode in a figure of eight, holding it upright with light, even pressure.",
+          "Work down in grit if the surface is scratched, for example from 1 µm to 0.3 µm and then 0.05 µm alumina.",
+          "Rinse well with deionised water, so that no alumina stays on the surface.",
+          "If the body allows it, sonicate briefly in deionised water or ethanol, then rinse again.",
+          "Check the surface with a cyclic voltammogram of a known redox couple, such as ferricyanide.",
+        ],
+      },
+      {
+        h2: "How to clean a platinum electrode",
+        text: ["The same steps suit platinum wire, mesh, sheet and disk counter or working electrodes, except that only a disk is polished."],
+        list: [
+          "Rinse with deionised water to remove electrolyte.",
+          "For light contamination, soak in dilute nitric acid, then rinse well.",
+          "For an electrochemically clean surface, cycle the potential in dilute sulfuric acid until the voltammogram stops changing.",
+          "Flame cleaning suits bare platinum only. Never flame an electrode with a PTFE or PEEK body.",
+        ],
+      },
+      {
+        h2: "How to store an Ag/AgCl reference electrode",
+        list: [
+          "Keep the tip in a storage solution that matches the filling solution, usually KCl of the same strength.",
+          "Do not store it in deionised water: chloride leaches out and the potential drifts.",
+          "Never let the junction dry out. Top up the filling solution when the level drops.",
+          "Check it now and then against a reference electrode kept only for that purpose.",
+        ],
+      },
+      {
+        h2: "Cleaning at a glance",
+        table: {
+          caption: "How to clean common electrodes",
+          head: ["Electrode", "Clean with", "Avoid"],
+          rows: [
+            ["Glassy carbon", "Alumina slurry on a polishing cloth", "Coarse abrasives and leaving alumina on the surface"],
+            ["Platinum", "Rinsing, dilute acid, or cycling in dilute sulfuric acid", "Bending thin wire or mesh, and flame on polymer bodies"],
+            ["Gold", "Alumina polish, then cycling in dilute sulfuric acid", "Hard scrubbing: gold is soft"],
+            ["Ag/AgCl", "Rinse the outside only, and refresh the filling solution", "Drying out and storing in deionised water"],
+          ],
+        },
+      },
+    ],
+    faqs: [
+      {
+        q: "How often should I polish a glassy carbon electrode?",
+        a: "Before each experiment, or whenever the voltammogram changes shape. A fouled surface shows up as wider peak separation and lower peak current.",
+      },
+      {
+        q: "What solution should I store an Ag/AgCl electrode in?",
+        a: "One that matches its filling solution, usually KCl of the same strength. Storing it in deionised water shifts its potential.",
+      },
+      {
+        q: "Can I clean a platinum counter electrode with acid?",
+        a: "Yes. Dilute nitric acid is a common choice, and cycling in dilute sulfuric acid is the usual way to get an electrochemically clean surface.",
+      },
+    ],
+    links: [
+      { href: "/shop/t/glassy-carbon-electrodes", name: "Glassy carbon electrodes" },
+      { href: "/shop/t/platinum-electrodes", name: "Platinum electrodes" },
+      { href: "/shop/t/ag-agcl-reference-electrodes", name: "Ag/AgCl reference electrodes" },
+      { href: "/shop/c/working-electrodes", name: "Working electrodes" },
+      { href: "/shop/c/counter-electrodes", name: "Counter electrodes" },
+      { href: "/shop/c/reference-electrodes", name: "Reference electrodes" },
+    ],
+    keywords: ["how to clean glassy carbon electrode", "how to polish glassy carbon electrode", "how to clean platinum electrode", "how to clean platinum counter electrode", "ag/agcl electrode storage solution"],
+  },
+
+  "working-counter-reference-electrodes": {
+    title: "Working, Counter and Reference Electrodes Explained",
+    h1: "Working, Counter and Reference Electrodes Explained",
+    description: "What the working, counter and reference electrodes each do, with examples of every type, and how they are used in cyclic voltammetry.",
+    answer:
+      "The working electrode is where the reaction you study takes place. The reference electrode holds a steady potential to measure against and carries almost no current. The counter electrode, also called the auxiliary electrode, carries the current so that the reference stays undisturbed.",
+    sections: [
+      {
+        h2: "The three electrodes at a glance",
+        table: {
+          caption: "What each electrode does, with examples",
+          head: ["Electrode", "What it does", "Examples"],
+          rows: [
+            ["Working", "Hosts the reaction under study", "Glassy carbon, gold and platinum disks; a sample in a holder"],
+            ["Counter (auxiliary)", "Completes the circuit and carries the current", "Platinum wire, mesh or sheet; graphite rod"],
+            ["Reference", "Sets the potential scale", "Ag/AgCl, saturated calomel, Hg/HgO, Hg/Hg₂SO₄"],
+          ],
+        },
+      },
+      {
+        h2: "Types of reference electrode",
+        table: {
+          caption: "Common reference electrodes and where they suit",
+          head: ["Reference electrode", "Usual electrolyte"],
+          rows: [
+            ["Ag/AgCl", "Neutral and acidic aqueous solutions"],
+            ["Saturated calomel (SCE)", "Neutral and acidic aqueous solutions"],
+            ["Hg/HgO", "Alkaline solutions such as KOH and NaOH"],
+            ["Hg/Hg₂SO₄", "Sulfuric acid and other chloride-free solutions"],
+            ["Ag/Ag⁺", "Non-aqueous solvents"],
+          ],
+        },
+      },
+      {
+        h2: "The working electrode in cyclic voltammetry",
+        text: [
+          "In cyclic voltammetry, the potentiostat sweeps the potential of the working electrode against the reference and records the current that flows between the working and counter electrodes.",
+          "The working electrode must be clean and of a known area, because current density is the current divided by that area.",
+        ],
+      },
+      {
+        h2: "Choosing a counter electrode",
+        list: [
+          "Give it more surface than the working electrode, so that it does not limit the current.",
+          "Choose a material that stays inert in your electrolyte.",
+          "In hydrogen evolution studies, consider graphite: platinum can dissolve and redeposit on the working electrode.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        q: "What is the difference between a counter electrode and a reference electrode?",
+        a: "The counter electrode carries the current. The reference electrode carries almost none, which is what keeps its potential steady.",
+      },
+      {
+        q: "Is a counter electrode the same as an auxiliary electrode?",
+        a: "Yes. They are two names for the same electrode.",
+      },
+      {
+        q: "What is an example of a reference electrode?",
+        a: "Ag/AgCl is the most widely used. Saturated calomel suits similar solutions, and Hg/HgO suits alkaline ones.",
+      },
+    ],
+    links: [
+      { href: "/shop/c/working-electrodes", name: "Working electrodes" },
+      { href: "/shop/c/counter-electrodes", name: "Counter electrodes" },
+      { href: "/shop/c/reference-electrodes", name: "Reference electrodes" },
+      { href: "/guides/reference-electrode-comparison", name: "Which reference electrode?" },
+      { href: "/guides/three-electrode-cell-setup", name: "Set up a three-electrode cell" },
+    ],
+    keywords: ["counter electrode and reference electrode", "working electrode in cyclic voltammetry", "counter electrode examples", "reference electrode types", "what is reference electrode give example"],
+  },
+
+  "ion-exchange-membrane-types": {
+    title: "Types of Ion Exchange Membrane: PEM, AEM, CEM, BPM",
+    h1: "Types of Ion Exchange Membrane",
+    description: "The main ion exchange membranes compared: proton exchange, anion exchange, cation exchange and bipolar, with what each one carries and where it is used.",
+    answer:
+      "An ion exchange membrane lets ions of one charge pass and blocks those of the other. A cation exchange membrane passes positive ions, and a proton exchange membrane is one that passes protons. An anion exchange membrane passes negative ions such as hydroxide. A bipolar membrane joins the two and splits water at the junction.",
+    sections: [
+      {
+        h2: "The four types compared",
+        table: {
+          caption: "Ion exchange membrane types",
+          head: ["Type", "What it carries", "Typical use"],
+          rows: [
+            ["Proton exchange (PEM)", "Protons (H⁺)", "PEM fuel cells and water electrolyzers"],
+            ["Anion exchange (AEM)", "Negative ions such as OH⁻", "Alkaline membrane electrolyzers and CO₂ electrolysis"],
+            ["Cation exchange (CEM)", "Positive ions such as Na⁺", "Electrodialysis and separated cells"],
+            ["Bipolar (BPM)", "Splits water into H⁺ and OH⁻", "Acid and base production, and CO₂ electrolysis"],
+          ],
+        },
+      },
+      {
+        h2: "What to compare between membranes",
+        list: [
+          "Thickness: a thinner membrane has lower resistance but is weaker and lets more gas cross.",
+          "Ion exchange capacity: how many charged groups the polymer holds.",
+          "Reinforcement: a reinforced membrane is stronger and easier to handle.",
+          "Stability: check it against your electrolyte, pH and temperature.",
+          "Ionic form: many are supplied in one form and must be exchanged before use.",
+        ],
+      },
+      {
+        h2: "Which membrane for which cell",
+        text: [
+          "Acidic cells usually use a proton exchange membrane, and alkaline cells an anion exchange membrane. Separating two liquids in an H-cell needs one that keeps the products apart without adding much resistance.",
+          "Check what the maker says about conditioning, because many membranes need soaking or ion exchange before first use.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        q: "What is the difference between PEM and CEM?",
+        a: "A proton exchange membrane is a kind of cation exchange membrane. PEM is the name used when the ion it carries is the proton, as in fuel cells and electrolyzers.",
+      },
+      {
+        q: "What does a bipolar membrane do?",
+        a: "It joins an anion exchange layer to a cation exchange layer. Under the right bias, water splits at the junction into H⁺ and OH⁻.",
+      },
+      {
+        q: "What is a PFSA membrane?",
+        a: "A perfluorosulfonic acid membrane, the most common type of proton exchange membrane.",
+      },
+    ],
+    links: [
+      { href: "/shop/c/membranes", name: "All membranes" },
+      { href: "/shop/c/pem-membranes", name: "Proton exchange membranes" },
+      { href: "/shop/c/aem-membranes", name: "Anion exchange membranes" },
+      { href: "/shop/c/cem-membranes", name: "Cation exchange membranes" },
+      { href: "/shop/c/bipolar-membranes", name: "Bipolar membranes" },
+      { href: "/shop/t/fumasep-membranes", name: "Fumasep membranes" },
+    ],
+    keywords: ["ion exchange membrane types", "types of ion exchange membrane", "ion exchange membrane price", "difference between pem and aem", "what is a bipolar membrane"],
+  },
+
+  "gas-diffusion-electrode": {
+    title: "What Is a Gas Diffusion Electrode (GDE)?",
+    h1: "What Is a Gas Diffusion Electrode?",
+    description: "How a gas diffusion electrode works, what its layers do, why CO₂ reduction cells use one, and how to choose a gas diffusion layer for it.",
+    answer:
+      "A gas diffusion electrode, or GDE, is a porous electrode that brings a gas straight to the catalyst from one side while the electrolyte touches it from the other. This reaches far higher current densities than a gas dissolved in liquid, so GDEs are used in fuel cells, electrolyzers and CO₂ reduction cells.",
+    sections: [
+      {
+        h2: "The layers of a gas diffusion electrode",
+        table: {
+          caption: "What each layer of a GDE does",
+          head: ["Layer", "What it does"],
+          rows: [
+            ["Gas diffusion layer", "A porous carbon paper or cloth that spreads the gas and conducts electrons"],
+            ["Microporous layer", "A fine layer that smooths the surface and manages water"],
+            ["Catalyst layer", "Where the reaction happens, where gas, electrolyte and catalyst meet"],
+          ],
+        },
+      },
+      {
+        h2: "Why CO₂ reduction uses a gas diffusion electrode",
+        text: [
+          "CO₂ dissolves poorly in water, so in an H-cell the current is limited by how fast it reaches the catalyst. A gas diffusion electrode feeds CO₂ as a gas, so the path to the catalyst is very short.",
+          "This is why gas diffusion flow cells reach current densities that an H-cell cannot.",
+        ],
+      },
+      {
+        h2: "What goes wrong: flooding",
+        list: [
+          "Flooding happens when electrolyte fills the pores and blocks the gas.",
+          "Common causes are a pressure imbalance, a hydrophilic surface and salt building up in the pores.",
+          "Watch the gas side for liquid, and for a fall in the product you want.",
+        ],
+      },
+      {
+        h2: "How to choose a gas diffusion layer",
+        list: [
+          "Thickness and porosity affect how easily the gas passes.",
+          "A hydrophobic treatment, often PTFE, helps resist flooding.",
+          "A microporous layer gives a smoother base for the catalyst.",
+          "The material must survive your electrolyte and potential.",
+        ],
+      },
+    ],
+    faqs: [
+      {
+        q: "What is the difference between a GDE and a GDL?",
+        a: "The gas diffusion layer is the porous support. A gas diffusion electrode is that support with a catalyst layer on it.",
+      },
+      {
+        q: "Can I use a gas diffusion electrode in an H-cell?",
+        a: "Not as intended. It needs a gas chamber behind it, which is what a gas diffusion flow cell provides.",
+      },
+    ],
+    links: [
+      { href: "/shop/c/carbon-gdl", name: "Gas diffusion layers" },
+      { href: "/shop/c/co2-electrolysis", name: "CO₂ electrolyzers and flow cells" },
+      { href: "/guides/h-cell-vs-flow-cell", name: "H-cell or flow cell?" },
+    ],
+    keywords: ["gas diffusion electrode", "gas diffusion electrode co2 reduction", "gas diffusion electrode gde", "gas diffusion layer", "what is a gas diffusion electrode"],
   },
 };
 

@@ -10,7 +10,7 @@
  * Move this date only when those pages really change, and never on every deploy:
  * Google stops trusting lastmod on a site where it is often wrong.
  */
-export const SHOP_PAGES_CHANGED_ON = "2026-11-04";
+export const SHOP_PAGES_CHANGED_ON = "2026-11-05";
 
 /** The later of a CMS edit date and the last change in code. */
 export function pageLastmod(cmsDate: string | undefined): string {

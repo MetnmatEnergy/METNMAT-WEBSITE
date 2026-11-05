@@ -124,7 +124,9 @@ One page owns each search, so pages do not compete with each other.
 | calomel electrode price; saturated calomel | `/shop/c/reference-electrodes`, then the SCE products |
 | hg/hgo reference electrode price | `/shop/c/reference-electrodes`, then the Hg/HgO products |
 | platinum electrode (price); pt counter electrode | hub `platinum-electrodes`, then `/shop/c/counter-electrodes` |
-| platinum mesh / wire / plate electrode | the matching products |
+| platinum wire electrode (price) | `/shop/t/platinum-wire-electrodes` |
+| platinum mesh electrode (price) | `/shop/t/platinum-mesh-electrodes` |
+| platinum sheet / plate / foil electrode | `/shop/t/platinum-sheet-electrodes` |
 | graphite rod electrode; graphite electrode | `/shop/c/counter-electrodes`, then the rods |
 | glassy carbon electrode price | `/shop/c/working-electrodes` |
 | electrode holder; ptfe electrode holder | `/shop/c/electrode-holders` |
@@ -318,3 +320,16 @@ Measured the same day:
 Fixed in the "link power" PR: true dates (`sitemap-dates.ts`), the Categories panel in the HTML, a home page shop section,
 every product on `/shop/all`, "Price in India" in priced product titles, price wording in 12 category titles, and topic
 pages for PEM electrolyzers, Fumasep membranes and Swagelok cells. Re-run the crawl after merge to confirm click depth.
+
+### Depth and feed, 2026-11-05
+
+Owner: improve as much as possible. Measured on the live site: the median product page had 16% of its 5-word phrases
+on no other product page; counter electrodes 4%, reference electrodes and holders 5%. The Merchant feed had no Google
+category, highlights or structured specs. 13 products were not in the feed: 12 with no photo, 1 with no price. Two of the
+12 (MPP60, MPP70) had 15 photos each still in the media library, unlinked by the 2026-09-04 recreate.
+
+Fixed: `product-facts.ts` writes per-model sentences from specs and arithmetic; families over 6 products keep the guide
+and FAQs on the hub; the feed gains title from seoTitle, google_product_category, product_highlight and product_detail;
+platinum wire, mesh and sheet topics; four guides on searches from autocomplete; `relinkPumpPhotos` in seed.ts, which
+needs a CMS deploy. Median unique share rose to 21%, electrodes to 7-8%, pumps to 22%, measured the same way. The figure
+counts related cards and specs as shared, so treat it as a trend, not a target.
