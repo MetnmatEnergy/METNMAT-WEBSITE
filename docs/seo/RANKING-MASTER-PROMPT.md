@@ -145,7 +145,8 @@ One page owns each search, so pages do not compete with each other.
 | hot press; 30 ton hydraulic press | `/shop/c/mea-fabrication` |
 | zinc sheet; pure zinc sheet | the High Purity Zinc Sheet product |
 | metals and alloys; alloy composition; uses of alloys | the blog posts moved from .in |
-| microstructure analysis; metallurgical testing | `/services`, and the moved posts |
+| microstructure analysis (services) | `/services/microstructure-analysis`, and the moved posts |
+| metallurgical testing; metallurgy tests | `/services/metallurgical-testing`, and the moved posts |
 
 ---
 

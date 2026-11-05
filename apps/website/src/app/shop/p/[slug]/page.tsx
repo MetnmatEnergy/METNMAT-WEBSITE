@@ -13,6 +13,7 @@ import { CatalogProductCard } from "@/frontend/components/commerce/catalog-produ
 import { JsonLd, breadcrumbJsonLd, organizationJsonLd, productJsonLd, productFaqs, faqJsonLd } from "@/frontend/components/seo/json-ld";
 import { productSearchDescription, productPageTitle } from "@/frontend/lib/seo";
 import { productFacts } from "@/frontend/lib/product-facts";
+import { productNotes } from "@/frontend/lib/product-notes";
 import { CATEGORY_SEO } from "@/frontend/lib/category-seo";
 import { topicsForCategory } from "@/frontend/lib/topic-seo";
 import { alsoKnownAs, productSearchTerms } from "@/frontend/lib/product-terms";
@@ -208,6 +209,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   const related = guideOnHub ? others.filter((p) => !siblings.some((s) => s.slug === p.slug)).slice(0, 4) : others.slice(0, 8);
   const searchTerms = productSearchTerms(product);
   const facts = productFacts(product, siblings, searchTerms[0]);
+  const notes = productNotes(product.slug);
   const otherNames = alsoKnownAs(product);
   const price = product.price > 0 && !isQuoteOnly(product) ? inclGSTForProduct(product, product.price) : 0;
   const faqs = [
@@ -370,11 +372,16 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         <ProductTabs product={product} copy={copy} />
       </div>
 
-      {facts.model.length + facts.buying.length > 0 && (
+      {(notes || facts.model.length + facts.buying.length > 0) && (
         <section className="mt-14" aria-labelledby="model-heading">
           <h2 id="model-heading" className="font-display text-xl font-bold">
             About this {searchTerms[0] ?? "model"}
           </h2>
+          {notes?.map((note) => (
+            <p key={note} className="mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              {note}
+            </p>
+          ))}
           <ul className="mt-4 max-w-3xl list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
             {[...facts.model, ...facts.buying].map((line) => (
               <li key={line}>{line}</li>

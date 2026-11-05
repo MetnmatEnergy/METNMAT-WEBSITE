@@ -1,5 +1,6 @@
 import { GUIDES } from "@/frontend/lib/guides";
 import { TOPIC_SEO } from "@/frontend/lib/topic-seo";
+import { SERVICE_PAGES } from "@/frontend/lib/service-pages";
 import { site, mainNav } from "@/frontend/lib/site";
 import {
   getProductSitemapEntries,
@@ -54,6 +55,7 @@ async function pages(): Promise<SitemapUrl[]> {
       "/guides",
       ...Object.keys(GUIDES).map((g) => `/guides/${g}`),
       "/tools/potential-converter",
+      ...Object.keys(SERVICE_PAGES).map((s) => `/services/${s}`),
       ...mainNav.map((n) => n.href),
     ])
   );

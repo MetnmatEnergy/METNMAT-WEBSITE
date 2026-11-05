@@ -119,5 +119,7 @@ export const footerResources = {
     { label: "All products", href: "/shop/all" },
     { label: "Guides", href: "/guides" },
     { label: "Potential converter", href: "/tools/potential-converter" },
+    { label: "Microstructure analysis", href: "/services/microstructure-analysis" },
+    { label: "Metallurgical testing", href: "/services/metallurgical-testing" },
   ],
 };
