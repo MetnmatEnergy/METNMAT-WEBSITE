@@ -130,11 +130,14 @@ One page owns each search, so pages do not compete with each other.
 | electrode holder; ptfe electrode holder | `/shop/c/electrode-holders` |
 | h cell; h type electrochemical cell | `/shop/c/h-cell` |
 | electrochemical cell supplier india | `/shop/c/reactor-cell`, then the home page |
-| swagelok cell; battery test cell | `/shop/c/battery-reactors` |
+| swagelok cell (price) | `/shop/t/swagelok-cells` |
+| battery test cell | `/shop/c/battery-reactors` |
 | co2 electrolyzer; gas diffusion flow cell | `/shop/c/co2-electrolysis` |
-| pem electrolyzer price; zero gap electrolyzer | `/shop/c/water-splitting-reactors` |
+| pem electrolyzer (price) | `/shop/t/pem-electrolyzers`, then the PEM product |
+| water splitting reactor; zero gap electrolyzer | `/shop/c/water-splitting-reactors` |
 | proton exchange membrane price; N117 | `/shop/c/pem-membranes` |
-| anion exchange membrane; fumasep; piperion | `/shop/c/aem-membranes` |
+| fumasep; fumasep price | `/shop/t/fumasep-membranes` |
+| anion exchange membrane; piperion | `/shop/c/aem-membranes` |
 | nickel foam (price); gdl; carbon cloth; graphite felt | `/shop/c/carbon-gdl`, then the products |
 | peristaltic pump price | `/shop/c/peristaltic-pumps` |
 | hot press; 30 ton hydraulic press | `/shop/c/mea-fabrication` |
@@ -301,3 +304,17 @@ Ranked by effect:
 | 12 products with no photo, 18 with one | owner | | Without a photo a product stays out of Google Shopping; see `product-audit.csv` |
 | 71 products with no SKU, 3 with no price, 4 with placeholder specs | owner | | `product-audit.csv` |
 | Reviews, datasheets, papers | owner | | Part G |
+
+### Link power, 2026-11-04
+
+Owner saw the PEM product on page 5 of "pem electrolyzer price" (result 48) and asked for all products on page one.
+Measured the same day:
+
+- Search Console, .in, 90 days: 99 of 118 old product URLs averaged page one, so the rankings exist and sit on .in.
+  48 of those URLs had never been queued for a recrawl, including the PEM page that averaged 7.4 for that search. All are queued now, by impressions.
+- .com sitemap dated all 141 products 2026-10-27 although they were rebuilt on 2026-11-04, and static pages had no date.
+- The home page linked to 15 projects, 8 products and no category. 108 of 141 products were 3 or more clicks deep.
+
+Fixed in the "link power" PR: true dates (`sitemap-dates.ts`), the Categories panel in the HTML, a home page shop section,
+every product on `/shop/all`, "Price in India" in priced product titles, price wording in 12 category titles, and topic
+pages for PEM electrolyzers, Fumasep membranes and Swagelok cells. Re-run the crawl after merge to confirm click depth.

@@ -116,6 +116,7 @@ export const footerNav: { title: string; links: { label: string; href: string }[
 export const footerResources = {
   title: "Resources",
   links: [
+    { label: "All products", href: "/shop/all" },
     { label: "Guides", href: "/guides" },
     { label: "Potential converter", href: "/tools/potential-converter" },
   ],

@@ -16,6 +16,17 @@ function truncate(text: string, max: number): string {
   return `${(at > max * 0.6 ? cut.slice(0, at) : cut).replace(/[\s,;:.–—-]+$/, "")}…`;
 }
 
+/**
+ * <title> for a product page. Buyers search "<product> price", and a page that
+ * shows a price should say so. Written as an absolute title, because the layout's
+ * " · METNMAT" would push the words past what a search result shows, and Google
+ * prints the site name above the result anyway. A product with no public price
+ * keeps its plain title, and a title that already says "price" is left alone.
+ */
+export function productPageTitle(title: string, priced: boolean): string | { absolute: string } {
+  return priced && !/\bprice\b/i.test(title) ? { absolute: `${title}: Price in India` } : title;
+}
+
 /** A description that a search result can show whole, for text written elsewhere (the CMS). */
 export const clampDescription = (text: string) => truncate(text, META_DESCRIPTION_MAX);
 

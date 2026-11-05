@@ -6,8 +6,18 @@ import { LayoutGrid, ChevronDown } from "lucide-react";
 import type { Category } from "@/frontend/lib/catalog";
 
 /** "All Categories" mega-menu (Amazon/Flipkart style). Categories come live
- *  from the CMS (passed by the server-rendered header). */
-export function DepartmentsMenu({ categories = [] }: { categories?: Category[] }) {
+ *  from the CMS (passed by the server-rendered header).
+ *
+ *  The panel is always in the HTML and only hidden while closed. Rendering it on
+ *  open left crawlers with no link from the home page to any category, so the
+ *  home page's strength reached the shop through /shop alone. */
+export function DepartmentsMenu({
+  categories = [],
+  popular = [],
+}: {
+  categories?: Category[];
+  popular?: { href: string; name: string }[];
+}) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -119,11 +129,10 @@ export function DepartmentsMenu({ categories = [] }: { categories?: Category[] }
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
-      {open && (
-        <>
-          <div
+      <div
             ref={panelRef}
             id="departments-menu"
+            hidden={!open}
             // max-h + scroll: with 10 departments and their sub-categories this
             // list is taller than a 768px laptop viewport, and an absolutely
             // positioned panel would otherwise run off the bottom of the screen.
@@ -155,16 +164,33 @@ export function DepartmentsMenu({ categories = [] }: { categories?: Category[] }
                 </div>
               ))}
             </div>
-            <Link
-              href="/shop"
-              onClick={() => setOpen(false)}
-              className="mt-4 block border-t border-border pt-3 text-sm font-medium text-brand-soft"
-            >
-              Visit the full store →
-            </Link>
+            {popular.length > 0 && (
+              <div className="mt-4 border-t border-border pt-3">
+                <p className="font-display text-sm font-semibold">Popular products</p>
+                <ul className="mt-1.5 grid grid-cols-2 gap-x-6 gap-y-1">
+                  {popular.map((t) => (
+                    <li key={t.href}>
+                      <Link
+                        href={t.href}
+                        onClick={() => setOpen(false)}
+                        className="text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        {t.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap justify-between gap-x-6 gap-y-1 border-t border-border pt-3 text-sm font-medium text-brand-soft">
+              <Link href="/shop" onClick={() => setOpen(false)}>
+                Visit the full store →
+              </Link>
+              <Link href="/shop/all" onClick={() => setOpen(false)}>
+                All products
+              </Link>
+            </div>
           </div>
-        </>
-      )}
     </div>
   );
 }

@@ -169,7 +169,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   membranes: {
-    title: "Ion Exchange Membranes (PEM, AEM, CEM, BPM), India",
+    title: "Ion Exchange Membrane Price: PEM, AEM, CEM, BPM",
     h1: "Ion Exchange Membranes",
     lead: "Proton, anion, cation and bipolar exchange membranes for electrolysis and fuel cells.",
     nouns: "ion exchange membranes",
@@ -221,7 +221,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "aem-membranes": {
-    title: "Anion Exchange Membranes: Fumasep, PiperION, India",
+    title: "Anion Exchange Membrane Price: Fumasep, PiperION",
     h1: "Anion Exchange Membranes (AEM)",
     lead: "Fumasep FAA-3, Sustainion X37 and PiperION anion exchange membranes.",
     nouns: "anion exchange membranes",
@@ -245,7 +245,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "cem-membranes": {
-    title: "Cation Exchange Membrane: Fumasep FS-9100, India",
+    title: "Cation Exchange Membrane Price: Fumasep FS-9100",
     h1: "Cation Exchange Membranes (CEM)",
     lead: "Fumasep cation exchange membrane for electrodialysis and divided electrochemical cells.",
     nouns: "cation exchange membranes",
@@ -377,7 +377,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "water-splitting-reactors": {
-    title: "Water Electrolysis Cells & PEM Electrolyzers, India",
+    title: "Water Splitting Reactors & Cells: Price in India",
     h1: "Water-Splitting Reactors and Electrolyzer Cells",
     lead: "PEM and AEM electrolyzer hardware, zero-gap cells and water-splitting reactors.",
     nouns: "water-splitting reactors",
@@ -400,7 +400,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "co2-electrolysis": {
-    title: "CO₂ Electrolyzers & Gas Diffusion Flow Cells, India",
+    title: "CO2 Electrolyzer Price in India: Gas Diffusion Cells",
     h1: "CO₂ Electrolyzers and Gas Diffusion Flow Cells",
     lead: "CO₂ reduction flow cells, zero-gap electrolyzers and in situ Raman cells.",
     nouns: "CO₂ electrolysis cells",
@@ -461,7 +461,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "battery-reactors": {
-    title: "Swagelok Battery Test Cells & Metal-Air Reactors",
+    title: "Battery Test Cell Price: Swagelok, Metal-Air, Flow",
     h1: "Battery Test Cells and Reactors",
     lead: "Swagelok-type battery test cells, metal-air and metal-flow battery reactors.",
     nouns: "battery test cells",
@@ -500,7 +500,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "photo-ec-reactors": {
-    title: "Photoelectrochemical Cells & PEC Reactors, India",
+    title: "Photoelectrochemical Cell Price in India: PEC Cells",
     h1: "Photoelectrochemical (PEC) Cells and Reactors",
     lead: "Photoelectrochemical cells and panel reactors for solar water splitting research.",
     nouns: "photoelectrochemical reactors",
@@ -561,7 +561,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "carbon-gdl": {
-    title: "GDL Carbon Paper, Nickel Foam & Carbon Cloth, India",
+    title: "GDL Carbon Paper, Nickel Foam, Carbon Cloth: Price",
     h1: "Gas Diffusion Layers, Carbon Materials and Metal Foams",
     lead: "GDL carbon paper, carbon cloth, graphite felt, nickel foam, nickel felt and copper foam.",
     nouns: "carbon and foam electrode materials",
@@ -590,7 +590,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   consumables: {
-    title: "Ionomer Dispersions: PFSA, Fumion, PiperION, India",
+    title: "Ionomer Dispersion Price: PFSA, Fumion, PiperION",
     h1: "Ionomer Dispersions and Consumables",
     lead: "PFSA, Fumion FAA-3 and PiperION ionomer dispersions for catalyst inks.",
     nouns: "ionomer dispersions",
@@ -656,7 +656,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "specialised-equipment": {
-    title: "Fuel Cell Test Station & Research Equipment, India",
+    title: "Fuel Cell Test Station Price & Research Equipment",
     h1: "Specialised Research Equipment",
     lead: "Fuel cell test stations, a fuel cell and metal-air battery tester and heating control.",
     nouns: "research equipment",
@@ -692,7 +692,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   "mea-fabrication": {
-    title: "Hot Press & Hydraulic Press for MEA Making, India",
+    title: "Hot Press & Hydraulic Press for MEA: Price in India",
     h1: "MEA Fabrication Presses",
     lead: "20 and 30 ton hydraulic presses and an MEA hot press for membrane electrode assemblies.",
     nouns: "MEA presses",
@@ -729,7 +729,7 @@ export const CATEGORY_SEO: Record<string, CategorySeo> = {
   },
 
   accessories: {
-    title: "Zinc Sheet, Aluminium Sheet & Lab Accessories, India",
+    title: "Zinc Sheet Price, Aluminium Sheet & Accessories",
     h1: "Metal Sheets and Lab Accessories",
     lead: "High-purity zinc sheet, aluminium sheet, gas sampling bags and MnO₂ nanoparticles.",
     nouns: "accessories",

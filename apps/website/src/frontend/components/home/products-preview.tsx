@@ -2,6 +2,7 @@ import { Container } from "@/frontend/components/ui/container";
 import { Button } from "@/frontend/components/ui/button";
 import { SectionHeading } from "@/frontend/components/ui/section-heading";
 import { CatalogProductCard } from "@/frontend/components/commerce/catalog-product-card";
+import { BrowseShop } from "@/frontend/components/home/browse-shop";
 import { getFeaturedProducts } from "@/frontend/lib/cms";
 
 export async function ProductsPreview() {
@@ -25,6 +26,8 @@ export async function ProductsPreview() {
             <CatalogProductCard key={product.slug} product={product} />
           ))}
         </div>
+
+        <BrowseShop />
       </Container>
     </section>
   );
