@@ -153,6 +153,9 @@ auditing orphaned resources.
 7. **The CDN clamps browser `max-age` to ~3600** regardless of what the app sends.
 8. **Payload only generates `imageSizes` at upload time.** Changing the ladder does not touch
    existing media.
+9. **Never set `dynamicParams = false` on a page.** Every CMS save calls `revalidateTag("cms")`, and on such a page that
+   turns a working URL into a cached 404 (both `/services/*` pages, 2026-11-05, after a CMS deploy). It passes every test
+   and a first load, so test with `POST /api/revalidate` on `next start`. Use `notFound()` in `generateMetadata`.
 9. **`_` -prefixed folders under `app/` are private** and produce no route — don't use them for
    throwaway test routes.
 10. **Never `cat` a `.env`.** `grep '^KEY=' file` the one line you need.

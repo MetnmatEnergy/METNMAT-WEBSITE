@@ -12,10 +12,9 @@ import { site } from "@/frontend/lib/site";
 
 type Params = { slug: string };
 
-// The loading state lives in the (index) group, so these pages arrive whole. Under
-// a Suspense boundary their text would stream in after the shell, and notFound()
-// would answer 200. Listing the slugs makes an unknown one a true 404.
-export const dynamicParams = false;
+// The loading state lives in the (index) group, so these pages arrive whole, and
+// notFound() in generateMetadata is a true 404. Do not set dynamicParams = false:
+// after revalidateTag("cms") it turned both pages into a cached 404 (2026-11-05).
 
 const find = (slug: string) => (Object.hasOwn(SERVICE_PAGES, slug) ? SERVICE_PAGES[slug] : undefined);
 
