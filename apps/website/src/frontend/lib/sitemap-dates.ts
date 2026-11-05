@@ -20,4 +20,4 @@ export function pageLastmod(cmsDate: string | undefined): string {
 
 /** Static routes whose text lives in code and changed with the shop's pages. */
 export const changesWithShop = (path: string) =>
-  path === "/" || path === "/shop" || path.startsWith("/shop/") || path.startsWith("/guides") || path.startsWith("/tools/");
+  path === "/" || path === "/shop" || path.startsWith("/shop/") || path.startsWith("/guides") || path.startsWith("/tools/") || path.startsWith("/services/");

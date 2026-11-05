@@ -12,6 +12,8 @@ import { SERVICE_IMAGES } from "@/frontend/lib/service-images";
 import { SERVICE_DETAILS } from "@/frontend/lib/service-details";
 import { site } from "@/frontend/lib/site";
 import { pageMetadata } from "@/frontend/lib/seo";
+import { servicePageLinks } from "@/frontend/lib/service-pages";
+import Link from "next/link";
 
 export const metadata: Metadata = pageMetadata({
   title: "Materials & Metallurgy R&D Services in India",
@@ -169,6 +171,23 @@ export default async function ServicesPage() {
           />
           <div className="mt-10">
             <ServiceCardStack items={detailCards} />
+          </div>
+        </Container>
+      </section>
+
+      <section className="section pt-0">
+        <Container>
+          <SectionHeading eyebrow="Testing" title="Testing services in detail" />
+          <div className="mt-6 flex flex-wrap gap-2">
+            {servicePageLinks().map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="rounded-full border border-border bg-surface px-4 py-1.5 text-sm text-muted-foreground hover:border-brand/40 hover:text-foreground"
+              >
+                {l.name}
+              </Link>
+            ))}
           </div>
         </Container>
       </section>

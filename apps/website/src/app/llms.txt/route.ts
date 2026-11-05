@@ -3,6 +3,7 @@ import { CATEGORY_SEO, categoryPriceFacts } from "@/frontend/lib/category-seo";
 import { getAllProducts } from "@/frontend/lib/cms";
 import { TOPIC_SEO, topicProducts } from "@/frontend/lib/topic-seo";
 import { GUIDES } from "@/frontend/lib/guides";
+import { SERVICE_PAGES } from "@/frontend/lib/service-pages";
 import { site } from "@/frontend/lib/site";
 
 /**
@@ -63,6 +64,10 @@ ${catalogue || `- [Shop](${site.url}/shop): electrodes, membranes, cells, reacto
 
 - [Reference electrode potential converter](${site.url}/tools/potential-converter): free calculator from Ag/AgCl, SCE, Hg/HgO or Hg/Hg₂SO₄ to RHE and SHE
 ${Object.entries(GUIDES).map(([slug, g]) => `- [${g.h1}](${site.url}/guides/${slug}): ${g.answer}`).join("\n")}
+
+## Testing services
+
+${Object.entries(SERVICE_PAGES).map(([slug, p]) => `- [${p.h1}](${site.url}/services/${slug}): ${p.answer}`).join("\n")}
 
 ## Buy
 

@@ -208,6 +208,9 @@ auditing orphaned resources.
 - **Per-model facts** (`frontend/lib/product-facts.ts`): sentences built only from a product's own specs and
   price, or arithmetic on them, so that sibling sizes differ. A new family needs a branch there. Categories with more
   than 6 products keep the family guide, family FAQs and policy FAQs on the category page and link to it.
+- **Product notes** (`frontend/lib/product-notes.ts`): hand-written paragraphs for the 30 most searched products,
+  keyed by slug. **Service pages** (`frontend/lib/service-pages.ts`, `/services/<slug>`): only techniques already in
+  `service-details.ts`, and no accreditation, standard, turnaround or price, because none is on record.
 - **Admin sidebar** (`apps/dashboard/src/app/(payload)/custom-admin.css`): Payload's DefaultNav is
   kept and dressed. Group order = first appearance in `payload.config.ts` `collections` (Catalog
   first, technical collections in a `System` group last). Every entry gets an icon via

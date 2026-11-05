@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { clampDescription } from "@/frontend/lib/seo";
 import { BlogShopLinks } from "@/frontend/components/blog/shop-links";
+import { serviceForPost } from "@/frontend/lib/service-pages";
 import { draftMode } from "next/headers";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
@@ -105,6 +106,7 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
 
   const toc = extractToc(article.body);
   const related = await getRelatedBlogArticles(article);
+  const service = serviceForPost(article.slug);
   const isTech = ["technical-article", "research-note", "experimental-method", "review-article"].includes(
     article.contentTypeSlug ?? "",
   );
@@ -354,6 +356,16 @@ export default async function BlogArticlePage({ params }: { params: Promise<Para
         </div>
 
         <BlogShopLinks categorySlug={article.categorySlug} />
+
+        {service && (
+          <p className="mx-auto mt-10 max-w-6xl text-muted-foreground print:hidden">
+            Need this done for your material? See our{" "}
+            <Link href={service.href} className="font-medium text-brand hover:underline">
+              {service.name.toLowerCase()}
+            </Link>
+            .
+          </p>
+        )}
 
         {/* ── Related ───────────────────────────────────────────────────────── */}
         {related.length > 0 && (
