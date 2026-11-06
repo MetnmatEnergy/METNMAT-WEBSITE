@@ -208,6 +208,7 @@ auditing orphaned resources.
 - **Crawl paths into the shop:** the header's Categories panel stays in the HTML (`hidden` while closed), the
   home page has `home/browse-shop.tsx`, and `/shop/all` page 1 lists every product (`commerce/product-index.tsx`).
   Rendering the panel only on open left the home page with no link to any category.
+- **Popular products in the footer** (`footerProducts` in `frontend/lib/site.ts`): the 8 products buyers searched most on .in, linked from every page, because links from other sites are so few. Change the list only from Search Console data.
 - **Per-model facts** (`frontend/lib/product-facts.ts`): sentences built only from a product's own specs and
   price, or arithmetic on them, so that sibling sizes differ. A new family needs a branch there. Categories with more
   than 6 products keep the family guide, family FAQs and policy FAQs on the category page and link to it.
