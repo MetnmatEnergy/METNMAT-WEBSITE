@@ -123,3 +123,24 @@ export const footerResources = {
     { label: "Metallurgical testing", href: "/services/metallurgical-testing" },
   ],
 };
+
+/**
+ * The products buyers searched for most on metnmat.in, named as they searched. On
+ * 2026-11-06 Google ranked these .com pages for their exact names but not for the broad
+ * search, and the zinc sheet page, the biggest search of all, had no link from the home
+ * page, the shop or the guides. With 8 links from other sites, a link from every page is
+ * the strongest signal the site controls. Change this list only from Search Console data.
+ */
+export const footerProducts = {
+  title: "Popular products",
+  links: [
+    { label: "Zinc sheet", href: "/shop/p/high-purity-zinc-sheet" },
+    { label: "Ag/AgCl reference electrode", href: "/shop/p/silver-silver-chloride-ag-agcl-reference-electrode-2-50mm-glass-rod" },
+    { label: "Platinum sheet electrode", href: "/shop/p/platinum-sheet-counter-electrode-30-30-0-1mm" },
+    { label: "30 ton hydraulic press", href: "/shop/p/30-ton-hydraulic-press-four-pillar-hand-operated-semi-automatic-model" },
+    { label: "Nickel foam", href: "/shop/p/nickel-foam-electrode-200-300-1-5-mm" },
+    { label: "Swagelok cell", href: "/shop/p/swagelok-battery-test-fixture" },
+    { label: "PTFE electrode holder", href: "/shop/p/ptfe-replaceable-electrode-holder-mpg-10" },
+    { label: "Hot press machine", href: "/shop/p/hot-press-machine-for-pefc-membrane-electrode-assembly-hydraulic-hot-p" },
+  ],
+};
