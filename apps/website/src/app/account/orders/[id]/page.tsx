@@ -5,6 +5,7 @@ import { Button } from "@/frontend/components/ui/button";
 import { OrderTracking, type OrderTrackingStep } from "@/frontend/components/ui/order-tracking";
 import { ReorderButton } from "@/frontend/components/commerce/reorder-button";
 import { formatINR } from "@/frontend/lib/catalog";
+import { formatDateIST, formatDateTimeIST } from "@/frontend/lib/ist-date";
 import {
   getCurrentCustomer,
   getCustomerOrder,
@@ -38,22 +39,11 @@ const STATUS_LABEL: Record<string, string> = {
 const HALTED = new Set(["cancelled", "failed", "refunded"]);
 
 function fmtDate(iso?: string) {
-  return iso
-    ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-    : "—";
+  return formatDateIST(iso) || "—";
 }
 
 function fmtDateTime(iso?: string) {
-  return iso
-    ? new Date(iso).toLocaleString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      })
-    : undefined;
+  return formatDateTimeIST(iso) || undefined;
 }
 
 /**

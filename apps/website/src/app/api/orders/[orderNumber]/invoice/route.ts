@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentCustomer, getCustomerOrder, type FullOrder } from "@/backend/lib/customer";
 import { site } from "@/frontend/lib/site";
 import { invoiceTaxRows, taxGroupsForInvoice } from "@/frontend/lib/tax";
+import { formatDateIST } from "@/frontend/lib/ist-date";
 
 /**
  * GET /api/orders/[orderNumber]/invoice
@@ -28,9 +29,7 @@ function esc(s: unknown): string {
 }
 
 function fmtDate(iso?: string): string {
-  return iso
-    ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-    : "—";
+  return formatDateIST(iso) || "—";
 }
 
 /** The state our GST registration sits in — decides CGST+SGST vs IGST. */
