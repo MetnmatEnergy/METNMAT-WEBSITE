@@ -60,8 +60,15 @@ describe("service pages", () => {
     }
   });
 
-  it("is a true 404 for an unknown slug, though /services has a loading state", () => {
-    expect(src("app/services/[slug]/page.tsx")).toContain("export const dynamicParams = false");
+  it("gets its 404 from generateMetadata, because dynamicParams = false breaks on revalidation", () => {
+    const page = src("app/services/[slug]/page.tsx");
+    expect(page).not.toMatch(/export const dynamicParams/);
+    expect(page).toMatch(/generateMetadata[\s\S]*if \(!page\) notFound\(\);/);
+  });
+
+  it("keeps the loading state away from these pages", () => {
+    expect(() => src("app/services/loading.tsx")).toThrow();
+    expect(src("app/services/(index)/loading.tsx")).toContain("SkeletonGridPage");
   });
 
   it("is reached from the sitemap, the footer, /services and the posts on the subject", () => {
