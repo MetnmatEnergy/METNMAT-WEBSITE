@@ -4,7 +4,7 @@ import type { Payload } from "payload";
 import { decideDirectorCredential, decideDirectorPinWrite, directorPinForced } from "./lib/director-pin";
 import { planCredentialResync } from "./lib/credential-resync";
 import { hasAttachedImage, decideCategorySeed } from "./lib/seed-ownership";
-import { latestImageSet } from "./lib/seed-ownership";
+import { imagesToLink, latestImageSet } from "./lib/seed-ownership";
 import { classifyProbe, purgeMode, purgeSummary } from "./lib/media-purge";
 import { derivePinLookup } from "./lib/pin";
 import { seedCategories, seedProducts, type SeedCategory } from "./catalog-data";
@@ -1198,7 +1198,8 @@ async function backfillPricingMode(payload: Payload): Promise<void> {
  * One-shot (2026-11-05): MPP60 and MPP70 were deleted and recreated on 2026-09-04,
  * which dropped the link to their photos while the files stayed in the media
  * library. With no photo they show none on the site and cannot be in the Merchant
- * feed. Acts only on a product with no images, so staff photos are never replaced.
+ * feed. Acts only on a product with no images, or with exactly the set the first run
+ * left (2026-11-07: it missed the lead photo), so staff photos are never replaced.
  */
 async function relinkPumpPhotos(payload: Payload): Promise<void> {
   const sets = [
@@ -1208,13 +1209,14 @@ async function relinkPumpPhotos(payload: Payload): Promise<void> {
   for (const { slug, name, model } of sets) {
     try {
       const found = await payload.find({ collection: "products", where: { slug: { equals: slug } }, limit: 1, depth: 0, overrideAccess: true });
-      const product = found.docs[0] as { id: string; images?: unknown[] } | undefined;
-      if (!product || product.images?.length) continue;
+      const product = found.docs[0] as { id: string; images?: { image?: unknown }[] } | undefined;
+      if (!product) continue;
       const media = await payload.find({ collection: "media", where: { filename: { contains: model } }, limit: 100, depth: 0, overrideAccess: true });
       const docs = media.docs as unknown as { id: string; filename?: string | null }[];
       const chosen = latestImageSet(docs.flatMap((m) => (m.filename ? [m.filename] : [])), name);
-      const images = chosen.flatMap((filename) => docs.filter((m) => m.filename === filename).map((m) => ({ image: m.id })));
-      if (images.length === 0) continue;
+      const latest = chosen.flatMap((filename) => docs.filter((m) => m.filename === filename).map((m) => m.id));
+      const images = imagesToLink((product.images ?? []).map((row) => String(row.image)), latest)?.map((image) => ({ image }));
+      if (!images) continue;
       await payload.update({ collection: "products", id: product.id, data: { images } as never, overrideAccess: true });
       payload.logger.info(`[seed] relinkPumpPhotos: ${slug} now has ${images.length} images.`);
     } catch (e) {

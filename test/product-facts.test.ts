@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { diskAreaCm2, parseDims, productFacts } from "../apps/website/src/frontend/lib/product-facts";
 import { feedItem, googleCategory } from "../apps/website/src/frontend/lib/merchant-feed";
 import { productFaqs } from "../apps/website/src/frontend/components/seo/schema";
-import { latestImageSet } from "../apps/dashboard/src/lib/seed-ownership";
+import { imagesToLink, latestImageSet } from "../apps/dashboard/src/lib/seed-ownership";
 import { TOPIC_SEO, topicProducts } from "../apps/website/src/frontend/lib/topic-seo";
 import { GUIDES } from "../apps/website/src/frontend/lib/guides";
 import { CATEGORY_SEO } from "../apps/website/src/frontend/lib/category-seo";
@@ -170,6 +170,28 @@ describe("photo set", () => {
 
   it("finds nothing for a name with no files", () => {
     expect(latestImageSet(["Other 1-1.webp"], "Peristaltic Pump")).toEqual([]);
+  });
+
+  it("puts the unnumbered lead photo first, in the newest generation only", () => {
+    const n = "Peristaltic Pump Single Channel MPP70";
+    const files = [`${n} 1-1.webp`, `${n}-1.webp`, `${n} 2-3.webp`, `${n} 1-3.webp`, `${n}-3.webp`];
+    expect(latestImageSet(files, n)).toEqual([`${n}-3.webp`, `${n} 1-3.webp`, `${n} 2-3.webp`]);
+  });
+
+  it("does not mistake another model for the lead photo", () => {
+    expect(latestImageSet(["Pump MPP700-3.webp", "Pump MPP70 Pro-3.webp"], "Pump MPP70")).toEqual([]);
+  });
+
+  it("adds the missed lead photo, and only to the set the first run left", () => {
+    expect(imagesToLink([], ["lead", "a", "b"])).toEqual(["lead", "a", "b"]);
+    expect(imagesToLink(["a", "b"], ["lead", "a", "b"])).toEqual(["lead", "a", "b"]);
+  });
+
+  it("leaves a staff edit, and a product already right, alone", () => {
+    expect(imagesToLink(["b", "a"], ["lead", "a", "b"])).toBeUndefined();
+    expect(imagesToLink(["staff"], ["lead", "a", "b"])).toBeUndefined();
+    expect(imagesToLink(["lead", "a", "b"], ["lead", "a", "b"])).toBeUndefined();
+    expect(imagesToLink(["a"], [])).toBeUndefined();
   });
 });
 
