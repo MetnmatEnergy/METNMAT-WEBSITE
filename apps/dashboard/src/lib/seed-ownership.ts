@@ -54,18 +54,34 @@ export function decideCategorySeed(existing: unknown): CategorySeedAction {
 }
 
 /**
- * The newest upload of a numbered photo set, in order. Each re-run of the attach
- * script adds a generation ("<name> 2-1.webp", then "<name> 2-2.webp"), so only the
- * highest generation is one complete, current set.
+ * The newest upload of a photo set, in order. Each re-run of the attach script adds a
+ * generation ("<name> 2-1.webp", then "<name> 2-2.webp"), so only the highest generation
+ * is one complete, current set. The lead photo carries no number of its own
+ * ("<name>-3.webp" in generation 3), and it goes first.
  */
 export function latestImageSet(filenames: string[], name: string): string[] {
   const rows = filenames.flatMap((filename) => {
-    const m = filename.match(/^(.*) (\d+)(?:-(\d+))?\.[a-z]+$/i);
-    return m && m[1] === name ? [{ filename, order: Number(m[2]), generation: Number(m[3] ?? 0) }] : [];
+    const numbered = filename.match(/^(.*) (\d+)(?:-(\d+))?\.[a-z]+$/i);
+    if (numbered?.[1] === name) return [{ filename, order: Number(numbered[2]), generation: Number(numbered[3] ?? 0) }];
+    const lead = filename.match(/^(.*?)(?:-(\d+))?\.[a-z]+$/i);
+    return lead?.[1] === name ? [{ filename, order: 0, generation: Number(lead[2] ?? 0) }] : [];
   });
   const newest = Math.max(...rows.map((r) => r.generation));
   return rows
     .filter((r) => r.generation === newest)
     .sort((a, b) => a.order - b.order)
     .map((r) => r.filename);
+}
+
+/**
+ * What a product's photos should become, or undefined to leave them alone. Photos are
+ * filled in when a product has none. Otherwise they change only if they are exactly the
+ * set left by the first run of this repair, which missed the lead photo, so a staff edit
+ * always stands, and a product already put right is not written again.
+ */
+export function imagesToLink(current: string[], latest: string[]): string[] | undefined {
+  if (latest.length === 0) return undefined;
+  if (current.length === 0) return latest;
+  const withoutLead = latest.slice(1);
+  return current.length === withoutLead.length && current.every((id, i) => id === withoutLead[i]) ? latest : undefined;
 }
